@@ -17,6 +17,7 @@ docs/reviews. Rows of an earlier run (`gen`: family) are replaced. Names and key
 
 import csv
 import json
+import re
 import sys
 from collections import defaultdict
 
@@ -48,13 +49,37 @@ def values(el, field):
     return {"social": s.replace("-", "–")} if s else {}
 
 
+TAGS = {  # (the kids each structure family is made of: a row of a family writes only its own)
+    "slots": ("slot", "fits"),
+    "variants": ("variant",),
+    "relevance": ("relevance",),
+    "flags": ("flag",),
+    "effects": ("modifier",),
+    "requires": ("prerequisite",),
+    "choices": ("selection",),
+}
 STRUCTURE = ("slots", "variants", "relevance", "flags", "modonly", "size/ammo", "effects", "requires", "choices")
 
 
-def structure(rec):
+def slot_value(m, rating):
+    """A HOOK's capacity as the entry holds it: at `rating`, the table's own number (Cybereyes: 1, 4, 8, 12, 16 by
+    level; `$RATING` is the level, not the capacity), else as Commlink6 gives it (None when it gives none)."""
+    v = m.get("value")
+    if not v:
+        return None
+    if rating is not None and m.get("table"):
+        got = canon.cl6_value(v, rating, m.get("table"))
+        if got is not None:
+            return f"{got:g}" if isinstance(got, float) else str(got)
+    return v
+
+
+def structure(rec, rating=None):
     """({attribute: value}, [kid]) Commlink6's record gives for the item-structure families
     (docs/sr6-data-format/kinds.md, Item
-    structure), in the books' words where it has keys (`MILITARY` -> `Military`)."""
+    structure), in the books' words where it has keys (`MILITARY` -> `Military`). Slots (a host's HOOKs) and fits (an
+    accessory's EMBEDDED usages) are the item's, its variants' too (canon.associations); rating: the level of the entry
+    that takes them (a HOOK's value is read at it)."""
     el, attrs = rec["el"], rec["attrs"]
     sets, kids = {}, []
     if attrs.get("modonly") in ("y", "yes", "true", "1") or attrs.get("modonly") is True:
@@ -64,19 +89,19 @@ def structure(rec):
         sets["size"] = words(size.lower())
     if ammo:
         sets["ammoClass"] = words(ammo.lower())
+    seen = set()  # (a slot several variants give: the record's own first, then the first variant's capacity)
+    for x in el.iter():
+        if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref"):
+            if canon._norm(x.get("ref")) in seen:
+                continue
+            seen.add(canon._norm(x.get("ref")))
+            v = slot_value(x, rating)
+            kids.append({"tag": "slot", "attrs": {"id": canon._norm(x.get("ref")), **({"value": v} if v else {})}})
+        elif x.tag == "usage" and x.get("mode") == "EMBEDDED" and x.get("slot"):
+            kids.append({"tag": "fits", "attrs": {"slot": canon._norm(x.get("slot"))}})
     for m in canon._mods(el):
-        if m.tag in ("valmod", "itemmod") and m.get("type") == "HOOK" and m.get("ref"):
-            kids.append(
-                {
-                    "tag": "slot",
-                    "attrs": {"id": canon._norm(m.get("ref")), **({"value": m.get("value")} if m.get("value") else {})},
-                }
-            )
         if m.tag == "relevancemod" and (m.get("topic") or "").strip():
             kids.append({"tag": "relevance", "attrs": {"topic": m.get("topic").strip().casefold()}})
-    for u in canon._own(el, "usage"):
-        if u.get("mode") == "EMBEDDED" and u.get("slot"):
-            kids.append({"tag": "fits", "attrs": {"slot": canon._norm(u.get("slot"))}})
     names = rec.get("variants") or {}
     for v in canon._own(el, "variant"):
         kids.append({"tag": "variant", "attrs": {"name": names.get(v.get("id"), v.get("id"))}})
@@ -110,6 +135,28 @@ def structure(rec):
     return sets, out
 
 
+RATED = re.compile(r"\s*\((?:Rating|Level)\s*\d+\)\s*$")  # (an entry's level suffix: one entry per level)
+
+
+def level(e):
+    """The one level of an entry of ours (`rating` 1..5), else None."""
+    r = ours.rating_range((e or {}).get("attrs", {}).get("rating"))
+    return r[0] if r and r[0] == r[1] else None
+
+
+def levels(idx, key):
+    """The keys of every level entry of the item the entry `key` is one level of (itself included), else []."""
+    e = idx.get(key)
+    if not e or not RATED.search(e["name"]):
+        return []
+    base = RATED.sub("", e["name"]).casefold()
+    return [
+        k
+        for k, x in idx.items()
+        if k[:2] == key[:2] and RATED.search(x["name"]) and RATED.sub("", x["name"]).casefold() == base
+    ]
+
+
 def merge(old, new, idx, src, variants=False):
     """src's table rows: the hand rows and other generators' rows as they are; the family rows of an earlier run kept
     (a row that landed is no longer a difference in the csv, so the csv alone never has it again) unless no entry of
@@ -130,11 +177,33 @@ def merge(old, new, idx, src, variants=False):
     for r in new:
         o = rows.get((r["kind"], r["id"]))
         if o:
+            kept = [
+                k
+                for k in o.get("kids", [])
+                if not (
+                    k["tag"] == "slot"
+                    and "$" in k["attrs"].get("value", "")
+                    and any(
+                        x["tag"] == "slot"
+                        and x["attrs"]["id"] == k["attrs"]["id"]
+                        and "$" not in x["attrs"].get("value", "$")
+                        for x in r.get("kids", [])
+                    )
+                )
+            ]  # (a slot Commlink6 now gives with its level's own capacity replaces the old row's `$RATING`)
+            have = {k["attrs"]["id"] for k in kept if k["tag"] == "slot"}  # (one capacity per slot: the old row's wins)
             r = {
                 **o,
                 **r,
                 "set": {**r.get("set", {}), **o.get("set", {})},
-                "kids": [*o.get("kids", []), *[k for k in r.get("kids", []) if k not in o.get("kids", [])]],
+                "kids": [
+                    *kept,
+                    *[
+                        k
+                        for k in r.get("kids", [])
+                        if k not in kept and not (k["tag"] == "slot" and k["attrs"]["id"] in have)
+                    ],
+                ],
             }
             r = {k: v for k, v in r.items() if v or k in ("cl6", "kind", "id", "gen")}
         rows[r["kind"], r["id"]] = r
@@ -183,9 +252,11 @@ def main(argv):
             continue  # (another record of the entry's own kind is its record: an echo and a device of one id)
         if r["field"] in STRUCTURE:
             if rec:
-                sets, kids = structure(rec)
+                sets, kids = structure(rec, level(idx.get((r["src"], kind, r["our_id"]))))
+                kids = [k for k in kids if k["tag"] in TAGS.get(r["field"], ())]
+                sets = sets if r["field"] in ("size/ammo", "modonly") else {}
                 g = groups[r["src"], kind, r["our_id"].split(".", 1)[1]]
-                g.update(sets, _cl6=rec["name"])
+                g.update(sets, _cl6=rec["name"], _rec=rec)
                 g["_kids"] = [*g.get("_kids", []), *[k for k in kids if k not in g.get("_kids", [])]]
             continue
         if kind not in ("weapons", "armor"):
@@ -194,8 +265,22 @@ def main(argv):
         v = values(rec["el"], r["field"]) if rec else {}
         if v:
             groups[r["src"], kind, r["our_id"].split(".", 1)[1]].update(v, _cl6=rec["name"])
+    for (src, kind, oid), v in list(groups.items()):  # (every level of a rated item holds the slots and fits)
+        if "_rec" not in v:
+            continue
+        for key in levels(idx, (src, kind, f"{src}.{oid}")):
+            lv = groups[src, kind, key[2].split(".", 1)[1]]
+            if lv is v:
+                continue
+            _, kids = structure(v["_rec"], level(idx[key]))
+            lv.setdefault("_cl6", v["_cl6"])
+            lv["_kids"] = [
+                *lv.get("_kids", []),
+                *[k for k in kids if k["tag"] in ("slot", "fits") and k not in lv.get("_kids", [])],
+            ]
     new = defaultdict(list)
     for (src, kind, oid), v in sorted(groups.items()):
+        v.pop("_rec", None)
         name, kids = v.pop("_cl6"), v.pop("_kids", [])
         if v or kids:
             row = {

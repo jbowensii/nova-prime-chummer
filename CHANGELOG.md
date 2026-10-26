@@ -1,5 +1,27 @@
 # Release notes
 
+## 0.27.0 — 2026-10-26
+
+Accessory pickers now show the right items for every device — a CommLink6-driven fix. **Needs a re-import.**
+
+**Shadowrun 6**
+- **Accessories are matched to their host correctly.** Cyberears now offers its real enhancements (Audio
+  enhancement, Select sound filter, Spatial recognizer, Balance augmenter, Damper, Soundlink, and the rest),
+  cybereyes offers the full eyeware set, and neither is padded with weapon or armor accessories. The same slot
+  model is completed across weapons, armor, cyberlimbs, electronics, commlinks and vehicles.
+- Root cause: the import pipeline dropped CommLink6's *variant-level* associations (the cybereye/cyberear
+  wiring), so 147 associations were missing while the data read as complete. The importer now reads them, and the
+  CommLink6 gate grades the slot/fits wiring so it can't silently drift again.
+- Fixes a capacity bug: a Rating-5 cybereyes/cyberears system reported capacity 5 instead of 16.
+- The Accessory picker no longer offers an accessory to a device it can't fit.
+- Note: weapon "carry" items (spare clips, holsters, slings, ammo pouches) remain standalone gear, as in the book
+  — bought as their own lines, not nested under a weapon.
+
+**Both games**
+- Fixed the item hover card (0.26.2's scrollable popup) stealing clicks from the row beneath it — picker options
+  and list rows the card overlapped could not be clicked. The card now only takes the pointer when it is long
+  enough to need scrolling; a short card lets clicks through to its trigger.
+
 ## 0.26.3 — 2026-10-25
 
 A quick fix from live testing.

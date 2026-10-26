@@ -74,7 +74,8 @@ export function EntryHover({
   tabbable?: boolean
 }) {
   const [open, setOpen] = useState(false),
-    [tapped, setTapped] = useState(false) // (tapped: touch's, for the render)
+    [tapped, setTapped] = useState(false), // (tapped: touch's, for the render)
+    [scroll, setScroll] = useState(false) // the card overflows, so it takes the pointer to wheel-scroll (else it lets clicks through to its trigger)
   const id = useId(),
     ref = useRef<HTMLSpanElement>(null),
     pop = useRef<HTMLSpanElement>(null),
@@ -103,6 +104,7 @@ export function EntryHover({
       setAt(r.bottom + 360 > innerHeight && r.top > innerHeight - r.bottom ? { left, bottom: innerHeight - r.top + 4 } : { left, top: r.bottom + 4 })
     }
     place()
+    setScroll((pop.current?.scrollHeight ?? 0) > (pop.current?.clientHeight ?? 0) + 1)
     addEventListener('scroll', place, true)
     addEventListener('resize', place)
     return () => {
@@ -169,7 +171,7 @@ export function EntryHover({
             ref={pop}
             role="tooltip"
             id={id}
-            className={`entry-pop${tapped ? ' touch' : ''}`}
+            className={`entry-pop${tapped ? ' touch' : ''}${scroll ? ' scroll' : ''}`}
             style={at ?? { visibility: 'hidden' }}
             onMouseEnter={() => {
               if (!touch.current) cancelShut()

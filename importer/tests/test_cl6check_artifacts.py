@@ -108,7 +108,14 @@ class FamilyArtifactTest(unittest.TestCase):
         rs = cli.compare(recs, mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0]
         self.assertEqual([r["families"]["slots"] for r in rs], [True, True])
         one = cli.compare(recs[:1], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0]
-        self.assertFalse(one[0]["families"]["slots"])  # (a single record must equal the set)
+        self.assertTrue(
+            one[0]["families"]["slots"]
+        )  # (every slot and fit the record gives is ours; ours may have more)
+        c = canon.canonical(rec('<item id="m2"/>', name="Mike")) | {"src": "gz"}
+        c["families"]["slots"] = frozenset({("slot", "audio"), ("fits", "thermal")})
+        lacking = cli.compare([c], mine, pdf=False, package=({}, {}, {}), accept={}, sections=[], extra={})[0]
+        self.assertFalse(lacking[0]["families"]["slots"])  # (one it gives that ours lacks)
+        self.assertEqual([d["field"] for d in lacking[0]["diffs"]], ["slots"])  # (and that fails accuracy)
 
     def test_a_record_that_a_neighbouring_level_agrees_with_more_is_compared_with_that_level(self):
         # (the book's levels 5 and 6 are Commlink6's 6 and 7: values line up one level down)

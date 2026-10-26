@@ -45,6 +45,7 @@ FIELDS = (
     "power type",
     "action",
     "attribute",
+    "slots",  # (structure, not a printed field: every slot and fit Commlink6 gives must be ours; compare() below)
 )
 PRICED = {
     "weapons",
@@ -254,6 +255,21 @@ def printed_word(ours_s):
     number."""
     t = (ours_s or "").strip()
     return bool(t) and not O.NONE.match(t) and not re.search(r"\d", t)
+
+
+RATED = re.compile(r"\s*\((?:Rating|Level)\s*\d+\)\s*$")  # (an entry's level suffix: one entry per level)
+
+
+def level_entries(o, sib):
+    """o and the entries that are other levels of the same item (`Cybereyes (Rating 3)`): the id numbers of sib are
+    levels or tiers, but also models (`Ultimax 71`, `83`); only a printed level suffix shares an item's structure."""
+    if not RATED.search(o["name"]):
+        return [o]
+    base = RATED.sub("", o["name"]).casefold()
+    return [
+        o,
+        *[x for x in sib if x is not o and RATED.search(x["name"]) and RATED.sub("", x["name"]).casefold() == base],
+    ]
 
 
 def compare(c, o, sib=()):
@@ -515,6 +531,22 @@ def compare(c, o, sib=()):
             add(fld, _str_field(fld, a.get(mine), f.get(fld), norm, False))
     if k == "skills" and f.get("attribute"):
         add("attribute", _str_field("attribute", a.get("attr"), f["attribute"], first3, False))
+    cs = c.get("families", {}).get("slots")
+    if cs:  # (the matched entry and each level of it; ours may hold more)
+        for x in level_entries(o, sib):
+            if lack := set(cs) - set(x.get("families", {}).get("slots", ())):
+                add(
+                    "slots",
+                    {
+                        "field": "slots",
+                        "ours": ", ".join(sorted(f"{t} {i}" for t, i in x.get("families", {}).get("slots", ()))),
+                        "cl6": ", ".join(sorted(f"{t} {i}" for t, i in lack)),
+                        "why": f"missing association ({x['id']})",
+                    },
+                )
+                break
+        else:
+            add("slots", None)
     return done, diffs
 
 

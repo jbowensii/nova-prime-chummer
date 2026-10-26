@@ -3,7 +3,7 @@
 // host's accessory; Review flags an accessory on the wrong host and accessories over the host's capacity.
 import { expect, test } from 'vitest'
 import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
-import { capacityOf, capacityRemaining, capacityUsed, entryLabel, entrySearch, fitsHost } from '../../../src/sr6/catalog/domain/categories'
+import { capacityOf, capacityRemaining, capacityUsed, entryLabel, entrySearch, fitsHost, offeredOn } from '../../../src/sr6/catalog/domain/categories'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
@@ -199,4 +199,22 @@ test('raising a fitted accessory’s rating may not overfill its host (the add-t
   expect(act({ op: 'rate', uid: low.uid, rating: 3 })).toEqual({ ok: false, reason: 'Not enough remaining capacity.' })
   expect(low).toEqual(was)
   expect(act({ op: 'rate', uid: low.uid, rating: 2 })).toEqual({ ok: true })
+})
+
+test('the picker offers a slotted host only the accessories that fit it: a weapon accessory is never offered to cyberears', () => {
+  const e = (kind: Sr6Entry['kind'], id: string, attrs: Record<string, string>, parts: object[] = []): Sr6Entry =>
+    ({ id, kind, name: id, source: 'CRB', page: 1, attrs, text: '', parts }) as never
+  const index = new Map<string, Sr6Entry[]>() // no category records: only the slots decide
+  const ears = e('augmentations', 'crb.ears', { capacity: '4' }, [{ tag: 'slot', attrs: { id: 'cyberear-implant', value: '4' } }])
+  const audio = e('gear', 'crb.audio', {}, [{ tag: 'fits', attrs: { slot: 'cyberear-implant' } }])
+  const flashlight = e('weapons', 'crb.flashlight', {}, [{ tag: 'fits', attrs: { slot: 'top' } }])
+  const bare = e('gear', 'crb.bare', {}) // declares nothing (a pre-categories import)
+  const taking = () => true
+  expect(offeredOn(index, audio, ears, taking, () => true)).toBe(true)
+  expect(offeredOn(index, flashlight, ears, taking, () => true)).toBe(false) // declared a fit, not this host's
+  expect(offeredOn(index, bare, ears, taking, () => true)).toBe(false) // a slot-based host takes no undeclared fall-through
+  const plain = e('weapons', 'crb.gun', {})
+  expect(offeredOn(index, bare, plain, taking, () => true)).toBe(true) // a host with no slots still takes it by `filter`
+  expect(offeredOn(index, flashlight, plain, undefined, () => true)).toBe(false) // a line that takes any gear: not a declared fit
+  expect(offeredOn(index, bare, plain, undefined, () => false)).toBe(true)
 })

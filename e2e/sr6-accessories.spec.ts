@@ -2,7 +2,7 @@
 // Torqlimb accessory goes on the Torqlimb arm (the picker offers only accessories that fit this host), its bonus lands
 // on the arm only (the line, the sheet's line and Review's derived values show the arm's own Strength; the runner's stays).
 import { test, expect, type Page } from '@playwright/test'
-import { cpSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { usersFile } from '../server/auth.mjs'
@@ -18,6 +18,30 @@ test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-sr6-acc-e2e-'))
   cpSync('tests/fixtures/mini/custom', join(dir, 'custom'), { recursive: true })
   cpSync('tests/fixtures/sr6/custom', join(dir, 'custom', 'sr6'), { recursive: true })
+  // eyeware/earware hosts (slot-based) and their enhancements, with a weapon accessory that must never be offered to them
+  const add = (file: string, xml: string) => {
+    const p = join(dir, 'custom', 'sr6', 'imported', 'crb', file)
+    writeFileSync(
+      p,
+      readFileSync(p, 'utf8').replace(
+        '</sr6:data>',
+        `${xml}
+</sr6:data>`,
+      ),
+    )
+  }
+  add(
+    'augmentations.xml',
+    `<augmentation id="crb.cyberears-basic" source="CRB" page="285" type="cyberware" category="Earware" essence="0.1" capacity="4" avail="2" cost="3000"><name>Cyberears</name><slot id="cyberear-implant" value="4"/><text/></augmentation>
+  <augmentation id="crb.cybereyes-basic" source="CRB" page="285" type="cyberware" category="Eyeware" essence="0.1" capacity="4" avail="2" cost="4000"><name>Cybereyes</name><slot id="cybereye-implant" value="4"/><text/></augmentation>`,
+  )
+  add(
+    'gear.xml',
+    `<gear id="crb.audio-enhancement" source="CRB" page="276" category="Audio enhancement" capacity="[1]" avail="1" cost="500"><name>Audio enhancement</name><fits slot="audio"/><fits slot="cyberear-implant"/><text/></gear>
+  <gear id="crb.select-sound-filter" source="CRB" page="276" category="Audio enhancement" capacity="[1]" avail="1" cost="500"><name>Select sound filter</name><fits slot="audio"/><fits slot="cyberear-implant"/><text/></gear>
+  <gear id="crb.image-link" source="CRB" page="275" category="Visual enhancement" capacity="[1]" avail="1" cost="25"><name>Image link</name><fits slot="optical"/><fits slot="cybereye-implant"/><text/></gear>
+  <gear id="crb.fn-p93-flashlight" source="CRB" page="259" category="Weapon accessory" avail="1" cost="75"><name>FN P93 Flashlight</name><fits slot="top"/><fits slot="under"/><text/></gear>`,
+  )
   mkdirSync(join(dir, 'library', '.config'), { recursive: true })
   writeFileSync(join(dir, 'library', '.config', 'users.xml'), await usersFile([{ username: 'pat', password: PW, role: 'player', name: 'Pat Player' }]))
   server = createServer({ staticDir: 'dist', charDir: join(dir, 'characters'), customDir: join(dir, 'custom'), libraryDir: join(dir, 'library') })
@@ -86,4 +110,33 @@ test('a cyberlimb accessory goes on the arm, and its bonus is the arm’s only',
   // the sheet: the arm's line with its accessory and its own Strength
   await tabs.filter({ hasText: 'Print' }).click()
   await expect(page.getByText(`Torqlimb accessory: Plating 2 (STR ${str + 2})`).first()).toBeVisible()
+})
+
+test('cyberears and cybereyes are offered their own enhancements and never a weapon accessory', async ({ page }) => {
+  await signIn(page)
+  await page.getByRole('button', { name: 'New runner' }).click()
+  const nr = page.getByRole('dialog', { name: 'New runner' })
+  await nr.getByLabel('Street name').fill('Ears And Eyes')
+  await nr.getByRole('button', { name: 'Create runner' }).click()
+  await expect(page).toHaveURL(/#\/sr6\/c\/[^/]+\/concept$/)
+  const tabs = page.getByRole('navigation', { name: 'Character sections' }).getByRole('link')
+  const work = page.locator('main.work'),
+    dlg = page.getByRole('dialog')
+  await tabs.filter({ hasText: 'Augmentations' }).click()
+  for (const [host, offered, other] of [
+    ['Cyberears', ['Audio enhancement', 'Select sound filter'], 'Image link'],
+    ['Cybereyes', ['Image link'], 'Audio enhancement'],
+  ] as const) {
+    await work.getByRole('button', { name: 'Add an augmentation…' }).click()
+    await dlg.getByPlaceholder('Search').fill(host)
+    await dlg.getByText(host, { exact: false }).first().click()
+    if (await dlg.getByRole('button', { name: 'Add', exact: true }).count()) await dlg.getByRole('button', { name: 'Add', exact: true }).click()
+    await expect(dlg).toHaveCount(0)
+    await work.getByRole('button', { name: new RegExp(`^Add an accessory to .*${host}`) }).click()
+    for (const name of offered) await expect(dlg).toContainText(name)
+    await expect(dlg.locator('li', { hasText: other })).toHaveCount(0)
+    await expect(dlg.locator('li', { hasText: 'FN P93 Flashlight' })).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    await expect(dlg).toHaveCount(0)
+  }
 })

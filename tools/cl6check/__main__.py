@@ -41,11 +41,16 @@ LEVEL = re.compile(r"-(?:level-|rating-)?\d+$")  # (an id's level suffix: one en
 RATED = re.compile(r"\s*\((?:Rating|Level)\s*\d+\)\s*$")
 
 
-def _same(fam, cl, h, shared, keep=()):
+NANITES = "nanite colony and nanites"  # (match.py's how: one record, a colony entry and a nanites entry)
+
+
+def _same(fam, cl, h, shared, keep=()):  # pylint: disable=unused-argument  # (kept: the callers pass it)
     """Whether our entry h holds family `fam` as Commlink6's record does. variants: equal too when the entry's name
-    carries one of Commlink6's variant names (one item per variant, the owner's rule). slots: when Commlink6 makes two
-    records of the item (`shared`), each record's set is a part of ours."""
+    carries one of Commlink6's variant names (one item per variant, the owner's rule). slots: every slot and fit
+    Commlink6 gives must be ours (ours may have more; the owner, 2026-10-25: a missing association fails)."""
     mine = h["families"].get(fam)
+    if fam == "slots":
+        return isinstance(mine, (set, frozenset)) and set(cl) <= set(mine)
     if mine == cl:
         return True
     if (
@@ -59,7 +64,7 @@ def _same(fam, cl, h, shared, keep=()):
         return True
     if fam == "variants":  # (or the entry's name carries the variant)
         return ours.carries(h["name"], cl)
-    return fam == "slots" and shared and isinstance(mine, (set, frozenset)) and set(cl) <= set(mine)
+    return False
 
 
 def _levels(c, hits, entries):
@@ -76,6 +81,17 @@ def _levels(c, hits, entries):
         if min(len(fields.compare(c, h)[1]) for h in hits) <= best
         else [min(sib, key=lambda e: len(fields.compare(c, e)[1]))]
     )
+
+
+def _holds(fam, cl, o, hits, how, sib, keep, owners):
+    """Whether our entries hold Commlink6's family `fam`. slots: the matched entry and each level of it (one entry per
+    level: every level is a host or an accessory); together over the hit group when the record is several of our rows
+    (a colony and its nanites, an item and its implant row of another kind file)."""
+    if fam != "slots":
+        return any(_same(fam, cl, h, owners[id(h)] > 1, keep) for h in hits)
+    if how == NANITES or len({h["kind"] for h in hits}) > 1:  # (a colony and its nanites; an item and its implant row)
+        return set(cl) <= {x for h in hits for x in h["families"].get("slots", ())}
+    return all(_same(fam, cl, h, False, keep) for h in fields.level_entries(o, sib(o)))
 
 
 def compare(
@@ -179,7 +195,7 @@ def compare(
                 "compared": [],
                 "diffs": [],
                 "families": {
-                    f: bool(o) and any(_same(f, v, h, owners[id(h)] > 1, keep) for h in hits)
+                    f: bool(o) and _holds(f, v, o, hits, how, sib, keep, owners)
                     for f, v in c["families"].items()
                     if f != "subtype"  # (subtype: the class family's now)
                     and not (f == "class" and o and o["kind"] not in canon.CLASS_KINDS)
@@ -208,6 +224,9 @@ def compare(
                 matched.update(id(h) for h in [*first, *hits])
                 pairs.append((c, o))
                 r["compared"], r["diffs"] = fields.compare(c, o, sib(o))
+                if r["families"].get("slots") and (how == NANITES or len({h["kind"] for h in hits}) > 1):
+                    # (the colony's fits count for its nanites; an item's, for its implant row of another kind)
+                    r["diffs"] = [d for d in r["diffs"] if d["field"] != "slots"]
                 for d in r["diffs"]:
                     d["class"], d["pdf"] = arbitrate.settle(book if pdf else None, o, c, d)
                     t = (trace or {}).get((c["src"], c["id"], d["field"]))

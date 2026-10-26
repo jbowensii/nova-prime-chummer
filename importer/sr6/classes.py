@@ -86,3 +86,52 @@ def apply(files, cmap=None, src=None, rules=None):
         if changed:
             out[name] = overrides.dump(xml, root)
     return out
+
+
+HOST_SLOTS = {"CYBERWARE/CYBER_EYEWARE": "cybereye-implant", "CYBERWARE/CYBER_EARWARE": "cyberear-implant"}
+MOUNTS = {
+    "top": ("top",),
+    "under": ("under",),
+    "barrel": ("barrel",),
+    "stock": ("stock",),
+    "side": ("side-l", "side-r"),
+}
+
+
+def associations(files):
+    """files with the slots and fits Commlink6's model gives by class and by the printed column, wherever the entry
+    has none of that id yet (a row's own stays): a host's `<slot>` for its eyeware/earware implants (the capacity it
+    prints, when that is a plain number: an accessory prints `[1]`) and a weapon accessory's `<fits>` for each mount
+    its MOUNT column names. A host never gets a `<fits>` and an accessory never a `<slot>`."""
+    from lxml import etree
+
+    out = dict(files)
+    for name, xml in files.items():
+        if not xml or not name.endswith(".xml") or name[:-4] not in ("augmentations", "weapons", "gear"):
+            continue
+        root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))
+        changed = False
+        for e in root:
+            if not isinstance(e.tag, str):
+                continue
+            want = []  # (tag, attrs)
+            cap = (e.get("capacity") or "").strip()
+            # ponytail: a bare-integer capacity marks the eyeware/earware HOST (1/4/8/12/16); an accessory prints
+            # `[n]`/`[Rating]`/`—`. Sound on current data; if a future eyeware/earware ACCESSORY ever prints a bare
+            # integer capacity it would wrongly get a host slot — tighten with an explicit host/accessory flag then.
+            if (slot := HOST_SLOTS.get(e.get("class") or "")) and re.fullmatch(r"\d+", cap):
+                want.append(("slot", {"id": slot, "value": cap}))
+            elif e.get("class") == "ACCESSORY/WEAPON_ACCESSORY":
+                for m in re.split(r"\s*(?:/|,|\bor\b)\s*", e.get("mount") or ""):
+                    want += [("fits", {"slot": x}) for x in MOUNTS.get(m.strip().casefold(), ())]
+            for tag, attrs in want:
+                key, have = next(iter(attrs.items())), [c for c in e if c.tag == tag]
+                if any(c.get(key[0]) == key[1] for c in have):
+                    continue
+                k = etree.Element(tag, attrs)
+                t = next((c for c in e if c.tag == "text"), None)
+                e.insert(list(e).index(t) if t is not None else len(e), k)
+                changed = True
+        if changed:
+            out[name] = overrides.dump(xml, root)
+    return out

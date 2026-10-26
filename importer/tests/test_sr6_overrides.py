@@ -1695,16 +1695,18 @@ class SlotStructureRowsTest(unittest.TestCase):
         self.assertNotIn(("slot", {"id": "stock"}), stock)
         self.assertIn(("fits", {"slot": "electronic-accessory"}), self.kids("crb", "gear", "simrig"))
 
-    def test_a_mount_column_is_a_fit_only_when_the_entry_has_no_slot_of_its_own(self):
+    def test_a_mount_column_is_a_fit_only_as_a_written_fits_element(self):
+        # (the importer writes the fit: classes.associations; the comparer reads elements, the runtime ignores `mount`)
         from tools.cl6check import ours
 
         def fam(xml):
-            return ours.families(ET.fromstring(xml))["slots"]
+            return ours.families(ET.fromstring(xml)).get("slots")
 
         self.assertEqual(
             fam('<weapon mount="Under"><slot id="vehicle-hardpoint"/></weapon>'), {("slot", "vehicle-hardpoint")}
         )
-        self.assertEqual(fam('<weapon mount="Under"/>'), {("fits", "under")})
+        self.assertIsNone(fam('<weapon mount="Under"/>'))
+        self.assertEqual(fam('<weapon mount="Under"><fits slot="under"/></weapon>'), {("fits", "under")})
 
     def test_scavenged_rags_keep_the_printed_empty_availability(self):
         self.assertFalse(

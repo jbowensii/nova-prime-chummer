@@ -227,6 +227,8 @@ def load_trace(path):
 
 def settle(book, entry, rec, diff):
     """(class, pdf) for a field difference: pdf is which value the printed line shows (ours/cl6/both/neither/'')."""
+    if diff.get("field") == "slots":
+        return "a", ""  # a missing slot or fit: structure Commlink6 gives and the book does not print
     if diff["why"].startswith("ours holds a price"):
         return "a", ""  # the availability column holds a price: columns shifted
     if diff["why"].startswith("ours empty (our cost"):

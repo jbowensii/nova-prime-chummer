@@ -220,9 +220,10 @@ def read_effects(src, files, texts, regrouped, rows=None):
 
     have = ids(files)
     shape = [s for s in map(_shape, rows) if s]
-    files = classes.apply(
-        overrides.apply(src, files, rows=shape) if shape else files, src=src
-    )  # (Commlink6's class on each entry of a category it classes alike: an override's own stays)
+    files = classes.associations(
+        classes.apply(overrides.apply(src, files, rows=shape) if shape else files, src=src)
+    )  # (Commlink6's class on each entry of a category it classes alike: an override's own stays; then the slots and
+    # fits that follow from the class and the printed mount, where no row gave them)
     texts = (
         overrides.texts(src, files, texts, rows=shape) if shape else texts
     )  # (an added entry that takes a heading's text)
