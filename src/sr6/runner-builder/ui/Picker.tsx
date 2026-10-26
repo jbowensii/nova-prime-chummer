@@ -17,7 +17,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { capacityRemaining, categoryOf, entryLabel, entrySearch, fitsHost, isAmmoType } from '../../catalog/domain/categories'
+import { capacityRemaining, entryLabel, entrySearch, isAmmoType, offeredOn } from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -434,10 +434,7 @@ export function Accessories({
   const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
   // only accessories that fit this host are offered (its category's `fits` names the host, or it carries a matching slot);
   // a line taking any gear (a vehicle's) takes no accessory; else an entry with no category record (a pre-categories import) by `filter`
-  const fits = (e: Sr6Entry) =>
-    critter || ammo
-      ? !filter || filter(e)
-      : (he && fitsHost(data.categories, e, he) === true) || (!filter ? !isAccessory(e) : !categoryOf(data.categories, e) && filter(e))
+  const fits = (e: Sr6Entry) => (critter || ammo ? !filter || filter(e) : offeredOn(data.categories, e, he, filter, isAccessory))
   return (
     <span className="row">
       {remaining !== null && <span className="muted">Capacity remaining: {n(remaining)}</span>}

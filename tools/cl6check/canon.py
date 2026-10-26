@@ -232,6 +232,19 @@ def _own(el, tag):
     return [c for c in el if c.tag == tag]
 
 
+def associations(el):
+    """{("slot", id) | ("fits", id)} Commlink6 gives a record: a host's HOOK modifications (`slot`) and an accessory's
+    EMBEDDED usages (`fits`), those of its variants too (the `cybereye` variant of Image link adds CYBEREYE_IMPLANT: one
+    item per variant is OUR entry's name for it, the association is the item's). Host and accessory stay apart."""
+    out = set()
+    for x in el.iter():
+        if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref"):
+            out.add(("slot", _norm(x.get("ref"))))
+        elif x.tag == "usage" and x.get("mode") == "EMBEDDED" and x.get("slot"):
+            out.add(("fits", _norm(x.get("slot"))))
+    return out
+
+
 def _mods(el):
     out = []
     for m in _own(el, "modifications"):
@@ -275,10 +288,7 @@ def families(el, attrs, variants):
     if vs:
         out["variants"] = frozenset(_norm(variants.get(v.get("id"), v.get("id"))) for v in vs)
     mods = _mods(el)
-    slots = {("slot", _norm(m.get("ref"))) for m in mods if m.tag in ("valmod", "itemmod") and m.get("type") == "HOOK"}
-    slots |= {
-        ("fits", _norm(u.get("slot"))) for u in _own(el, "usage") if u.get("mode") == "EMBEDDED" and u.get("slot")
-    }
+    slots = associations(el)
     if slots:
         out["slots"] = frozenset(slots)
     eff = sorted(

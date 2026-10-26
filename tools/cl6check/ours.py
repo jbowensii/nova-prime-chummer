@@ -113,7 +113,7 @@ def _norm(s):
 def families(e, kind=None):
     """The field families of one entry, in canon.families' shape. The elements are the gap plan's model (subtype,
     skill/spec, social, size/ammoClass, <variant>, <slot>/<fits>, <effect>/<test>/<grant>/<allow>, <choice>,
-    <requires>, modonly/<flag>/<relevance>); a weapon accessory's printed MOUNT column already gives its fits."""
+    <requires>, modonly/<flag>/<relevance>)."""
     a, out = e.attrib, {}
     if a.get("subtype"):
         out["subtype"] = (_norm(a["subtype"]),)
@@ -132,10 +132,6 @@ def families(e, kind=None):
     slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot")} | {
         ("fits", _norm(f.get("slot"))) for f in e.findall("fits")
     }
-    if (
-        not slots and a.get("mount") and not NONE.match(a["mount"])
-    ):  # (a mount column only when the entry has no slot/fits of its own: a vehicle mount's `Under` is not a fit)
-        slots |= {("fits", _norm(m)) for m in re.split(r"\s*(?:/|,|\bor\b)\s*", a["mount"]) if m.strip()}
     if slots:
         out["slots"] = frozenset(slots)
     tags = {"effect": "effect", "test": "test", "grant": "grant", "allow": "allow"}

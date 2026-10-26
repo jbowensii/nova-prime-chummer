@@ -186,9 +186,11 @@ class OursTest(unittest.TestCase):
         self.assertEqual(ours.numbers("100/month or 1,000/year"), {100, 1000})
         self.assertEqual(ours.rating_range("1–6"), (1, 6))
 
-    def test_mount_column_gives_fits(self):
-        e = ET.Element("weapon", {"mount": "Top or Under"})
-        self.assertEqual(ours.families(e)["slots"], frozenset({("fits", "top"), ("fits", "under")}))
+    def test_mount_column_gives_no_fits_the_importer_writes_them(self):
+        # (importer/sr6/classes.associations turns the printed MOUNT into <fits>; only elements count here)
+        self.assertNotIn("slots", ours.families(ET.Element("weapon", {"mount": "Top or Under"})))
+        e = ET.fromstring('<weapon mount="Under"><fits slot="under"/></weapon>')
+        self.assertEqual(ours.families(e)["slots"], frozenset({("fits", "under")}))
 
     def test_kind_flags_and_social_dashes(self):
         def fl(kind, **a):

@@ -94,6 +94,24 @@ export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr
   })
 }
 
+/** Whether the picker offers `e` as an accessory of `host`. An entry that fits the host (fitsHost) is offered. One that
+ *  declares what it fits (a `<fits>` slot) or a category, and does not fit, never is: it belongs to other hosts (a
+ *  weapon's flashlight on a pair of cyberears). Only an entry that declares neither (a pre-categories import) falls
+ *  through, by `filter`, and not to a host whose own accessories are slot-based. With no `filter` (a line that takes any
+ *  gear, a vehicle's) the entry is offered when it is no accessory (`isAccessory`) and declares no fit. */
+export function offeredOn(
+  index: Map<string, Sr6Entry[]>,
+  e: Sr6Entry,
+  host: Sr6Entry | undefined,
+  filter: ((e: Sr6Entry) => boolean) | undefined,
+  isAccessory: (e: Sr6Entry) => boolean,
+): boolean {
+  if (host && fitsHost(index, e, host) === true) return true
+  const declared = structureOf(e).fits.length > 0
+  if (!filter) return !isAccessory(e) && !declared
+  return !declared && !categoryOf(index, e) && !(host && structureOf(host).slots.length > 0) && filter(e)
+}
+
 /** The capacity a host item has at its rating (`8`, `Rating × 2`), null when it prints none or the app can't read it. */
 export function capacityOf(e: Sr6Entry | undefined, rating = 1): number | null {
   const c = e?.attrs.capacity
