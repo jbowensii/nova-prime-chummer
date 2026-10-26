@@ -604,8 +604,10 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!higherLevel && !gradeChange) no(!!fam && data.family(x.kind, x.id) === fam ? 'already-known' : 'not-a-level')
       const gp = x.grade ? gradeProblem(cr, data, x.grade, e) : null
       if (gp) no(gp)
-      const pr = priced({ ...x, accessories: [] }, data, cr),
-        oldPr = priced({ ...old, accessories: [] }, data, cr)
+      // price the whole implant WITH its accessories on both sides: the add-ons take the implant's grade (CRB p. 282,
+      // budgets.ts fitted), so upgrading the grade bumps their cost too and the difference must include it
+      const pr = priced({ ...x, accessories: old.accessories }, data, cr),
+        oldPr = priced(old, data, cr)
       if (!pr.ok || !oldPr.ok) no('book-value')
       const label =
         gradeChange && !higherLevel
