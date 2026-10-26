@@ -17,6 +17,11 @@ Accessory pickers now show the right items for every device — a CommLink6-driv
 - Note: weapon "carry" items (spare clips, holsters, slings, ammo pouches) remain standalone gear, as in the book
   — bought as their own lines, not nested under a weapon.
 
+**Both games**
+- Fixed the item hover card (0.26.2's scrollable popup) stealing clicks from the row beneath it — picker options
+  and list rows the card overlapped could not be clicked. The card now only takes the pointer when it is long
+  enough to need scrolling; a short card lets clicks through to its trigger.
+
 ## 0.26.3 — 2026-10-25
 
 A quick fix from live testing.

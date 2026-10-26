@@ -2960,7 +2960,11 @@ table.contacts td.end {
   white-space: normal;
   cursor: auto;
   text-decoration: none;
-  /* interactive so the mouse wheel scrolls a long card; the ref keeps it open while the cursor is over it */
+  /* clicks pass through to the trigger beneath; a long card (.scroll) or a tapped one takes the pointer so the wheel scrolls it */
+  pointer-events: none;
+}
+.entry-pop.scroll,
+.entry-pop.touch {
   pointer-events: auto;
 }
 .entry-card {
