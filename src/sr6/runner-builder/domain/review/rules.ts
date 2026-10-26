@@ -1094,7 +1094,14 @@ const RULES: Rule[] = [
     check: c => {
       // (one taken again is a level each time: the pick's level, or the level of the entry it holds, levels.ts)
       const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
-      return n > c.b.initiation ? { message: `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.` } : null
+      if (n === c.b.initiation) return null
+      const short = c.b.initiation - n
+      return {
+        message:
+          short > 0
+            ? `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one, pick ${short} more.`
+            : `${n} metamagics at initiation grade ${c.b.initiation}: each grade brings one.`,
+      }
     },
   },
   {
