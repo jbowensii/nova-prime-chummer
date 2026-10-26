@@ -317,21 +317,23 @@ test('an S2 runner finalized without a finalize entry starts from its final numb
   expect(balances(ch)).toEqual({ karma: 4, nuyen: 900 })
 })
 
-test('only the newest live advance can be voided; earnings and notes any time; never a finalize or a void', () => {
+test('any live advance can be voided, not just the newest; earnings and notes too; never a finalize or a void', () => {
   const { data, cr } = made(),
     ch = runner()
   let r = ok(record(ch, raise('agi'), data, cr))
   r = note(r, 'Owes a favour', NOW)
   r = ok(record(r, raise('bod'), data, cr))
   const [fin, a1, n1, a2] = r.ledger
-  expect(voidEntry(r, a1.id, 'x')).toEqual({ ok: false, reason: 'not-latest' })
+  // a1 is the OLDER advance, a2 the newer: both can be voided, in any order (owner 2026-10-26)
+  expect(voidEntry(r, a1.id, 'x').ok).toBe(true)
+  expect(voidEntry(r, a2.id, 'x').ok).toBe(true)
   expect(voidEntry(r, fin.id, 'x')).toEqual({ ok: false, reason: 'not-voidable' })
-  const v1 = voidEntry(r, a2.id, 'x')
+  const v1 = voidEntry(r, a1.id, 'x')
   if (!v1.ok) throw new Error(v1.reason)
-  expect(voidEntry(v1.ch, a2.id, 'x')).toEqual({ ok: false, reason: 'already-voided' })
+  expect(voidEntry(v1.ch, a1.id, 'x')).toEqual({ ok: false, reason: 'already-voided' })
   expect(voidEntry(v1.ch, v1.ch.ledger.at(-1)!.id, 'x')).toEqual({ ok: false, reason: 'not-voidable' })
-  const v2 = voidEntry(v1.ch, a1.id, 'x')
-  expect(v2.ok).toBe(true)
+  // voiding the older one leaves the newer still voidable (no newest-only restriction)
+  expect(voidEntry(v1.ch, a2.id, 'x').ok).toBe(true)
   expect(voidEntry(r, n1.id, 'x').ok).toBe(true)
 })
 
@@ -370,6 +372,9 @@ test('gear: bought at its catalog cost and rating; an unreadable cost refused; d
   expect(balances(r).nuyen).toBe(4710)
   const uid = currentBuild(r).purchases[0].uid
   expect(preview(r, { op: 'drop', target: uid }, data, cr)).toEqual({ ok: true, label: 'Dropped: Zap Gun', karma: 0, nuyen: 0 })
+  // selling credits an adjustable sellback: a negative nuyen cost adds back to the balance
+  expect(preview(r, { op: 'drop', target: uid, refund: 100 }, data, cr)).toEqual({ ok: true, label: 'Sold: Zap Gun for 100¥', karma: 0, nuyen: -100 })
+  expect(balances(ok(record(r, { op: 'drop', target: uid, refund: 100 }, data, cr))).nuyen).toBe(4810)
   // the entry goes from the catalog: the runner still replays, and Review names it from its stored name
   const gone = made({
     data: d => {

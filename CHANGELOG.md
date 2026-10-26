@@ -1,5 +1,17 @@
 # Release notes
 
+## 0.27.2 — 2026-10-26
+
+Career ledger: sell gear, and fix mistakes anywhere. No re-import needed.
+
+**Shadowrun 6**
+- **Sell gear for a refund.** "Drop gear" is now **Sell or drop gear**: pick an item and set the sale price (it
+  pre-fills to 30% of book value — the SR Missions sellback — and you edit it per sale). The nuyen is credited back
+  to the balance. To upgrade or swap ware (a cyberdeck, a grade, any model) for the difference, Sell the old and Buy
+  the new: the balance nets to exactly the difference, with the credit you choose.
+- **Void any ledger line, not just the newest.** Fixing a mistake three spends back no longer means undoing
+  everything after it; a later entry that leaned on a voided one simply doesn't apply.
+
 ## 0.27.1 — 2026-10-26
 
 Career ledger: hand it around and correct it. No re-import needed.

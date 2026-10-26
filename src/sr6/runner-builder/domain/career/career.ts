@@ -582,9 +582,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       }
     }
     case 'drop': {
-      // R: no refund; an earning records a sale
+      // selling credits an adjustable nuyen sellback (SR Missions: 30% of value by default, the owner sets it); a plain
+      // drop with no refund credits nothing. A negative nuyen cost is a credit (ledgerRows/balances add it back).
       const x = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
-      return { label: `Dropped: ${(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}` }
+      const name = (x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'
+      return a.refund ? { label: `Sold: ${name} for ${a.refund.toLocaleString('en-US')}¥`, nuyen: -a.refund } : { label: `Dropped: ${name}` }
     }
     case 'upgrade': {
       // a higher level of the item's family replaces it (levels.ts), at the new level's full price: the core rulebook
@@ -924,7 +926,9 @@ export const editEntry = (ch: Sr6Character, id: string, patch: LedgerEdit): Sr6C
   updatedAt: new Date().toISOString(),
 })
 
-/** Void an entry since the last Finalize: an earning or note any time, an advance only when it's the newest live one. */
+/** Void any live entry since the last Finalize: an earning, note or advance (owner 2026-10-26 — fixing a mistake must not
+ *  mean undoing everything after it). A later entry that leaned on a voided one simply doesn't apply on replay
+ *  (applyAdvance is guarded against a missing target), so voiding out of order can't corrupt the build. */
 export function voidEntry(
   ch: Sr6Character,
   id: string,
@@ -934,18 +938,15 @@ export function voidEntry(
   const e = sinceFinalize(ch).find(x => x.id === id)
   if (!e || e.type === 'void' || e.type === 'finalize') return { ok: false, reason: 'not-voidable' }
   if (voidedIds(ch).has(id)) return { ok: false, reason: 'already-voided' }
-  if (e.type === 'advance' && liveAdvances(ch).at(-1)?.id !== id) return { ok: false, reason: 'not-latest' }
   return { ok: true, ch: { ...ch, ledger: [...ch.ledger, { id: newId(), at: now, type: 'void', eventId: id, reason }] } }
 }
 
-/** The ids voidEntry would allow, worked out once for the whole history (the Ledger tab's Void buttons: calling voidEntry
- *  per row is quadratic in the ledger's length). */
+/** The ids voidEntry would allow (the Ledger tab's Void buttons): every live earning, note or advance since Finalize. */
 export function voidableIds(ch: Sr6Character): Set<string> {
-  const voided = voidedIds(ch),
-    newest = liveAdvances(ch).at(-1)?.id
+  const voided = voidedIds(ch)
   return new Set(
     sinceFinalize(ch)
-      .filter(e => !voided.has(e.id) && (e.type === 'earn' || e.type === 'note' || e.id === newest))
+      .filter(e => !voided.has(e.id) && (e.type === 'earn' || e.type === 'note' || e.type === 'advance'))
       .map(e => e.id),
   )
 }
