@@ -961,6 +961,28 @@ export function voidableIds(ch: Sr6Character): Set<string> {
   )
 }
 
+/** Delete a ledger line outright (not void): it leaves no record, and any void that pointed at it goes with it. The
+ *  Finalize baseline can't be deleted. Unlike Void (which keeps an audit trail for play), this is for clearing out
+ *  mistakes while building. Replay stays safe: a later entry leaning on a deleted one just doesn't apply (applyAdvance
+ *  is guarded). */
+export function deleteEntry(ch: Sr6Character, id: string): { ok: true; ch: Sr6Character } | { ok: false; reason: string } {
+  const e = ch.ledger.find(x => x.id === id)
+  if (!e || e.type === 'finalize') return { ok: false, reason: 'not-deletable' }
+  return {
+    ok: true,
+    ch: { ...ch, ledger: ch.ledger.filter(x => x.id !== id && !(x.type === 'void' && x.eventId === id)), updatedAt: new Date().toISOString() },
+  }
+}
+
+/** Every ledger line that may be deleted: all of them bar the Finalize baseline. */
+export const deletableIds = (ch: Sr6Character): Set<string> => new Set(ch.ledger.filter(e => e.type !== 'finalize').map(e => e.id))
+
+/** Clear the whole career history, keeping only the Finalize baseline (start the career over). */
+export const clearHistory = (ch: Sr6Character): Sr6Character => {
+  const fin = ch.ledger.findIndex(e => e.type === 'finalize')
+  return { ...ch, ledger: fin >= 0 ? ch.ledger.slice(0, fin + 1) : [], updatedAt: new Date().toISOString() }
+}
+
 /** Back to draft is allowed only with no live earning or spend since the last Finalize. */
 export function canDraft(ch: Sr6Character): boolean {
   const voided = voidedIds(ch)

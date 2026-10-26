@@ -1,5 +1,16 @@
 # Release notes
 
+## 0.27.4 — 2026-10-26
+
+Career ledger: delete lines outright (not just void), and clear the whole history to start over.
+
+**Shadowrun 6**
+- **Delete a ledger line.** Every line now has a **Delete** that removes it entirely, leaving no record — for clearing
+  out mistakes while building. **Void** still exists for real play (it keeps the "Voided" audit trail). Deleting a line
+  also removes any void that pointed at it.
+- **Clear history.** A button (by Export/Import ledger) wipes every earning, spend and note back to the finalized
+  character, so you can start the career over. Both actions confirm first and keep the Finalize baseline.
+
 ## 0.27.3 — 2026-10-26
 
 Career ledger: upgrade owned cyberware/bioware in place — grade and/or rating — paying the difference. No re-import needed.
