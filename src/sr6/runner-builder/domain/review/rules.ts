@@ -1626,6 +1626,8 @@ const RULES: Rule[] = [
     tab: 'gear',
     check: c =>
       c.b.purchases.flatMap(x => {
+        // a vehicle's/drone's mods, weapons and autosofts are governed by modsOf (the vehicle.mods warning), not fitsHost
+        if (x.kind === 'vehicles') return []
         const he = entryOf(x, c.data)
         return he
           ? x.accessories.flatMap(a => {

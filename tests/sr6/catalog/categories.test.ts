@@ -108,6 +108,33 @@ test('another host’s accessory is fitted, an error a GM may approve; Review fl
   expect(codes().find(x => x.code === 'catalog.accessoryHost')?.approved).toBe(true)
 })
 
+test('an autosoft (or any non-fitting accessory) on a vehicle/drone does not trip catalog.accessoryHost (vehicle.mods governs)', () => {
+  const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
+  const extra = [
+    {
+      file: 'zz-drone',
+      xml: `<sr6:data ${NS} kind="vehicles" version="1"><vehicle id="t.drone" source="CRB" page="1" category="Small drone" body="3" pilot="2" avail="2" cost="2000"><name>Test Drone</name></vehicle></sr6:data>`,
+    },
+    // an autosoft-style accessory that fits a slot the drone does not declare → fitsHost is false
+    {
+      file: 'zz-autosoft',
+      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="autosofts"/></gear></sr6:data>`,
+    },
+  ]
+  const data = sr6Data(fixtureCatalog((_, x) => x, extra))
+  const { cr } = made()
+  expect(fitsHost(data.categories, data.entry('gear', 't.autosoft')!, data.entry('vehicles', 't.drone')!)).toBe(false)
+  const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
+  ch.build = buildOf('priority', { letters: 'ACDBE', metatype: STONE })
+  const b = ch.build
+  const act = (op: Parameters<typeof apply>[1]) => apply(b, op, data, cr)
+  act({ op: 'purchase', kind: 'vehicles', id: 't.drone' })
+  // force the autosoft on, as an imported file would carry it
+  b.purchases[0].accessories.push({ uid: 'a1', kind: 'gear', id: 't.autosoft', name: 'Test Autosoft', accessories: [] })
+  // fitsHost is false, but a vehicle's accessories are governed by the vehicle.mods warning, not this error
+  expect(validateSr6(data, cr, ch).map(v => v.code)).not.toContain('catalog.accessoryHost')
+})
+
 test('an accessory’s bonuses are its host’s: the limb’s own STR and armor change, the runner’s attributes don’t', () => {
   const { b, data, cr, ch, act } = setup()
   act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })
