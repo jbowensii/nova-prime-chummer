@@ -443,13 +443,14 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         return { label: `Quality: ${v.name}`, karma: karma * factor() }
       }
       const v = data.qualities[a.line.id] ?? no('unknown-entry')
-      if (!v.positive) no('not-positive')
       if (v.karma === null) no('book-value')
       const had = b.qualities.find(q => q.id === a.line.id && !q.free)
       if (had && !v.perLevel) no('already-known')
       if (!(a.line.level >= 1)) no('below-one')
       if ((had?.level ?? 0) + a.line.level > (v.perLevel ? (v.maxLevel ?? Infinity) : 1)) no('at-maximum')
       const label = `Quality: ${v.name}${v.perLevel ? ` ${(had?.level ?? 0) + a.line.level}` : ''}`
+      // a negative quality (GM-assigned) gives its Karma back, undoubled by the advance factor
+      if (!v.positive) return { label, karma: -qualityCost(a.line, v) }
       // (its Awakened price, <karmaif>; the Infected free pick, p. 105, when the runner has not used it: one level free)
       const free = !freePick(b, data) && freeEligible(b, data, a.line.id) ? qualityCost({ ...a.line, level: 1 }, v) : 0
       return { label, karma: (qualityPrice(b, data, a.line, v) - free) * factor() }

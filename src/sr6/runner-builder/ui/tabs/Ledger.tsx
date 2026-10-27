@@ -1436,7 +1436,7 @@ export function LedgerTab() {
         }
         filter={
           op === 'quality'
-            ? e => data.qualities[e.id]?.positive === true
+            ? e => !!data.qualities[e.id]
             : op === 'upgrade'
               ? above(upgradable.find(x => x.uid === f.target))
               : op === 'fit'
