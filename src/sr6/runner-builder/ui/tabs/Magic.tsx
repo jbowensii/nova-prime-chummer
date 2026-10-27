@@ -74,6 +74,13 @@ export function MagicTab() {
               <Left x={pp} /> power points
             </span>
           )}
+          {/* one metamagic per initiation grade (CRB p. 167): show chosen of owed so the player knows how many to pick */}
+          {kind === 'metamagics' && b.initiation > 0 && (
+            <span className="muted">
+              {rows.reduce((t, x) => t + (x.level ?? data.levelOf(data.entry('metamagics', x.id)) ?? 1), 0)} of {b.initiation} · {b.initiation} initiation grade
+              {b.initiation === 1 ? '' : 's'}
+            </span>
+          )}
           <span className="spacer" />
           <button className="btn small" onClick={() => setAdding(kind)}>
             Add {one}…

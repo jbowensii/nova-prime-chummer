@@ -1912,6 +1912,7 @@ export const CAREER_KEEP = new Set([
   'skill.restricted',
   'magic.spellsAllowed',
   'magic.metamagicUser',
+  'magic.metamagicCount',
   'martial.category',
   'martial.requires',
   'martial.augmentation',
