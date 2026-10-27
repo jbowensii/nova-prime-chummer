@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
 import { flag, num, str } from '../../../table-setup/domain/creation'
-import { noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
+import { choiceOptions, choiceSelectOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
 import { magicCap } from '../../domain/creation/magic'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../../catalog/domain/data'
 import type { Sr6Entry } from '../../../formats/domain/types'
@@ -97,7 +97,8 @@ export function MagicTab() {
                     power = kind === 'adeptpowers' ? data.powers[x.id] : undefined,
                     name = e?.name ?? x.name ?? x.id
                   const max = pickMaxLevel(data, kind, x.id),
-                    want = qualityChoice(e?.name),
+                    co = e && choiceOptions(data, e),
+                    want = co?.kind,
                     levels = data.siblings(kind, x.id).map(s => data.levelOf(s)!)
                   const chosen =
                     want === 'attribute' ? noteAttr(x.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, x.note) ?? '']?.name : undefined
@@ -114,18 +115,20 @@ export function MagicTab() {
                             {[e.attrs.category, ...pickFlags(e), e.source && `${e.source} p.${e.page}`].filter(Boolean).join(' · ')}
                           </span>
                         )}
-                        {want && (
+                        {co && (
                           <div className="row">
-                            <input
-                              key={`${x.uid}:${x.note ?? ''}`}
-                              defaultValue={x.note ?? ''}
-                              maxLength={200}
-                              placeholder={`the ${want} it is for`}
+                            <select
+                              value={x.note ?? ''}
                               aria-label={`${name} note`}
-                              onBlur={ev => {
-                                if (ev.target.value.trim() !== (x.note ?? '')) act({ op: 'pickNote', uid: x.uid, note: ev.target.value })
-                              }}
-                            />
+                              onChange={ev => act({ op: 'pickNote', uid: x.uid, note: ev.target.value })}
+                            >
+                              <option value="">Pick one</option>
+                              {choiceSelectOptions(co, x.note).map(o => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
                             <span className={chosen ? 'muted small' : 'err small'}>{chosen ? `For ${chosen}` : `Name the ${want}`}</span>
                           </div>
                         )}

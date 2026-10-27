@@ -1,6 +1,7 @@
 // What a pick's or quality's note names: the attribute or skill a quality's choice is (`Exceptional (Attribute)`).
 import { SR6_ATTRS, type Sr6Attr } from '../../../formats/domain/character'
 import type { Sr6Data } from '../../../catalog/domain/data'
+import type { Sr6Entry } from '../../../formats/domain/types'
 import { normName } from '../../../catalog/domain/names'
 
 const ATTR_WORDS: Record<string, Sr6Attr> = {
@@ -36,4 +37,55 @@ export function noteSkill(data: Sr6Data, note?: string): string | undefined {
 export function qualityChoice(name: string | undefined): 'attribute' | 'skill' | undefined {
   const m = /\((attribute|skill)\)\s*$/i.exec(name ?? '')
   return m ? (m[1].toLowerCase() as 'attribute' | 'skill') : undefined
+}
+
+export interface ChoiceSpec {
+  kind: 'attribute' | 'skill'
+  options: { value: string; label: string }[]
+}
+const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
+const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
+/** What an entry's choice is for and the values it may take (catalog `ref="CHOICE"` options, else every core attribute or every skill):
+ *  each value parses back through noteAttr / noteSkill. Undefined when the entry names no choice. */
+export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpec | undefined {
+  if (!e) return undefined
+  const parts = e.parts ?? []
+  const typed = parts.find(p => p.attrs.ref === 'CHOICE' && /^(ATTRIBUTE|SKILL)$/.test(p.attrs.type ?? ''))
+  const target = parts.find(p => p.tag === 'effect' && /^(attr|attr-max|skill|skill-max):choice$/.test(p.attrs.target ?? ''))
+  const kind = typed
+    ? typed.attrs.type === 'ATTRIBUTE'
+      ? 'attribute'
+      : 'skill'
+    : target
+      ? target.attrs.target.startsWith('attr')
+        ? 'attribute'
+        : 'skill'
+      : qualityChoice(e.name)
+  if (!kind) return undefined
+  // explicit catalog options are comma-separated; skill names hold spaces, so never split on whitespace. The options may sit
+  // on a separate <selection> part from the CHOICE modifier (e.g. Improved Mental Attribute), so take any typed CHOICE part.
+  const tokens = (parts.find(p => p.attrs.options && (p.attrs.ref === 'CHOICE' || p.attrs.type))?.attrs.options ?? '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean)
+  let names: string[]
+  if (kind === 'attribute') {
+    const picked = tokens.map(t => t.toLowerCase()).filter(t => ATTR_WORDS[t])
+    names = (picked.length ? picked : CORE_ATTRS).map(cap) // fall back to every core attribute when nothing resolves
+  } else {
+    const picked = tokens.map(t => data.skills[noteSkill(data, t) ?? '']?.name).filter((s): s is string => !!s)
+    names = picked.length
+      ? picked
+      : Object.values(data.skills)
+          .map(s => s.name)
+          .sort((a, b) => a.localeCompare(b))
+  }
+  const options = [...new Set(names)].map(v => ({ value: v, label: v }))
+  return options.length ? { kind, options } : undefined
+}
+/** choiceOptions' values plus the current note when it isn't one of them (an older free-text note, `AGI`): so a stored,
+ *  still-valid choice stays shown in the dropdown instead of reading blank and being lost on the next edit. */
+export function choiceSelectOptions(spec: ChoiceSpec, note?: string): { value: string; label: string }[] {
+  const n = (note ?? '').trim()
+  return n && !spec.options.some(o => o.value === n) ? [{ value: n, label: n }, ...spec.options] : spec.options
 }

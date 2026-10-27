@@ -6,7 +6,17 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
-import { attrRating, diyAllowed, entryOf, licenceFee, powerCost, priced, qualityChoice, settingQuality } from '../../domain/creation/budgets'
+import {
+  attrRating,
+  choiceOptions,
+  choiceSelectOptions,
+  diyAllowed,
+  entryOf,
+  licenceFee,
+  powerCost,
+  priced,
+  settingQuality,
+} from '../../domain/creation/budgets'
 import {
   balances,
   careerPowerPoints,
@@ -68,7 +78,10 @@ const OPS = [
   ['knowledge', 'Knowledge or language'],
   ['quality', 'Buy quality'],
   ['buyoff', 'Buy off quality'],
-  ['pick', 'Learn spell, ritual, complex form or adept power'],
+  ['learnSpell', 'Learn spell'],
+  ['learnRitual', 'Learn ritual'],
+  ['learnComplexForm', 'Learn complex form'],
+  ['learnAdeptPower', 'Learn adept power'],
   ['martialart', 'Learn martial arts style'],
   ['technique', 'Learn martial arts technique'],
   ['powerpoint', 'Power point (mystic adepts)'],
@@ -94,7 +107,8 @@ const OPS = [
   ['other', 'Other'],
 ] as const
 type OpKey = (typeof OPS)[number][0]
-const LEARN: PickKind[] = ['spells', 'rituals', 'complexforms', 'adeptpowers']
+// the four learn ops: each a 'pick' advance of one kind
+const LEARN: Record<string, PickKind> = { learnSpell: 'spells', learnRitual: 'rituals', learnComplexForm: 'complexforms', learnAdeptPower: 'adeptpowers' }
 const whole = (s: string) => (/^-?\d+$/.test(s.trim()) ? Number(s) : NaN)
 // a sale credits back a share of the item's value (SR Missions: 30% by default; the owner edits the figure per sale)
 const SELLBACK = 0.3
@@ -144,6 +158,7 @@ export function LedgerTab() {
   const [licences, setLicences] = useState<string[]>([])
   const [picked, setPicked] = useState<PickedItem | null>(null)
   const [picking, setPicking] = useState(false)
+  const [opFind, setOpFind] = useState('')
   const [confirm, setConfirm] = useState(false)
   const [text, setText] = useState('')
   const [voiding, setVoiding] = useState<Sr6LedgerEntry | null>(null)
@@ -227,10 +242,13 @@ export function LedgerTab() {
       case 'buyoff':
         // (Stolen Gear: the part of its converted karma bought off; none, all of it)
         return f.target ? { op, target: f.target, ...(stolen?.uid === f.target && f.karma.trim() ? { part: whole(f.karma) } : {}) } : null
-      case 'pick':
+      case 'learnSpell':
+      case 'learnRitual':
+      case 'learnComplexForm':
+      case 'learnAdeptPower':
         // a power/spell that names a choice (Attribute Boost, Improved Ability) carries it as the pick's note
         return e
-          ? { op, line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(qualityChoice(e.name) && f.note.trim() ? { note: f.note.trim() } : {}) } }
+          ? { op: 'pick', line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e) && f.note.trim() ? { note: f.note.trim() } : {}) } }
           : null
       case 'martialart': {
         const sig = e && signatureOf(b, c.entries.martialtechniques.values(), e)
@@ -549,12 +567,16 @@ export function LedgerTab() {
         <label>
           What
           <select value={op} onChange={e => choose(e.target.value as OpKey)}>
-            {OPS.map(([k, l]) => (
+            {OPS.filter(([k, l]) => k === op || l.toLowerCase().includes(opFind.trim().toLowerCase())).map(([k, l]) => (
               <option key={k} value={k}>
                 {l}
               </option>
             ))}
           </select>
+        </label>
+        <label>
+          Find
+          <input value={opFind} placeholder="type to filter" aria-label="Filter what to spend on" onChange={e => setOpFind(e.target.value)} />
         </label>
         {op === 'attribute' && (
           <label>
@@ -679,7 +701,7 @@ export function LedgerTab() {
             ) : null
           })()}
         {(op === 'quality' ||
-          op === 'pick' ||
+          op in LEARN ||
           op === 'purchase' ||
           op === 'martialart' ||
           (op === 'technique' && f.target) ||
@@ -701,24 +723,25 @@ export function LedgerTab() {
             </button>
           </div>
         )}
-        {op === 'pick' &&
+        {op in LEARN &&
           picked &&
           (() => {
-            const want = qualityChoice(picked.e.name)
+            const co = choiceOptions(data, picked.e)
             const pp = picked.e.kind === 'adeptpowers' ? careerPowerPoints(b, data, cr, p) : null
             const cost = pp ? powerCost(data, { id: picked.e.id, note: f.note }) : null
             return (
               <>
-                {want && (
+                {co && (
                   <label>
-                    The {want} it is for
-                    <input
-                      value={f.note}
-                      maxLength={200}
-                      placeholder={`the ${want} it is for`}
-                      aria-label="Choice note"
-                      onChange={e => set({ note: e.target.value })}
-                    />
+                    The {co.kind} it is for
+                    <select value={f.note} aria-label="Choice note" onChange={e => set({ note: e.target.value })}>
+                      <option value="">Pick one</option>
+                      {choiceSelectOptions(co, f.note).map(o => (
+                        <option key={o.value} value={o.value}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 )}
                 {pp && (
@@ -1379,7 +1402,7 @@ export function LedgerTab() {
         title={
           op === 'quality'
             ? 'Buy a quality'
-            : op === 'pick' || op === 'martialart' || op === 'technique'
+            : op in LEARN || op === 'martialart' || op === 'technique'
               ? 'Learn'
               : op === 'upgrade'
                 ? 'Upgrade to'
@@ -1393,8 +1416,8 @@ export function LedgerTab() {
         kinds={
           op === 'quality'
             ? ['qualities']
-            : op === 'pick'
-              ? LEARN
+            : op in LEARN
+              ? [LEARN[op]]
               : op === 'martialart'
                 ? ['martialarts']
                 : op === 'technique'
@@ -1425,7 +1448,7 @@ export function LedgerTab() {
                 : undefined
         }
         note={
-          op === 'pick'
+          op in LEARN
             ? e => (picksFor(b.magic)[e.kind as PickKind] ? undefined : `not for ${an(kindName)} ${kindName}`)
             : op === 'technique'
               ? e => (techniqueFits(styleOf(f.target), e) ? undefined : 'not taught by this style')

@@ -1100,7 +1100,7 @@ const RULES: Rule[] = [
         message:
           short > 0
             ? `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one, pick ${short} more.`
-            : `${n} metamagics at initiation grade ${c.b.initiation}: each grade brings one.`,
+            : `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.`,
       }
     },
   },

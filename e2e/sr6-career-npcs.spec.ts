@@ -113,7 +113,7 @@ test('career: the Ledger tab records earnings and spends, voids the newest, and 
   await dlg.getByRole('button', { name: 'Record it' }).click()
   await expect(work.locator('.sr6-balances')).toHaveText(/Karma 28/)
   // learn a spell from the catalog
-  await work.getByRole('combobox', { name: /^What/ }).selectOption('pick')
+  await work.getByRole('combobox', { name: /^What/ }).selectOption('learnSpell')
   await work.getByRole('button', { name: 'Pick from the catalog…' }).click()
   await dlg.getByText('Glow Ward').click()
   await expect(price).toHaveText('Spell: Glow Ward · 7 karma · after: 21 karma, 7,450¥')
@@ -203,7 +203,7 @@ test('career, continued: more spends, an unset price, print, export and import, 
   await expect(price).toHaveText('Zap Gun · 290¥ · after: 21 karma, 7,160¥')
   await recordIt()
   await expect(balances).toHaveText(/Nuyen 7,160¥/)
-  await what('pick')
+  await what('learnSpell')
   await work.getByRole('button', { name: 'Pick from the catalog…' }).click()
   await dlg.getByText('Glow Ward').click()
   await recordIt()
