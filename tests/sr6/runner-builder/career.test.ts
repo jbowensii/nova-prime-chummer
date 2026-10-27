@@ -156,7 +156,7 @@ test('a quality costs karma × advance.qualityFactor, a buy off karma × advance
     ch = runner()
   const q = (id: string, level = 1): Sr6Advance => ({ op: 'quality', line: { uid: '', id, level } })
   expect(preview(ch, q('crb.knack'), data, cr)).toEqual({ ok: true, label: 'Quality: Knack', karma: 52, nuyen: 0 })
-  expect(preview(ch, q('crb.butterfingers'), data, cr)).toEqual({ ok: false, reason: 'not-positive' })
+  expect(preview(ch, q('crb.butterfingers'), data, cr)).toEqual({ ok: true, label: 'Quality: Butterfingers', karma: -8, nuyen: 0 }) // a negative quality gives its karma (GM-assigned), undoubled
   ch.build.qualities.push({ uid: 'q1', id: 'crb.butterfingers', level: 1 }, { uid: 'q2', id: 'crb.knack', level: 1 })
   expect(preview(ch, { op: 'buyoff', target: 'q1' }, data, cr)).toEqual({ ok: true, label: 'Buy off: Butterfingers', karma: 24, nuyen: 0 })
   expect(preview(ch, { op: 'buyoff', target: 'q2' }, data, cr)).toEqual({ ok: false, reason: 'not-negative' })

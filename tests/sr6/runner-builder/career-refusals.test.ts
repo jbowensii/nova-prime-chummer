@@ -117,11 +117,11 @@ test('knowledge and languages need a name, cost karmaKnowledge and join at rank 
   expect(currentBuild(r).knowledge[0].uid).toBeTruthy()
 })
 
-test('qualities: positive only, once unless leveled, never past the maximum, and never below one level', () => {
+test('qualities: positive or GM-assigned negative, once unless leveled, never past the maximum, and never below one level', () => {
   const ch = runner()
   const q = (id: string, level = 1): Sr6Advance => ({ op: 'quality', line: { uid: '', id, level } })
   expect(why(ch, q('crb.nope'))).toBe('unknown-entry')
-  expect(why(ch, q('crb.butterfingers'))).toBe('not-positive')
+  expect(why(ch, q('crb.butterfingers'))).toBe('ok:Quality: Butterfingers')
   expect(why(ch, q('crb.knack', 0))).toBe('below-one')
   expect(why(ch, q('crb.knack', 2))).toBe('at-maximum')
   expect(why(ch, q('crb.knack'))).toBe('ok:Quality: Knack')

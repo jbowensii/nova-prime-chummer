@@ -218,3 +218,20 @@ test('the picker offers a slotted host only the accessories that fit it: a weapo
   expect(offeredOn(index, flashlight, plain, undefined, () => true)).toBe(false) // a line that takes any gear: not a declared fit
   expect(offeredOn(index, bare, plain, undefined, () => false)).toBe(true)
 })
+
+test('a Rigger Command Console that fits slot rcc is offered on a host with an rcc slot, though it is an electronics device on an augmentation', () => {
+  const e = (kind: Sr6Entry['kind'], id: string, attrs: Record<string, string>, parts: object[] = []): Sr6Entry =>
+    ({ id, kind, name: id, source: 'CRB', page: 1, attrs, text: '', parts }) as never
+  const index = new Map<string, Sr6Entry[]>()
+  const host = e('augmentations', 'dc.rcc-headware', { category: 'Headware' }, [{ tag: 'slot', attrs: { id: 'rcc' } }])
+  const console_ = e('electronics', 'crb.horizon-overseer', { category: 'Rigger command console' }, [{ tag: 'fits', attrs: { slot: 'rcc' } }])
+  expect(
+    offeredOn(
+      index,
+      console_,
+      host,
+      () => false,
+      () => false,
+    ),
+  ).toBe(true)
+})
