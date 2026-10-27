@@ -51,5 +51,10 @@
   {"cl6": "Supernatural Recovery", "kind": "qualities", "id": "supernatural-recovery-shifter-add-on", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "ESSENCE", "value": "6000"}}], "gen": "family"},
   {"cl6": "Renraku Pelican 2 Delivery Drone", "kind": "vehicles", "id": "renraku-pelican-2-delivery-drone", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-cf", "value": "1"}}], "gen": "family"},
   {"cl6": "Light Barding", "id": "light-barding", "kind": "armor", "set": {"rating": "1–20"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
-  {"cl6": "Heavy Barding", "id": "heavy-barding", "kind": "armor", "set": {"rating": "1–20"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"}
+  {"cl6": "Heavy Barding", "id": "heavy-barding", "kind": "armor", "set": {"rating": "1–20"}, "note": "range not printed; CL6 value, owner-accepted 2026-10-17", "gen": "owner"},
+  {"cl6": "Fury", "cl6id": "fury", "kind": "metamagics", "id": "fury", "set": {"maxLevel": "10"}, "gen": "max"},
+  {"cl6": "Increase Initiative", "cl6id": "increase_initiative", "kind": "metamagics", "id": "increase-initiative", "set": {"maxLevel": "4"}, "gen": "max"},
+  {"cl6": "Increase Physical Attribute", "cl6id": "increase_physical_attribute", "kind": "metamagics", "id": "increase-physical-attribute", "set": {"maxLevel": "4"}, "gen": "max"},
+  {"cl6": "King of the Jungle", "cl6id": "king_of_the_jungle", "kind": "metamagics", "id": "king-of-the-jungle", "set": {"maxLevel": "10"}, "gen": "max"},
+  {"cl6": "Savage Rend", "cl6id": "savage_rend", "kind": "metamagics", "id": "savage-rend", "set": {"maxLevel": "8"}, "gen": "max"}
 ]

@@ -165,5 +165,14 @@
   {"cl6": "Dragon Skin", "kind": "qualities", "id": "dragon", "gen": "cl6", "why": "Commlink6 puts the bonus on separate defense pools; the book names one test (the Edge goes to the physical and indirect-spell defense pools, apply: character, conditional)", "effects": [{"target": "test:defense", "op": "edge", "value": "1", "switch": "conditional", "when": "when resisting any firebased attacks"}, {"target": "test:defense-spell-indirect", "op": "edge", "value": "1", "switch": "conditional", "when": "when resisting any firebased attacks"}]},
   {"cl6": "Thorns", "kind": "qualities", "id": "thorns", "gen": "cl6", "why": "the book gives -1 on all other physical activities; Commlink6 also puts -1 on the physical defense pool", "effects": [{"target": "test:defense", "op": "add", "value": "-1"}]},
   {"cl6": "Neoteny", "kind": "qualities", "id": "neoteny", "gen": "cl6", "why": "the book prints the Physical monitor as 6 + half Body rounded down, so an odd Body loses one more box than the 2 Commlink6 takes off (the format cannot state the rounding)", "effects": [{"target": "derived:physical-monitor", "op": "add", "value": "-2"}]},
-  {"cl6": "Impaired", "kind": "qualities", "id": "impaired", "gen": "cl6", "why": "the book's page reference reaches Impaired (Attribute) under another name; Commlink6 lowers the chosen attribute's maximum by 1 a level", "effects": [{"target": "attr-max:choice", "op": "add", "value": "-R"}]}
+  {"cl6": "Impaired", "kind": "qualities", "id": "impaired", "gen": "cl6", "why": "the book's page reference reaches Impaired (Attribute) under another name; Commlink6 lowers the chosen attribute's maximum by 1 a level", "effects": [{"target": "attr-max:choice", "op": "add", "value": "-R"}]},
+  {"cl6": "Climate Adaptation", "cl6id": "climate_adaption", "kind": "qualities", "id": "climate-adaptation", "set": {"maxLevel": "4"}, "gen": "max"},
+  {"cl6": "Corrosive Spit", "cl6id": "corrosive_spit", "kind": "qualities", "id": "corrosive-spit", "set": {"maxLevel": "4"}, "gen": "max"},
+  {"cl6": "Cyber Psychosis", "cl6id": "cyber_psychosis", "kind": "qualities", "id": "cyber-psychosis", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Gear Acquisition Syndrome", "cl6id": "gear_acquisition_syndrome", "kind": "qualities", "id": "gear-acquisition-syndrome", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Hooder", "cl6id": "hooder", "kind": "qualities", "id": "hooder", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Hunted", "cl6id": "hunted", "kind": "qualities", "id": "hunted", "set": {"maxLevel": "5"}, "gen": "max"},
+  {"cl6": "Impaired", "cl6id": "impaired_metagenetic", "kind": "qualities", "id": "impaired", "set": {"maxLevel": "6"}, "gen": "max"},
+  {"cl6": "Transhumanism", "cl6id": "transhumanism", "kind": "qualities", "id": "transhumanism", "set": {"maxLevel": "20"}, "gen": "max"},
+  {"cl6": "Unique Customization", "cl6id": "favored_weapon_custom", "kind": "qualities", "id": "unique-customization", "set": {"maxLevel": "3"}, "gen": "max"}
 ]

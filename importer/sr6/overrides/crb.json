@@ -201,6 +201,7 @@
   {"cl6": "Fake license", "kind": "gear", "id": "fake-license", "set": {"class": "ELECTRONICS/ID_CREDIT"}},
   {"cl6": "Ares Predator VI spare magazine", "kind": "gear", "id": "ares-predator-vi-spare-magazine", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Ares Predator VI spare magazine", "kind": "gear", "id": "ares-predator-vi-spare-magazine", "set": {"avail": "2"}, "gen": "value"},
+  {"cl6": "Ares Predator VI spare magazine", "kind": "gear", "id": "ares-predator-vi-spare-magazine", "kids": [{"tag": "fits", "attrs": {"slot": "firearms-external"}}], "gen": "family", "note": "owner ruling 2026-10-27: every firearm clip/magazine is a weapon accessory fitting the firearm's firearms-external slot (CL6 spare_clip_predator: EMBEDDED FIREARMS_EXTERNAL), not standalone gear"},
   {"cl6": "Grenade Launcher", "kind": "weapons", "id": "grenade-launcher", "set": {"class": "ACCESSORY/WEAPON_ACCESSORY"}},
   {"cl6": "Full body armor helmet", "kind": "armor", "id": "full-body-armor-w-helmet", "set": {"avail": "4(L)"}, "gen": "value"},
   {"cl6": "Commlink", "kind": "augmentations", "id": "commlink", "set": {"cost": "2000"}, "gen": "value"},
@@ -697,5 +698,9 @@
   {"cl6": "Tripod", "kind": "weapons", "id": "tripod", "kids": [{"tag": "fits", "attrs": {"slot": "under"}}], "gen": "family"},
   {"cl6": "Laser sight", "kind": "weapons", "id": "laser-sight", "kids": [{"tag": "fits", "attrs": {"slot": "top"}}, {"tag": "fits", "attrs": {"slot": "under"}}], "gen": "owner", "note": "Commlink6's LASER_SIGHT fits TOP and UNDER; its row was filed under gear, an id the weapons and augmentations files both hold, so it never landed"},
   {"cl6": "Laser sight", "kind": "augmentations", "id": "laser-sight", "kids": [{"tag": "fits", "attrs": {"slot": "implantweapon-accessory"}}], "gen": "owner", "note": "Commlink6's implanted-weapon variant fits IMPLANTWEAPON_ACCESSORY; this is the implanted row"},
-  {"cl6": "Silencer", "kind": "augmentations", "id": "silencer-suppressor", "kids": [{"tag": "fits", "attrs": {"slot": "implantweapon-accessory"}}], "gen": "owner", "note": "Commlink6's implanted-weapon variant fits IMPLANTWEAPON_ACCESSORY; the gear row it was filed under is an id the weapons and augmentations files both hold, so it never landed"}
+  {"cl6": "Silencer", "kind": "augmentations", "id": "silencer-suppressor", "kids": [{"tag": "fits", "attrs": {"slot": "implantweapon-accessory"}}], "gen": "owner", "note": "Commlink6's implanted-weapon variant fits IMPLANTWEAPON_ACCESSORY; the gear row it was filed under is an id the weapons and augmentations files both hold, so it never landed"},
+  {"cl6": "Improved Reflexes", "cl6id": "improved_reflexes", "kind": "adeptpowers", "id": "improved-reflexes", "set": {"maxLevel": "4"}, "gen": "max"},
+  {"cl6": "Glass Jaw", "cl6id": "glass_jaw", "kind": "qualities", "id": "glass-jaw", "set": {"maxLevel": "6"}, "gen": "max"},
+  {"cl6": "Impaired", "cl6id": "impaired", "kind": "qualities", "id": "impaired-attribute", "set": {"maxLevel": "6"}, "gen": "max"},
+  {"cl6": "Will To Live", "cl6id": "will_to_live", "kind": "qualities", "id": "will-to-live", "set": {"maxLevel": "3"}, "gen": "max"}
 ]

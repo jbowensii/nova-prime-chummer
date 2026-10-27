@@ -140,7 +140,7 @@ function full(): Sr6Character {
         { from: 'electronics', to: 'chassis' },
       ],
     },
-    { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
+    { uid: 'g5', kind: 'gear', name: 'Lucky coin', cost: 7.5, gmPrice: 5, avail: 1, essence: 0.1, qty: 3, note: 'custom', accessories: [] },
   ]
   b.contacts = [
     { uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2, types: ['street', 'criminal'] },

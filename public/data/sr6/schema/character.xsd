@@ -623,6 +623,7 @@
     <xs:attribute name="grade" type="xs:string"/>
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
+    <xs:attribute name="gmPrice" type="xs:decimal"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
     <!-- a weapon fitted to a vehicle or drone: the uid of the weapon mount (an accessory of the same vehicle) it is in -->
     <xs:attribute name="mount" type="xs:string"/>

@@ -27,5 +27,7 @@
   {"cl6": "Vashonista", "kind": "qualities", "id": "vashonista", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "con", "value": "1", "what": "EDGE_ONLY_TEST", "cond": "true"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "influence", "value": "1", "what": "EDGE_ONLY_TEST", "cond": "true"}}], "gen": "family"},
   {"cl6": "What Doesn’t Kill You", "kind": "qualities", "id": "what-doesnt-kill-you", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "ATTRIBUTE", "ref": "RESIST_TOXIN", "value": "1", "what": "REPLACE_WITH_WILD", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "You get used to it", "kind": "qualities", "id": "you-get-used-to-it", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "RESIST_TOXIN", "value": "1", "set": "NATURAL", "apply": "CHARACTER"}}], "gen": "family"},
-  {"cl6": "Guardians at the Gates", "kind": "qualities", "id": "guardians-at-the-gates", "gen": "cl6", "why": "Commlink6 models the unlimited memory as 99 dice", "effects": [{"target": "derived:memory", "op": "add", "value": "99"}]}
+  {"cl6": "Guardians at the Gates", "kind": "qualities", "id": "guardians-at-the-gates", "gen": "cl6", "why": "Commlink6 models the unlimited memory as 99 dice", "effects": [{"target": "derived:memory", "op": "add", "value": "99"}]},
+  {"cl6": "The Briar Patch", "cl6id": "the_briar_patch", "kind": "qualities", "id": "the-briar-patch", "set": {"maxLevel": "2"}, "gen": "max"},
+  {"cl6": "Water born", "cl6id": "water_born", "kind": "qualities", "id": "water-born", "set": {"maxLevel": "2"}, "gen": "max"}
 ]

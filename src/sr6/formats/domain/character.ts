@@ -152,6 +152,8 @@ export interface Sr6Purchase {
   id?: string
   name?: string
   cost?: number
+  /** a vehicle or drone bought at a GM-adjusted nuyen price instead of the catalog/design price (career Ledger); Review warns until a GM approves it */
+  gmPrice?: number
   avail?: number
   essence?: number
   rating?: number

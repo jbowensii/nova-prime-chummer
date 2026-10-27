@@ -579,7 +579,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (!pr.ok) no('book-value')
       return {
         label: `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
-        nuyen: pr.cost,
+        nuyen: x.gmPrice !== undefined && x.kind === 'vehicles' && Number.isFinite(x.gmPrice) && x.gmPrice >= 0 ? x.gmPrice : pr.cost,
       }
     }
     case 'drop': {

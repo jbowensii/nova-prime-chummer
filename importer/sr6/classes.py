@@ -145,6 +145,9 @@ def associations(files):
                 # capacity the book prints is the slot's value (obvious limbs carry more than synthetic: Arm 15 vs 8).
                 skull = "skull" in (e.findtext("name") or "").casefold()
                 want.append(("slot", {"id": "headware-implant" if skull else "cyberlimb-implant", "value": cap}))
+            elif name == "weapons.xml" and cls.startswith("WEAPON_FIREARMS/"):
+                # owner ruling: every clip/magazine/speed loader is a weapon accessory fitting the firearm's carry slot
+                want.append(("slot", {"id": "firearms-external"}))
             elif cls == "ACCESSORY/WEAPON_ACCESSORY":
                 for m in re.split(r"\s*(?:/|,|\bor\b)\s*", e.get("mount") or ""):
                     want += [("fits", {"slot": x}) for x in MOUNTS.get(m.strip().casefold(), ())]

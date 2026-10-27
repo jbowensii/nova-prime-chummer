@@ -74,5 +74,6 @@
   {"cl6": "Slay", "kind": "spells", "id": "slay-target", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Sludge", "kind": "spells", "id": "sludge-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
   {"cl6": "Wreck", "kind": "spells", "id": "wreck-object", "kids": [{"tag": "selection", "attrs": {"type": "TEXT"}}], "gen": "family"},
-  {"cl6": "Item Attunement", "kind": "metamagics", "id": "item-attunement", "gen": "cl6", "why": "Commlink6 adds the initiate grade in dice on tests with the attuned item", "effects": [{"target": "test:other", "op": "add", "value": "initiate-grade", "switch": "conditional", "when": "tests with the attuned item"}]}
+  {"cl6": "Item Attunement", "kind": "metamagics", "id": "item-attunement", "gen": "cl6", "why": "Commlink6 adds the initiate grade in dice on tests with the attuned item", "effects": [{"target": "test:other", "op": "add", "value": "initiate-grade", "switch": "conditional", "when": "tests with the attuned item"}]},
+  {"cl6": "Addiction (Blood Magic)", "cl6id": "addiction_blood", "kind": "qualities", "id": "addiction-blood-magic", "set": {"maxLevel": "6"}, "gen": "max"}
 ]

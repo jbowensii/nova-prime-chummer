@@ -14,6 +14,8 @@ heading (`texts()`: the owner's PDF text of the catalog entry of that name, copi
 A row with "id" (an entry's unscoped id, the importer's own) and "set" {"class": "<TYPE/SUBTYPE>"} sets Commlink6's
 classification on that entry (rows made by tools/cl6check/classmap.py carry "gen": "class"); an id no entry has is
 reported once on stderr, nothing guessed.
+A "gen": "max" row (tools/cl6check/maxmap.py, regenerable: `python -m tools.cl6check.maxmap <library import>`) sets
+"maxLevel" to Commlink6's `max` (its "cl6id") on a leveled entry whose book text printed none; never perLevel.
 An id row's "kind" is the file of OUR entry; a row filed under another kind (Commlink6's: gear for a weapon accessory)
 lands on the one other kind file that holds the id, and is reported when none or several do.
 An id row with "gen": "errata" is written by hand, never regenerated (an errata PDF's statements the importer's per-book

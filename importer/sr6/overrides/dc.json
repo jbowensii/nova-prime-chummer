@@ -361,5 +361,10 @@
   {"cl6": "Marine Technologies Sea Snake", "kind": "vehicles", "id": "marine-technologies-sea-snake", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"},
   {"cl6": "Proteus Krake", "kind": "vehicles", "id": "proteus-krake", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"},
   {"cl6": "Vulcan-Krupp Hollenfaust", "kind": "vehicles", "id": "vulcan-krupp-hollenfaust", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"},
-  {"cl6": "Whispering Death", "kind": "vehicles", "id": "whispering-death", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"}
+  {"cl6": "Whispering Death", "kind": "vehicles", "id": "whispering-death", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"},
+  {"cl6": "Always Ready", "cl6id": "always_ready", "kind": "qualities", "id": "always-ready", "set": {"maxLevel": "7"}, "gen": "max"},
+  {"cl6": "Grease Monkey", "cl6id": "grease_monkey", "kind": "qualities", "id": "grease-monkey-engineering-spec", "set": {"maxLevel": "2"}, "gen": "max"},
+  {"cl6": "Junkyard King", "cl6id": "junkyard_king", "kind": "qualities", "id": "junkyard-king", "set": {"maxLevel": "2"}, "gen": "max"},
+  {"cl6": "The Motorpool", "cl6id": "motorpool", "kind": "qualities", "id": "the-motorpool", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Vehicle Empathy", "cl6id": "vehicle_empathy", "kind": "qualities", "id": "vehicle-empathy-pilot-specialization", "set": {"maxLevel": "2"}, "gen": "max"}
 ]

@@ -117,6 +117,14 @@ class ClassRuleTest(unittest.TestCase):
         host = '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="4"><name>A</name></augmentation>'
         self.assertNotIn("fits", [t for t, _ in self.run_rule(host)])
 
+    def test_a_firearm_gets_the_firearms_external_slot_a_melee_weapon_none(self):
+        gun = '<weapon id="a" class="WEAPON_FIREARMS/PISTOLS_LIGHT"><name>G</name></weapon>'
+        self.assertIn(("slot", {"id": "firearms-external"}), self.run_rule(gun, "weapons"))
+        self.assertNotIn(
+            "slot",
+            [t for t, _ in self.run_rule(gun.replace("FIREARMS/PISTOLS_LIGHT", "CLOSE_COMBAT/BLADES"), "weapons")],
+        )
+
     def test_a_cyberlimb_host_gets_its_implant_slot_at_the_printed_capacity(self):
         # obvious limbs carry more than synthetic; the printed capacity is the slot's value
         arm = (

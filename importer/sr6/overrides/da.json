@@ -330,5 +330,9 @@
   {"cl6": "Ares Thunderstruck", "kind": "weapons", "id": "thunderstruck", "set": {"skill": "Exotic Weapons", "spec": "Linear"}, "kids": [{"tag": "slot", "attrs": {"id": "top"}}, {"tag": "slot", "attrs": {"id": "barrel"}}, {"tag": "slot", "attrs": {"id": "stock"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "STRENGTH", "value": "4", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Warhead FRAG", "kind": "ammotypes", "id": "frag", "gen": "cl6", "why": "Commlink6 scales the Frag warhead's damage by 0.75, a multiplier the format shows and never applies (owner ruling 2026-10-18)", "effects": [{"target": "item:dv", "op": "set", "value": "x0.75"}]},
   {"cl6": "Aztech Centipede", "kind": "vehicles", "id": "centipede", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "family"},
-  {"cl6": "Renraku Kitsune", "kind": "vehicles", "id": "kitsune", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}, {"tag": "fits", "attrs": {"slot": "vehicle-chassis"}}], "gen": "family"}
+  {"cl6": "Renraku Kitsune", "kind": "vehicles", "id": "kitsune", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}, {"tag": "fits", "attrs": {"slot": "vehicle-chassis"}}], "gen": "family"},
+  {"cl6": "Hip Shooter", "cl6id": "hip_shooter", "kind": "adeptpowers", "id": "hip-shooter", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Knife Fighter", "cl6id": "knife_fighter", "kind": "adeptpowers", "id": "knife-fighter", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Long Gunner", "cl6id": "long_gunner", "kind": "adeptpowers", "id": "long-gunner", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Multi-Targeting", "cl6id": "multi_targeting", "kind": "adeptpowers", "id": "multi-targeting", "set": {"maxLevel": "4"}, "gen": "max"}
 ]
