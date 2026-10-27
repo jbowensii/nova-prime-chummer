@@ -1401,6 +1401,16 @@ class ErrataRowsTest(unittest.TestCase):
             (got["zz-eyes-5"].findtext("name"), got["zz-eyes-5"].findall("alias")), ("Zeyes (Rating 6)", [])
         )
 
+    def test_rcc_headware_is_deduped_and_priced_from_commlink6(self):
+        """DC p.145 printed two 'RCC Headware' rows; the dupe (rcc) is removed and the survivor (rcc-headware) carries
+        Commlink6's price/avail plus the owner's capacity. See importer/sr6/overrides/dc.json."""
+        rows = {r["id"]: r for r in overrides.table("dc") if "id" in r}
+        self.assertTrue(rows["rcc"].get("remove"))  # the duplicate is dropped
+        self.assertEqual(
+            rows["rcc-headware"]["set"],
+            {"capacity": "[3]", "cost": "4000", "avail": "4 (L)"},
+        )  # CL6 price 4000 / avail 4 (L); capacity [3] consumed in its headware-implant host, no own Essence
+
     def test_no_future_errata_rows_cover_the_errata_and_leave_no_text(self):
         rows = {(r["kind"], r["id"]): r for r in overrides.table("nf") if r.get("gen") == "errata"}
         want = {
