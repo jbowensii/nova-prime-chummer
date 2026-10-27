@@ -6,9 +6,10 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
-import { attrRating, diyAllowed, entryOf, licenceFee, priced, settingQuality } from '../../domain/creation/budgets'
+import { attrRating, diyAllowed, entryOf, licenceFee, powerCost, priced, qualityChoice, settingQuality } from '../../domain/creation/budgets'
 import {
   balances,
+  careerPowerPoints,
   clearHistory,
   debtAmount,
   deletableIds,
@@ -135,6 +136,7 @@ export function LedgerTab() {
     neg: '',
     refund: '',
     grade: '',
+    note: '', // the attribute/skill a chosen power or spell names (Attribute Boost, Improved Ability)
   })
   // (a critter bought: the commands and special training it comes with, catalog ids)
   const [trainedIds, setTrainedIds] = useState<string[]>([])
@@ -172,7 +174,7 @@ export function LedgerTab() {
     setPicked(null)
     setLicences([])
     setTrainedIds([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '', refund: '', grade: '' }))
+    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '', refund: '', grade: '', note: '' }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -226,7 +228,10 @@ export function LedgerTab() {
         // (Stolen Gear: the part of its converted karma bought off; none, all of it)
         return f.target ? { op, target: f.target, ...(stolen?.uid === f.target && f.karma.trim() ? { part: whole(f.karma) } : {}) } : null
       case 'pick':
-        return e ? { op, line: { uid: '', kind: e.kind as PickKind, id: e.id } } : null
+        // a power/spell that names a choice (Attribute Boost, Improved Ability) carries it as the pick's note
+        return e
+          ? { op, line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(qualityChoice(e.name) && f.note.trim() ? { note: f.note.trim() } : {}) } }
+          : null
       case 'martialart': {
         const sig = e && signatureOf(b, c.entries.martialtechniques.values(), e)
         return e ? { op, line: { uid: '', id: e.id, techniques: sig ? [{ uid: '', id: sig.id }] : [] } } : null
@@ -696,6 +701,35 @@ export function LedgerTab() {
             </button>
           </div>
         )}
+        {op === 'pick' &&
+          picked &&
+          (() => {
+            const want = qualityChoice(picked.e.name)
+            const pp = picked.e.kind === 'adeptpowers' ? careerPowerPoints(b, data, cr, p) : null
+            const cost = pp ? powerCost(data, { id: picked.e.id, note: f.note }) : null
+            return (
+              <>
+                {want && (
+                  <label>
+                    The {want} it is for
+                    <input
+                      value={f.note}
+                      maxLength={200}
+                      placeholder={`the ${want} it is for`}
+                      aria-label="Choice note"
+                      onChange={e => set({ note: e.target.value })}
+                    />
+                  </label>
+                )}
+                {pp && (
+                  <span className="muted" style={{ alignSelf: 'end' }}>
+                    {cost != null ? `${cost} power point${cost === 1 ? '' : 's'} · ` : ''}
+                    {pp.left} of {pp.max} power points left
+                  </span>
+                )}
+              </>
+            )
+          })()}
         {op === 'buyoff' && (
           <label>
             Quality
@@ -1399,6 +1433,7 @@ export function LedgerTab() {
         }
         onAdd={x => {
           setPicked(x)
+          set({ note: '' })
           return null
         }}
       />
