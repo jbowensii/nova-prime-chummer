@@ -161,6 +161,23 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
   return (
     <div className="stack" aria-label={`Modify ${name}`} style={{ gap: '0.25rem' }}>
       <b>Modify</b>
+      <label className="row">
+        Price (¥, optional: GM adjusts, needs approval)
+        <input
+          key={x.gmPrice ?? 'none'}
+          aria-label="Adjusted price"
+          type="number"
+          min={0}
+          defaultValue={x.gmPrice}
+          placeholder={String(Math.round(priced({ ...x, gmPrice: undefined }, data, cr).cost))}
+          onBlur={ev => {
+            const t = ev.target.value.trim(),
+              v = Number(t),
+              base = priced({ ...x, gmPrice: undefined }, data, cr).cost
+            act({ op: 'gmprice', uid: x.uid, ...(t && Number.isFinite(v) && v >= 0 && v !== base ? { value: v } : {}) })
+          }}
+        />
+      </label>
       <span>Weapon mounts remaining: {freeMounts.length}</span>
       <span className="muted">
         Remaining:{' '}

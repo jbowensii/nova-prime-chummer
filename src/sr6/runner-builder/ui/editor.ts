@@ -120,6 +120,7 @@ export const REASONS: Record<string, string> = {
   'no-free-slots': 'Only two mod slots not in use can be shifted (Double Clutch p. 120).',
   'not-shifted': 'That shift isn’t on it.',
   'same-mount': 'The weapon is in that mount already.',
+  'bad-price': 'A price is a number of nuyen, 0 or more.',
   'no-diy': 'Only a vehicle mod can be installed yourself: an accessory can’t (Double Clutch p. 120).',
   'no-material': 'Only ammunition can be of a material, and only a material the catalog has (Bestial Nature p. 36).',
   native: 'A native language is free: it has no ranks to buy.',

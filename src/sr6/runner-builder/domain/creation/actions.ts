@@ -107,6 +107,8 @@ export type Op =
   | { op: 'ammoType'; host: string; id?: string }
   /** a vehicle mod's do-it-yourself saving (Double Clutch p. 120) on or off; never an accessory's (owner Q6) */
   | { op: 'diy'; uid: string; diy: boolean }
+  /** set (value) or clear (omitted) a vehicle/drone line's GM-adjusted price */
+  | { op: 'gmprice'; uid: string; value?: number }
   /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
   | { op: 'material'; uid: string; material: string | null }
   /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
@@ -629,6 +631,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if ('reason' in line) return line
         host.accessories.push(line)
       }
+      return OK
+    }
+    case 'gmprice': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      if (op.value === undefined) delete x.gmPrice
+      else if (Number.isFinite(op.value) && op.value >= 0) x.gmPrice = op.value
+      else return no('bad-price')
       return OK
     }
     case 'diy': {
