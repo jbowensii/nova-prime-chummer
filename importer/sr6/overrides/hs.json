@@ -213,5 +213,6 @@
   {"cl6": "Cyberjack Boosters", "kind": "gear", "id": "cyberjack-boosters-data-processing-rating-1", "kids": [{"tag": "fits", "attrs": {"slot": "electronic-accessory"}}], "gen": "family"},
   {"cl6": "Keytar Case", "kind": "gear", "id": "keytar-case", "kids": [{"tag": "slot", "attrs": {"id": "case-mods", "value": "10"}}, {"tag": "slot", "attrs": {"id": "custom-cyberdeck"}}, {"tag": "slot", "attrs": {"id": "cyberhack"}}], "gen": "family"},
   {"cl6": "RCC Case", "kind": "gear", "id": "rcc-case", "kids": [{"tag": "slot", "attrs": {"id": "case-mods", "value": "8"}}, {"tag": "slot", "attrs": {"id": "custom-cyberdeck"}}, {"tag": "slot", "attrs": {"id": "rcc"}}, {"tag": "slot", "attrs": {"id": "cyberhack"}}], "gen": "family"},
-  {"cl6": "Pilot Origins", "cl6id": "pilot_origins", "kind": "qualities", "id": "pilot-origins", "set": {"maxLevel": "3"}, "gen": "max"}
+  {"cl6": "Pilot Origins", "cl6id": "pilot_origins", "kind": "qualities", "id": "pilot-origins", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Ascalon Rail Gun Turret", "cl6id": "ascalon_railgun", "kind": "weapons", "id": "ascalon-rail-gun", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "slot"}
 ]

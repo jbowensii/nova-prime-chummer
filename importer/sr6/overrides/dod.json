@@ -21,5 +21,6 @@
   {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"skill": "Firearms", "spec": "Rifles"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"},
   {"cl6": "Tiffany Elegance Bracelet", "kind": "weapons", "id": "tiffani-elegance-dart-bracelet", "set": {"skill": "Firearms", "spec": "Pistols Light", "size": "Tiny"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"},
   {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"skill": "Exotic Weapons", "spec": "Air", "size": "Tiny"}, "kids": [{"tag": "flag", "text": "UNMODIFYABLE"}], "gen": "family"},
-  {"cl6": "Mitsuhama Akiyama", "kind": "vehicles", "id": "mitsuhama-akiyama", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}], "gen": "family"}
+  {"cl6": "Mitsuhama Akiyama", "kind": "vehicles", "id": "mitsuhama-akiyama", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}], "gen": "family"},
+  {"cl6": "Mitsuhama Akiyama", "cl6id": "mitsuhama_akiyama", "kind": "vehicles", "id": "mitsuhama-akiyama", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}], "gen": "slot"}
 ]

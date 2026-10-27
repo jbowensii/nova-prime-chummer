@@ -847,6 +847,17 @@
       <xs:attribute name="tags" type="xs:string"/>
       <!-- a weakness (Fragile, Carrier): the book's stat blocks list it under Weaknesses -->
       <xs:attribute name="weakness" type="sr6:True"/>
+      <!-- a leveled critter power: perLevel karma, up to maxLevel (Commlink6's `max`, tools/cl6check/maxmap.py) -->
+      <xs:attribute name="perLevel" type="sr6:True"/>
+      <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+    </xs:extension></xs:complexContent>
+  </xs:complexType>
+
+  <!-- a submersion echo (Matrix): a leveled one has perLevel karma up to maxLevel (Commlink6's `max`, maxmap.py) -->
+  <xs:complexType name="Echo">
+    <xs:complexContent><xs:extension base="sr6:Entry">
+      <xs:attribute name="perLevel" type="sr6:True"/>
+      <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -1035,6 +1046,8 @@
            maxReverse: the most it may be taken in reverse when the book says (absent: max) -->
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="max" type="xs:string"/>
+      <!-- Commlink6's numeric cap when the book text printed none (tools/cl6check/maxmap.py) -->
+      <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
       <xs:attribute name="maxReverse" type="xs:string"/>
       <!-- a quality factor's cost multiplier as printed (`x2`, `x0.5`) -->
       <xs:attribute name="multiplier" type="xs:string"/>

@@ -5,8 +5,10 @@ dracogenesis power) for entries whose book text prints no maximum:
 
 importer/sr6/overrides/<src>.json: one row `{"cl6", "cl6id", "kind", "id", "set": {"maxLevel"}, "gen": "max"}` for each
 entry of `runs dir` (a library import or a folder of `importer sr6 check` runs) that a Commlink6 record matches, that
-Commlink6 caps at 2..98 (`max` 99 is "no cap") and whose book text gave no maxLevel. Never perLevel: the book's own
-perLevel (or none) stays, so no price changes; the entries that have a cap but no perLevel are listed for the owner.
+Commlink6 caps at 2..98 (`max` 99 is "no cap") and whose book text gave no maxLevel. A capped quality or metamagic also
+gets perLevel="true" (owner ruling 2026-10-27: every capped quality/metamagic scales per level up to the cap; total
+karma = per-level karma × rating). A capped item of any other kind keeps the book's perLevel (or none) and is listed for
+the owner.
 An entry two records cap differently (and none named as it is) gets no row. Rows of an earlier run (`gen`) are
 replaced; the rest of a table is left as it is. Read-only on the runs; no cl6check report is made."""
 
@@ -55,17 +57,24 @@ def item_rows(pairs, made=frozenset()):
                 continue
             caps = named
         n, (name, cid, has_level) = next(iter(caps.items()))
+        lacks_per = o["attrs"].get("perLevel") != "true"
+        # owner ruling 2026-10-27: every capped quality is perLevel (total karma = per-level karma × rating, up to the
+        # cap; there is no flat-karma-with-cap quality). A capped item of another kind keeps the book's perLevel (or
+        # none) and is listed for the owner.
+        setting = {"maxLevel": str(n)}
+        if kind in ("qualities", "metamagics") and lacks_per:
+            setting["perLevel"] = "true"
         rows[src].append(
             {
                 "cl6": name,
                 "cl6id": cid,
                 "kind": kind,
                 "id": oid[len(src) + 1 :],
-                "set": {"maxLevel": str(n)},
+                "set": setting,
                 "gen": "max",
             }
         )
-        if o["attrs"].get("perLevel") != "true":
+        if lacks_per and kind not in ("qualities", "metamagics"):
             ambiguous.append((src, oid, name, n, has_level == "true"))
     return rows, undecided, ambiguous, no_schema
 

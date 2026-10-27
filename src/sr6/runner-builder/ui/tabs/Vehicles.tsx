@@ -10,8 +10,8 @@ import { cargoFactor, diyAllowed, entryOf, isDrone, modKind, priced, seatsOf } f
 import { boughtDesign, designOf } from '../../domain/assets/design'
 import { entryLabel } from '../../../catalog/domain/categories'
 import { flag } from '../../../table-setup/domain/creation'
-import { builtinText, modsOf, mountsOf, shiftProblem, SLOT_KINDS, type Meter } from '../../domain/assets/vehiclemods'
-import type { SlotKind, Sr6Purchase } from '../../../formats/domain/character'
+import { builtinText, modsOf, mountsOf, shiftProblem, type Meter } from '../../domain/assets/vehiclemods'
+import { SHIFT_KINDS, type ShiftKind, type SlotKind, type Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { n, reasonText, useSr6Editor } from '../editor'
 import { useSr6Designs } from '../repo'
@@ -118,6 +118,19 @@ const ADD: Record<'mod' | 'weapon' | 'autosoft', { title: string; kinds: Sr6Kind
   weapon: { title: 'a weapon', kinds: ['weapons'], filter: e => !isAccessory(e) },
   autosoft: { title: 'an autosoft', kinds: ['programs'], filter: e => /autosoft/i.test(e.attrs.type ?? '') },
 }
+/** The mod-slot families a GM can add to a vehicle instance (the add-slot escape hatch, actions.ts `slot` op). */
+const SLOT_VOCAB = [
+  'vehicle-chassis',
+  'vehicle-powertrain',
+  'vehicle-electronics',
+  'vehicle-cf',
+  'vehicle-accessory',
+  'vehicle-tires',
+  'vehicle-hardpoint',
+  'vehicle-weapon',
+  'vehicle-weapon-small',
+  'vehicle-weapon-large',
+]
 const meter = (label: string, m: Meter) => (
   <span key={label} className={m.used > m.max ? 'warn' : undefined}>
     {label} {n(m.used)}/{n(m.max)}
@@ -129,10 +142,14 @@ const meter = (label: string, m: Meter) => (
 function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
   const { data, cr, act } = useSr6Editor()
   const [adding, setAdding] = useState<keyof typeof ADD | null>(null)
-  const [shift, setShift] = useState<{ from: SlotKind; to: SlotKind }>({ from: 'chassis', to: 'powertrain' })
+  const [shift, setShift] = useState<{ from: ShiftKind; to: ShiftKind }>({ from: 'chassis', to: 'powertrain' })
+  const [slot, setSlot] = useState<{ id: string; value: string }>({ id: 'vehicle-chassis', value: '' })
   const m = modsOf(x, data),
     why = shiftProblem(x, shift.from, shift.to, data)
   const label = (a: Sr6Purchase) => (e => (e ? entryLabel(e) : (a.name ?? 'Custom item')))(entryOf(a, data))
+  // a removed built-in's name, by its builtin uid (`builtin:<n>`: its place among the entry's <builtin>s)
+  const builtinName = (uid: string) =>
+    (entryOf(x, data)?.parts ?? []).filter(p => p.tag === 'builtin' && p.attrs.name)[Number(uid.split(':')[1])]?.attrs.name ?? uid
   const mounts = mountsOf(x, data) // (fitted, then built in)
   const freeMounts = mounts.filter(mt => !x.accessories.some(a => a.mount === mt.uid))
   const rows = x.accessories.filter(a => a.kind === 'weapons' || diyAllowed(entryOf(a, data)))
@@ -148,7 +165,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
       <span className="muted">
         Remaining:{' '}
         {[
-          ...(m.slots ? SLOT_KINDS.map(k => [k, m.slots![k]] as const) : []),
+          ...(m.slots ? (Object.keys(m.slots) as SlotKind[]).map(k => [k, m.slots![k]] as const) : []),
           ['hardpoints', m.hardpoints] as const,
           ['mounts', m.mounts] as const,
           ['autosofts', m.autosofts] as const,
@@ -164,7 +181,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
       </span>
       <span>
         {[
-          ...(m.slots ? SLOT_KINDS.map(k => meter(`${k[0].toUpperCase()}${k.slice(1)} slots`, m.slots![k])) : []),
+          ...(m.slots ? (Object.keys(m.slots) as SlotKind[]).map(k => meter(`${k[0].toUpperCase()}${k.slice(1)} slots`, m.slots![k]!)) : []),
           ...(m.hardpoints ? [meter('Hardpoints', m.hardpoints)] : []),
           ...(m.mounts ? [meter('Weapon mounts', m.mounts)] : []),
           ...(m.autosofts ? [meter('Autosofts', m.autosofts)] : []),
@@ -173,14 +190,14 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
       {m.slots && (
         <span className="row">
           Shift slots (p. 120): two
-          <select aria-label={`Shift from on ${name}`} value={shift.from} onChange={ev => setShift({ ...shift, from: ev.target.value as SlotKind })}>
-            {SLOT_KINDS.map(k => (
+          <select aria-label={`Shift from on ${name}`} value={shift.from} onChange={ev => setShift({ ...shift, from: ev.target.value as ShiftKind })}>
+            {SHIFT_KINDS.map(k => (
               <option key={k}>{k}</option>
             ))}
           </select>
           into one
-          <select aria-label={`Shift to on ${name}`} value={shift.to} onChange={ev => setShift({ ...shift, to: ev.target.value as SlotKind })}>
-            {SLOT_KINDS.map(k => (
+          <select aria-label={`Shift to on ${name}`} value={shift.to} onChange={ev => setShift({ ...shift, to: ev.target.value as ShiftKind })}>
+            {SHIFT_KINDS.map(k => (
               <option key={k}>{k}</option>
             ))}
           </select>
@@ -203,9 +220,66 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
           ))}
         </span>
       )}
-      {(m.builtin.length > 0 || m.notes.length > 0) && (
-        <span>
-          Built in (already paid for): {m.builtin.map(builtinText).join(', ')}
+      <span className="row" aria-label={`Add a mod slot to ${name}`}>
+        GM add slot:
+        <select aria-label={`Slot family on ${name}`} value={slot.id} onChange={ev => setSlot({ ...slot, id: ev.target.value })}>
+          {SLOT_VOCAB.map(id => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+        <input
+          aria-label={`Slot capacity on ${name}`}
+          placeholder="capacity"
+          size={6}
+          value={slot.value}
+          onChange={ev => setSlot({ ...slot, value: ev.target.value })}
+        />
+        <button
+          className="btn small quiet"
+          aria-label={`Add slot on ${name}`}
+          onClick={() => act({ op: 'slot', uid: x.uid, id: slot.id, ...(slot.value.trim() ? { value: slot.value.trim() } : {}) })}
+        >
+          Add
+        </button>
+        {(x.addedSlots ?? []).map((s, i) => (
+          <span key={i} className="chip">
+            {s.id}
+            {s.value ? ` ${s.value}` : ''}{' '}
+            <button className="btn small quiet" aria-label={`Remove added slot ${i + 1} on ${name}`} onClick={() => act({ op: 'slot', uid: x.uid, remove: i })}>
+              ×
+            </button>
+          </span>
+        ))}
+      </span>
+      {(m.builtin.length > 0 || m.notes.length > 0 || (x.removedBuiltins?.length ?? 0) > 0) && (
+        <span className="row">
+          Built in (already paid for):
+          {m.builtin.map(b => (
+            <span key={b.uid} className="chip">
+              {builtinText(b)}{' '}
+              <button
+                className="btn small quiet"
+                aria-label={`Remove built-in ${builtinText(b)} from ${name}`}
+                onClick={() => act({ op: 'builtin', uid: x.uid, remove: b.uid })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {(x.removedBuiltins ?? []).map(uid => (
+            <span key={uid} className="chip muted">
+              {builtinName(uid)} (removed){' '}
+              <button
+                className="btn small quiet"
+                aria-label={`Restore built-in ${builtinName(uid)} on ${name}`}
+                onClick={() => act({ op: 'builtin', uid: x.uid, restore: uid })}
+              >
+                restore
+              </button>
+            </span>
+          ))}
           {m.notes.map(t => (
             <span key={t} className="note">
               {' '}

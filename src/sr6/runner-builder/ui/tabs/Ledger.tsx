@@ -44,12 +44,12 @@ import {
   MAGIC_KIND_LABELS,
   PET_CLASSES,
   PURCHASE_KINDS,
-  SLOT_KINDS,
+  SHIFT_KINDS,
   sinName,
   type PetClass,
   type PickKind,
   type PurchaseKind,
-  type SlotKind,
+  type ShiftKind,
   type Sr6Advance,
   type Sr6Attr,
   type Sr6LedgerEntry,
@@ -365,7 +365,7 @@ export function LedgerTab() {
       }
       // (two slots of one category into one of another, Double Clutch p. 120; a weapon into another of its vehicle's mounts)
       case 'shift':
-        return f.target ? { op, target: f.target, from: f.from as SlotKind, to: f.to as SlotKind } : null
+        return f.target ? { op, target: f.target, from: f.from as ShiftKind, to: f.to as ShiftKind } : null
       case 'move':
         return f.target && f.mount ? { op, target: f.target, mount: f.mount } : null
       // (a weapon into one of the vehicle's mounts; do it yourself: a mod at half price, Double Clutch p. 120)
@@ -1026,7 +1026,7 @@ export function LedgerTab() {
             <label>
               Two slots from
               <select aria-label="Shift from" value={f.from} onChange={e => set({ from: e.target.value })}>
-                {SLOT_KINDS.map(k => (
+                {SHIFT_KINDS.map(k => (
                   <option key={k} value={k}>
                     {k}
                   </option>
@@ -1036,7 +1036,7 @@ export function LedgerTab() {
             <label>
               One slot to
               <select aria-label="Shift to" value={f.to} onChange={e => set({ to: e.target.value })}>
-                {SLOT_KINDS.map(k => (
+                {SHIFT_KINDS.map(k => (
                   <option key={k} value={k}>
                     {k}
                   </option>

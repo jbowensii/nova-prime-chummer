@@ -169,10 +169,10 @@
   {"cl6": "Climate Adaptation", "cl6id": "climate_adaption", "kind": "qualities", "id": "climate-adaptation", "set": {"maxLevel": "4"}, "gen": "max"},
   {"cl6": "Corrosive Spit", "cl6id": "corrosive_spit", "kind": "qualities", "id": "corrosive-spit", "set": {"maxLevel": "4"}, "gen": "max"},
   {"cl6": "Cyber Psychosis", "cl6id": "cyber_psychosis", "kind": "qualities", "id": "cyber-psychosis", "set": {"maxLevel": "3"}, "gen": "max"},
-  {"cl6": "Gear Acquisition Syndrome", "cl6id": "gear_acquisition_syndrome", "kind": "qualities", "id": "gear-acquisition-syndrome", "set": {"maxLevel": "3"}, "gen": "max"},
-  {"cl6": "Hooder", "cl6id": "hooder", "kind": "qualities", "id": "hooder", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Gear Acquisition Syndrome", "cl6id": "gear_acquisition_syndrome", "kind": "qualities", "id": "gear-acquisition-syndrome", "set": {"maxLevel": "3", "perLevel": "true"}, "gen": "max"},
+  {"cl6": "Hooder", "cl6id": "hooder", "kind": "qualities", "id": "hooder", "set": {"maxLevel": "3", "perLevel": "true"}, "gen": "max"},
   {"cl6": "Hunted", "cl6id": "hunted", "kind": "qualities", "id": "hunted", "set": {"maxLevel": "5"}, "gen": "max"},
   {"cl6": "Impaired", "cl6id": "impaired_metagenetic", "kind": "qualities", "id": "impaired", "set": {"maxLevel": "6"}, "gen": "max"},
-  {"cl6": "Transhumanism", "cl6id": "transhumanism", "kind": "qualities", "id": "transhumanism", "set": {"maxLevel": "20"}, "gen": "max"},
-  {"cl6": "Unique Customization", "cl6id": "favored_weapon_custom", "kind": "qualities", "id": "unique-customization", "set": {"maxLevel": "3"}, "gen": "max"}
+  {"cl6": "Transhumanism", "cl6id": "transhumanism", "kind": "qualities", "id": "transhumanism", "set": {"maxLevel": "20", "perLevel": "true"}, "gen": "max"},
+  {"cl6": "Unique Customization", "cl6id": "favored_weapon_custom", "kind": "qualities", "id": "unique-customization", "set": {"maxLevel": "3", "perLevel": "true"}, "gen": "max"}
 ]

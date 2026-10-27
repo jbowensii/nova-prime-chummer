@@ -9,6 +9,7 @@ import { gradeFactor, type GradeFactor } from './grades'
 import { fieldName } from '../../../../core/shared/formula'
 import { availability, bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
 import { capacityUsed, isMaterial } from '../../../catalog/domain/categories'
+import { structureOf } from '../../../catalog/domain/structure'
 import { qualityChoice } from './choices'
 import { critterPrice, critterStat, critterValue } from '../assets/critters'
 
@@ -240,8 +241,9 @@ export const isDrone = (e?: Sr6Entry) => /^DRONE_/i.test(e?.attrs.class ?? '') |
 /** The editor tab a line is bought on: a drone's Drones (its Review path stays `vehicles.<uid>`: GM approvals keep). */
 export const purchaseTab = (x: Sr6Purchase, data: Sr6Data) => (x.kind === 'vehicles' && isDrone(entryOf(x, data)) ? 'drones' : PURCHASE_TAB[x.kind])
 
-/** A vehicle weapon mount (`Standard weapon mount`, `Small Turreted Weapon Mount`: by its name). */
-export const isMount = (e?: Sr6Entry) => !!e && /\bweapon mount\b/i.test(e.name)
+/** A vehicle weapon mount: it declares a `vehicle-weapon*` slot (Commlink6's HOOK, slotmap.py), with a name fallback
+ *  (`Standard weapon mount`, `Small Turreted Weapon Mount`) for a mount the generator doesn't cover. */
+export const isMount = (e?: Sr6Entry) => !!e && (structureOf(e).slots.some(s => s.id.startsWith('vehicle-weapon')) || /\bweapon mount\b/i.test(e.name))
 export type Hardpoint = 'small' | 'standard' | 'large' | 'huge'
 /** The hardpoint a device attaches to (Double Clutch pp. 124, 142-145): its printed `hardpoint`; a mount printing none (the
  *  core rulebook's) by its name, a heavy one large. ponytail: a rack or arm without the attribute takes none. */

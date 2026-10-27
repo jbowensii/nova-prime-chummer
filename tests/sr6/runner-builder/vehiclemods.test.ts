@@ -23,6 +23,7 @@ const VEHICLES = `<sr6:data ${NS} kind="vehicles" version="1">
   <vehicle id="zz.zap-fleck" ${at} category="Small drone" class="DRONE_SMALL/AIR" body="2" pilot="2" avail="2" cost="1500"><name>Zap Fleck</name></vehicle>
   <vehicle id="zz.zap-tank" ${at} category="Zap tank" body="9" pilot="2" avail="2" cost="30000"><name>Zap Tank</name><builtin name="Zap Standard Weapon Mount" ref="zz.zap-mount"/><builtin name="Large hardpoint" ref="zz.large-hardpoint"/></vehicle>
   <vehicle id="zz.zap-dot" ${at} category="Microdrones" body="1" pilot="1" avail="2" cost="500"><name>Zap Dot</name></vehicle>
+  <vehicle id="zz.zap-cargo" ${at} category="Zap cargo" body="6" pilot="2" avail="2" cost="25000"><name>Zap Cargo</name><slot id="vehicle-chassis" value="3"/><slot id="vehicle-cf" value="5"/></vehicle>
 </sr6:data>`
 const GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zap-grip" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="2 x Rating" rating="1–2" avail="4" cost="1000 x Rating"><name>Zap Grip</name><formula field="cost">1000*R</formula><formula field="slots">2*R</formula></gear>
@@ -35,6 +36,8 @@ const GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zap-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" avail="4(I)" cost="2000"><name>Zap Standard Weapon Mount</name></gear>
   <gear id="zz.zap-small-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="small" avail="3(I)" cost="1000"><name>Zap Small Weapon Mount</name></gear>
   <gear id="zz.zap-heavy-mount" ${at} category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="5(I)" cost="4000"><name>Zap Heavy Weapon Mount</name></gear>
+  <gear id="zz.zap-crate" ${at} category="Accessory equipment" class="ACCESSORY/VEHICLE_ACCESSORY" avail="2" cost="400"><name>Zap Crate</name><fits slot="vehicle-cf"/></gear>
+  <gear id="zz.zap-slotmount" ${at} category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" hardpoint="large" avail="4(I)" cost="2000"><name>Zap Nameless Rig</name><slot id="vehicle-weapon-large"/></gear>
 </sr6:data>`
 const WEAPONS = `<sr6:data ${NS} kind="weapons" version="1">
   <weapon id="zz.zap-smg" ${at} category="Submachine gun" dv="3P" avail="2" cost="100"><name>Zap SMG</name></weapon>
@@ -459,6 +462,62 @@ test('built-in mods are fittings already paid for (DESIGNER Q3): a built-in moun
   })
   go({ op: 'move', target: 'w1', mount: 'builtin:0' })
   expect(currentBuild(c).purchases[0].accessories.find(a => a.uid === 'w1')!.mount).toBe('builtin:0')
+})
+
+test('a declared vehicle-* slot value is the category capacity (else Body); cf/accessory/tires show only when declared', () => {
+  // Zap Cargo declares chassis 3 (overrides Body 6) and cf 5; it declares no accessory/tires
+  const { host, data } = owning(true, 'zz.zap-cargo', [['gear', 'zz.zap-crate']])
+  const m = modsOf(host, data)
+  expect(m.slots!.chassis.max).toBe(3) // declared value wins over Body 6
+  expect(m.slots!.powertrain.max).toBe(6) // no declared value: Body fallback
+  expect(m.slots!.cf).toEqual({ used: 1, max: 5 }) // the crate fits vehicle-cf
+  expect(m.slots!.accessory).toBeUndefined()
+  expect(m.slots!.tires).toBeUndefined()
+  expect(m.warnings).toEqual([])
+  // a vehicle with no cf hook shows no cf meter (a flying drone)
+  expect(modsOf(owning(true, 'zz.zap-mite').host, data).slots!.cf).toBeUndefined()
+})
+
+test('GM add-slot widens (or creates) a category budget on the instance, and round-trips', () => {
+  const o = owning(true, 'zz.zap-drone') // Body 6, no declared cf slot
+  expect(modsOf(o.host, o.data).slots!.cf).toBeUndefined()
+  expect(apply(o.b, { op: 'slot', uid: o.host.uid, id: 'vehicle-cf', value: '4' }, o.data, o.cr)).toEqual({ ok: true })
+  expect(modsOf(o.host, o.data).slots!.cf).toEqual({ used: 0, max: 4 })
+  // declared chassis 3 widened by a GM-added chassis slot
+  const c = owning(true, 'zz.zap-cargo')
+  apply(c.b, { op: 'slot', uid: c.host.uid, id: 'vehicle-chassis', value: '2' }, c.data, c.cr)
+  expect(modsOf(c.host, c.data).slots!.chassis.max).toBe(5) // 3 declared + 2 added
+})
+
+test('a weapon mount is any host declaring a vehicle-weapon* slot, name aside (isMount via slot)', () => {
+  const o = owning(true, 'zz.zap-drone', [
+    ['gear', 'zz.zap-slotmount'],
+    ['weapons', 'zz.zap-rifle'],
+  ])
+  const mount = o.uid('zz.zap-slotmount')
+  expect(mountsOf(o.host, o.data).map(mt => mt.uid)).toContain(mount) // its name has no "weapon mount"
+  expect(apply(o.b, { op: 'mount', uid: o.uid('zz.zap-rifle'), mount }, o.data, o.cr)).toEqual({ ok: true })
+})
+
+test('a built-in mod is removable from the instance and restorable; it round-trips, and a weapon in a removed mount falls out', () => {
+  const o = owning(true, 'zz.zap-tank', [['weapons', 'zz.zap-rifle']])
+  apply(o.b, { op: 'mount', uid: o.uid('zz.zap-rifle'), mount: 'builtin:0' }, o.data, o.cr)
+  expect(mountsOf(o.host, o.data).map(m => m.uid)).toEqual(['builtin:0'])
+  // remove the built-in weapon mount (builtin:0): it leaves mountsOf, and the rifle falls out of it
+  expect(apply(o.b, { op: 'builtin', uid: o.host.uid, remove: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: true })
+  expect(o.host.removedBuiltins).toEqual(['builtin:0'])
+  expect(mountsOf(o.host, o.data)).toEqual([])
+  expect(o.host.accessories.find(a => a.id === 'zz.zap-rifle')!.mount).toBeUndefined()
+  expect(apply(o.b, { op: 'builtin', uid: o.host.uid, remove: 'builtin:9' }, o.data, o.cr)).toEqual({ ok: false, reason: 'not-a-builtin' })
+  // round-trip
+  const ch = { ...blankSr6('priority', 'made-up-bi', '2026-10-27T00:00:00.000Z'), build: o.b }
+  const back = xmlToSr6(sr6ToXml(ch))
+  expect(back.ok && back.character.build.purchases[0].removedBuiltins).toEqual(['builtin:0'])
+  // restore
+  expect(apply(o.b, { op: 'builtin', uid: o.host.uid, restore: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: true })
+  expect(o.host.removedBuiltins).toBeUndefined()
+  expect(mountsOf(o.host, o.data).map(m => m.uid)).toEqual(['builtin:0'])
+  expect(apply(o.b, { op: 'builtin', uid: o.host.uid, restore: 'builtin:0' }, o.data, o.cr)).toEqual({ ok: false, reason: 'not-removed' })
 })
 
 test('career fit refusals: a host, an entry, a rating in range, a mount only for a weapon, critter gear on a critter only', () => {

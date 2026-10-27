@@ -43,10 +43,11 @@ export interface SlotItem {
   qty?: number
 }
 
-/** Fits lists alternatives: each unit occupies one slot, with reassignment when another fitting needs it. */
-export function mountSlots(host: Sr6Entry | undefined, accessories: SlotItem[], rating = 1) {
+/** Fits lists alternatives: each unit occupies one slot, with reassignment when another fitting needs it. `extra` are
+ *  slots added to the host instance (a GM override, character.ts addedSlots), treated as if the catalog entry carried them. */
+export function mountSlots(host: Sr6Entry | undefined, accessories: SlotItem[], rating = 1, extra: { id: string; value?: string }[] = []) {
   const remaining = new Map<string, number>()
-  for (const slot of host ? structureOf(host).slots : []) {
+  for (const slot of [...(host ? structureOf(host).slots : []), ...extra]) {
     const value = rated(slot.value ?? '1', rating)
     if (value.ok && value.n !== null && Number.isFinite(value.n)) remaining.set(slot.id, (remaining.get(slot.id) ?? 0) + Math.max(0, Math.floor(value.n)))
   }

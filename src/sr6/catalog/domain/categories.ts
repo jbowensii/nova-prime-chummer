@@ -107,7 +107,11 @@ export function offeredOn(
   isAccessory: (e: Sr6Entry) => boolean,
 ): boolean {
   if (host && fitsHost(index, e, host) === true) return true
-  const declared = structureOf(e).fits.length > 0
+  const s = structureOf(e)
+  // a mod-only item (CL6 modonly="true": a spare clip, a core vehicle mod) exists only embedded in a host — never
+  // offered standalone, only through the fitsHost path above.
+  if (s.modOnly) return false
+  const declared = s.fits.length > 0
   if (!filter) return !isAccessory(e) && !declared
   return !declared && !categoryOf(index, e) && !(host && structureOf(host).slots.length > 0) && filter(e)
 }

@@ -6,14 +6,24 @@
 // weapon and counts toward the hardpoints or mounts as a bought one; extra mod slots they give add to the vehicle's, and
 // slots shifted between categories at 2:1 (DC p. 120) move them. What goes past a limit is a Review warning, never
 // refused.
-import { SLOT_KINDS, type SlotKind, type SlotShift, type Sr6Purchase } from '../../../formats/domain/character'
+import { SHIFT_KINDS, SLOT_KINDS, type ShiftKind, type SlotKind, type SlotShift, type Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { entryLabel } from '../../../catalog/domain/categories'
+import { structureOf } from '../../../catalog/domain/structure'
 import { entryOf, hardpointOf, isDrone, isMount, modKind, ratingOf, type Hardpoint, type ModKind } from '../creation/purchases'
 import { bookValue, dataFind } from '../../../catalog/domain/values'
 
-export { SLOT_KINDS, type SlotKind }
+export { SLOT_KINDS, SHIFT_KINDS, type SlotKind, type ShiftKind }
+/** The metered mod-slot families that are shown/enforced only when Commlink6 declares a capacity for the vehicle. */
+const DECLARED_ONLY: SlotKind[] = ['cf', 'accessory', 'tires']
+/** The slot id of a mod-slot family (`chassis` -> `vehicle-chassis`): the generator's HOOK/fits vocabulary. */
+const slotId = (k: SlotKind) => `vehicle-${k}`
+/** A declared slot's capacity as a whole number (its `<slot value>`), or undefined when it carries no readable value. */
+const slotCap = (v?: string) => {
+  const n = Number(v)
+  return v && Number.isFinite(n) ? Math.max(0, Math.floor(n)) : undefined
+}
 /** A hardpoint in standard ones: one standard splits into two small, two make a large, three a huge (DC p. 124). */
 export const HARDPOINT_UNITS: Record<Hardpoint, number> = { small: 0.5, standard: 1, large: 2, huge: 3 }
 
@@ -44,8 +54,11 @@ export interface VehicleMods {
   /** Double Clutch's rules (DC among the table's books), else the core rulebook's */
   dc: boolean
   drone: boolean
-  /** DC: mod slots per category, each its unmodified Body plus what built-in mods add, less and plus what was shifted */
-  slots?: Record<SlotKind, Meter>
+  /** DC: mod slots per family. Core categories (chassis/powertrain/electronics) are always present, each its unmodified
+   *  Body plus what built-in mods add, less and plus what was shifted — unless Commlink6 declares a capacity for the
+   *  vehicle (its `vehicle-*` slot value), which then wins. cf/accessory/tires appear only when such a capacity is
+   *  declared (owner 2026-10-27). */
+  slots?: Partial<Record<SlotKind, Meter>>
   /** DC: the shifts between categories counted in `slots` (2 slots of one give 1 of another, p. 120) */
   shifts?: SlotShift[]
   /** DC: hardpoints, in standard ones */
@@ -65,11 +78,11 @@ export interface VehicleMods {
 export const SHIFT_COST = 2
 /** Why mod slots can't be shifted from one category to another on this vehicle now, or undefined: only with Double Clutch's
  *  rules, between two categories, out of slots not in use (p. 120: "any available ... mod slots"). */
-export function shiftProblem(x: Sr6Purchase, from: SlotKind, to: SlotKind, data: Sr6Data): 'no-slots' | 'same-slot' | 'no-free-slots' | undefined {
+export function shiftProblem(x: Sr6Purchase, from: ShiftKind, to: ShiftKind, data: Sr6Data): 'no-slots' | 'same-slot' | 'no-free-slots' | undefined {
   const m = modsOf(x, data)
   if (!m.slots) return 'no-slots'
   if (from === to) return 'same-slot'
-  return m.slots[from].max - m.slots[from].used < SHIFT_COST ? 'no-free-slots' : undefined
+  return m.slots[from]!.max - m.slots[from]!.used < SHIFT_COST ? 'no-free-slots' : undefined
 }
 
 /** A built-in mod in words: `Ceramic plate armor`, `Realistic features 4`, `4 more chassis mod slots`. */
@@ -100,9 +113,10 @@ export function weaponSize(e?: Sr6Entry): 0 | 1 | 2 | undefined {
 const mountHolds = (e: Sr6Entry) => (/\bsmall\b/i.test(e.name) ? 0 : /\b(heavy|large|huge)\b/i.test(e.name) ? 2 : 1)
 const HOLDS = ['an SMG or smaller', 'an assault rifle or smaller', 'any weapon']
 
-/** The mods built into a vehicle: its entry's (or design snapshot's) <builtin>s, each with its uid. */
-function builtinsOf(e?: Sr6Entry): Builtin[] {
-  return (e?.parts ?? [])
+/** The mods built into a vehicle: its entry's (or design snapshot's) <builtin>s, each with its uid; those the GM removed
+ *  from the instance (`removed`, by builtin uid) are left out (owner 2026-10-27). */
+function builtinsOf(e?: Sr6Entry, removed: string[] = []): Builtin[] {
+  const list: Builtin[] = (e?.parts ?? [])
     .filter(p => p.tag === 'builtin' && p.attrs.name)
     .map((p, i) => {
       const cat = normCat(p.attrs.category) === 'universal' ? 'universal' : SLOT_KINDS.find(k => k === normCat(p.attrs.category))
@@ -114,6 +128,7 @@ function builtinsOf(e?: Sr6Entry): Builtin[] {
         ...(p.attrs.slots && cat ? { slots: first(p.attrs.slots), category: cat } : {}),
       }
     })
+  return list.filter(b => !removed.includes(b.uid))
 }
 /** A built-in mod's catalog gear entry (its ref); none: a name only. */
 const builtinEntry = (b: Builtin, data: Sr6Data) => (b.ref ? data.entry('gear', b.ref) : undefined)
@@ -132,7 +147,7 @@ export function mountsOf(x: Sr6Purchase, data: Sr6Data): Mount[] {
     const e = entryOf(a, data)
     if (e && isMount(e)) out.push({ uid: a.uid, e, name: entryLabel(e) })
   }
-  for (const b of builtinsOf(entryOf(x, data))) {
+  for (const b of builtinsOf(entryOf(x, data), x.removedBuiltins)) {
     const e = builtinEntry(b, data)
     if (e && isMount(e)) out.push({ uid: b.uid, e, name: builtinText(b), builtin: true })
   }
@@ -150,7 +165,7 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
     find = dataFind(data)
   const warnings: VehicleMods['warnings'] = []
   const warn = (message: string, source: string, page: number) => warnings.push({ message, source, page })
-  const builtin = builtinsOf(e)
+  const builtin = builtinsOf(e, x.removedBuiltins)
   const notes = (e?.notes ?? []).filter(n => n.field === 'builtin').map(n => n.text)
 
   const fitted: Fitted[] = x.accessories.map(f => {
@@ -173,29 +188,47 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   }
 
   if (dc) {
-    // mod slots: the unmodified Body in each category (p. 120), more from a built-in mod; a hardpoint device's printed
-    // slots are chassis ones (p. 124: "Core mod slots")
-    out.slots = Object.fromEntries(
-      SLOT_KINDS.map(k => [
-        k,
-        {
-          used: fitted.reduce((t, f) => t + ((f.kind === 'hardpoint' ? 'chassis' : f.kind) === k ? f.slots : 0), 0),
-          max: body + builtin.reduce((t, b) => t + (b.category === k ? (b.slots ?? 0) : 0), 0),
-        },
-      ]),
-    ) as Record<SlotKind, Meter>
-    // slots shifted to another category: two of one give one of another (p. 120)
+    // the slots the vehicle declares (Commlink6's `vehicle-*` HOOKs, slotmap.py) plus any a GM added to this instance
+    const hostSlots = [...(e ? structureOf(e).slots : []), ...(x.addedSlots ?? [])]
+    const declaredCap = (k: SlotKind) => {
+      const caps = hostSlots.filter(s => s.id === slotId(k)).map(s => slotCap(s.value))
+      const nums = caps.filter((n): n is number => n !== undefined)
+      return nums.length ? nums.reduce((a, b) => a + b, 0) : undefined
+    }
+    // which declared-only family (cf/accessory/tires) a fitted mod takes, one unit each (its generator `<fits>`)
+    const fitFamily = (uid: string): SlotKind | undefined => {
+      const fe = entryOf(line(uid), data)
+      const fits = fe ? structureOf(fe).fits : []
+      return DECLARED_ONLY.find(k => fits.includes(slotId(k)))
+    }
+    const slots: Partial<Record<SlotKind, Meter>> = {}
+    // core categories: the declared capacity if Commlink6 gives one, else the unmodified Body plus what built-in mods
+    // add (p. 120); a hardpoint device's printed slots are chassis ones (p. 124: "Core mod slots")
+    for (const k of SHIFT_KINDS)
+      slots[k] = {
+        used: fitted.reduce((t, f) => t + ((f.kind === 'hardpoint' ? 'chassis' : f.kind) === k ? f.slots : 0), 0),
+        max: declaredCap(k) ?? body + builtin.reduce((t, b) => t + (b.category === k ? (b.slots ?? 0) : 0), 0),
+      }
+    // cf/accessory/tires: metered only where Commlink6 declares a capacity for the vehicle (owner 2026-10-27); each mod
+    // that fits the family takes one
+    for (const k of DECLARED_ONLY) {
+      const max = declaredCap(k)
+      if (max !== undefined) slots[k] = { used: x.accessories.filter(f => fitFamily(f.uid) === k).length, max }
+    }
+    out.slots = slots
+    // slots shifted to another core category: two of one give one of another (p. 120)
     out.shifts = x.slotShifts ?? []
     for (const t of out.shifts) {
-      out.slots[t.from].max -= SHIFT_COST
-      out.slots[t.to].max += 1
+      slots[t.from]!.max -= SHIFT_COST
+      slots[t.to]!.max += 1
     }
     // (a designed vehicle's universal slots take what a category goes past, DC p. 152)
+    const present = Object.keys(slots) as SlotKind[]
     const universal = builtin.reduce((t, b) => t + (b.category === 'universal' ? (b.slots ?? 0) : 0), 0),
-      over = SLOT_KINDS.reduce((t, k) => t + Math.max(0, out.slots![k].used - out.slots![k].max), 0)
+      over = present.reduce((t, k) => t + Math.max(0, slots[k]!.used - slots[k]!.max), 0)
     if (over > universal)
-      for (const k of SLOT_KINDS) {
-        const m = out.slots[k]
+      for (const k of present) {
+        const m = slots[k]!
         if (m.used > m.max)
           warn(`${vname}: its ${k} mods take ${m.used} mod slots; it has ${m.max}${universal ? ` (and ${universal} universal)` : ''}.`, 'DC', 120)
       }

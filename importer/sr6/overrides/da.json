@@ -334,5 +334,13 @@
   {"cl6": "Hip Shooter", "cl6id": "hip_shooter", "kind": "adeptpowers", "id": "hip-shooter", "set": {"maxLevel": "3"}, "gen": "max"},
   {"cl6": "Knife Fighter", "cl6id": "knife_fighter", "kind": "adeptpowers", "id": "knife-fighter", "set": {"maxLevel": "3"}, "gen": "max"},
   {"cl6": "Long Gunner", "cl6id": "long_gunner", "kind": "adeptpowers", "id": "long-gunner", "set": {"maxLevel": "3"}, "gen": "max"},
-  {"cl6": "Multi-Targeting", "cl6id": "multi_targeting", "kind": "adeptpowers", "id": "multi-targeting", "set": {"maxLevel": "4"}, "gen": "max"}
+  {"cl6": "Multi-Targeting", "cl6id": "multi_targeting", "kind": "adeptpowers", "id": "multi-targeting", "set": {"maxLevel": "4"}, "gen": "max"},
+  {"cl6": "Powered Heavy Tripod", "cl6id": "tripod_powered", "kind": "weapons", "id": "powered-heavy-tripod", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint"}}], "gen": "slot"},
+  {"cl6": "Reinforced Smart Firing Platform", "cl6id": "smart_firing_reinforced", "kind": "weapons", "id": "reinforced-smart-firing-platform", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint"}}], "gen": "slot"},
+  {"cl6": "Wheeled Heavy Tripod", "cl6id": "tripod_wheeled", "kind": "weapons", "id": "wheeled-heavy-tripod", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-hardpoint"}}], "gen": "slot"},
+  {"cl6": "Aztech Centipede", "cl6id": "aztech_centipede", "kind": "vehicles", "id": "centipede", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}], "gen": "slot"},
+  {"cl6": "Renraku Kitsune", "cl6id": "renraku_kitsune_drone", "kind": "vehicles", "id": "kitsune", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}, {"tag": "fits", "attrs": {"slot": "vehicle-chassis"}}], "gen": "slot"},
+  {"cl6": "MDS (Missile Defense System)", "cl6id": "missile_defense_system", "kind": "gear", "id": "mds-missile-defense-system", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-electronics"}}], "gen": "slot"},
+  {"cl6": "Valkyrie Module (MilSpec)", "cl6id": "valkyrie_module_milspec", "kind": "gear", "id": "valkyrie-module-milspec", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-cf"}}, {"tag": "fits", "attrs": {"slot": "vehicle-chassis"}}], "gen": "slot"},
+  {"cl6": "Mobile Lodge", "cl6id": "mobile_lodge", "kind": "gear", "id": "mobile-magic-lodge-cf", "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-cf"}}, {"tag": "fits", "attrs": {"slot": "vehicle-chassis"}}], "gen": "slot"}
 ]

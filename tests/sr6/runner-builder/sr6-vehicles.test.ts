@@ -71,7 +71,7 @@ test('Vehicles lists the vehicle, Drones the drone; Modify fits a mount, a weapo
   expect(main()).not.toMatch(/Hover Buzzer/)
   expect(pageText()).toMatch(/Core rulebook: weapon mounts up to Body \/ 3/)
   expect(pageText()).toMatch(/Weapon mounts 0\/1/)
-  expect(pageText()).toMatch(/Built in \(already paid for\): Zap horn, 2 more chassis mod slots/)
+  expect(pageText()).toMatch(/Built in \(already paid for\):Zap horn ×2 more chassis mod slots ×/)
   await click(button('Add a mod to Putt-Putt'))
   await click(option('Zap Weapon Mount'))
   expect(pageText()).toMatch(/Weapon mounts 1\/1/)

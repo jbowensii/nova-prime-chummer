@@ -21,5 +21,6 @@
   {"cl6": "Thick Accent", "kind": "qualities", "id": "thick-accent", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "con", "value": "1", "what": "NOT_EARN_EDGE"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "con", "value": "1", "what": "NOT_SPEND_EDGE"}}], "gen": "family"},
   {"cl6": "Gaeatronics Cypruss", "kind": "vehicles", "id": "gaeatronics-cypruss-large-surveillance-anthro-drone", "kids": [{"tag": "variant", "attrs": {"name": "with drone rack"}}, {"tag": "variant", "attrs": {"name": "with weapon"}}], "gen": "family"},
   {"cl6": "Mitsubishi Heziba", "kind": "vehicles", "id": "mitsubishi-heziba-hovercraft", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-cf", "value": "4"}}], "gen": "family"},
-  {"cl6": "Stake", "kind": "weapons", "id": "stakes-wooden", "kids": [{"tag": "variant", "attrs": {"name": "Wood"}}, {"tag": "variant", "attrs": {"name": "Silver"}}, {"tag": "variant", "attrs": {"name": "Hunters Allow"}}], "gen": "family"}
+  {"cl6": "Stake", "kind": "weapons", "id": "stakes-wooden", "kids": [{"tag": "variant", "attrs": {"name": "Wood"}}, {"tag": "variant", "attrs": {"name": "Silver"}}, {"tag": "variant", "attrs": {"name": "Hunters Allow"}}], "gen": "family"},
+  {"cl6": "Mitsubishi Heziba", "cl6id": "mitsubischi_heziba", "kind": "vehicles", "id": "mitsubishi-heziba-hovercraft", "kids": [{"tag": "slot", "attrs": {"id": "vehicle-cf", "value": "4"}}], "gen": "slot"}
 ]

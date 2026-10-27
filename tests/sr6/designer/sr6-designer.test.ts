@@ -172,7 +172,7 @@ test('a runner buys a player’s design on Vehicles: its line and built-in mod; 
   await click(button('Buy design'))
   const main = () => pageText(document.querySelector('main')!)
   expect(main()).toMatch(/Red Zip\s*Custom design\s*DC p\.150/)
-  expect(main()).toMatch(/Built in \(already paid for\): Glitter Paint/)
+  expect(main()).toMatch(/Built in \(already paid for\):Glitter Paint ×/)
   await click(button('Save'))
   const line = read(runners.rows.get('r1')!.xml).build.purchases[0]
   expect(line).toMatchObject({ kind: 'vehicles', id: 'design.d1', design: 'd1', name: 'Red Zip' })
