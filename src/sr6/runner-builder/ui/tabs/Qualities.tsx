@@ -3,7 +3,18 @@
 // its choice may be taken again, for another), and the net karma line against the cap.
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
-import { noteAttr, noteSkill, qualityChoice, qualityCost, qualityKarma, qualityPrice, settingQuality, toNuyen } from '../../domain/creation/budgets'
+import {
+  choiceOptions,
+  choiceSelectOptions,
+  noteAttr,
+  noteSkill,
+  qualityChoice,
+  qualityCost,
+  qualityKarma,
+  qualityPrice,
+  settingQuality,
+  toNuyen,
+} from '../../domain/creation/budgets'
 import { stolenLeft } from '../../domain/career/career'
 import { flag, num } from '../../../table-setup/domain/creation'
 import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domain/data'
@@ -54,7 +65,8 @@ export function QualitiesTab() {
           <tbody>
             {rows.map(q => {
               const v = data.qualities[q.id],
-                want = qualityChoice(v?.name)
+                want = qualityChoice(v?.name),
+                co = choiceOptions(data, data.entry('qualities', q.id))
               const named =
                 want === 'attribute' ? noteAttr(q.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, q.note) ?? '']?.name : undefined
               return (
@@ -78,16 +90,30 @@ export function QualitiesTab() {
                     )}
                   </td>
                   <td>
-                    <input
-                      key={`${q.uid}:${q.note ?? ''}`}
-                      defaultValue={q.note ?? ''}
-                      maxLength={200}
-                      placeholder={want ? `the ${want} it is for` : ''}
-                      aria-label={`${v?.name ?? q.id} note`}
-                      onBlur={e => {
-                        if (e.target.value.trim() !== (q.note ?? '')) act({ op: 'quality', id: q.id, uid: q.uid, note: e.target.value })
-                      }}
-                    />
+                    {co ? (
+                      <select
+                        value={q.note ?? ''}
+                        aria-label={`${v?.name ?? q.id} note`}
+                        onChange={e => act({ op: 'quality', id: q.id, uid: q.uid, note: e.target.value })}
+                      >
+                        <option value="">Pick one</option>
+                        {choiceSelectOptions(co, q.note).map(o => (
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        key={`${q.uid}:${q.note ?? ''}`}
+                        defaultValue={q.note ?? ''}
+                        maxLength={200}
+                        aria-label={`${v?.name ?? q.id} note`}
+                        onBlur={e => {
+                          if (e.target.value.trim() !== (q.note ?? '')) act({ op: 'quality', id: q.id, uid: q.uid, note: e.target.value })
+                        }}
+                      />
+                    )}
                     {want && <div className={named ? 'muted small' : 'err small'}>{named ? `For ${named}` : `Name the ${want}`}</div>}
                   </td>
                   <td>
