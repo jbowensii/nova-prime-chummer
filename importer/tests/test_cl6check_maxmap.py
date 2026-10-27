@@ -1,4 +1,4 @@
-"""tools/cl6check/maxmap.py: a Commlink6 `max` becomes a maxLevel row only where the book printed none (invented names)."""
+"""tools/cl6check/maxmap.py: a Commlink6 `max` becomes a maxLevel row only where the book printed none."""
 
 import unittest
 import xml.etree.ElementTree as ET

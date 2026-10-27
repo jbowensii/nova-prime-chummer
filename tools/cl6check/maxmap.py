@@ -1,5 +1,5 @@
-"""Makes the `maxLevel` rows (Commlink6's `max` on a leveled item: a quality, adept power, metamagic, echo, design option,
-dracogenesis power) for entries whose book text prints no maximum:
+"""Makes the `maxLevel` rows (Commlink6's `max` on a leveled item: a quality, adept power, metamagic, echo,
+design option, dracogenesis power) for entries whose book text prints no maximum:
 
   python -m tools.cl6check.maxmap <runs dir> [--jar JAR] [--dry]
 
@@ -31,10 +31,10 @@ def cap(rec):
 
 
 def item_rows(pairs, made=frozenset()):
-    """({src: [row]}, undecided, ambiguous, no_schema): a row for each matched entry without a book-printed maxLevel. made: the
-    (src, kind, id) a row of an earlier run gave (their maxLevel is not the book's). undecided: entries two records cap
-    differently; no_schema: [(src, id, cap)] entries of a kind whose schema has no maxLevel (no row: it
-    would be dropped); ambiguous: [(src, id, name, cap, hasLevel)] entries given a cap but not perLevel (the owner rules).
+    """({src: [row]}, undecided, ambiguous, no_schema): a row for each matched entry without a book-printed maxLevel.
+    made: the (src, kind, id) a row of an earlier run gave (their maxLevel is not the book's). undecided: entries two
+    records cap differently; no_schema: [(src, id, cap)] entries of a kind whose schema has no maxLevel (no row: it
+    would be dropped); ambiguous: [(src, id, name, cap, hasLevel)] entries given a cap but not perLevel (owner rules).
     """
     got = defaultdict(dict)  # (src, kind, id) -> {cap: (record name, record id)}
     for c, o in pairs:
