@@ -594,6 +594,8 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
   const one = priced({ ...x, qty: 1, accessories: [] }, data, cr, host && priced({ ...host, accessories: [] }, data, cr)),
     values = { ...base.values }
   for (const k of ['cost', 'avail', 'essence'] as const) if (e ? values[k] !== undefined : x[k] !== undefined) values[k] = one[k]
+  // a GM-adjusted price (career Ledger) is what the line cost
+  if (x.gmPrice !== undefined && values.cost !== undefined) values.cost = x.gmPrice
   if (!e && x.rating !== undefined) values.rating = x.rating
   // the seats left after some went to cargo (Double Clutch p. 126)
   if (x.seatsRemoved && values.vehicle?.seats !== undefined) values.vehicle = { ...values.vehicle, seats: Math.max(0, values.vehicle.seats - x.seatsRemoved) }

@@ -623,6 +623,7 @@
     <xs:attribute name="grade" type="xs:string"/>
     <xs:attribute name="worn" type="xs:boolean"/>
     <xs:attribute name="note" type="xs:string"/>
+    <xs:attribute name="gmPrice" type="xs:decimal"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>
     <!-- a weapon fitted to a vehicle or drone: the uid of the weapon mount (an accessory of the same vehicle) it is in -->
     <xs:attribute name="mount" type="xs:string"/>
@@ -646,6 +647,12 @@
         </xs:restriction></xs:simpleType>
       </xs:list></xs:simpleType>
     </xs:attribute>
+    <!-- GM override: mod slots added to a vehicle/drone (or other host) instance so an item fits or a budget is widened
+         (owner 2026-10-27); each `id` or `id:value` (`vehicle-cf:4`) -->
+    <xs:attribute name="addedSlots" type="xs:string"/>
+    <!-- GM override: the built-in mods removed from a vehicle/drone instance (owner 2026-10-27), each by its builtin uid
+         (`builtin:0 builtin:2`) -->
+    <xs:attribute name="removedBuiltins" type="xs:string"/>
     <!-- an owned critter (kind critters; its <quality>s its companion qualities, its <trained> its named commands and
          special training): the pet class the player chose (absent: mundane; Awakened and Emerged come from its Magic or
          Resonance), tamed from the wild instead of bought (no price, Wild Life p. 184) -->

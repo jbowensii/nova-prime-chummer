@@ -173,7 +173,6 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         if refresh:  # (once, at the top: the books read again for their cited entries are in the pass too)
             _stubs(custom_dir)
             _links(custom_dir)
-            _unnest_carry(custom_dir)
         return res
     except Exception as e:
         xmlio.write_status(book_dir, "failed", f"{type(e).__name__}: {e}")
@@ -539,68 +538,6 @@ def _links(custom_dir):
             xmlio.write_file(os.path.join(root, s, f), xml)
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"links pass: {type(e).__name__}: {e}", file=sys.stderr)
-
-
-CARRY_SLOTS = frozenset(
-    {"firearms-external", "ranged-external"}
-)  # Commlink6's EMBEDDED carry slots, no weapon's <slot>
-
-
-def _unnest_carry(custom_dir):
-    """Owner ruling (RAW, commit 87ecfd8a): a weapon 'carry' accessory — a spare clip, holster, sling, speed loader,
-    ammo pouch — is standalone gear, not fitted into the weapon. Commlink6 models it as EMBEDDED in a
-    `firearms-external`/`ranged-external` carry slot that no weapon offers as a `<slot>`, so a sample runner that nested
-    one under a weapon read as a bad fit on Review (catalog.accessoryHost). After the whole catalog is on disk, move any
-    accessory whose every fit is a carry slot out of its weapon host to a top-level purchase in the same sample. Runs
-    over all sources (a sample cites other books' accessories). A failure leaves the samples as they are."""
-    root_dir = os.path.join(custom_dir, "imported")
-    if not os.path.isdir(root_dir):
-        return
-    try:
-        fits = {}  # scoped id -> set of its `<fits slot>` ids (from the catalog files, never the samples)
-        for s in os.listdir(root_dir):
-            d = os.path.join(root_dir, s)
-            if not os.path.isdir(d):
-                continue
-            for f in os.listdir(d):
-                if f.endswith(".xml") and os.path.isfile(os.path.join(d, f)):
-                    for e in _parse(Path(d, f).read_text(encoding="utf8")):
-                        if isinstance(e.tag, str) and e.get("id"):
-                            fs = {
-                                k.get("slot") for k in e if isinstance(k.tag, str) and k.tag == "fits" and k.get("slot")
-                            }
-                            if fs:
-                                fits[e.get("id")] = fs
-
-        def carry(pid):
-            fs = fits.get(pid)
-            return bool(fs) and fs <= CARRY_SLOTS
-
-        for s in os.listdir(root_dir):
-            sd = os.path.join(root_dir, s, "samples")
-            if not os.path.isdir(sd):
-                continue
-            for f in sorted(os.listdir(sd)):
-                if not (f.endswith(".xml") and os.path.isfile(os.path.join(sd, f))):
-                    continue
-                p = os.path.join(sd, f)
-                doc, changed = _parse(Path(p).read_text(encoding="utf8")), False
-                hosts = [
-                    e
-                    for e in doc.iter()
-                    if isinstance(e.tag, str) and e.tag == "purchase" and e.get("kind") == "weapons"
-                ]
-                for host in hosts:  # the purchases sit under <build>, not the character root
-                    for kid in [
-                        k for k in host if isinstance(k.tag, str) and k.tag == "purchase" and carry(k.get("id") or "")
-                    ]:
-                        host.remove(kid)
-                        host.addnext(kid)  # a sibling of its old host (under <build>), keeping the purchases together
-                        changed = True
-                if changed:
-                    xmlio.write_file(p, _dump(doc))
-    except Exception as e:  # pylint: disable=broad-exception-caught  # (the samples keep their fittings)
-        print(f"carry-accessory pass: {type(e).__name__}: {e}", file=sys.stderr)
 
 
 def _pdf_title(pdf):

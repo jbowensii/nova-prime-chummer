@@ -545,5 +545,7 @@
   {"cl6": "Implant Medic", "kind": "gear", "id": "utility-nanites-implant-medic-colony", "kids": [{"tag": "fits", "attrs": {"slot": "nanites"}}], "gen": "family"},
   {"cl6": "Nanite Hunter", "kind": "gear", "id": "utility-nanites-nanite-hunter-colony", "kids": [{"tag": "fits", "attrs": {"slot": "nanites"}}], "gen": "family"},
   {"cl6": "Tech Blast", "kind": "gear", "id": "utility-nanites-tech-blast-colony", "kids": [{"tag": "fits", "attrs": {"slot": "nanites"}}], "gen": "family"},
-  {"cl6": "Tech Infestation", "kind": "gear", "id": "utility-nanites-tech-infestation-colony", "kids": [{"tag": "fits", "attrs": {"slot": "nanites"}}], "gen": "family"}
+  {"cl6": "Tech Infestation", "kind": "gear", "id": "utility-nanites-tech-infestation-colony", "kids": [{"tag": "fits", "attrs": {"slot": "nanites"}}], "gen": "family"},
+  {"cl6": "Meat Surrogacy", "cl6id": "meat_surrogacy", "kind": "qualities", "id": "meat-surrogacy", "set": {"maxLevel": "3"}, "gen": "max"},
+  {"cl6": "Uncontrolled Metastasis", "cl6id": "uncontrolled_metastasis", "kind": "qualities", "id": "uncontrolled-metastasis", "set": {"maxLevel": "2"}, "gen": "max"}
 ]

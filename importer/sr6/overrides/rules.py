@@ -36,6 +36,8 @@ VALUE_ATTRS = {
     "avail",
     "karma",
     "karmaMax",
+    "maxLevel",
+    "perLevel",
     "essence",
     "capacity",
     "rating",
@@ -82,7 +84,7 @@ def check(rows):
             raise ValueError(f"override of {r.get('cl6')} sets a description field ({sorted(bad)})")
         if (
             "id" in r
-            and r.get("gen") in ("value", "family", "errata", "owner", "cl6", "book")
+            and r.get("gen") in ("value", "family", "errata", "owner", "cl6", "book", "max", "slot")
             and not any(k in r for k in OPS)
         ):
             if (

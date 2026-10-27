@@ -115,6 +115,14 @@ export type Op =
    *  `remove` (its place in the vehicle's shifts) undone */
   | ({ op: 'shift'; uid: string } & SlotShift)
   | { op: 'shift'; uid: string; remove: number }
+  /** GM override: a slot added to the host instance (character.ts addedSlots) so an item can be fitted that has no
+   *  matching catalog host slot, or to widen a budget; or the one at `remove` (its place) taken off */
+  | { op: 'slot'; uid: string; id: string; value?: string }
+  | { op: 'slot'; uid: string; remove: number }
+  /** GM override: remove a built-in mod from a vehicle/drone instance (`id`: its builtin uid, `builtin:<n>`), or restore
+   *  a removed one (character.ts removedBuiltins). Owner 2026-10-27: everything is removable, built-ins included. */
+  | { op: 'builtin'; uid: string; remove: string }
+  | { op: 'builtin'; uid: string; restore: string }
   | { op: 'wear'; uid: string; worn: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
@@ -668,6 +676,34 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       x.slotShifts = [...(x.slotShifts ?? []), { from: op.from, to: op.to }]
       return OK
     }
+    case 'slot': {
+      const x = allLines(b).find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if ('remove' in op) {
+        if (!x.addedSlots?.[op.remove]) return no('no-slot')
+        x.addedSlots.splice(op.remove, 1)
+        if (!x.addedSlots.length) delete x.addedSlots
+        return OK
+      }
+      if (!op.id.trim()) return no('no-slot-id')
+      x.addedSlots = [...(x.addedSlots ?? []), op.value ? { id: op.id, value: op.value } : { id: op.id }]
+      return OK
+    }
+    case 'builtin': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      if ('restore' in op) {
+        if (!x.removedBuiltins?.includes(op.restore)) return no('not-removed')
+        x.removedBuiltins = x.removedBuiltins.filter(u => u !== op.restore)
+        if (!x.removedBuiltins.length) delete x.removedBuiltins
+        return OK
+      }
+      // (the uid names one of the entry's built-ins; a weapon sitting in a removed built-in mount falls out of it)
+      if (!modsOf(x, data).builtin.some(bi => bi.uid === op.remove)) return no('not-a-builtin')
+      x.removedBuiltins = [...(x.removedBuiltins ?? []), op.remove]
+      for (const a of x.accessories) if (a.mount === op.remove) delete a.mount
+      return OK
+    }
     case 'critter': {
       const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'critters')
       if (!x) return no('unknown-line')
@@ -1162,10 +1198,11 @@ function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): 
   if (remaining !== null && capacityUsed(e, ratingOf(line, e)) * line.qty > Math.max(0, remaining)) return 'Not enough remaining capacity.'
   // a host that prints a Capacity (cyberlimb, cybereyes, glasses, armor) governs by that Capacity — the book value we
   // import — so an accessory installs when its [capacity] fits, even if it declares a `fits` slot the host doesn't carry.
-  // Only a slot-only host (no Capacity: weapon mounts, vehicle hardpoints) is limited by its mount slots themselves.
-  if (remaining === null) {
-    const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he))
-    if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he)).unplaced.length) return 'No compatible mount slot remaining.'
+  // Only a slot-only host (no Capacity: weapon mounts, vehicle hardpoints) is limited by its mount slots themselves. A
+  // vehicle is governed by modsOf below (its declared-or-Body mod-slot budget), not the generic mount-slot placement.
+  if (remaining === null && host.kind !== 'vehicles') {
+    const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he), host.addedSlots)
+    if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he), host.addedSlots).unplaced.length) return 'No compatible mount slot remaining.'
   }
   if (host.kind !== 'vehicles') return
   if (line.kind === 'weapons') {

@@ -135,14 +135,19 @@ export interface Sr6CritterTrained {
 
 /** A bought thing. No id: a custom item at the player's own cost/avail/essence (R). snapshot: the catalog entry as it was,
  *  written on export so the line still reads when the entry is gone. */
-/** A vehicle's or drone's mod slot categories (Double Clutch p. 120). */
-export type SlotKind = 'chassis' | 'powertrain' | 'electronics'
-export const SLOT_KINDS: SlotKind[] = ['chassis', 'powertrain', 'electronics']
-/** One shift of mod slots (Double Clutch p. 120: any available slots can be shifted to another category at 2:1): two
- *  slots of `from` give one of `to`. */
+/** A vehicle's or drone's mod-slot families. The three core categories (Double Clutch p. 120) are always metered off
+ *  the vehicle's Body; cf/accessory/tires are metered only when Commlink6 declares a capacity for them on the vehicle
+ *  (the `vehicle-*` HOOK the slot generator records; owner ruling 2026-10-27). Hardpoints are a separate meter. */
+export type SlotKind = 'chassis' | 'powertrain' | 'electronics' | 'cf' | 'accessory' | 'tires'
+export const SLOT_KINDS: SlotKind[] = ['chassis', 'powertrain', 'electronics', 'cf', 'accessory', 'tires']
+/** The core mod-slot categories, the only ones shifted 2:1 between each other (Double Clutch p. 120). */
+export type ShiftKind = 'chassis' | 'powertrain' | 'electronics'
+export const SHIFT_KINDS: ShiftKind[] = ['chassis', 'powertrain', 'electronics']
+/** One shift of mod slots (Double Clutch p. 120: any available core slots can be shifted to another core category at
+ *  2:1): two slots of `from` give one of `to`. */
 export interface SlotShift {
-  from: SlotKind
-  to: SlotKind
+  from: ShiftKind
+  to: ShiftKind
 }
 export interface Sr6Purchase {
   uid: string
@@ -152,6 +157,8 @@ export interface Sr6Purchase {
   id?: string
   name?: string
   cost?: number
+  /** a vehicle or drone bought at a GM-adjusted nuyen price instead of the catalog/design price (career Ledger); Review warns until a GM approves it */
+  gmPrice?: number
   avail?: number
   essence?: number
   rating?: number
@@ -176,6 +183,14 @@ export interface Sr6Purchase {
   design?: string
   /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
   slotShifts?: SlotShift[]
+  /** GM override (owner 2026-10-27): the built-in mods removed from this vehicle/drone instance, each by its builtin
+   *  uid (`builtin:<n>`, its place among the entry's <builtin>s). A removed built-in no longer counts toward slots,
+   *  hardpoints or mounts and no weapon can sit in it; restoring it clears the uid. Round-trips (charxml). */
+  removedBuiltins?: string[]
+  /** GM override: slots added to this host instance so an item can be fitted that has no matching catalog host slot, or
+   *  to widen a budget. Each is a `<slot id value>` the app treats as if the catalog entry carried it (actions.ts `slot`
+   *  op; honoured by the add-time slot guard). The id is any slot vocabulary id; the value is the capacity it offers. */
+  addedSlots?: { id: string; value?: string }[]
   /** a critter: the pet class the player chose (none: mundane), tamed from the wild instead of bought (no price, Wild
    *  Life p. 184), its named commands and special training (pp. 181-183) and companion qualities */
   pet?: PetClass

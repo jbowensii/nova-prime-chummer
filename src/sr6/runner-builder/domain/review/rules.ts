@@ -139,6 +139,8 @@ const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => {
 
 /** The Review code of a designed vehicle's or drone's GM approval: a warning a GM may approve (Review.tsx). */
 export const DESIGN_APPROVAL = 'vehicle.design'
+/** The Review code of a vehicle or drone bought at a GM-adjusted price: a warning a GM approves (Review.tsx). */
+export const PRICE_APPROVAL = 'vehicle.price'
 
 const RULES: Rule[] = [
   {
@@ -948,7 +950,8 @@ const RULES: Rule[] = [
     check: c => {
       const hits: Hit[] = []
       for (const { x, path, host, own } of lines(c.b)) {
-        if (!host || !own || own.grade === x.grade || host.kind !== 'augmentations') continue
+        // compare the effective grades: an add-on with no grade of its own is already its implant's, so it's not noted
+        if (!host || !own || (own.grade || 'standard') === (x.grade || 'standard') || host.kind !== 'augmentations') continue
         const g = (k?: string) => (k ? gradeName(c.data, k) : 'standard')
         hits.push({
           path,
@@ -1678,6 +1681,19 @@ const RULES: Rule[] = [
       c.b.purchases
         .filter(x => (x.design || [x.id, x.snapshot?.id].some(i => i?.startsWith('design.'))) && x.snapshot?.attrs.approved !== 'true')
         .map(x => ({ path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 })),
+  },
+  // a vehicle or drone bought at a price other than its catalog/design price (career Ledger gmPrice): needs a GM's approval
+  {
+    code: PRICE_APPROVAL,
+    severity: 'warning',
+    tab: 'vehicles',
+    check: c =>
+      c.b.purchases
+        .filter(x => x.gmPrice !== undefined)
+        .map(x => ({
+          path: `vehicles.${x.uid}`,
+          message: `Bought at an adjusted price, ${x.gmPrice!.toLocaleString('en-US')}¥: needs GM approval (${nameOf(c, x)}).`,
+        })),
   },
   // an owned critter past its limits (critters.ts: commands, special training, qualities, taming, bonding, Body for
   // critterware, Essence), and bonded qualities without the runner's Critter Bond path (SWC p. 139): warned, never refused

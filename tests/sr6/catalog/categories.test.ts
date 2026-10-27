@@ -235,3 +235,38 @@ test('a Rigger Command Console that fits slot rcc is offered on a host with an r
     ),
   ).toBe(true)
 })
+
+test('a spare clip (and the Predator magazine as gear) fits a firearm carrying the firearms-external slot, and is not offered as standalone gear', () => {
+  const e = (kind: Sr6Entry['kind'], id: string, parts: object[]): Sr6Entry =>
+    ({ id, kind, name: id, source: 'CRB', page: 1, attrs: {}, text: '', parts }) as never
+  const gun = e('weapons', 't.gun', [{ tag: 'slot', attrs: { id: 'firearms-external' } }])
+  const clip = e('weapons', 't.clip', [{ tag: 'fits', attrs: { slot: 'firearms-external' } }])
+  const mag = e('gear', 't.mag', [{ tag: 'fits', attrs: { slot: 'firearms-external' } }])
+  const index = new Map<string, Sr6Entry[]>()
+  expect(fitsHost(index, clip, gun)).toBe(true)
+  expect(fitsHost(index, mag, gun)).toBe(true)
+  expect(offeredOn(index, mag, undefined, undefined, () => true)).toBe(false)
+})
+
+test('a modonly item (CL6 modonly="true") is never offered standalone, only embedded in a host it fits', () => {
+  const e = (kind: Sr6Entry['kind'], id: string, attrs: Record<string, string>, parts: object[] = []): Sr6Entry =>
+    ({ id, kind, name: id, source: 'CRB', page: 1, attrs, text: '', parts }) as never
+  const index = new Map<string, Sr6Entry[]>()
+  // a core vehicle mod: modonly, fits a vehicle's chassis slot
+  const host = e('vehicles', 't.van', {}, [{ tag: 'slot', attrs: { id: 'vehicle-chassis' } }])
+  const coremod = e('gear', 't.coremod', { modonly: 'true' }, [{ tag: 'fits', attrs: { slot: 'vehicle-chassis' } }])
+  // a modonly item with no declared fit and no category: still never standalone
+  const bareMod = e('gear', 't.baremod', { modonly: 'true' })
+  expect(offeredOn(index, coremod, host, undefined, () => true)).toBe(true) // embedded in its host
+  expect(offeredOn(index, coremod, undefined, undefined, () => true)).toBe(false) // never standalone
+  expect(offeredOn(index, bareMod, undefined, undefined, () => true)).toBe(false)
+  expect(
+    offeredOn(
+      index,
+      bareMod,
+      undefined,
+      () => true,
+      () => false,
+    ),
+  ).toBe(false) // not even on a take-any line
+})

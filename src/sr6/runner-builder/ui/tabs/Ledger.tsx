@@ -12,6 +12,7 @@ import {
   choiceSelectOptions,
   diyAllowed,
   entryOf,
+  isDrone,
   licenceFee,
   powerCost,
   priced,
@@ -43,12 +44,12 @@ import {
   MAGIC_KIND_LABELS,
   PET_CLASSES,
   PURCHASE_KINDS,
-  SLOT_KINDS,
+  SHIFT_KINDS,
   sinName,
   type PetClass,
   type PickKind,
   type PurchaseKind,
-  type SlotKind,
+  type ShiftKind,
   type Sr6Advance,
   type Sr6Attr,
   type Sr6LedgerEntry,
@@ -70,7 +71,7 @@ import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../domai
 import { critterWearable } from './Critters'
 import { mountsOf } from '../../domain/assets/vehiclemods'
 
-const OPS = [
+export const OPS = [
   ['attribute', 'Raise attribute'],
   ['skill', 'Raise skill'],
   ['spec', 'Specialization'],
@@ -87,7 +88,8 @@ const OPS = [
   ['powerpoint', 'Power point (mystic adepts)'],
   ['initiate', 'Initiate or submerge'],
   ['purchase', 'Buy gear'],
-  ['design', 'Buy a vehicle or drone of your design'],
+  ['vehicle', 'Buy a vehicle'],
+  ['drone', 'Buy a drone'],
   ['critter', 'Buy a critter'],
   ['upgrade', 'Upgrade an item I own (grade or level)'],
   ['drop', 'Sell or drop gear'],
@@ -107,6 +109,12 @@ const OPS = [
   ['other', 'Other'],
 ] as const
 type OpKey = (typeof OPS)[number][0]
+
+/** What a buy op offers in the picker: vehicles and drones have their own ops; Buy gear holds the rest. */
+export function buyKinds(op: OpKey): Sr6Kind[] {
+  if (op === 'vehicle' || op === 'drone') return ['vehicles'] // a drone is a vehicles entry of drone class (isDrone)
+  return PURCHASE_KINDS.filter(k => k !== 'critters' && k !== 'vehicles') as Sr6Kind[]
+}
 // the four learn ops: each a 'pick' advance of one kind
 const LEARN: Record<string, PickKind> = { learnSpell: 'spells', learnRitual: 'rituals', learnComplexForm: 'complexforms', learnAdeptPower: 'adeptpowers' }
 const whole = (s: string) => (/^-?\d+$/.test(s.trim()) ? Number(s) : NaN)
@@ -150,6 +158,7 @@ export function LedgerTab() {
     neg: '',
     refund: '',
     grade: '',
+    price: '', // a vehicle/drone's GM-adjusted nuyen price (blank: the catalog/design price)
     note: '', // the attribute/skill a chosen power or spell names (Attribute Boost, Improved Ability)
   })
   // (a critter bought: the commands and special training it comes with, catalog ids)
@@ -168,6 +177,7 @@ export function LedgerTab() {
   const importRef = useRef<HTMLInputElement>(null)
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
   const designs = useSr6Designs()
+  const kindDesigns = designs.filter(d => (d.design!.kind === 'drone') === (op === 'drone'))
   const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
   // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them), and critters (critterware, gear)
   const vehicles = ch.build.purchases.filter(x => x.kind === 'vehicles'),
@@ -189,7 +199,22 @@ export function LedgerTab() {
     setPicked(null)
     setLicences([])
     setTrainedIds([])
-    setF(x => ({ ...x, target: '', name: '', karma: '', nuyen: '', label: '', gender: '', mount: '', diy: false, neg: '', refund: '', grade: '', note: '' }))
+    setF(x => ({
+      ...x,
+      target: '',
+      name: '',
+      karma: '',
+      nuyen: '',
+      label: '',
+      gender: '',
+      mount: '',
+      diy: false,
+      neg: '',
+      refund: '',
+      grade: '',
+      price: '',
+      note: '',
+    }))
   }
 
   const attrs: Sr6Attr[] = [...CORE_ATTRS, 'edg', ...(kind.spells || kind.powers ? ['mag' as const] : []), ...(kind.resonance ? ['res' as const] : [])]
@@ -260,6 +285,23 @@ export function LedgerTab() {
         return { op }
       case 'initiate':
         return { op, ...(f.target ? { line: { uid: '', kind: initKind as PickKind, id: f.target } } : {}) }
+      // Custom: one of your designs (the Designer) as it works out now; else the catalog pick, bought like gear
+      case 'vehicle':
+      case 'drone': {
+        const doc = f.target ? designs.find(d => d.id === f.target) : undefined
+        const line: Sr6Purchase | null = f.target
+          ? doc
+            ? boughtDesign(doc, data, cr, '')
+            : null
+          : e
+            ? { uid: '', kind: 'vehicles', id: e.id, qty: 1, accessories: [] }
+            : null
+        if (!line) return null
+        // a price typed that differs from the computed one is recorded as the line's gmPrice (Review asks a GM to approve it)
+        const pr = f.price.trim() ? priced(line, data, cr) : undefined
+        const typed = f.price.trim() ? whole(f.price) : NaN
+        return { op: 'purchase', line: pr?.ok && Number.isFinite(typed) && typed >= 0 && typed !== pr.cost ? { ...line, gmPrice: typed } : line }
+      }
       case 'purchase':
         return e
           ? {
@@ -308,11 +350,6 @@ export function LedgerTab() {
         const w = trainedWhat(data.entry('actions', f.name))
         return f.target && w ? { op, target: f.target, line: { uid: '', what: w, id: f.name, taught: true } } : null
       }
-      // one of your designs (the Designer) as it works out now
-      case 'design': {
-        const doc = designs.find(d => d.id === f.target)
-        return doc ? { op: 'purchase', line: boughtDesign(doc, data, cr, '') } : null
-      }
       case 'drop': {
         if (!f.target) return null
         const r = whole(f.refund)
@@ -328,7 +365,7 @@ export function LedgerTab() {
       }
       // (two slots of one category into one of another, Double Clutch p. 120; a weapon into another of its vehicle's mounts)
       case 'shift':
-        return f.target ? { op, target: f.target, from: f.from as SlotKind, to: f.to as SlotKind } : null
+        return f.target ? { op, target: f.target, from: f.from as ShiftKind, to: f.to as ShiftKind } : null
       case 'move':
         return f.target && f.mount ? { op, target: f.target, mount: f.mount } : null
       // (a weapon into one of the vehicle's mounts; do it yourself: a mod at half price, Double Clutch p. 120)
@@ -703,6 +740,8 @@ export function LedgerTab() {
         {(op === 'quality' ||
           op in LEARN ||
           op === 'purchase' ||
+          op === 'vehicle' ||
+          op === 'drone' ||
           op === 'martialart' ||
           (op === 'technique' && f.target) ||
           (op === 'upgrade' && f.target) ||
@@ -800,17 +839,32 @@ export function LedgerTab() {
             </select>
           </label>
         )}
-        {op === 'design' && (
+        {(op === 'vehicle' || op === 'drone') && (
           <label>
-            Design
+            Custom (from your Designer)
             <select aria-label="Design" value={f.target} onChange={e => set({ target: e.target.value })}>
-              <option value="">{designs.length ? 'Pick one' : 'None yet: make one in the Designer'}</option>
-              {designs.map(d => (
+              <option value="">{kindDesigns.length ? 'Pick one' : 'None yet: make one in the Designer'}</option>
+              {kindDesigns.map(d => (
                 <option key={d.id} value={d.id}>
                   {d.identity.streetName || 'Unnamed design'}
                 </option>
               ))}
-            </select>
+            </select>{' '}
+            <a href="#/sr6/designs">Open the Designer</a>
+          </label>
+        )}
+        {(op === 'vehicle' || op === 'drone') && (
+          <label>
+            Price (¥, optional: GM adjusts, needs approval)
+            <input
+              aria-label="Adjusted price"
+              type="number"
+              min={0}
+              step={100}
+              value={f.price}
+              onChange={e => set({ price: e.target.value })}
+              style={{ width: '8rem' }}
+            />
           </label>
         )}
         {op === 'critter' && (
@@ -972,7 +1026,7 @@ export function LedgerTab() {
             <label>
               Two slots from
               <select aria-label="Shift from" value={f.from} onChange={e => set({ from: e.target.value })}>
-                {SLOT_KINDS.map(k => (
+                {SHIFT_KINDS.map(k => (
                   <option key={k} value={k}>
                     {k}
                   </option>
@@ -982,7 +1036,7 @@ export function LedgerTab() {
             <label>
               One slot to
               <select aria-label="Shift to" value={f.to} onChange={e => set({ to: e.target.value })}>
-                {SLOT_KINDS.map(k => (
+                {SHIFT_KINDS.map(k => (
                   <option key={k} value={k}>
                     {k}
                   </option>
@@ -1410,7 +1464,11 @@ export function LedgerTab() {
                   ? 'Fit'
                   : op === 'critter'
                     ? 'Buy a critter'
-                    : 'Buy gear'
+                    : op === 'vehicle'
+                      ? 'Buy a vehicle'
+                      : op === 'drone'
+                        ? 'Buy a drone'
+                        : 'Buy gear'
         }
         critter={(op === 'fit' && host?.kind === 'critters') || undefined}
         kinds={
@@ -1432,20 +1490,22 @@ export function LedgerTab() {
                           : ACCESSORY_KINDS // cyberware/bioware/gear host: the accessory kinds, filtered to what fits it
                       : op === 'critter'
                         ? ['critters']
-                        : (PURCHASE_KINDS.filter(k => k !== 'critters') as Sr6Kind[])
+                        : buyKinds(op)
         }
         filter={
-          op === 'quality'
-            ? e => !!data.qualities[e.id]
-            : op === 'upgrade'
-              ? above(upgradable.find(x => x.uid === f.target))
-              : op === 'fit'
-                ? host?.kind === 'critters'
-                  ? critterWearable
-                  : host?.kind === 'vehicles'
-                    ? e => e.kind !== 'weapons' || !isAccessory(e)
-                    : e => offeredOn(data.categories, e, entryOf(host!, data), undefined, isAccessory) // only accessories that fit the implant/host
-                : undefined
+          op === 'vehicle' || op === 'drone'
+            ? e => isDrone(e) === (op === 'drone')
+            : op === 'quality'
+              ? e => !!data.qualities[e.id]
+              : op === 'upgrade'
+                ? above(upgradable.find(x => x.uid === f.target))
+                : op === 'fit'
+                  ? host?.kind === 'critters'
+                    ? critterWearable
+                    : host?.kind === 'vehicles'
+                      ? e => e.kind !== 'weapons' || !isAccessory(e)
+                      : e => offeredOn(data.categories, e, entryOf(host!, data), undefined, isAccessory) // only accessories that fit the implant/host
+                  : undefined
         }
         note={
           op in LEARN

@@ -117,6 +117,14 @@ class ClassRuleTest(unittest.TestCase):
         host = '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="4"><name>A</name></augmentation>'
         self.assertNotIn("fits", [t for t, _ in self.run_rule(host)])
 
+    def test_a_firearm_gets_the_firearms_external_slot_a_melee_weapon_none(self):
+        gun = '<weapon id="a" class="WEAPON_FIREARMS/PISTOLS_LIGHT"><name>G</name></weapon>'
+        self.assertIn(("slot", {"id": "firearms-external"}), self.run_rule(gun, "weapons"))
+        self.assertNotIn(
+            "slot",
+            [t for t, _ in self.run_rule(gun.replace("FIREARMS/PISTOLS_LIGHT", "CLOSE_COMBAT/BLADES"), "weapons")],
+        )
+
     def test_a_cyberlimb_host_gets_its_implant_slot_at_the_printed_capacity(self):
         # obvious limbs carry more than synthetic; the printed capacity is the slot's value
         arm = (
@@ -141,6 +149,23 @@ class ClassRuleTest(unittest.TestCase):
         self.assertEqual(
             [t for t, _ in self.run_rule('<vehicle id="a"><name>X</name></vehicle>', "vehicles")], ["name"]
         )
+
+    def test_tyres_only_for_ground_wheeled_vehicles(self):
+        # Commlink6 gates ACCESSORY/TIRES to wheeled ground subtypes: a car and a ground drone get a tyre slot;
+        # a fixed-wing aircraft, a flying drone, a tracked tank and a walker do not.
+        def tyres(cls):
+            v = f'<vehicle id="a" body="6" class="{cls}"><name>V</name></vehicle>'
+            return "vehicle-tires" in [a["id"] for t, a in self.run_rule(v, "vehicles") if t == "slot"]
+
+        self.assertTrue(tyres("VEHICLES/CARS"))
+        self.assertTrue(tyres("VEHICLES/BIKES"))
+        self.assertTrue(tyres("DRONE_SMALL/GROUND"))
+        self.assertFalse(tyres("VEHICLES/FIXED_WING"))
+        self.assertFalse(tyres("VEHICLES/ROTORCRAFT"))
+        self.assertFalse(tyres("VEHICLES/TRACKED"))
+        self.assertFalse(tyres("VEHICLES/WALKER"))
+        self.assertFalse(tyres("DRONE_SMALL/AIR"))
+        self.assertFalse(tyres(""))  # unknown locomotion: no tyres (CL6 has them on wheeled only)
 
     def test_a_weapon_accessory_fits_each_mount_it_prints_and_nothing_else(self):
         w = '<weapon id="a" class="ACCESSORY/WEAPON_ACCESSORY" mount="%s"><name>A</name></weapon>'

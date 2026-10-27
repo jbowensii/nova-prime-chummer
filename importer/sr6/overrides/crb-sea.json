@@ -21,5 +21,7 @@
   {"cl6": "What Doesn't Kill You", "kind": "qualities", "id": "what-doesnt-kill-you", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "ATTRIBUTE", "ref": "RESIST_TOXIN", "value": "1", "what": "REPLACE_WITH_WILD", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "You Get Used to It", "kind": "qualities", "id": "you-get-used-to-it", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "RESIST_TOXIN", "value": "1", "set": "NATURAL", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "RESIST_TOXIN", "value": "1", "set": "NATURAL", "apply": "CHARACTER"}}], "gen": "family"},
-  {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "gen": "cl6", "why": "the book gives swimming speed; Commlink6 also gives +1 toxin resistance a level (apply: character)", "effects": [{"target": "test:toxin-resistance", "op": "add", "value": "R"}]}
+  {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "gen": "cl6", "why": "the book gives swimming speed; Commlink6 also gives +1 toxin resistance a level (apply: character)", "effects": [{"target": "test:toxin-resistance", "op": "add", "value": "R"}]},
+  {"cl6": "The Briar Patch", "cl6id": "the_briar_patch", "kind": "qualities", "id": "the-briar-patch", "set": {"maxLevel": "2", "perLevel": "true"}, "gen": "max"},
+  {"cl6": "Water Born", "cl6id": "water_born", "kind": "qualities", "id": "water-born", "set": {"maxLevel": "2"}, "gen": "max"}
 ]

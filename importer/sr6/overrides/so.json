@@ -87,5 +87,6 @@
   {"cl6": "Supportive Follower", "kind": "qualities", "id": "supportive-follower", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "con", "value": "3"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "SKILL", "ref": "influence", "value": "3"}}], "gen": "family"},
   {"cl6": "Lie Detector", "kind": "adeptpowers", "id": "lie-detector", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "JUDGE_INTENTIONS", "value": "$LEVEL"}}], "gen": "family"},
   {"cl6": "Chaos", "kind": "mentorspirits", "id": "chaos", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "con", "value": "-1", "what": "EDGE_BOOST"}}], "gen": "family"},
-  {"cl6": "Cheap Clothes", "kind": "armor", "id": "cheap-clothes", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "family"}
+  {"cl6": "Cheap Clothes", "kind": "armor", "id": "cheap-clothes", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "family"},
+  {"cl6": "Social Style", "cl6id": "social_style", "kind": "qualities", "id": "social-style", "set": {"maxLevel": "9"}, "gen": "max"}
 ]

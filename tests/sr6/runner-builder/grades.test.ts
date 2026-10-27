@@ -116,4 +116,8 @@ test('an implant’s add-ons have its grade (CRB p. 282): priced at it, changed 
   expect(plating.grade).toBeUndefined()
   expect(priced(limb, data, cr)).toMatchObject({ cost: 9000 + 3000 + 800, essence: 1 })
   expect(validateSr6(data, cr, ch).some(x => x.code === 'gear.accessoryGrade')).toBe(false)
+  // regression: an add-on with no grade of its own on an explicitly-standard implant is already standard — not noted
+  limb.grade = 'standard'
+  plating.grade = undefined
+  expect(validateSr6(data, cr, ch).some(x => x.code === 'gear.accessoryGrade')).toBe(false)
 })

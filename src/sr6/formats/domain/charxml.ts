@@ -17,7 +17,7 @@ import {
   PET_CLASSES,
   PURCHASE_KINDS,
   SR6_ADVANCE_OPS,
-  SLOT_KINDS,
+  SHIFT_KINDS,
   SR6_ATTRS,
   SR6_LEDGER_TYPES,
   SR6_METHODS,
@@ -78,6 +78,7 @@ function purchaseXml(p: Sr6Purchase): string {
       id: p.id,
       name: p.name,
       cost: p.cost,
+      gmPrice: p.gmPrice,
       avail: p.avail,
       essence: p.essence,
       rating: p.rating,
@@ -91,6 +92,8 @@ function purchaseXml(p: Sr6Purchase): string {
       material: p.material,
       design: p.design,
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
+      addedSlots: p.addedSlots?.length ? p.addedSlots.map(s => (s.value ? `${s.id}:${s.value}` : s.id)).join(' ') : undefined,
+      removedBuiltins: p.removedBuiltins?.length ? p.removedBuiltins.join(' ') : undefined,
       pet: p.pet,
       tamed: p.tamed,
     },
@@ -428,6 +431,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     id: str(e, 'id'),
     name: str(e, 'name'),
     cost: num(e, 'cost'),
+    gmPrice: num(e, 'gmPrice'),
     avail: num(e, 'avail'),
     essence: num(e, 'essence'),
     rating: num(e, 'rating'),
@@ -442,6 +446,12 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     material: str(e, 'material'),
     design: str(e, 'design'),
     slotShifts: readShifts(e, fix),
+    addedSlots: readAddedSlots(e),
+    removedBuiltins: (u => (u.length ? u : undefined))(
+      str(e, 'removedBuiltins')
+        ?.split(/\s+/)
+        .filter(w => /^builtin:\d+$/.test(w)) ?? [],
+    ),
     pet: str(e, 'pet') === undefined ? undefined : oneOf(e.getAttribute('pet'), PET_CLASSES, 'pet class', undefined, fix),
     tamed: yes(e, 'tamed'),
     trained: listOrNone([...each(kids(e, 'trained'), readTrained, label, fix), ...olderTrained(e, fix)]),
@@ -508,9 +518,21 @@ function readShifts(e: Element, fix?: string[]): SlotShift[] | undefined {
   const out: SlotShift[] = []
   for (const w of str(e, 'slotShifts')?.split(/\s+/).filter(Boolean) ?? []) {
     const [from, to] = w.split('>')
-    if ((SLOT_KINDS as string[]).includes(from) && (SLOT_KINDS as string[]).includes(to) && from !== to) out.push({ from, to } as SlotShift)
+    if ((SHIFT_KINDS as string[]).includes(from) && (SHIFT_KINDS as string[]).includes(to) && from !== to) out.push({ from, to } as SlotShift)
     else if (fix) fix.push(`${e.getAttribute('name') || 'A vehicle'}: the mod slot shift “${w}” isn’t between two categories, so it’s left out.`)
     else throw new Error(`mod slot shift “${w}” (not category>category)`)
+  }
+  return out.length ? out : undefined
+}
+
+/** A host's GM-added slots (`id` or `id:value`, space-separated); an empty id is left out. */
+function readAddedSlots(e: Element): { id: string; value?: string }[] | undefined {
+  const out: { id: string; value?: string }[] = []
+  for (const w of str(e, 'addedSlots')?.split(/\s+/).filter(Boolean) ?? []) {
+    const i = w.indexOf(':'),
+      id = i < 0 ? w : w.slice(0, i),
+      value = i < 0 ? undefined : w.slice(i + 1)
+    if (id) out.push(value ? { id, value } : { id })
   }
   return out.length ? out : undefined
 }
@@ -759,8 +781,8 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return {
         op,
         target: req(e, 'target'),
-        from: oneOf(e.getAttribute('from'), SLOT_KINDS, 'mod slot category')!,
-        to: oneOf(e.getAttribute('to'), SLOT_KINDS, 'mod slot category')!,
+        from: oneOf(e.getAttribute('from'), SHIFT_KINDS, 'mod slot category')!,
+        to: oneOf(e.getAttribute('to'), SHIFT_KINDS, 'mod slot category')!,
       }
     case 'move':
       return { op, target: req(e, 'target'), mount: req(e, 'mount') }

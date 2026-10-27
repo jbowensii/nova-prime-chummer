@@ -276,7 +276,8 @@ test('newEntryId and blankSr6Entry', () => {
     parts: COMP_KINDS.spirits!.lines!.map(tag => ({ tag, attrs: {}, text: '' })),
     text: '',
   })
-  expect(blankSr6Entry(c, 'echoes', kit, 'Hum').attrs).toEqual({})
+  // echoes now carry the leveled attributes (perLevel/maxLevel, owner ruling 2026-10-27)
+  expect(blankSr6Entry(c, 'echoes', kit, 'Hum').attrs).toEqual({ perLevel: '', maxLevel: '' })
 })
 
 test('sr6EntryXml is unchanged for the edits layer (empty <text/>); the compendium writes the text and leaves out what is unset', () => {

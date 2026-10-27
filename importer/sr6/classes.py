@@ -91,15 +91,28 @@ def apply(files, cmap=None, src=None, rules=None):
 HOST_SLOTS = {"CYBERWARE/CYBER_EYEWARE": "cybereye-implant", "CYBERWARE/CYBER_EARWARE": "cyberear-implant"}
 # every drivable vehicle offers these general modification categories (CRB p.280+): a mod's `<fits>` names one. The
 # specific weapon/hardpoint slots stay Commlink6's, per armed vehicle. No value: vehicle mod capacity is CF-accounted
-# elsewhere, and Review matches only the slot id.
+# at runtime (the Body rule), and Review matches only the slot id.
 VEHICLE_MOD_SLOTS = (
     "vehicle-accessory",
     "vehicle-cf",
     "vehicle-electronics",
     "vehicle-chassis",
     "vehicle-powertrain",
-    "vehicle-tires",
+    "vehicle-hardpoint",
 )
+# Commlink6 gates its two tyre accessories (ACCESSORY/TIRES) to ground vehicles that run on wheels: small tyres allow
+# BIKES/ATVS/GROUND (drones), large tyres CARS/TRUCKS/VANS/BUS/SPECIAL_VEHICLES. So only those get a `vehicle-tires`
+# slot — not aircraft, rotorcraft, VTOL, airships, boats/ships/subs, hovercraft/grav, tracked, walkers, or flying/
+# aquatic/anthro drones. The locomotion is the vehicle's class subtype (VEHICLES/CARS, DRONE_SMALL/GROUND).
+TIRE_SUBTYPES = {"CARS", "TRUCKS", "VANS", "BIKES", "ATVS", "BUS", "SPECIAL_VEHICLES", "GROUND"}
+
+
+def ground_wheeled(cls):
+    """Whether a vehicle of Commlink6 class `cls` runs on tyres (its subtype is one Commlink6's tyres allow)."""
+    sub = (cls or "").split("/", 1)[-1].strip().upper() if "/" in (cls or "") else ""
+    return sub in TIRE_SUBTYPES
+
+
 MOUNTS = {
     "top": ("top",),
     "under": ("under",),
@@ -135,9 +148,11 @@ def associations(files):
             cls = e.get("class") or ""
             if name == "vehicles.xml":
                 # a drivable vehicle (it prints a Body) offers the general mod categories; a vehicle mod or a stat
-                # line without a Body gets none.
+                # line without a Body gets none. Tyres only when it runs on wheels (Commlink6's ACCESSORY/TIRES gate).
                 if (e.get("body") or "").strip():
                     want += [("slot", {"id": s}) for s in VEHICLE_MOD_SLOTS]
+                    if ground_wheeled(cls):
+                        want.append(("slot", {"id": "vehicle-tires"}))
             elif (slot := HOST_SLOTS.get(cls)) and re.fullmatch(r"\d+", cap):
                 want.append(("slot", {"id": slot, "value": cap}))
             elif cls == "CYBERWARE/CYBER_LIMBS" and re.fullmatch(r"\d+", cap):
@@ -145,6 +160,9 @@ def associations(files):
                 # capacity the book prints is the slot's value (obvious limbs carry more than synthetic: Arm 15 vs 8).
                 skull = "skull" in (e.findtext("name") or "").casefold()
                 want.append(("slot", {"id": "headware-implant" if skull else "cyberlimb-implant", "value": cap}))
+            elif name == "weapons.xml" and cls.startswith("WEAPON_FIREARMS/"):
+                # owner ruling: every clip/magazine/speed loader is a weapon accessory fitting the firearm's carry slot
+                want.append(("slot", {"id": "firearms-external"}))
             elif cls == "ACCESSORY/WEAPON_ACCESSORY":
                 for m in re.split(r"\s*(?:/|,|\bor\b)\s*", e.get("mount") or ""):
                     want += [("fits", {"slot": x}) for x in MOUNTS.get(m.strip().casefold(), ())]

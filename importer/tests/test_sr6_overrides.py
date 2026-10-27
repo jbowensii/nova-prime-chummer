@@ -386,7 +386,7 @@ class ClassTest(unittest.TestCase):
             r
             for p in overrides.DIR.glob("*.json")
             for r in overrides.table(p.stem)
-            if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata", "owner")
+            if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata", "owner", "max")
         ]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
