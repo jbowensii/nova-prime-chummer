@@ -117,6 +117,31 @@ class ClassRuleTest(unittest.TestCase):
         host = '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="4"><name>A</name></augmentation>'
         self.assertNotIn("fits", [t for t, _ in self.run_rule(host)])
 
+    def test_a_cyberlimb_host_gets_its_implant_slot_at_the_printed_capacity(self):
+        # obvious limbs carry more than synthetic; the printed capacity is the slot's value
+        arm = (
+            '<augmentation id="a" class="CYBERWARE/CYBER_LIMBS" capacity="15"><name>Arm (obvious)</name></augmentation>'
+        )
+        self.assertIn(("slot", {"id": "cyberlimb-implant", "value": "15"}), self.run_rule(arm))
+        # a skull holds headware, not a cyberlimb implant
+        skull = arm.replace("Arm (obvious)", "Skull (synthetic)").replace('capacity="15"', 'capacity="4"')
+        self.assertIn(("slot", {"id": "headware-implant", "value": "4"}), self.run_rule(skull))
+        # an accessory (bracketed capacity) in the cyberlimb-accessory class gets no host slot
+        acc = (
+            '<augmentation id="a" class="ACCESSORY/CYBER_LIMB_ACCESSORY" capacity="[2]">'
+            "<name>Holster</name></augmentation>"
+        )
+        self.assertEqual([t for t, _ in self.run_rule(acc)], ["name"])
+
+    def test_a_drivable_vehicle_gets_the_general_mod_slots_and_a_statline_none(self):
+        car = '<vehicle id="a" body="11"><name>Car</name></vehicle>'
+        got = [a["id"] for t, a in self.run_rule(car, "vehicles") if t == "slot"]
+        self.assertEqual(got, list(classes.VEHICLE_MOD_SLOTS))
+        # an entry in vehicles.xml with no Body (a stat line, a mod) is not a drivable host
+        self.assertEqual(
+            [t for t, _ in self.run_rule('<vehicle id="a"><name>X</name></vehicle>', "vehicles")], ["name"]
+        )
+
     def test_a_weapon_accessory_fits_each_mount_it_prints_and_nothing_else(self):
         w = '<weapon id="a" class="ACCESSORY/WEAPON_ACCESSORY" mount="%s"><name>A</name></weapon>'
         got = self.run_rule(w % "Top or Under", "weapons")

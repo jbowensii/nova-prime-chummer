@@ -89,6 +89,17 @@ def apply(files, cmap=None, src=None, rules=None):
 
 
 HOST_SLOTS = {"CYBERWARE/CYBER_EYEWARE": "cybereye-implant", "CYBERWARE/CYBER_EARWARE": "cyberear-implant"}
+# every drivable vehicle offers these general modification categories (CRB p.280+): a mod's `<fits>` names one. The
+# specific weapon/hardpoint slots stay Commlink6's, per armed vehicle. No value: vehicle mod capacity is CF-accounted
+# elsewhere, and Review matches only the slot id.
+VEHICLE_MOD_SLOTS = (
+    "vehicle-accessory",
+    "vehicle-cf",
+    "vehicle-electronics",
+    "vehicle-chassis",
+    "vehicle-powertrain",
+    "vehicle-tires",
+)
 MOUNTS = {
     "top": ("top",),
     "under": ("under",),
@@ -100,14 +111,15 @@ MOUNTS = {
 
 def associations(files):
     """files with the slots and fits Commlink6's model gives by class and by the printed column, wherever the entry
-    has none of that id yet (a row's own stays): a host's `<slot>` for its eyeware/earware implants (the capacity it
-    prints, when that is a plain number: an accessory prints `[1]`) and a weapon accessory's `<fits>` for each mount
-    its MOUNT column names. A host never gets a `<fits>` and an accessory never a `<slot>`."""
+    has none of that id yet (a row's own stays): a host's `<slot>` for its eyeware/earware implants and a cyberlimb's
+    for the weapons and enhancements it holds (the capacity it prints, when that is a plain number: an accessory prints
+    `[1]`), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A host never gets a `<fits>` and an
+    accessory never a `<slot>`."""
     from lxml import etree
 
     out = dict(files)
     for name, xml in files.items():
-        if not xml or not name.endswith(".xml") or name[:-4] not in ("augmentations", "weapons", "gear"):
+        if not xml or not name.endswith(".xml") or name[:-4] not in ("augmentations", "weapons", "gear", "vehicles"):
             continue
         root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))
         changed = False
@@ -116,12 +128,24 @@ def associations(files):
                 continue
             want = []  # (tag, attrs)
             cap = (e.get("capacity") or "").strip()
-            # ponytail: a bare-integer capacity marks the eyeware/earware HOST (1/4/8/12/16); an accessory prints
-            # `[n]`/`[Rating]`/`—`. Sound on current data; if a future eyeware/earware ACCESSORY ever prints a bare
-            # integer capacity it would wrongly get a host slot — tighten with an explicit host/accessory flag then.
-            if (slot := HOST_SLOTS.get(e.get("class") or "")) and re.fullmatch(r"\d+", cap):
+            # ponytail: a bare-integer capacity marks the eyeware/earware/cyberlimb HOST (a limb prints 4/8/10/15…); an
+            # accessory prints `[n]`/`[Rating]`/`—`. Sound on current data; if a future eyeware/earware/cyberlimb
+            # ACCESSORY ever prints a bare integer capacity it would wrongly get a host slot — tighten with an explicit
+            # host/accessory flag then.
+            cls = e.get("class") or ""
+            if name == "vehicles.xml":
+                # a drivable vehicle (it prints a Body) offers the general mod categories; a vehicle mod or a stat
+                # line without a Body gets none.
+                if (e.get("body") or "").strip():
+                    want += [("slot", {"id": s}) for s in VEHICLE_MOD_SLOTS]
+            elif (slot := HOST_SLOTS.get(cls)) and re.fullmatch(r"\d+", cap):
                 want.append(("slot", {"id": slot, "value": cap}))
-            elif e.get("class") == "ACCESSORY/WEAPON_ACCESSORY":
+            elif cls == "CYBERWARE/CYBER_LIMBS" and re.fullmatch(r"\d+", cap):
+                # a limb holds implanted weapons/enhancements in its capacity; a skull holds headware instead. The
+                # capacity the book prints is the slot's value (obvious limbs carry more than synthetic: Arm 15 vs 8).
+                skull = "skull" in (e.findtext("name") or "").casefold()
+                want.append(("slot", {"id": "headware-implant" if skull else "cyberlimb-implant", "value": cap}))
+            elif cls == "ACCESSORY/WEAPON_ACCESSORY":
                 for m in re.split(r"\s*(?:/|,|\bor\b)\s*", e.get("mount") or ""):
                     want += [("fits", {"slot": x}) for x in MOUNTS.get(m.strip().casefold(), ())]
             for tag, attrs in want:
