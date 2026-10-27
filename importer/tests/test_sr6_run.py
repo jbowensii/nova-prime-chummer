@@ -230,5 +230,44 @@ class Sr6RunTest(unittest.TestCase):
         self.assertEqual(_cited(self.book, self.custom, has("Glim Charm")), [])
 
 
+class UnnestCarryTest(unittest.TestCase):
+    """_unnest_carry: a carry accessory (fits only a firearms/ranged-external slot) is moved out of its weapon host to
+    a standalone purchase; a real-mount accessory stays."""
+
+    CATALOG = (
+        '<?xml version="1.0"?>\n<sr6:data xmlns:sr6="urn:chummer-sr6:data:1">\n'
+        '  <weapon id="crb.sling"><name>Sling</name>'
+        '<fits slot="firearms-external"/><fits slot="ranged-external"/></weapon>\n'
+        '  <weapon id="crb.scope"><name>Scope</name><fits slot="top"/></weapon>\n'
+        "</sr6:data>\n"
+    )
+    SAMPLE = (
+        '<?xml version="1.0"?>\n<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" id="crb.s"><build>\n'
+        '  <purchase uid="g1" kind="weapons" id="crb.gun" name="Gun" qty="1">'
+        '<purchase uid="g1a1" kind="weapons" id="crb.scope" name="Scope" qty="1"/>'
+        '<purchase uid="g1a2" kind="weapons" id="crb.sling" name="Sling" qty="1"/></purchase>\n'
+        "</build></sr6:character>\n"
+    )
+
+    def test_carry_accessory_is_unnested_and_a_real_mount_stays(self):
+        from importer.sr6.run import _unnest_carry
+
+        tmp = tempfile.mkdtemp()
+        base = os.path.join(tmp, "imported", "crb")
+        os.makedirs(os.path.join(base, "samples"))
+        Path(base, "weapons.xml").write_text(self.CATALOG, encoding="utf8")
+        sample = os.path.join(base, "samples", "crb.s.xml")
+        Path(sample).write_text(self.SAMPLE, encoding="utf8")
+        _unnest_carry(tmp)
+        root = ET.fromstring(_read(sample).split("?>", 1)[1])
+        build = root[0]
+        gun = next(e for e in build if e.get("id") == "crb.gun")
+        nested = [e.get("id") for e in gun]
+        top = [e.get("id") for e in build]
+        self.assertEqual(nested, ["crb.scope"])  # the real mount stays fitted
+        self.assertIn("crb.sling", top)  # the sling is now a standalone purchase
+        self.assertIn("crb.gun", top)
+
+
 if __name__ == "__main__":
     unittest.main()
