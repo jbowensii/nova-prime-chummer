@@ -465,27 +465,36 @@ Placements: 792 re-fittable, 249 factory-only (128 + 121), 15 undefined. **Measu
 synthesis: 1,041 / 1,056 = 98.6%** from direct refs alone. **With the pattern rules (§4.6): 1,055 / 1,056 = 99.91%,
 measured, and exactly 1 forced override** (§4.7).
 
-### 5.2 Owner decisions needed
+### 5.2 Owner decisions — all RULED (owner 2026-10-28)
 
-1. **D1. Who may remove factory parts:** the player at creation and in career, or the GM only (today)? Recommendation:
-   the player, at creation and in Ledger career, since it is reversible.
-2. **D2. Retire text `<builtin>`** where CL6 embeds exist (CL6 wins). Keep it only for book-only vehicles?
-   Recommendation: yes.
-3. **D3. Synthesize engines and other "whole system" parts that CL6 does not have?** Recommendation: no. Powertrain
-   stays a budget.
-4. **D4. Refund on removal:** 0 (recommended), or a fraction of the part's catalog price?
-5. **D5. RULED (owner 2026-10-28):** carried gear on drones is allowed **through the GM custom mod** (§4.8). A GM
-   derives a new mod from any gear, sets its hook and size, and approves it as persisted custom content. Free-form
-   gear-in-slot is not allowed.
-6. **D6. RULED (owner 2026-10-28):** the Hornet injector defaults to CL6's `mct_hornet_stinger` on the **hardpoint at
-   0.5** (rule M7 maps DC's undefined `hornet_injector_mount` to it). The GM can adjust it through the same custom-mod
-   path.
-9. **D9 (new). The one forced override:** the Harley-Davidson Scorpion's `meta_adjust_pilot_troll`. Should it be
-   `driver_troll` (recommended) or `passenger_troll`?
-7. **D7. Records that disagree** (63 multi-record ids): confirm *latest printing wins* for embeds as a whole set (not
-   merged per part).
-8. **D8. The `included` flag** (58 placements): show it as "included in price" with removal at no refund, while non-included
-   factory options are priced? This depends on Stage 0 confirming the meaning.
+1. **D1. Who may remove factory parts — RULED: the player**, at creation and in Ledger career. It is reversible
+   (Restore re-installs), so no GM round-trip is needed for routine swaps.
+2. **D2. Deriving parts — RULED: derive from CL6's model via the pattern rules (§4.6); a hard override is used only
+   where the rules cannot resolve a part.** Where CL6 has structured embeds, those are the part list and the old
+   text `<builtin>` entries are retired for that vehicle; `<builtin>` survives only for book-only vehicles CL6 does
+   not cover.
+3. **D3. Synthesize "whole system" parts CL6 lacks — RULED: yes, for ALL such parts, not only engines.** Each
+   synthesized part is **named after its source object** (e.g. "GMC Bulldog Engine"), its size/slots come from a
+   **derived or CL6 pattern** (§4.x synthesis rule), and it is an **available, removable item**. Every synthesized
+   part carries `origin="synthesized"` and a **needs-review** flag (never silently invented). The powertrain remains
+   a capacity hook; genuine CL6 powertrain upgrades (improved_economy, nitro_boost, …) already import as parts by the
+   normal embed rule — synthesis fills only the gaps where no CL6 part exists (engine/powerplant and any other
+   whole-system component the vehicle implies).
+4. **D4. Refund on removal — RULED: 0 by default.** The factory kit is baked into the sticker price. A GM may enter a
+   **custom refund and approve it** (used goods, likely sold on the black market); there are **no standard amounts**.
+   Re-installing a removed part costs 0. Restore is always free and reversible.
+5. **D5. RULED:** carried gear on drones is allowed **through the GM custom mod** (§4.8). A GM derives a new mod from
+   any gear, sets its hook and size, and approves it as persisted custom content. Free-form gear-in-slot is not allowed.
+6. **D6. RULED:** the Hornet injector defaults to CL6's `mct_hornet_stinger` on the **hardpoint at 0.5** (rule M7 maps
+   DC's undefined `hornet_injector_mount` to it). The GM can adjust it through the same custom-mod path.
+7. **D7. Records that disagree — RULED: latest printing wins, whole embed set** (not merged per part). Matches the
+   standing "current latest printing wins, always" rule; avoids cross-edition loadouts no single book describes.
+8. **D8. The `included` flag — RULED: `included="true"` = in the base price** (remove freely, no refund per D4);
+   non-included factory parts are shown with their own price as add-ons. Stage 0 confirms the flag's exact meaning
+   against CL6 before the importer relies on it; if it means something else, flag it back to the owner.
+9. **D9. The ambiguous ref — RULED:** the Harley-Davidson Scorpion's `meta_adjust_pilot_troll` is a **driver/pilot
+   troll seat** occupying VEHICLE_CF. Removing it frees that CF capacity — enough for a standard-size pilot seat plus a
+   passenger seat.
 
 The fit plan's open decisions still apply (decompiler access; who emits vehicle slots, R8; book-only weapon size).
 
