@@ -55,6 +55,10 @@ export const social = (s: string | undefined) => {
 
 /** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
 export const groupOf = (e: Sr6Entry) => (e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category)
+/** A coarse major category for a picker that spans many kinds (Buy gear): breaks out by weapons, cyberware, bioware,
+ *  geneware, ammunition, armour, software, … — the item's kind (or, for an augmentation, its type) — instead of the fine,
+ *  often vendor-named, category. */
+export const majorGroupOf = (e: Sr6Entry): string => (e.kind === 'augmentations' ? e.attrs.type || 'Augmentations' : SR6_KINDS[e.kind].label)
 
 /** House and the compendium's name for a GM compendium's entry (nothing for a book's). */
 export function House({ c, source }: { c: Sr6Catalog; source: string }) {
@@ -243,7 +247,7 @@ export function CatalogPicker({
         <Picker
           placeholder="Search"
           onPick={pick}
-          groups={[...new Set(entries.map(e => groupOf(e) ?? ''))].filter(Boolean).sort()}
+          groups={[...new Set(entries.map(e => (kinds.length > 1 ? majorGroupOf : groupOf)(e) ?? ''))].filter(Boolean).sort()}
           items={entries.map(e => {
             const r = ratingRange(e.attrs.rating),
               p = priceAt(e, r[0] ?? 1, cr, undefined, data, from ? undefined : ctx?.ch.build),
@@ -251,7 +255,7 @@ export function CatalogPicker({
             return {
               id: `${e.kind}:${e.id}`,
               name: entryLabel(e),
-              group: groupOf(e),
+              group: (kinds.length > 1 ? majorGroupOf : groupOf)(e),
               card: () => sr6Row(c, e),
               cardKind: SR6_KINDS[e.kind].label,
               meta: [

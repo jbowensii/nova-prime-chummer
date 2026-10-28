@@ -604,11 +604,14 @@ export function LedgerTab() {
         <label>
           What
           <select value={op} onChange={e => choose(e.target.value as OpKey)}>
-            {OPS.filter(([k, l]) => k === op || l.toLowerCase().includes(opFind.trim().toLowerCase())).map(([k, l]) => (
-              <option key={k} value={k}>
-                {l}
-              </option>
-            ))}
+            {OPS.filter(([k, l]) => k === op || l.toLowerCase().includes(opFind.trim().toLowerCase()))
+              .slice()
+              .sort((a, z) => a[1].localeCompare(z[1]))
+              .map(([k, l]) => (
+                <option key={k} value={k}>
+                  {l}
+                </option>
+              ))}
           </select>
         </label>
         <label>
@@ -1355,6 +1358,21 @@ export function LedgerTab() {
             reasonText(pv.reason)
           )}
         </p>
+        {op === 'purchase' && (
+          // buying a bunch of small things: record this one as its own line (no confirm) and reopen the picker for the next
+          <button
+            className="btn"
+            disabled={!pv?.ok}
+            onClick={() => {
+              if (adv && !record(adv, typed)) {
+                choose(op)
+                setPicking(true)
+              }
+            }}
+          >
+            Record &amp; buy another
+          </button>
+        )}
         <button className="btn primary" disabled={!pv?.ok} onClick={() => setConfirm(true)}>
           Record
         </button>
