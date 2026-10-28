@@ -30,6 +30,26 @@ type, subtype, WEAPON_SIZE, AMMUNITION_CLASS and SOFTWARE_TYPES, and in some cas
 This is how CL6 encodes "hold type". We import those requirements but never apply them, and we flatten their OR
 groups (R9 and R10).
 
+## Goal (owner, 2026-10-28)
+
+Every item in the catalog must end up **fully flagged** — its class/type, hooks, usage (fits + mode + cost), host
+capacity, size, ammunition class, hold-type (host requirements) and `modonly` all set — with **100% certainty that
+each item is flagged**, and with **Commlink6 as the single standard we measure against** (the §7 flag-parity gate).
+
+Order of preference for how each flag is set, highest first:
+
+1. **Derive it from the text / importer.** Pull the flag from the jar (the matched CL6 record's attrs, hooks and
+   `<requires>`) or compute it with a rule that mirrors CL6's code (`AddMissingStandardSlots`, `CalculateVehicleSlots`,
+   the `WeaponSize`→`VEHICLE_WEAPON_*` map, the class table for book-only items). This is the goal for **100% of the
+   missing information** — no hand-maintained lists where a rule can do it.
+2. **Fall back to a hard-coded override only where derivation cannot reach the item** (a book-only item CL6 never had,
+   or a case no rule covers). An override is the exception, is listed in the import report, and is justified against
+   CL6; it never stands in for a rule we could write. This narrows the owner's standing "no exception tables" rule to:
+   rules first, overrides only as a last resort, and every override visible.
+
+Done means: the §7 comparison reaches its parity targets against CL6, and **no item leaves the importer unflagged** —
+any item a rule cannot flag is either overridden (and reported) or surfaced for an owner ruling, never shipped blank.
+
 ---
 
 ## 0. Acceptance gates for this document
@@ -575,6 +595,70 @@ Additions to the §3.3 rules:
 | F5 | Every gate CL6 applies is enumerated | met (§6.3, 7 gates; availability flagged as unconfirmed) |
 | F6 | Matrix, gaps and plan updated, with code claims cited | met (§6.5–§6.7) |
 | F7 | Still only this one file changed | met |
+
+---
+
+## 7. Flag comparison layer: our derived flags vs CL6, name for name (2026-10-28)
+
+The owner has decided: **on import, derive every per-item flag (hold type, type, category, size and the rest) from
+the hooks, and name our flags exactly as CL6 names them.** This section sets each flag's CL6 source, our derivation,
+and today's measured match.
+
+### 7.1 How it was measured
+
+- **Catalog:** the 78-book reconstruction from the sibling session (`C:\dev\_scratch\validation-audit\recon-current`,
+  built 2026-10-27 from current code, overrides and the jar). **Caveat:** it predates the 0.29.x vehicle-slot changes.
+  Re-run Stage 0 on a fresh import before taking these numbers as final.
+- **Pairing:** `tools.cl6check.__main__.compare(...)[2]`, CL6's own matcher. 4,287 pairs. **2,269 of them are
+  `<item>` records**, and those are the population below.
+- **Scripts:** `C:\dev\_scratch\cl6cls\pairs.py` and `flags.py`, outside the repo. A flag is counted only on pairs
+  where either side has it, and "match" means equal after normalizing case, spaces and underscores.
+
+### 7.2 Summary table (for the owner)
+
+| Flag (CL6 name) | CL6 source | How we will derive it on import | Items compared | Match today | What the mismatches are | Root cause |
+|---|---|---|---|---|---|---|
+| **ITEMTYPE / ITEMSUBTYPE** (class) | `<item type subtype>` | copy verbatim from the matched record; book-only items by the class table | 2,269 (2,106 without PACK) | **92.3%** (99.5% without PACK) | 163 starter packs (`PACK`) that have no class on our side; 11 real reclassifications (fangs BIOWARE vs CYBERWARE, imaging scope ELECTRONICS vs ACCESSORY, 4 sensor functions, 1 MOD_ELEC vs MOD_POWER, …) | R5 (class not authoritative), R1 |
+| **Hooks offered** (host `ItemHook`s, as written) | `itemmod/valmod type=HOOK` | familymap, as today | 619 | **63.3%** | 211 of 227: we add six generic `vehicle-*` slots to vehicles where CL6 computes them in code; 16 others (audio, cybereye, mixed vehicle sets) | R1, R8 |
+| **Hooks offered** (including CL6's code-added standard hooks) | `AddMissingStandardSlots` | standard-hook rule by class (Stage 2.2) | 853 | **50.8%** | we lack ELECTRONIC_ACCESSORY on 150 electronics, FIREARMS_EXTERNAL on 136 firearms, MELEE_EXTERNAL on 116 melee/special weapons, RANGED_EXTERNAL on 18 bows (tyres left out: CL6's subtype switch is unconfirmed) | R1 |
+| **Usage hooks** (fits) | `usage mode=EMBEDDED slot` | familymap, as today | 551 | **98.2%** | 10: 4 sensor functions, laser sight and silencer missing `implantweapon-accessory`/`under`, 2 vehicle mods with extra families | R1, R7 (variant usages) |
+| **Usage mode** (EMBEDDED/IMPLANTED/CARRIED/VIRTUAL) | `usage mode` | keep `mode` on each fits (Stage 1) | 822 | **0%** (not stored) | every item: the mode is dropped | R6 |
+| **Host capacity** (points hooks) | `valmod HOOK value` on CYBER*/ARMOR/OPTICAL/AUDIO/HELMET/FASHION/SENSOR_HOUSING/ELECTRONIC_ACCESSORY | the slot `value` | 125 | **53.6%** | 38: ELECTRONIC_ACCESSORY value 99 (CL6's "no limit") vs none on ours; 20 more where the capacity sits on a variant and our record shows none | R7, R3 |
+| **Usage cost** (capacity a fitted item takes) | `usage value` | keep `cost` on each fits (Stage 1) | 280 | **50.0%** | 140: ours has no printed cost where CL6 has one (mostly 1, 2, 0.5 and 0 slots or points) | R3 |
+| **WEAPON_SIZE** (size) | `attrdef WEAPON_SIZE` | copy verbatim | 85 | **100%** | none | — |
+| **AMMUNITION_CLASS** | `attrdef AMMUNITION_CLASS` | copy verbatim | 56 | **100%** (after normalizing spaces and underscores) | none; the spelling differs only (`Assault Cannon B25` vs `ASSAULT_CANNON_B25`) | adopt the CL6 spelling |
+| **modonly** | `<item modonly>` | copy verbatim | 12 | **83.3%** | `spare_clip_new` (ours modonly, CL6 not); `living_console` (CL6 modonly, ours not) | R1 (copy, don't infer) |
+| **Mount kind** (MOD_HARD/MOD_MOUNT) | subtype `MOD_MOUNT` | from class, never from the name | 11 | **45.5%** | 3 we call mounts by name that CL6 does not (articulated weapon mount, the Nissan Samurai vehicle, …); 3 CL6 mounts we miss (blow-away panels, pop-out concealment) | R5 |
+| **Hold type** (host requirements present) | `requires` with apply = host / DATA_ITEM / PARENT | grouped prerequisites (Stage 1/2) | 237 | **86.9%** | 25 where CL6 gates the host and ours carries no host gate; 6 where ours has one and CL6 does not | R9, R10 |
+| **Category** | none: CL6 has no category, its `subtype` is the closest | keep our printed category for display only; never use it for fit | — | not comparable | — | R2 (category must not decide fit) |
+
+Headline numbers:
+- **Already at 100%:** size and ammunition class.
+- **At or near target:** class 99.5% (once packs are excluded), fits 98.2%.
+- **Weak:** hooks offered (63% as written, 51% with CL6's standard hooks), host capacity 54%, usage cost 50%,
+  mount kind 45%.
+- **Not stored at all:** usage mode, 0% of 822.
+
+### 7.3 Stage 2 verification amendment and the new gate
+
+Stage 2 now ends with a **flag-parity report**: the `flags.py` logic moved into `tools/cl6check` (Stage 0 adds it
+next to `hookmap.py`). For each flag it prints *matched / compared* and lists every mismatch.
+
+**Gate S2-F (blocking for Stage 2 merge):** every derived flag matches CL6 on **≥ 99%** of matched items that carry
+it, and every remaining mismatch is listed with an owner ruling or a root-cause id. The exceptions are hooks offered
+and host capacity, which must reach 100% for every hook CL6 sets in code. Category is exempt: it is display-only.
+Measured today, **this gate fails on 9 of 12 flags.** Only size, ammunition class and class (with packs excluded) pass. That is the expected starting point, and the list above is the
+Stage 2 work.
+
+### 7.4 Gates for this section
+
+| # | Gate | Result |
+|---|---|---|
+| C1 | Every listed flag has a CL6 source, a derivation and a measured match | met (§7.2: 12 flags plus category) |
+| C2 | Numbers measured, not estimated | met (2,269 item pairs, `flags.py`) |
+| C3 | Every mismatch group is tied to R1–R12 | met |
+| C4 | The new flag-parity gate is folded into Stage 2 | met (§7.3) |
+| C5 | Only this file changed | met |
 
 ---
 
