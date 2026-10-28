@@ -570,14 +570,9 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                 <section className="panel" aria-label="Starting vehicle">
                   <h3>Starting vehicle</h3>
                   <p>
-                    {(e =>
-                      e ? (
-                        <Sr6Ref kind="vehicles" id={e.id}>
-                          {entryLabel(e)}
-                        </Sr6Ref>
-                      ) : (
-                        <span className="err">this vehicle is no longer in the catalog</span>
-                      ))(data.entry('vehicles', d.base))}
+                    {(e => (e ? <b>{entryLabel(e)}</b> : <span className="err">this vehicle is no longer in the catalog</span>))(
+                      data.entry('vehicles', d.base),
+                    )}
                   </p>
                   <p className="muted">
                     Its stats, price and Availability are the baseline; add mods below. Switch to a from-scratch build to pick a chassis instead.
