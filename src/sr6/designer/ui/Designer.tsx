@@ -369,10 +369,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
     partsOf(c, p).map(e => (
       <label key={e.id} className="inline">
         <input type="checkbox" aria-label={entryLabel(e)} checked={levelOf(e.id) > 0} onChange={ev => setLevel(e.id, ev.target.checked ? 1 : 0)} />{' '}
-        {entryLabel(e)} ({dpText(e)}){' '}
-        <span className="muted">
-          {e.source} p.{e.page}
-        </span>
+        {entryLabel(e)} ({dpText(e)})
       </label>
     ))
   const st = sheet.stats
@@ -408,113 +405,130 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
           Read only — {owner}’s design. Only they can change it; you can still export a copy.
         </p>
       )}
-      <main className="lib">
+      <main className="lib dsn">
         <p>{back}</p>
-        <fieldset className="bare stack" disabled={ro}>
-          <section className="stack" aria-label="The design">
-            <div className="grid2">
-              <label>
-                Name
-                <input value={doc.identity.streetName} onChange={e => update((_, ch) => void (ch.identity.streetName = e.target.value))} />
+        <fieldset className="bare" disabled={ro}>
+          {/* header band: name, kind and the two design flags */}
+          <div className="dsn-head">
+            <label>
+              Name
+              <input value={doc.identity.streetName} onChange={e => update((_, ch) => void (ch.identity.streetName = e.target.value))} />
+            </label>
+            <label>
+              A vehicle or a drone
+              <select
+                value={d.kind}
+                onChange={e =>
+                  update(x => {
+                    x.kind = e.target.value as Sr6Design['kind']
+                    delete x.chassis // (a vehicle's chassis isn't a drone's)
+                  })
+                }
+              >
+                <option value="vehicle">Vehicle</option>
+                <option value="drone">Drone</option>
+              </select>
+            </label>
+            <div className="dsn-flags">
+              <label className="inline">
+                <input type="checkbox" checked={!!d.diy} onChange={e => update(x => void (e.target.checked ? (x.diy = true) : delete x.diy))} /> Do it yourself
+                — half price
               </label>
-              <label>
-                A vehicle or a drone
-                <select
-                  value={d.kind}
-                  onChange={e =>
-                    update(x => {
-                      x.kind = e.target.value as Sr6Design['kind']
-                      delete x.chassis // (a vehicle's chassis isn't a drone's)
-                    })
-                  }
-                >
-                  <option value="vehicle">Vehicle</option>
-                  <option value="drone">Drone</option>
-                </select>
+              <label className="inline">
+                <input
+                  type="checkbox"
+                  disabled={!gm}
+                  checked={!!d.approved}
+                  onChange={e => update(x => void (e.target.checked ? (x.approved = true) : delete x.approved))}
+                />{' '}
+                Approved by a GM{!gm && <span className="muted"> — a GM must approve before a runner buys it</span>}
               </label>
             </div>
-            <label className="inline">
-              <input type="checkbox" checked={!!d.diy} onChange={e => update(x => void (e.target.checked ? (x.diy = true) : delete x.diy))} /> Do it yourself
-              (half the price, p. 155; the design and build tests are the GM’s)
-            </label>
-            <label className="inline">
-              <input
-                type="checkbox"
-                disabled={!gm}
-                checked={!!d.approved}
-                onChange={e => update(x => void (e.target.checked ? (x.approved = true) : delete x.approved))}
-              />{' '}
-              Approved by a GM{' '}
-              {gm
-                ? '(a runner who buys it needs no GM approval)'
-                : '(only a GM can approve a design; a runner who buys it gets a Review warning until a GM approves it)'}
-            </label>
-          </section>
-
-          <h2>1–3. Chassis, powertrain and console</h2>
-          <div className="grid2">
-            {pick('chassis', chassisList, 'Chassis')}
-            {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
-            {pick('console', partsOf(c, 'console'), 'Console')}
           </div>
 
-          <h2>4. Options</h2>
-          <p className="muted">Each level adds to the vehicle; below 0 takes the option in reverse (fewer Design Points). Past a maximum is a warning.</p>
-          {partsOf(c, 'option').map(e => (
-            <span key={e.id} className="row">
-              <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
-              {dpText(e)}
-              {e.attrs.max ? `; at most ${e.attrs.max}` : ''}){' '}
-              {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
-                <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
-                  <option value="">On-road and off-road</option>
-                  <option value="on">On-road only (3 DP a level; at most 3)</option>
-                  <option value="off">Off-road only (3 DP a level; at most 3)</option>
-                </select>
-              )}{' '}
-              <span className="muted">
-                {e.source} p.{e.page}
-              </span>
-            </span>
-          ))}
-          <h3>Design modifications</h3>
-          {toggles('modification')}
-          <h3>Quality factors</h3>
-          {toggles('quality')}
+          {/* top row: the build parts on the left, the worked-out vehicle on the right */}
+          <div className="dsn-top">
+            <section className="panel" aria-label="Chassis, powertrain and console">
+              <h3>Chassis, powertrain &amp; console</h3>
+              <div className="dsn-picks">
+                {pick('chassis', chassisList, 'Chassis')}
+                {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
+                {pick('console', partsOf(c, 'console'), 'Console')}
+              </div>
+            </section>
+            <section className="panel dsn-vehicle" aria-label="The vehicle">
+              <h3>The vehicle</h3>
+              <div className="statgrid">
+                {STATS.map(([k, l]) => (
+                  <div className="stat" key={k}>
+                    <span className="sl">{l}</span>
+                    <b>{k === 'handling' && st.offRoad !== st.handling ? `${st.handling}/${st.offRoad}` : st[k]}</b>
+                  </div>
+                ))}
+                <div className="stat">
+                  <span className="sl">Cargo</span>
+                  <b>{st.cargoText}</b>
+                </div>
+              </div>
+            </section>
+          </div>
 
-          <h3>Mods built in</h3>
-          <p className="muted">Each costs 2 Design Points a mod slot; its nuyen is added to the price after the × 1,000.</p>
-          {d.mods.map(x => {
-            const e = entryOf(x, data),
-              m = sheet.mods.find(y => y.uid === x.uid)
-            const label = e ? entryLabel(e) : (x.name ?? 'Custom mod')
-            return (
-              <span key={x.uid} className="row">
-                {label}
-                {x.rating ? ` ${x.rating}` : ''} · {n(m?.slots ?? 0)} slot{m?.slots === 1 ? '' : 's'}, {n(m?.dp ?? 0)} DP · {n(m?.nuyen ?? 0)}¥
-                <button
-                  className="btn small quiet"
-                  aria-label={`Take ${label} out of the design`}
-                  onClick={() => update(y => void (y.mods = y.mods.filter(z => z.uid !== x.uid)))}
-                >
-                  ×
-                </button>
-              </span>
-            )
-          })}
-          <span className="row">
-            <button className="btn small quiet" onClick={() => setAdding(true)}>
-              Add a mod…
-            </button>
-          </span>
+          {/* options, modifications and quality factors */}
+          <section className="panel" aria-label="Options">
+            <h3>Options</h3>
+            <div className="dsn-opts">
+              {partsOf(c, 'option').map(e => (
+                <span key={e.id} className="row">
+                  <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
+                  {dpText(e)})
+                  {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
+                    <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
+                      <option value="">On- and off-road</option>
+                      <option value="on">On-road only</option>
+                      <option value="off">Off-road only</option>
+                    </select>
+                  )}
+                </span>
+              ))}
+            </div>
+            <h4>Design modifications</h4>
+            <div className="dsn-toggles">{toggles('modification')}</div>
+            <h4>Quality factors</h4>
+            <div className="dsn-toggles">{toggles('quality')}</div>
+          </section>
+
+          {/* mods built in */}
+          <section className="panel" aria-label="Mods built in">
+            <h3>Mods built in</h3>
+            {d.mods
+              .map(x => ({ x, label: entryOf(x, data) ? entryLabel(entryOf(x, data)!) : (x.name ?? 'Custom mod') }))
+              .sort((a, z) => a.label.localeCompare(z.label))
+              .map(({ x, label }) => {
+                const m = sheet.mods.find(y => y.uid === x.uid)
+                return (
+                  <span key={x.uid} className="row">
+                    {label}
+                    {x.rating ? ` ${x.rating}` : ''} · {n(m?.slots ?? 0)} slot{m?.slots === 1 ? '' : 's'}, {n(m?.dp ?? 0)} DP · {n(m?.nuyen ?? 0)}¥
+                    <button
+                      className="btn small quiet"
+                      aria-label={`Take ${label} out of the design`}
+                      onClick={() => update(y => void (y.mods = y.mods.filter(z => z.uid !== x.uid)))}
+                    >
+                      ×
+                    </button>
+                  </span>
+                )
+              })}
+            <span className="row">
+              <button className="btn small quiet" onClick={() => setAdding(true)}>
+                Add a mod…
+              </button>
+            </span>
+          </section>
         </fieldset>
 
-        <section className="stack" aria-label="Totals">
-          <h2>5–6. The vehicle, its Design Points and price</h2>
-          <p>
-            {STATS.map(([k, l]) => `${l} ${k === 'handling' && st.offRoad !== st.handling ? `${st.handling}/${st.offRoad}` : st[k]}`).join(' · ')} · Cargo{' '}
-            {st.cargoText}
-          </p>
+        <section className="receipt dsn-totals" aria-label="Design Points and price">
+          <h2>Design Points &amp; price</h2>
           <p>
             Design Points <b>{n(sheet.dp)}</b>
             {sheet.multiplier !== 1 && (
