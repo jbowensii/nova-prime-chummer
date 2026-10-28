@@ -296,6 +296,63 @@ const dpText = (e: Sr6Entry) => {
   return v === null ? `${e.attrs.dp ?? e.attrs.bp} DP` : `${v} DP${designPart(e) === 'option' ? ' a level' : ''}`
 }
 
+/** The six faces of a vehicle, for placing armour and weapons later. A quartered compass (fore/aft/port/starboard) with
+ *  a silhouette in the middle, and dorsal/ventral (top/bottom) as a pair of chips. A reference for now; not yet wired to
+ *  mounts. */
+function FacingCircle({ drone }: { drone: boolean }) {
+  const arcs: [string, string, string][] = [
+    ['fore', 'M60 60 L60 6 A54 54 0 0 1 114 60 Z', 'Fore'],
+    ['star', 'M60 60 L114 60 A54 54 0 0 1 60 114 Z', 'Starboard'],
+    ['aft', 'M60 60 L60 114 A54 54 0 0 1 6 60 Z', 'Aft'],
+    ['port', 'M60 60 L6 60 A54 54 0 0 1 60 6 Z', 'Port'],
+  ]
+  return (
+    <section className="panel dsn-facing" aria-label="Facing">
+      <h3>Facing</h3>
+      <svg viewBox="0 0 120 120" role="img" aria-label="Fore, aft, port and starboard faces">
+        {arcs.map(([k, dPath, label]) => (
+          <path key={k} className={`arc arc-${k}`} d={dPath}>
+            <title>{label}</title>
+          </path>
+        ))}
+        <circle cx="60" cy="60" r="27" className="hub" />
+        <g className="sil" aria-hidden>
+          {drone ? (
+            <>
+              <circle cx="60" cy="60" r="8" />
+              <circle cx="49" cy="49" r="3.5" />
+              <circle cx="71" cy="49" r="3.5" />
+              <circle cx="49" cy="71" r="3.5" />
+              <circle cx="71" cy="71" r="3.5" />
+            </>
+          ) : (
+            <>
+              <rect x="52" y="44" width="16" height="32" rx="4" />
+              <rect x="55" y="48" width="10" height="9" rx="2" className="glass" />
+            </>
+          )}
+        </g>
+        <text x="60" y="15" className="fl">
+          FORE
+        </text>
+        <text x="60" y="110" className="fl">
+          AFT
+        </text>
+        <text x="60" y="60" className="fl" transform="rotate(90 60 60)" dy="-46">
+          STAR
+        </text>
+        <text x="60" y="60" className="fl" transform="rotate(-90 60 60)" dy="-46">
+          PORT
+        </text>
+      </svg>
+      <div className="dsn-dv">
+        <span className="chip">Dorsal (top)</span>
+        <span className="chip">Ventral (bottom)</span>
+      </div>
+    </section>
+  )
+}
+
 /** One design's editor (#/sr6/designs/<id>). */
 export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string }) {
   const repo = useMemo(() => sr6DesignRepo(), [])
@@ -408,69 +465,73 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
       <main className="lib dsn">
         <p>{back}</p>
         <fieldset className="bare" disabled={ro}>
-          {/* header band: name, kind and the two design flags */}
-          <div className="dsn-head">
-            <label>
-              Name
-              <input value={doc.identity.streetName} onChange={e => update((_, ch) => void (ch.identity.streetName = e.target.value))} />
-            </label>
-            <label>
-              A vehicle or a drone
-              <select
-                value={d.kind}
-                onChange={e =>
-                  update(x => {
-                    x.kind = e.target.value as Sr6Design['kind']
-                    delete x.chassis // (a vehicle's chassis isn't a drone's)
-                  })
-                }
-              >
-                <option value="vehicle">Vehicle</option>
-                <option value="drone">Drone</option>
-              </select>
-            </label>
-            <div className="dsn-flags">
-              <label className="inline">
-                <input type="checkbox" checked={!!d.diy} onChange={e => update(x => void (e.target.checked ? (x.diy = true) : delete x.diy))} /> Do it yourself
-                — half price
+          {/* the build parts, the worked-out vehicle and the facing circle stay pinned at the top while the rest scrolls */}
+          <div className="dsn-sticky">
+            {/* header band: name and kind, with the two flags side by side */}
+            <div className="dsn-head">
+              <label>
+                Name
+                <input value={doc.identity.streetName} onChange={e => update((_, ch) => void (ch.identity.streetName = e.target.value))} />
               </label>
-              <label className="inline">
-                <input
-                  type="checkbox"
-                  disabled={!gm}
-                  checked={!!d.approved}
-                  onChange={e => update(x => void (e.target.checked ? (x.approved = true) : delete x.approved))}
-                />{' '}
-                Approved by a GM{!gm && <span className="muted"> — a GM must approve before a runner buys it</span>}
+              <label>
+                A vehicle or a drone
+                <select
+                  value={d.kind}
+                  onChange={e =>
+                    update(x => {
+                      x.kind = e.target.value as Sr6Design['kind']
+                      delete x.chassis // (a vehicle's chassis isn't a drone's)
+                    })
+                  }
+                >
+                  <option value="vehicle">Vehicle</option>
+                  <option value="drone">Drone</option>
+                </select>
               </label>
+              <div className="dsn-flags">
+                <label className="inline">
+                  <input type="checkbox" checked={!!d.diy} onChange={e => update(x => void (e.target.checked ? (x.diy = true) : delete x.diy))} /> Do it
+                  yourself — half price
+                </label>
+                <label className="inline">
+                  <input
+                    type="checkbox"
+                    disabled={!gm}
+                    checked={!!d.approved}
+                    onChange={e => update(x => void (e.target.checked ? (x.approved = true) : delete x.approved))}
+                  />{' '}
+                  Approved by a GM
+                </label>
+              </div>
             </div>
-          </div>
 
-          {/* top row: the build parts on the left, the worked-out vehicle on the right */}
-          <div className="dsn-top">
-            <section className="panel" aria-label="Chassis, powertrain and console">
-              <h3>Chassis, powertrain &amp; console</h3>
-              <div className="dsn-picks">
-                {pick('chassis', chassisList, 'Chassis')}
-                {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
-                {pick('console', partsOf(c, 'console'), 'Console')}
-              </div>
-            </section>
-            <section className="panel dsn-vehicle" aria-label="The vehicle">
-              <h3>The vehicle</h3>
-              <div className="statgrid">
-                {STATS.map(([k, l]) => (
-                  <div className="stat" key={k}>
-                    <span className="sl">{l}</span>
-                    <b>{k === 'handling' && st.offRoad !== st.handling ? `${st.handling}/${st.offRoad}` : st[k]}</b>
-                  </div>
-                ))}
-                <div className="stat">
-                  <span className="sl">Cargo</span>
-                  <b>{st.cargoText}</b>
+            {/* top row: build parts, the worked-out vehicle, and the facing circle */}
+            <div className="dsn-top">
+              <section className="panel" aria-label="Chassis, powertrain and console">
+                <h3>Chassis, powertrain &amp; console</h3>
+                <div className="dsn-picks">
+                  {pick('chassis', chassisList, 'Chassis')}
+                  {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
+                  {pick('console', partsOf(c, 'console'), 'Console')}
                 </div>
-              </div>
-            </section>
+              </section>
+              <section className="panel dsn-vehicle" aria-label="The vehicle">
+                <h3>The vehicle</h3>
+                <div className="statgrid">
+                  {STATS.map(([k, l]) => (
+                    <div className="stat" key={k}>
+                      <span className="sl">{l}</span>
+                      <b>{k === 'handling' && st.offRoad !== st.handling ? `${st.handling}/${st.offRoad}` : st[k]}</b>
+                    </div>
+                  ))}
+                  <div className="stat">
+                    <span className="sl">Cargo</span>
+                    <b>{st.cargoText}</b>
+                  </div>
+                </div>
+              </section>
+              <FacingCircle drone={sheet.drone} />
+            </div>
           </div>
 
           {/* options, modifications and quality factors */}
