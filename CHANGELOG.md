@@ -1,5 +1,27 @@
 # Release notes
 
+## 0.31.0 — 2026-10-28
+
+Vehicles and drones are now built from parts. Every factory component Commlink6 models — weapon mounts, rigger
+interfaces, sensor and body gear, the lot — imports as a real, removable part you can take off to free space and
+upgrade, and a GM can derive a new mod from any gear and install it into the space you freed.
+
+**Requires a full re-import** (Settings → Re-import all books) for the parts to appear. A re-import resets the
+creation-rules table, so any GM creation toggles you changed will revert and need re-applying.
+
+**Shadowrun 6 — vehicle & drone parts**
+- **Factory parts are removable.** Each vehicle/drone lists the components it ships with; take one off to free its
+  hook/slot, put it back any time — at creation and in career (reversible, nothing lost).
+- **Modify a known vehicle for real.** Removing the MCT Hornet’s injector frees its space; a GM can then derive a
+  jammer mod from the jammer gear and install it there — the example that used to be impossible.
+- **GM “derive a mod” from any gear.** Create a custom mod from any gear, electronics, program or armor, set its hook
+  and size, and install it into a freed hook; price, availability and rules carry from the source gear. Stored as custom
+  content and flagged for GM review.
+- **Synthesized powerplants.** Every self-propelled vehicle gets a powerplant part (e.g. “GMC Bulldog Powerplant”) so
+  the engine is a thing you can remove and replace too. These are importer-derived (not from a book) and flagged for
+  review; remove one and the vehicle is warned it can’t move until a replacement is installed.
+- **The Designer** lets you start from a known vehicle and strip its factory parts before you customise.
+
 ## 0.30.0 — 2026-10-28
 
 A big round of Shadowrun 6 builder work: a redesigned vehicle/drone Designer, choice pickers across every kind, the
