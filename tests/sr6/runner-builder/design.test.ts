@@ -42,6 +42,18 @@ test('the Design Points summed, the final calculations (Top Speed from the power
   expect(s.warnings).toEqual([])
 })
 
+test('a design that starts from a known vehicle takes its stats, price and Availability, with mods added on top (no Design Points)', () => {
+  const { data, cr } = world()
+  const s = designOf({ kind: 'vehicle', base: 'zz.grizzly', options: [], mods: [mod('glitter-paint')] }, data, cr)
+  expect(s.stats).toMatchObject({ body: 12, armor: 10, handling: 4, offRoad: 3, accel: 7, interval: 20, topSpeed: 90, pilot: 3, sensor: 3, seats: 6 })
+  expect(s.dp).toBe(0) // not a point-buy
+  expect(s.mods).toEqual([{ uid: 'glitter-paint', slots: 0, dp: 0, nuyen: 4000 }])
+  expect(s.price).toBe(44000) // 40,000¥ vehicle + 4,000¥ mod
+  expect(s.avail).toBe('6(L)') // the vehicle's 6, the mod raising it to restricted
+  // do it yourself halves the whole thing
+  expect(designOf({ kind: 'vehicle', base: 'zz.grizzly', options: [], mods: [], diy: true }, data, cr).price).toBe(20000)
+})
+
 test('the quality factors’ multipliers multiply together, then × 1,000; a built-in mod 2 DP a slot (multiplied), its nuyen after (not); do it yourself halves the price', () => {
   const { data, cr } = world()
   const d = design({ options: [opt('one-off'), opt('drone')], mods: [mod('zap-grip')] })

@@ -311,7 +311,7 @@ const designXml = (d?: Sr6Design) =>
   d
     ? el(
         'design',
-        { kind: d.kind, chassis: d.chassis, powertrain: d.powertrain, console: d.console, diy: d.diy, approved: d.approved },
+        { kind: d.kind, base: d.base, chassis: d.chassis, powertrain: d.powertrain, console: d.console, diy: d.diy, approved: d.approved },
         d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
       )
     : ''
@@ -897,6 +897,7 @@ const readCritterPower = (e: Element) => def({ id: str(e, 'id'), name: e.getAttr
 function readDesign(d: Element, fix?: string[]): Sr6Design {
   return def({
     kind: oneOf(d.getAttribute('kind'), ['vehicle', 'drone'] as const, 'design kind', 'vehicle', fix)!,
+    base: str(d, 'base'),
     chassis: str(d, 'chassis'),
     powertrain: str(d, 'powertrain'),
     console: str(d, 'console'),

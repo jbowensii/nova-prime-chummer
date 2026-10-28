@@ -49,6 +49,8 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
   const [kind, setKind] = useState<Sr6Design['kind']>('vehicle')
+  const [baseVeh, setBaseVeh] = useState<Sr6Entry | null>(null)
+  const [pickingBase, setPickingBase] = useState(false)
   const [toDelete, setToDelete] = useState<Sr6Character | null>(null)
   const file = useRef<HTMLInputElement>(null)
   const refresh = () => {
@@ -86,8 +88,8 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const own = (x: Sr6Character): Sr6Character => ({ ...x, design: { ...x.design!, approved: gm ? true : undefined } })
   const create = async () => {
     const ch = blankSr6('priority')
-    ch.identity.streetName = name.trim()
-    ch.design = { kind, options: [], mods: [], ...(gm ? { approved: true as const } : {}) }
+    ch.identity.streetName = name.trim() || (baseVeh ? entryLabel(baseVeh) : '')
+    ch.design = { kind, ...(baseVeh ? { base: baseVeh.id } : {}), options: [], mods: [], ...(gm ? { approved: true as const } : {}) }
     const err = await store(ch)
     if (err) return setMsg(err)
     setCreating(false)
@@ -175,6 +177,7 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
           onClick={() => {
             setName('')
             setKind('vehicle')
+            setBaseVeh(null)
             setCreating(true)
           }}
         />
@@ -243,7 +246,45 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
             </select>
           </label>
         </div>
+        <div className="row" style={{ marginTop: '0.6rem', alignItems: 'center', gap: '0.5rem' }}>
+          <span className="muted">Start from a known vehicle (optional):</span>
+          {baseVeh ? (
+            <>
+              <b>{entryLabel(baseVeh)}</b>
+              <button className="btn small quiet" onClick={() => setPickingBase(true)}>
+                Change…
+              </button>
+              <button className="btn small quiet" aria-label="Clear the starting vehicle" onClick={() => setBaseVeh(null)}>
+                Clear
+              </button>
+            </>
+          ) : (
+            <button className="btn small" onClick={() => setPickingBase(true)}>
+              Pick a vehicle…
+            </button>
+          )}
+        </div>
+        <p className="muted" style={{ marginTop: '0.4rem' }}>
+          With a starting vehicle, the design begins at that vehicle’s stats, price and Availability and you add mods on top. Leave it empty to build from
+          scratch.
+        </p>
       </Modal>
+      {pickingBase && (
+        <CatalogPicker
+          title="Start from a known vehicle"
+          open
+          onClose={() => setPickingBase(false)}
+          kinds={['vehicles']}
+          from={{ c, cr, data }}
+          onAdd={p => {
+            setBaseVeh(p.e)
+            setKind(/drone/i.test(p.e.attrs.category ?? p.e.name) ? 'drone' : 'vehicle')
+            if (!name.trim()) setName(entryLabel(p.e))
+            setPickingBase(false)
+            return null
+          }}
+        />
+      )}
       <Modal
         open={!!toDelete}
         onClose={() => setToDelete(null)}
@@ -525,14 +566,36 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
 
             {/* top row: build parts, the worked-out vehicle, and the facing circle */}
             <div className="dsn-top">
-              <section className="panel" aria-label="Chassis, powertrain and console">
-                <h3>Chassis, powertrain &amp; console</h3>
-                <div className="dsn-picks">
-                  {pick('chassis', chassisList, 'Chassis')}
-                  {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
-                  {pick('console', partsOf(c, 'console'), 'Console')}
-                </div>
-              </section>
+              {d.base ? (
+                <section className="panel" aria-label="Starting vehicle">
+                  <h3>Starting vehicle</h3>
+                  <p>
+                    {(e =>
+                      e ? (
+                        <Sr6Ref kind="vehicles" id={e.id}>
+                          {entryLabel(e)}
+                        </Sr6Ref>
+                      ) : (
+                        <span className="err">this vehicle is no longer in the catalog</span>
+                      ))(data.entry('vehicles', d.base))}
+                  </p>
+                  <p className="muted">
+                    Its stats, price and Availability are the baseline; add mods below. Switch to a from-scratch build to pick a chassis instead.
+                  </p>
+                  <button className="btn small quiet" onClick={() => update(x => void delete x.base)}>
+                    Build from scratch instead
+                  </button>
+                </section>
+              ) : (
+                <section className="panel" aria-label="Chassis, powertrain and console">
+                  <h3>Chassis, powertrain &amp; console</h3>
+                  <div className="dsn-picks">
+                    {pick('chassis', chassisList, 'Chassis')}
+                    {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
+                    {pick('console', partsOf(c, 'console'), 'Console')}
+                  </div>
+                </section>
+              )}
               <section className="panel dsn-vehicle" aria-label="The vehicle">
                 <h3>The vehicle</h3>
                 <div className="statgrid">
@@ -552,29 +615,31 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
             </div>
           </div>
 
-          {/* options, modifications and quality factors */}
-          <section className="panel" aria-label="Options">
-            <h3>Options</h3>
-            <div className="dsn-opts">
-              {partsOf(c, 'option').map(e => (
-                <span key={e.id} className="row">
-                  <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
-                  {dpText(e)})
-                  {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
-                    <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
-                      <option value="">On- and off-road</option>
-                      <option value="on">On-road only</option>
-                      <option value="off">Off-road only</option>
-                    </select>
-                  )}
-                </span>
-              ))}
-            </div>
-            <h4>Design modifications</h4>
-            <div className="dsn-toggles">{toggles('modification')}</div>
-            <h4>Quality factors</h4>
-            <div className="dsn-toggles">{toggles('quality')}</div>
-          </section>
+          {/* options, modifications and quality factors — only when building from scratch (a based design adds mods instead) */}
+          {!d.base && (
+            <section className="panel" aria-label="Options">
+              <h3>Options</h3>
+              <div className="dsn-opts">
+                {partsOf(c, 'option').map(e => (
+                  <span key={e.id} className="row">
+                    <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
+                    {dpText(e)})
+                    {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
+                      <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
+                        <option value="">On- and off-road</option>
+                        <option value="on">On-road only</option>
+                        <option value="off">Off-road only</option>
+                      </select>
+                    )}
+                  </span>
+                ))}
+              </div>
+              <h4>Design modifications</h4>
+              <div className="dsn-toggles">{toggles('modification')}</div>
+              <h4>Quality factors</h4>
+              <div className="dsn-toggles">{toggles('quality')}</div>
+            </section>
+          )}
 
           {/* mods built in */}
           <section className="panel" aria-label="Mods built in">

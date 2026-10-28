@@ -490,6 +490,7 @@
         <xs:enumeration value="vehicle"/><xs:enumeration value="drone"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
+    <xs:attribute name="base" type="xs:string"/>
     <xs:attribute name="chassis" type="xs:string"/>
     <xs:attribute name="powertrain" type="xs:string"/>
     <xs:attribute name="console" type="xs:string"/>
