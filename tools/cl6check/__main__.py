@@ -15,6 +15,8 @@ python -m tools.cl6check import --library <books file> <out dir> [--md-from <run
     converter.
 python -m tools.cl6check module <data folder> [--jar <jar>]
     the CommLink6-only data module (module.py): <data folder>/custom/sr6/cl6only, for a server's data folder.
+python -m tools.cl6check gen-vehicle-parts --ours <import> [--jar <jar>] [--out <file>] [--dry]
+    bakes the vehicles' factory parts into importer/sr6/classes/vehicle_parts.json (vehicleparts.py; Stage 2).
 python -m tools.cl6check embedmap [--jar <jar>] [--ours <custom/sr6 dir>]
     what Commlink6 embeds in each vehicle and how each ref resolves (embedmap.py; vehicle decomposition Stage 0).
 python -m tools.cl6check trace --runs <dir> --out <dir> [--jar <jar>] [--verdicts <json>]
@@ -399,6 +401,10 @@ def main(argv=None):
             f"{os.path.join(a.out, 'cl6-trace.md')}"
         )
         return 0
+    if argv[:1] == ["gen-vehicle-parts"]:
+        from tools.cl6check import vehicleparts
+
+        return vehicleparts.main(argv[1:])
     if argv[:1] == ["embedmap"]:
         from tools.cl6check import embedmap
 

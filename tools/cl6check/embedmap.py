@@ -9,6 +9,7 @@ each vehicle's latest printing alone (owner ruling D7: the newest printing's who
 skipped, exit 0."""
 
 import difflib
+import json
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -43,36 +44,48 @@ def classify(ref, into, defs):
     return "usage-match" if into in slots else "other-usage" if slots else "no-usage"
 
 
-def resolve(ref, defs, variants):
-    """(rule, target) for an undefined ref, by the plan's section 4.1/4.6 rules: R-a `<base><n>` / `<base>_<n>` with a
-    defined base (a rating, or a variant ending in n: M3); R-b the longest defined prefix whose remainder is a variant
-    of it, or a variant held by exactly one item (M5); `R-b ambiguous` when several variants fit; `fuzzy (M6)` (>=75%
-    name match to one id); else `unresolved`."""
+def resolve_ref(ref, defs, variants):
+    """(rule, base, rating, variant) for an undefined ref, structured (Stage 2 reads it; `resolve` words it): the
+    plan's section 4.1/4.6 rule that hit: R-a `<base><n>` / `<base>_<n>` with a defined base (a rating, or one variant
+    ending in n: M3), R-b the longest defined prefix whose remainder is a variant of it, or a variant held by exactly
+    one item (M5), `R-b ambiguous` (variant: the sorted candidates) when several variants fit, `fuzzy (M6)` (>=75% name
+    match to one id), else `unresolved` (base None)."""
     m = re.fullmatch(r"(.+?)_?(\d+)", ref)
     if m and m[1] in defs:
         tail = [v for v in variants.get(m[1], ()) if v.endswith(m[2])]
-        return ("R-a (M3 variant)", f"{m[1]}/{tail[0]}") if len(tail) == 1 else ("R-a rating", f"{m[1]} rating {m[2]}")
+        return ("R-a (M3 variant)", m[1], None, tail[0]) if len(tail) == 1 else ("R-a rating", m[1], m[2], None)
     for base in sorted((b for b in defs if ref.startswith(b + "_") and variants.get(b)), key=len, reverse=True):
         rest = ref[len(base) + 1 :]
         fit = [v for v in variants[base] if v == rest] or [v for v in variants[base] if rest in v.split("_")]
         if len(fit) == 1:
-            return "R-b", f"{base}/{fit[0]}"
+            return "R-b", base, None, fit[0]
         if fit:
-            return "R-b ambiguous", f"{base}/{{{', '.join(sorted(fit))}}}"
+            return "R-b ambiguous", base, None, sorted(fit)
     toks = ref.split("_")
     for i in range(1, len(toks)):
         held = [b for b, vs in variants.items() if "_".join(toks[i:]) in vs]
         if len(held) == 1:
-            return "R-b (M5)", f"{held[0]}/{'_'.join(toks[i:])}"
+            return "R-b (M5)", held[0], None, "_".join(toks[i:])
     near = difflib.get_close_matches(ref, list(defs), 2, 0.75)
-    return ("fuzzy (M6)", near[0]) if len(near) == 1 else ("unresolved", "")
+    return ("fuzzy (M6)", near[0], None, None) if len(near) == 1 else ("unresolved", None, None, None)
+
+
+def resolve(ref, defs, variants):
+    """(rule, target) text of resolve_ref, for the measurement's printout."""
+    rule, base, rating, variant = resolve_ref(ref, defs, variants)
+    if base is None:
+        return rule, ""
+    if isinstance(variant, list):
+        return rule, f"{base}/{{{', '.join(variant)}}}"
+    return rule, f"{base}/{variant}" if variant else f"{base} rating {rating}" if rating else base
 
 
 def read_jar(jar):
     """(vehicles, defs, variants): vehicles [{id, book, lang, type, order, geardef ids, embeds}] in jar order (every
     top-level <item> with a <vehicle> child, books not de_*/placeholder/icons); defs {item id: usage slots} over every
-    top-level <item> and <geardef> child; variants {item id: variant ids}."""
-    vehicles, defs, variants = [], defaultdict(set), defaultdict(set)
+    top-level <item> and <geardef> child, as {slot: usage value}; variants {item id: {variant id: {slot: usage value}}}.
+    """
+    vehicles, defs, variants = [], defaultdict(dict), defaultdict(dict)
     with zipfile.ZipFile(jar) as z:
         for n in sorted(z.namelist()):
             m = re.match(re.escape(reader.ROOT) + r"([^/]+)/data/.*\.xml$", n)
@@ -87,11 +100,27 @@ def read_jar(jar):
                     continue
                 geo = el.findall("geardef/item")
                 for it in [el, *geo]:
-                    defs[it.get("id")] |= {u.get("slot") for u in it.findall("usage")}
-                    variants[it.get("id")] |= {v.get("id") for v in it.findall("variant")}
+                    defs[it.get("id")].update({u.get("slot"): u.get("value") for u in it.findall("usage")})
+                    for v in it.findall("variant"):
+                        variants[it.get("id")][v.get("id")] = {
+                            u.get("slot"): u.get("value") for u in v.findall("usage")
+                        }
                 if el.find("vehicle") is not None:
                     emb = [
-                        {k: x.get(k) for k in ("ref", "intoRef", "intoId", "id", "included", "variant", "rating")}
+                        {
+                            k: x.get(k)
+                            for k in (
+                                "type",
+                                "ref",
+                                "intoRef",
+                                "intoId",
+                                "id",
+                                "included",
+                                "variant",
+                                "rating",
+                                "count",
+                            )
+                        }
                         for x in el.findall("modifications/embed")
                     ]
                     vehicles.append(
@@ -192,6 +221,16 @@ def main(argv):
         print(f"\nours ({folder}):")
         for k, v in sorted(ours(folder).items()):
             print(f"  {k:32} {v:>6}")
+        from tools.cl6check import vehicleparts
+
+        if vehicleparts.OUT.is_file():
+            lines, ok = vehicleparts.gate(
+                folder,
+                json.loads(vehicleparts.OUT.read_text(encoding="utf8")),
+                latest(vehicles, corpus.published(SOURCES)),
+            )
+            print("\nStage 2 gate (vehicle_parts.json vs the D7 oracle and this import):")
+            print("\n".join("  " + x for x in lines) + f"\n  gate: {'PASS' if ok else 'FAIL'}")
     return 0
 
 
