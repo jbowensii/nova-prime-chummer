@@ -1251,11 +1251,13 @@ export function LedgerTab() {
               Lifestyle
               <select value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {[...c.entries.lifestyles.values()].map(e => (
-                  <option key={e.id} value={e.id}>
-                    {e.name}
-                  </option>
-                ))}
+                {[...c.entries.lifestyles.values()]
+                  .sort((a, z) => a.name.localeCompare(z.name))
+                  .map(e => (
+                    <option key={e.id} value={e.id}>
+                      {e.name}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>

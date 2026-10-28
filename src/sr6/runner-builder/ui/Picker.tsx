@@ -542,16 +542,18 @@ export function MaterialPick({ x, name }: { x: Sr6Purchase; name: string }) {
       Material{' '}
       <select aria-label={`${name}: material`} value={x.material ?? ''} onChange={ev => act({ op: 'material', uid: x.uid, material: ev.target.value || null })}>
         <option value="">None</option>
-        {data.materials.map(e => {
-          const m = materialOf(data, e.id)
-          return (
-            m && (
-              <option key={e.id} value={e.id}>
-                {m.name} (×{m.times} the price)
-              </option>
+        {[...data.materials]
+          .sort((a, z) => (materialOf(data, a.id)?.name ?? '').localeCompare(materialOf(data, z.id)?.name ?? ''))
+          .map(e => {
+            const m = materialOf(data, e.id)
+            return (
+              m && (
+                <option key={e.id} value={e.id}>
+                  {m.name} (×{m.times} the price)
+                </option>
+              )
             )
-          )
-        })}
+          })}
       </select>
       {combined && <span className="muted small"> {MATERIAL_RULE}</span>}
     </label>
