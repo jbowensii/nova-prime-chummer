@@ -25,6 +25,11 @@ The fix is to adopt CL6's hook model completely: one hook vocabulary, capacity c
 derived by a rule (no exception tables), and one fit function used by the picker, the add-time guard and Review alike.
 Six stages follow, each checked against CL6.
 
+**Follow-up (§6):** fit is not hooks alone. CL6 adds a second layer. The fitted item's `<requires>` tests the host's
+type, subtype, WEAPON_SIZE, AMMUNITION_CLASS and SOFTWARE_TYPES, and in some cases requires one specific host item.
+This is how CL6 encodes "hold type". We import those requirements but never apply them, and we flatten their OR
+groups (R9 and R10).
+
 ---
 
 ## 0. Acceptance gates for this document
@@ -400,7 +405,186 @@ feed Review and the vehicle computation must match DC/CRB.
 
 ---
 
+## 6. Follow-up (2026-10-28): how CL6 decides attachment across every family
+
+The owner has ruled that CL6's hook names may be adopted and may set per-item flags (hold type, class). The question
+this section answers: is fit **hooks only**, **type + hold type**, or **both**?
+
+### 6.1 Answer: both. The hook decides where an item can go; requirements on the host decide which hosts accept it
+
+CL6 runs two independent layers, and an attachment must pass both:
+
+1. **Hook layer (structural).** The fitted item's usage names the hook, and the host must offer that hook with room
+   for it (§1). This alone keeps cyberware off drones, because no augmentation names a VEHICLE_* hook (measured: 0).
+   It also keeps armor mods off weapons: the ARMOR capacity hook is offered only by ARMOR items (78 of 78 `valmod
+   HOOK ARMOR` sit on type ARMOR).
+2. **Requirement layer (the hold type).** The fitted item's `<requires>` tests the **host** item (`apply="DATA_ITEM"`
+   or no `apply`), the host's parent (`apply="PARENT"`), or the character (`apply="CHARACTER"`). Several tests in a
+   `<requires>` must all pass. A `<selreq>` is "any one of these". The host itself never restricts by the fitted item's
+   type: no host-side filter on the fitted item exists in the data. Only the fitted item restricts its host.
+
+There is no separate "hold type" enum. **Hold type means the host's `ITEMTYPE`, `ITEMSUBTYPE` and `WEAPON_SIZE` (plus
+`AMMUNITION_CLASS`, `SOFTWARE_TYPES` and a few attributes), as tested by the fitted item's requirements.**
+
+### 6.2 The requirement layer, measured
+
+Items carry 434 `datareq`/`valuereq` elements in all. 433 sit outside a `<mode>`; 1 sits inside one (the smartgun
+mode needs an active smartlink, `apply=ACTIVE_GEAR`). Grouped by what they test:
+
+| Test (tag · type · ref · apply) | n | What it gates |
+|---|---|---|
+| valuereq ITEM_ATTRIBUTE SOFTWARE_TYPES DATA_ITEM | 101 | the program type a device runs (`nanite_pilot` needs BASIC) |
+| valuereq ITEM_ATTRIBUTE AMMUNITION_CLASS DATA_ITEM | 55 | ammunition to weapon (`ammo_holdout_light_machine` needs LIGHT) |
+| datareq ITEMTYPE (host) | 54 | vehicle mods by vehicle or drone type (`easy_assembly_micro` needs DRONE_MICRO) |
+| datareq ITEMSUBTYPE (host) | 41 (+6 DATA_ITEM) | `comhack_armorlink_upgrade` needs a COMMLINK; `airburst_link` needs LAUNCHERS |
+| valuereq ITEM_ATTRIBUTE ITEMSUBTYPE (host) | 37 | weapon accessories by weapon subtype (silencer: tasers, hold-outs, pistols, SMGs, …; shock pad: rifles, shotguns) |
+| datareq GEAR (host / DATA_ITEM / PARENT / CHARACTER) | 30 / 17 / 5 / 5 | a specific host (`fn_p93_flashlight` needs `fn_p93_praetor`; `weapon_mount_military` needs a parent `milspec_hardpoint`) |
+| valuereq ATTRIBUTE CHARACTER | 27 | Strength minimums (`stoner_ares_m202` 3): a character gate, not a fit gate |
+| datareq CARRIED | 11 (+1 DATA_ITEM) | the character carries X, or not X with `negate` (`bark_skin` excludes `rhino_skin`) |
+| valuereq ITEM_ATTRIBUTE WEAPON_SIZE (host) | 10 | `hidden_arm_slide` needs TINY; `concealable_holster` needs TINY or SMALL |
+| valuereq ITEM_ATTRIBUTE ITEMTYPE (host) | 10 | `iron_hawk_arrow` needs BOWS |
+| datareq CONSTRUCTION | 6 | vehicle skins by construction (`form_stripping` needs STANDARD) |
+| datareq METATYPE CHARACTER | 5 | biosculpting by metatype |
+| valuereq ITEM_ATTRIBUTE ARMOR / PILOT / DEVICE_RATING / DATA_PROCESSING / FIREWALL | 4/1/1/1/1 | host stat thresholds (`form_stripping` ARMOR ≥ $BODY) |
+| datareq VEHICLE_TYPE | 2 | `oil_slick_sprayer` needs GROUND |
+
+Host-targeted requirements (anything except `ATTRIBUTE`/`CHARACTER`), counted by the fitted item's type: SOFTWARE 105,
+ACCESSORY 103, MOD_CHASSIS 67, AMMUNITION 63, MOD_POWER 16, MOD_SKIN 12, ELECTRONICS 6, BIOWARE 5, CYBERWARE 5,
+GENEWARE 4, CYBERDECK 2, others 1 each. Of the 189 ACCESSORY items that declare a usage, **31 also gate their host by
+requirement**. The other 158 are hook-only.
+
+### 6.3 The gate sequence CL6 applies before an item occupies a hook [bytecode-strings]
+
+From `CommonEquipmentController.canBeEmbedded`, in the order its constant pool lists them:
+
+1. **Embeddable at all**: `ItemUtil.getEmbeddableIn` → `impossible.notEmbeddable`. The item needs an EMBEDDED usage,
+   or one CL6's code synthesizes (§1.2).
+2. **Requirements**: `Requirement` ×3, `areRequirementsMet`, `checkDecisionsAndRequirements`. These are the §6.2 tests
+   against the host, the parent and the character. Missing choices fail as "Missing decision".
+3. **Variant and mode select the usages**: `getCarryMode`, `getVariantID`, then `getAllowedHooks`. A variant can
+   change the hook (smartgun `internal` → INTERNAL). The code special-cases `smartgun_system` / SMARTGUN.
+4. **The host offers the hook**: `getSlot` → `impossible.noSuchSlot`.
+5. **Room in the hook**: `hasCapacity`, then `getFreeCapacity` against the usage value → `impossible.notEnoughCapacity`.
+   For a hook without capacity (one item per hook): `getAllEmbeddedItems().size` → `impossible.slotOccupied`.
+6. **Size per item**: `getMaxSizePerItem` against the item's `SIZE` → `impossible.tooLarge` (drone hardpoints,
+   `CalculateVehicleSlots.setMaxSizePerItem`).
+7. **Matrix devices**: `ItemUtil.hasHookRequirement`, `SR6ItemFlag.MATRIX_DEVICE`, `matrixDevices`. Software hooks
+   go only on matrix devices.
+
+**Not a fit gate:** book availability. Source and book filtering is the selector's concern (`getAvailable`). This was
+not measured as an embed check, and is listed as an open item for the Stage 0 decompile.
+
+### 6.4 Per-family mechanism, with real rows
+
+- **Weapon + weapon accessory.** `ares_predator_vi` declares HOOK TOP and BARREL, embeds `smartgun_system` into
+  INTERNAL, and gets FIREARMS_EXTERNAL by code. `imaging_scope`: usage TOP, plus it offers OPTICAL 3 (vision
+  enhancements go into the scope). `silencer`: usage BARREL, **plus** a selreq on host ITEMSUBTYPE (tasers, hold-outs,
+  light and heavy pistols, SMGs, …). `shock_pad`: STOCK, plus selreq RIFLE_ASSAULT/HUNTING/SNIPER/SHOTGUNS.
+  - *Wrong attachment, rifle scope on a pistol:* SR6/CL6 has **one** `imaging_scope` with no subtype gate. A pistol
+    offers TOP, so CL6 **allows** it. There is no "rifle scope" item to block. A silencer on an assault rifle *is*
+    blocked, by its subtype requirement.
+- **Cyberware.** `cyberarm` variants offer CYBERLIMB_IMPLANT 8 (synthetic) or 15 (obvious). `built-in-medkit` uses
+  CYBERLIMB_IMPLANT with value 4 (points) and offers MEDKIT. `cyberfinger` uses 1 point, and its `finger_gun` variant
+  offers IMPLANT_HOLDOUT. The gates are hook and points. Five cyberware items add requirements:
+  `grey_mana_armor` needs `dermal_plating`; `medullan_processors` needs a control rig (selreq).
+  - *Wrong attachment, cyberware on a drone:* no augmentation usage names a vehicle hook (0), so it fails at
+    `noSuchSlot`.
+- **Bioware, geneware, nanoware.** Mostly IMPLANTED with an Essence value and no hook. Exceptions: GLAND /
+  TRANSGEN_GLAND hosts and NANITES (23 usages). Their requirements are character-level exclusions (`bark_skin`
+  excludes `rhino_skin`; `camouflage` excludes subtype BIOWARE_DERMAL with `negate`).
+- **Electronics, decks, commlinks, RCCs.** Hosts offer SOFTWARE capacity (45 ELECTRONICS valmods), ELECTRONIC_ACCESSORY
+  (38, plus the code standard), CASE_MODS (12 decks) and CORE_SLOTS. Programs use SOFTWARE and are gated by
+  `SOFTWARE_TYPES` (101) and the MATRIX_DEVICE flag. Device upgrades are gated by subtype
+  (`comhack_armorlink_upgrade`: COMMLINK and DEVICE_RATING ≥ $RATING; `external_program_carrier`: CYBERDECK).
+- **Armor.** The host offers ARMOR / ARMOR_MEMS / ARMOR_REACTIVE / FASHION / HELMET_ACCESSORY capacity in points.
+  Mods use those hooks with a value.
+  - *Wrong attachment, armor mod on a weapon:* weapons offer no ARMOR hook, so it fails at `noSuchSlot`.
+- **Ammunition.** Ammo never embeds: 0 of 133 AMMUNITION items has a usage. It attaches by **requirement only**:
+  `AMMUNITION_CLASS` (55) against the weapon's ammunition class (attrdef on 56 items, such as BATTERY, RAILGUN, the
+  ASSAULT_CANNON_B* family), or a specific weapon (`ammo_flametosser` needs `cyberweapon_flametosser`). `ammotype`
+  records (29) gate by weapon subtype (`ballista_barbed` needs BALLISTAS) and multiply the base cost (`cmult`).
+- **Vehicles and drones.** Hooks are computed (§1.2). Mods are additionally gated by ITEMTYPE (54), CONSTRUCTION (6),
+  VEHICLE_TYPE (2), host stats (ARMOR ≥ Body) and a parent (`weapon_mount_military` needs `milspec_hardpoint`).
+  Vehicle weapons are gated by WEAPON_SIZE through the synthesized mount usage.
+
+### 6.5 Taxonomy and fit-matrix update
+
+The §3.2 matrix is the hook layer and stays as it is. Every cell gains a requirement column. The canonical fit
+predicate is:
+
+```
+fits(item, host) =
+     usageHooks(item, variant, mode) ∩ offeredHooks(host) ≠ ∅               # hook layer (§3.3 I1, I2)
+  ∧ requirements(item) hold against {host (DATA_ITEM), host.parent (PARENT), character}   # AND; selreq = OR; negate
+  ∧ room(hook) ≥ cost(item) in the hook's unit, or the hook is empty when it takes one item  # I3
+  ∧ size(item) ≤ maxSizePerItem(hook)                                         # I6
+  ∧ (hook ≠ SOFTWARE ∨ host has the MATRIX_DEVICE flag)
+ammo(item, weapon) = requirements(item) hold against weapon                  # no hook
+```
+
+New per-item flags derived from CL6 (owner-approved): `class` (type/subtype, which we already carry), `size`
+(WEAPON_SIZE), `ammoClass` (AMMUNITION_CLASS, already carried in `structure.ts:13`), `softwareTypes`, `construction`,
+`matrixDevice`. These are the host attributes that requirements test against.
+
+Additions to the §3.3 rules:
+
+- **I9, requirement gate.** A host-targeted requirement fails, so the item does not fit, even when the hook matches.
+- **I10, ammunition** fits by requirement alone and never takes a hook.
+- **I11, no host-side type filter.** Restriction always lives on the fitted item.
+
+### 6.6 New root causes
+
+| # | Root cause | Evidence | Effect |
+|---|---|---|---|
+| R9 | **CL6's host requirements are imported but never applied.** | `familymap.py:113-124` copies `requires` into `<prerequisite>` kids ("never applied by the app", `:113`). `structure.ts:15,32` exposes `prerequisites`, and the only consumer is martial arts (`martial.ts:106`) | 31 weapon accessories, 63 ammunition items, 67 chassis mods and 105 programs lose their host gate. A silencer is offered on an assault rifle, and micro-drone-only mods on cars. Today the name and category heuristics (R2, R5) partly stand in for it |
+| R10 | **`selreq` (OR) is flattened into a plain list.** | `familymap.py:121-124` walks `rq.iter()` and emits every `datareq`/`valuereq` as a sibling, losing the `<selreq>` grouping and `negate` | Applying the prerequisites as imported would AND them. The silencer would need *every* subtype at once and fit nothing. The structure must keep the groups before R9 can be fixed |
+| R11 | **Ammunition is matched by printed category, not ammunition class.** | `categories.ts:145,140` (`isAmmoGear` = category "Ammo by weapon"; `isAmmoType`). CL6 uses AMMUNITION_CLASS (55) and ammotype ITEMSUBTYPE requirements | Exotic weapons (railguns, assault cannons B25–B50, batteries, fuel, foam) can't be tied to their own ammunition |
+| R12 | **No size-per-item gate on hooks.** | `structure.ts` has `size` (`:12,35`) but `mountSlots` never reads it. Drone hardpoint limits are hand-coded by name (`vehiclemods.ts:234-249`) | Becomes visible once Stage 2 imports `maxSizePerItem` |
+
+### 6.7 Plan amendments
+
+- **Stage 0.** Add to `hookmap.py`: the requirement census of §6.2 (target and type counts must reproduce 434 / 101 /
+  55 / 54 / 41 / 37 / …) and the 31-of-189 accessory figure. The decompile also confirms the §6.3 gate order and
+  whether availability gates embedding.
+- **Stage 1 (format).** `<prerequisite>` gains `group` (the selreq index; an item's plain requirements are group 0
+  = AND), `negate` and `apply` (host, parent or character, already present as a raw attribute). Add host attributes
+  `softwareTypes`, `construction` and `matrixDevice`.
+- **Stage 2 (importer).** `familymap` emits grouped prerequisites (fixes R10). Book-only items get no invented
+  requirements; the report lists which items rely on hook-only fit. CL6 gates as before, plus a new
+  comparison: for each matched item, our grouped prerequisites equal CL6's requirements tree (target 100%).
+- **Stage 3 (domain).** `fit()` implements the §6.5 predicate. A `requirementsHold(item, host, parent, character)`
+  evaluator lives in catalog/domain and covers the measured test types only: ITEMTYPE, ITEMSUBTYPE, ITEM_ATTRIBUTE,
+  GEAR, CARRIED, CONSTRUCTION, VEHICLE_TYPE, METATYPE, ATTRIBUTE. An unknown test type counts as "not evaluated" and
+  is reported, never silently passed. Ammunition matching moves to AMMUNITION_CLASS (fixes R11). `size` and
+  `maxSizePerItem` are checked (R12). Unit tests, one per row of §6.2 (invented data): silencer rejects an assault
+  rifle, holster rejects a LARGE weapon, ammo LIGHT rejects a HEAVY-class weapon, the military mount needs its parent
+  hardpoint, a program needs a matrix device.
+- **Stage 4 (rules and UI).** `catalog.fit` reports *which* gate failed: the hook, a named requirement, room, or
+  size. The picker hides items failing the hook layer and shows requirement failures greyed with the reason.
+  Whether to hide or grey them is an **owner decision**. Measure on the 18 runners before turning the requirement
+  layer to `error`: new requirement failures are listed for an owner ruling, not shipped blind.
+
+### 6.8 Gates for this follow-up
+
+| # | Gate | Result |
+|---|---|---|
+| F1 | The mechanism question (hooks / type / both) has an evidenced answer | met: both (§6.1) |
+| F2 | Requirement counts were measured from the jar, not estimated | met (§6.2; commands in Appendix A) |
+| F3 | Every family has a mechanism and a real row (weapon, cyberware, bio, electronics/deck/RCC, armor, ammunition, vehicle) | met (§6.4) |
+| F4 | The three wrong-attachment examples are each resolved | met: scope on pistol (allowed in CL6, no rifle-only scope exists), cyberware on drone (noSuchSlot), armor mod on weapon (noSuchSlot) |
+| F5 | Every gate CL6 applies is enumerated | met (§6.3, 7 gates; availability flagged as unconfirmed) |
+| F6 | Matrix, gaps and plan updated, with code claims cited | met (§6.5–§6.7) |
+| F7 | Still only this one file changed | met |
+
+---
+
 ## Appendix A: measurement commands
+
+- §6.2: walk each item's `<requires>` (outside `<mode>`) and count `(tag, type, ITEM_ATTRIBUTE ref, apply)`. The
+  31/189 figure counts ACCESSORY items with a `<usage>` and at least one requirement whose `apply` is absent,
+  DATA_ITEM or PARENT and whose type is not ATTRIBUTE.
+- §6.3: constant-pool strings of `CommonEquipmentController.class` (around `canBeEmbedded`) and `ItemUtil.class`
+  (`hasHookRequirement`).
 
 All of these run from the repo root with `from tools.cl6check import reader; a,b = reader.read(reader.find_jar())`:
 
