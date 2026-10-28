@@ -51,3 +51,48 @@ test('choiceSelectOptions keeps a still-valid note that is not one of the listed
   expect(choiceSelectOptions(c, 'Body')).toHaveLength(c.options.length) // already listed: not duplicated
   expect(choiceSelectOptions(c, '')).toHaveLength(c.options.length)
 })
+
+// Stage B: the <selection> part is the universal choice marker, across attribute / skill / quality / matrix domains.
+test('an attribute selection behind a non-ATTRIBUTE modifier (a Way’s drain attr) still offers those attributes', () => {
+  const { data } = made()
+  const e = entry('Burnout’s Way', [
+    part('modifier', { kind: 'itemmod', type: 'DRAIN_ADEPT', ref: 'CHOICE:x' }),
+    part('selection', { type: 'ATTRIBUTE', options: 'AGILITY,REACTION,STRENGTH' }),
+  ])
+  const c = choiceOptions(data, e)!
+  expect(c.kind).toBe('attribute')
+  expect(c.options.map(o => o.value)).toEqual(['Agility', 'Reaction', 'Strength'])
+  expect(c.options.map(o => noteAttr(o.value))).toEqual(['agi', 'rea', 'str'])
+})
+
+test('a skill selection whose options are skill ids resolves to the catalog skill names', () => {
+  const { data } = made()
+  const [id, name] = Object.entries(data.skills)[0] // [skillId, {name,...}]
+  const e = entry('Artisan’s Way', [part('selection', { type: 'SKILL', options: id })])
+  const c = choiceOptions(data, e)!
+  expect(c.kind).toBe('skill')
+  expect(c.options.map(o => o.value)).toEqual([(name as { name: string }).name])
+})
+
+test('a quality selection (Finding Your Way) offers the named Way qualities, underscore ids mapped to the catalog', () => {
+  const { data } = made()
+  const ids = Object.keys(data.qualities).slice(0, 2)
+  if (ids.length < 2) return // fixture has <2 qualities: nothing to assert
+  const e = entry('Finding Your Way', [part('selection', { type: 'QUALITY', options: ids.map(i => i.replace(/-/g, '_')).join(',') })])
+  const c = choiceOptions(data, e)!
+  expect(c.kind).toBe('quality')
+  expect(c.options.map(o => o.value)).toEqual(ids.map(i => data.qualities[i].name))
+})
+
+test('a matrix selection offers the Matrix attributes with readable labels', () => {
+  const { data } = made()
+  const e = entry('Matrix Attribute Advancement', [part('selection', { type: 'ITEM_ATTRIBUTE', options: 'ATTACK,SLEAZE,DATA_PROCESSING,FIREWALL' })])
+  const c = choiceOptions(data, e)!
+  expect(c.kind).toBe('matrix')
+  expect(c.options.map(o => o.value)).toEqual(['Attack', 'Sleaze', 'Data Processing', 'Firewall'])
+})
+
+test('a free-text selection (TEXT) stays a text box — no dropdown', () => {
+  const { data } = made()
+  expect(choiceOptions(data, entry('Bane', [part('selection', { type: 'TEXT' })]))).toBeUndefined()
+})
