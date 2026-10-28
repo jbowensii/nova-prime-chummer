@@ -69,7 +69,8 @@ import { gradeName, gradeOptions } from '../../domain/creation/grades'
 import { useSr6Designs } from '../repo'
 import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../domain/assets/critters'
 import { critterWearable } from './Critters'
-import { mountsOf } from '../../domain/assets/vehiclemods'
+import { mountsOf, partsOf } from '../../domain/assets/vehiclemods'
+import { deriveMod } from '../../domain/assets/derive'
 
 export const OPS = [
   ['attribute', 'Raise attribute'],
@@ -97,6 +98,8 @@ export const OPS = [
   ['unfit', 'Remove or sell an accessory (cyberware, gear, vehicle, drone or critter)'],
   ['shift', 'Shift mod slots on a vehicle or drone'],
   ['move', 'Move a weapon to another mount'],
+  ['part', 'Take a factory part off a vehicle or drone, or put it back'],
+  ['derive', 'GM: derive a mod from any gear for a vehicle or drone'],
   ['bond', 'Bond: a quality for your critter (Critter Bond)'],
   ['teach', 'Teach your critter a command or special training'],
   ['sin', 'SIN'],
@@ -153,6 +156,8 @@ export function LedgerTab() {
     mount: '',
     from: 'chassis',
     to: 'powertrain',
+    hook: 'vehicle-body', // a derived mod's hook and size (derive)
+    size: '0.5',
     diy: false,
     pet: 'mundane',
     neg: '',
@@ -368,6 +373,18 @@ export function LedgerTab() {
         return f.target ? { op, target: f.target, from: f.from as ShiftKind, to: f.to as ShiftKind } : null
       case 'move':
         return f.target && f.mount ? { op, target: f.target, mount: f.mount } : null
+      // (a factory part off, or back if it is off: free, no refund; plan decomposition D1/D4)
+      case 'part': {
+        const v = vehicles.find(x => x.uid === f.target)
+        return v && f.name ? { op, target: f.target, part: f.name, ...(v.removedParts?.includes(f.name) ? { restore: true as const } : {}) } : null
+      }
+      // (a GM derives a mod from the gear picked, set to a hook and size, and fits it; its price is the source's)
+      case 'derive': {
+        const size = Number(f.size)
+        return f.target && e && size > 0 && f.hook
+          ? { op: 'fit', target: f.target, line: { ...deriveMod(e, { hook: f.hook, size, ...(picked!.rating ? { rating: picked!.rating } : {}) }), uid: '' } }
+          : null
+      }
       // (a weapon into one of the vehicle's mounts; do it yourself: a mod at half price, Double Clutch p. 120)
       case 'fit':
         return f.target && e
@@ -749,6 +766,7 @@ export function LedgerTab() {
           (op === 'technique' && f.target) ||
           (op === 'upgrade' && f.target) ||
           op === 'critter' ||
+          (op === 'derive' && f.target) ||
           (op === 'fit' && f.target)) && (
           <div style={{ alignSelf: 'end' }}>
             {picked && (
@@ -1045,6 +1063,64 @@ export function LedgerTab() {
                   </option>
                 ))}
               </select>
+            </label>
+          </>
+        )}
+        {op === 'part' && (
+          <>
+            <label>
+              Vehicle or drone
+              <select aria-label="Part on" value={f.target} onChange={e => set({ target: e.target.value, name: '' })}>
+                <option value="">Pick one</option>
+                {vehicles.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Factory part
+              <select aria-label="Factory part" value={f.name} onChange={e => set({ name: e.target.value })}>
+                <option value="">Pick one</option>
+                {(v => (v ? partsOf(v, data) : []))(vehicles.find(x => x.uid === f.target))
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} · {p.hook.replace(/^vehicle-/, '')} {n(p.cost)}
+                      {p.removed ? ' (off: put back)' : ''}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </>
+        )}
+        {op === 'derive' && (
+          <>
+            <label>
+              Vehicle or drone
+              <select aria-label="Derive on" value={f.target} onChange={e => set({ target: e.target.value })}>
+                <option value="">Pick one</option>
+                {vehicles.map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Hook
+              <select aria-label="Derived mod hook" value={f.hook} onChange={e => set({ hook: e.target.value })}>
+                {['vehicle-body', 'vehicle-chassis', 'vehicle-powertrain', 'vehicle-electronics', 'vehicle-cf', 'vehicle-accessory', 'vehicle-hardpoint'].map(
+                  h => (
+                    <option key={h}>{h}</option>
+                  ),
+                )}
+              </select>
+            </label>
+            <label>
+              Size
+              <input aria-label="Derived mod size" size={5} value={f.size} onChange={e => set({ size: e.target.value })} />
             </label>
           </>
         )}
@@ -1482,13 +1558,15 @@ export function LedgerTab() {
                 ? 'Upgrade to'
                 : op === 'fit'
                   ? 'Fit'
-                  : op === 'critter'
-                    ? 'Buy a critter'
-                    : op === 'vehicle'
-                      ? 'Buy a vehicle'
-                      : op === 'drone'
-                        ? 'Buy a drone'
-                        : 'Buy gear'
+                  : op === 'derive'
+                    ? 'Derive a mod from'
+                    : op === 'critter'
+                      ? 'Buy a critter'
+                      : op === 'vehicle'
+                        ? 'Buy a vehicle'
+                        : op === 'drone'
+                          ? 'Buy a drone'
+                          : 'Buy gear'
         }
         critter={(op === 'fit' && host?.kind === 'critters') || undefined}
         kinds={
@@ -1502,15 +1580,17 @@ export function LedgerTab() {
                   ? ['martialtechniques']
                   : op === 'upgrade'
                     ? [upgradable.find(x => x.uid === f.target)?.kind ?? 'gear']
-                    : op === 'fit'
-                      ? host?.kind === 'critters'
-                        ? ['augmentations', 'gear', 'electronics']
-                        : host?.kind === 'vehicles'
-                          ? ['gear', 'weapons', 'electronics', 'programs']
-                          : ACCESSORY_KINDS // cyberware/bioware/gear host: the accessory kinds, filtered to what fits it
-                      : op === 'critter'
-                        ? ['critters']
-                        : buyKinds(op)
+                    : op === 'derive'
+                      ? ['gear', 'electronics', 'programs', 'armor']
+                      : op === 'fit'
+                        ? host?.kind === 'critters'
+                          ? ['augmentations', 'gear', 'electronics']
+                          : host?.kind === 'vehicles'
+                            ? ['gear', 'weapons', 'electronics', 'programs']
+                            : ACCESSORY_KINDS // cyberware/bioware/gear host: the accessory kinds, filtered to what fits it
+                        : op === 'critter'
+                          ? ['critters']
+                          : buyKinds(op)
         }
         filter={
           op === 'vehicle' || op === 'drone'

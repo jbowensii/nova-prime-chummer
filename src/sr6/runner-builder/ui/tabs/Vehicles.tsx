@@ -120,6 +120,7 @@ const ADD: Record<'mod' | 'weapon' | 'autosoft', { title: string; kinds: Sr6Kind
 }
 /** The mod-slot families a GM can add to a vehicle instance (the add-slot escape hatch, actions.ts `slot` op). */
 const SLOT_VOCAB = [
+  'vehicle-body',
   'vehicle-chassis',
   'vehicle-powertrain',
   'vehicle-electronics',
@@ -144,6 +145,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
   const [adding, setAdding] = useState<keyof typeof ADD | null>(null)
   const [shift, setShift] = useState<{ from: ShiftKind; to: ShiftKind }>({ from: 'chassis', to: 'powertrain' })
   const [slot, setSlot] = useState<{ id: string; value: string }>({ id: 'vehicle-chassis', value: '' })
+  const [derive, setDerive] = useState<{ hook: string; size: string; picking: boolean }>({ hook: 'vehicle-body', size: '0.5', picking: false })
   const m = modsOf(x, data),
     why = shiftProblem(x, shift.from, shift.to, data)
   const label = (a: Sr6Purchase) => (e => (e ? entryLabel(e) : (a.name ?? 'Custom item')))(entryOf(a, data))
@@ -270,6 +272,32 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
           </span>
         ))}
       </span>
+      {m.parts.length > 0 && (
+        <span className="row" aria-label={`Factory parts of ${name}`}>
+          Factory parts (already paid for):
+          {[...m.parts]
+            .sort((a, b) => a.name.localeCompare(b.name))
+            .map(p => {
+              const own = (x.removedParts ?? []).includes(p.id)
+              return (
+                <span key={p.id} className={p.removed ? 'chip muted' : 'chip'}>
+                  {p.name}
+                  {p.rating ? ` ${p.rating}` : ''} · {p.hook.replace(/^vehicle-/, '')} {n(p.cost)}
+                  {p.removed ? ' (removed)' : ''}{' '}
+                  {(!p.removed || own) && (
+                    <button
+                      className="btn small quiet"
+                      aria-label={`${p.removed ? 'Restore' : 'Remove'} factory part ${p.name} ${p.removed ? 'on' : 'from'} ${name}`}
+                      onClick={() => act({ op: 'part', uid: x.uid, ...(p.removed ? { restore: p.id } : { remove: p.id }) })}
+                    >
+                      {p.removed ? 'restore' : '×'}
+                    </button>
+                  )}
+                </span>
+              )
+            })}
+        </span>
+      )}
       {(m.builtin.length > 0 || m.notes.length > 0 || (x.removedBuiltins?.length ?? 0) > 0) && (
         <span className="row">
           Built in (already paid for):
@@ -304,6 +332,54 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
             </span>
           ))}
         </span>
+      )}
+      <span className="row" aria-label={`Derive a mod on ${name}`}>
+        GM derive a mod:
+        <select aria-label={`Derived mod hook on ${name}`} value={derive.hook} onChange={ev => setDerive({ ...derive, hook: ev.target.value })}>
+          {SLOT_VOCAB.map(id => (
+            <option key={id} value={id}>
+              {id}
+            </option>
+          ))}
+        </select>
+        <input aria-label={`Derived mod size on ${name}`} size={5} value={derive.size} onChange={ev => setDerive({ ...derive, size: ev.target.value })} />
+        <button className="btn small quiet" aria-label={`Derive a mod from gear on ${name}`} onClick={() => setDerive({ ...derive, picking: true })}>
+          From gear…
+        </button>
+        {m.freedByHook[derive.hook] ? <span className="muted">freed here: {n(m.freedByHook[derive.hook])}</span> : null}
+        {x.accessories
+          .filter(a => a.derived)
+          .map(a => (
+            <span key={a.uid} className="chip">
+              {a.name} (needs GM review){' '}
+              <button
+                className="btn small quiet"
+                aria-label={`Remove derived mod ${a.name} from ${name}`}
+                onClick={() => act({ op: 'accessory', host: x.uid, remove: a.uid })}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+      </span>
+      {derive.picking && (
+        <CatalogPicker
+          title={`Derive a mod for ${name} from…`}
+          open
+          onClose={() => setDerive({ ...derive, picking: false })}
+          kinds={['gear', 'electronics', 'programs', 'armor']}
+          onAdd={p =>
+            act({
+              op: 'derive',
+              host: x.uid,
+              kind: p.e.kind,
+              id: p.e.id,
+              hook: derive.hook,
+              size: Number(derive.size),
+              ...(p.rating ? { rating: p.rating } : {}),
+            })
+          }
+        />
       )}
       {rows.map(a => {
         const f = m.fitted.find(y => y.uid === a.uid)!

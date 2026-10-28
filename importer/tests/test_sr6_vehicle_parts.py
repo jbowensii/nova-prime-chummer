@@ -1,3 +1,4 @@
+# pylint: disable=line-too-long,missing-function-docstring,missing-class-docstring,dangerous-default-value,unnecessary-lambda-assignment,unnecessary-lambda  # (invented-data fixtures)
 """Stage 2 of the vehicle decomposition: the generator's rules (tools/cl6check/vehicleparts.py) and the importer's reader
 (resolve.vehicle_parts), on invented data (no jar, no PDFs)."""
 
