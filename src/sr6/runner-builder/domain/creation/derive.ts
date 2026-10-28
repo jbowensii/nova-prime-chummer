@@ -94,6 +94,9 @@ export interface Sr6Derived {
   /** Matrix initiative (CRB Hong Kong p. 179): AR the physical one; cold and hot sim Intuition + the persona's Data
    *  Processing (a technomancer's Logic, p. 189; else the best commlink's) with their extra dice; absent with neither */
   matrixInit?: { ar: Sr6Init; cold: Sr6Init; hot: Sr6Init; dataProcessing: number }
+  /** the persona of the best Matrix device (CRB Hong Kong p. 174): a cyberdeck's four-value array as Attack / Sleaze /
+   *  Data Processing / Firewall, a commlink's Data Processing / Firewall, plus Matrix Attribute Advancement's chosen +level */
+  matrixPersona?: { device: string; attack: number; sleaze: number; dataProcessing: number; firewall: number }
   /** metres for a Move (CRB Hong Kong p. 42) and a Sprint, plus per hit (p. 44): null when the settings aren't set */
   movement: { walk: number; sprint: number; perHit: number } | null
   /** the bonus left out of each attribute's augmented value: it stops at attributeAugmentMax over natural (CRB Hong
@@ -137,6 +140,38 @@ export const hostText = (values: { target: string; value: number }[]) =>
                 : `${v.target.toUpperCase()} ${v.value}`,
     )
     .join(', ')
+
+const MATRIX_KEY: Record<string, 'attack' | 'sleaze' | 'dataProcessing' | 'firewall'> = {
+  Attack: 'attack',
+  Sleaze: 'sleaze',
+  'Data Processing': 'dataProcessing',
+  Firewall: 'firewall',
+}
+/** The persona of the runner's best Matrix device: a cyberdeck's four-value array as A/S/D/F, a commlink's D/F, plus any
+ *  ITEM_ATTRIBUTE advancement (Matrix Attribute Advancement's +level to its chosen attribute, stored as the quality's note). */
+// ponytail: the printed array order is read as A/S/D/F; a decker's free assignment and once-a-turn swap aren't modelled — add a 4-into-4 assign UI if play needs it
+export function personaOf(b: Sr6Character['build'], data: Sr6Data): Sr6Derived['matrixPersona'] {
+  const dev = b.purchases
+    .flatMap(x => {
+      const e = x.kind === 'electronics' && x.id ? data.entry(x.kind, x.id) : undefined
+      const arr = e?.attrs.array?.split('/').map(s => Number(s.trim()) || 0)
+      return arr && arr.length ? [{ name: e!.name, arr }] : []
+    })
+    .sort((p, q) => q.arr.reduce((s, n) => s + n, 0) - p.arr.reduce((s, n) => s + n, 0))[0]
+  if (!dev) return undefined
+  const a = dev.arr
+  const persona =
+    a.length >= 4
+      ? { attack: a[0], sleaze: a[1], dataProcessing: a[2], firewall: a[3] }
+      : { attack: 0, sleaze: 0, dataProcessing: a[0] ?? 0, firewall: a[1] ?? a[0] ?? 0 }
+  for (const q of b.qualities) {
+    const key = q.note ? MATRIX_KEY[q.note] : undefined
+    if (!key) continue
+    const mod = data.entry('qualities', q.id)?.parts.find(p => p.tag === 'modifier' && p.attrs.ref === 'CHOICE' && p.attrs.type === 'ITEM_ATTRIBUTE')
+    if (mod) persona[key] += mod.attrs.value === '$LEVEL' ? (q.level ?? 1) : Number(mod.attrs.value) || 0
+  }
+  return { device: dev.name, ...persona }
+}
 
 export function deriveSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Sr6Derived {
   return { ...derive(data, cr, ch, false), on: derive(data, cr, ch, true) }
@@ -368,6 +403,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       dice: usual === undefined || extra === undefined ? null : capDice(usual + extra + augmentBonus(b, data, 'matrixInitDice', undefined, on)),
     }
   }
+  const matrixPersona = personaOf(b, data)
   const matrixInit =
     dp >= 0
       ? { ar: { base: A('rea') + A('int'), dice: capDice(initDice) }, cold: vr('matrixColdDice'), hot: vr('matrixHotDice'), dataProcessing: dp }
@@ -422,6 +458,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     movement,
     capped,
     ...(matrixInit ? { matrixInit } : {}),
+    ...(matrixPersona ? { matrixPersona } : {}),
     ...(kind.spells && b.drainAttr ? { spellAttackRating: A('mag') + A(b.drainAttr) } : {}),
     // CRB pp. 67–68: Composure WIL + CHA, Judge Intentions WIL + INT, Memory LOG + INT, Lift/Carry BOD + WIL
     composure: A('wil') + A('cha'),
