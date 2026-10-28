@@ -94,6 +94,12 @@ function purchaseXml(p: Sr6Purchase): string {
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
       addedSlots: p.addedSlots?.length ? p.addedSlots.map(s => (s.value ? `${s.id}:${s.value}` : s.id)).join(' ') : undefined,
       removedBuiltins: p.removedBuiltins?.length ? p.removedBuiltins.join(' ') : undefined,
+      removedParts: p.removedParts?.length ? p.removedParts.join(' ') : undefined,
+      derivedFrom: p.derived?.from,
+      derivedKind: p.derived?.kind,
+      derivedHook: p.derived?.hook,
+      derivedSize: p.derived?.size,
+      derivedReview: p.derived?.review,
       pet: p.pet,
       tamed: p.tamed,
     },
@@ -218,6 +224,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ target: a.target, from: a.from, to: a.to }, '']
     case 'move':
       return [{ target: a.target, mount: a.mount }, '']
+    case 'part':
+      return [{ target: a.target, partId: a.part, restore: a.restore ? 'true' : undefined, detach: a.detach?.length ? a.detach.join(' ') : undefined }, '']
     case 'bond':
       return [{ target: a.target }, critterQualityXml(a.line) + (a.with ? critterQualityXml(a.with) : '')]
     case 'teach':
@@ -311,7 +319,16 @@ const designXml = (d?: Sr6Design) =>
   d
     ? el(
         'design',
-        { kind: d.kind, base: d.base, chassis: d.chassis, powertrain: d.powertrain, console: d.console, diy: d.diy, approved: d.approved },
+        {
+          kind: d.kind,
+          base: d.base,
+          removedParts: d.removedParts?.length ? d.removedParts.join(' ') : undefined,
+          chassis: d.chassis,
+          powertrain: d.powertrain,
+          console: d.console,
+          diy: d.diy,
+          approved: d.approved,
+        },
         d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
       )
     : ''
@@ -450,8 +467,18 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     removedBuiltins: (u => (u.length ? u : undefined))(
       str(e, 'removedBuiltins')
         ?.split(/\s+/)
-        .filter(w => /^builtin:\d+$/.test(w)) ?? [],
+        .filter(w => /^(slot-)?builtin:\d+$/.test(w)) ?? [],
     ),
+    removedParts: (u => (u.length ? u : undefined))(str(e, 'removedParts')?.split(/\s+/).filter(Boolean) ?? []),
+    derived: str(e, 'derivedFrom')
+      ? {
+          from: str(e, 'derivedFrom')!,
+          kind: str(e, 'derivedKind') ?? 'gear',
+          hook: str(e, 'derivedHook') ?? '',
+          size: num(e, 'derivedSize') ?? 1,
+          review: str(e, 'derivedReview') === 'none' ? 'none' : 'needs-owner',
+        }
+      : undefined,
     pet: str(e, 'pet') === undefined ? undefined : oneOf(e.getAttribute('pet'), PET_CLASSES, 'pet class', undefined, fix),
     tamed: yes(e, 'tamed'),
     trained: listOrNone([...each(kids(e, 'trained'), readTrained, label, fix), ...olderTrained(e, fix)]),
@@ -462,7 +489,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
   // a weapon naming a mount its host doesn't have (a file edited by hand) sits in none: noted (a built-in one,
   // `builtin:<n>`, is the catalog's: vehiclemods.ts warns when it isn't there)
   for (const a of x.accessories)
-    if (a.mount && !a.mount.startsWith('builtin:') && !x.accessories.some(m => m.uid === a.mount)) {
+    if (a.mount && !/^(part|builtin|slot-builtin):/.test(a.mount) && !x.accessories.some(m => m.uid === a.mount)) {
       fix?.push(`${a.name || 'A weapon'}: its weapon mount isn’t on ${x.name || 'its vehicle'}, so it’s in none (put it in one on the Vehicles or Drones tab).`)
       delete a.mount
     }
@@ -786,6 +813,14 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       }
     case 'move':
       return { op, target: req(e, 'target'), mount: req(e, 'mount') }
+    case 'part':
+      return def({
+        op,
+        target: req(e, 'target'),
+        part: req(e, 'partId'),
+        restore: e.getAttribute('restore') === 'true' ? true : undefined,
+        detach: (u => (u.length ? u : undefined))(str(e, 'detach')?.split(/\s+/).filter(Boolean) ?? []),
+      })
     case 'teach':
       return { op, target: req(e, 'target'), line: line(e, 'trained', readTrained, true) }
     case 'bond': {
@@ -898,6 +933,7 @@ function readDesign(d: Element, fix?: string[]): Sr6Design {
   return def({
     kind: oneOf(d.getAttribute('kind'), ['vehicle', 'drone'] as const, 'design kind', 'vehicle', fix)!,
     base: str(d, 'base'),
+    removedParts: (u => (u.length ? u : undefined))(str(d, 'removedParts')?.split(/\s+/).filter(Boolean) ?? []),
     chassis: str(d, 'chassis'),
     powertrain: str(d, 'powertrain'),
     console: str(d, 'console'),

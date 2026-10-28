@@ -434,13 +434,19 @@
         <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
-        <xs:enumeration value="teach"/>
+        <xs:enumeration value="teach"/><xs:enumeration value="part"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="target" type="xs:string"/>
     <xs:attribute name="from" type="c:SlotKind"/>
     <xs:attribute name="to" type="c:SlotKind"/>
     <xs:attribute name="mount" type="xs:string"/>
+    <!-- part: target the uid of the owned vehicle or drone, partId the id of its catalog <part> taken off (restore="true":
+         put back); free, no refund by default -->
+    <xs:attribute name="partId" type="xs:string"/>
+    <xs:attribute name="restore" type="xs:boolean"/>
+    <!-- part, off: the weapon mounts (`part:<id>`) that went with it, so the weapons in them are freed -->
+    <xs:attribute name="detach" type="xs:string"/>
     <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
     <xs:attribute name="part" type="xs:positiveInteger"/>
     <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->
@@ -491,6 +497,8 @@
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="base" type="xs:string"/>
+    <!-- a based design: the starting vehicle's catalog <part>s taken off it, by part id -->
+    <xs:attribute name="removedParts" type="xs:string"/>
     <xs:attribute name="chassis" type="xs:string"/>
     <xs:attribute name="powertrain" type="xs:string"/>
     <xs:attribute name="console" type="xs:string"/>
@@ -654,6 +662,16 @@
     <!-- GM override: the built-in mods removed from a vehicle/drone instance (owner 2026-10-27), each by its builtin uid
          (`builtin:0 builtin:2`) -->
     <xs:attribute name="removedBuiltins" type="xs:string"/>
+    <!-- GM override: the catalog <part>s (factory parts, docs/analysis/sr6-vehicle-decomposition.md) removed from a
+         vehicle/drone instance, each by the part's id (`p1 p4`) -->
+    <xs:attribute name="removedParts" type="xs:string"/>
+    <!-- a GM-derived mod (plan 4.8): made from the catalog item derivedFrom (kind derivedKind), taking derivedSize of derivedHook;
+         its snapshot carries the source's price and rules; needs-owner until a GM reviews it -->
+    <xs:attribute name="derivedFrom" type="xs:string"/>
+    <xs:attribute name="derivedKind" type="xs:string"/>
+    <xs:attribute name="derivedHook" type="xs:string"/>
+    <xs:attribute name="derivedSize" type="xs:decimal"/>
+    <xs:attribute name="derivedReview" type="xs:string"/>
     <!-- an owned critter (kind critters; its <quality>s its companion qualities, its <trained> its named commands and
          special training): the pet class the player chose (absent: mundane; Awakened and Emerged come from its Magic or
          Resonance), tamed from the wild instead of bought (no price, Wild Life p. 184) -->

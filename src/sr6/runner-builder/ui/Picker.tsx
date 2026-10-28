@@ -1,6 +1,7 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
 import type { Sr6Build } from '../../formats/domain/character'
 import { mountSlots, slotLabel } from '../../catalog/domain/structure'
+import { modsOf } from '../domain/assets/vehiclemods'
 import { ratingOf } from '../domain/creation/purchases'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
@@ -435,6 +436,10 @@ export function Accessories({
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   const slots = mountSlots(he, items, ratingOf(host, he))
+  // a vehicle's factory parts take their hooks too (vehiclemods.ts usedByHook: the figure the guard and Review use)
+  if (host.kind === 'vehicles')
+    for (const [id, used] of Object.entries(modsOf(host, data).usedByHook))
+      if (slots.remaining.has(id)) slots.remaining.set(id, slots.remaining.get(id)! - used)
   // a host with a Capacity is full by its Capacity (the add-time guard governs it that way); only a slot-only host is full by its mount slots
   const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
   // only accessories that fit this host are offered (its category's `fits` names the host, or it carries a matching slot);

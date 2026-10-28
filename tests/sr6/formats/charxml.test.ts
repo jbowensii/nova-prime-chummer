@@ -377,6 +377,8 @@ test('every advance op and entry type round-trips and validates', async () => {
     // (two chassis slots into one powertrain slot; a weapon moved to another mount)
     { op: 'shift', target: 'g4', from: 'chassis', to: 'powertrain' },
     { op: 'move', target: 'lf', mount: 'lm8' },
+    { op: 'part', target: 'lf', part: 'p1' },
+    { op: 'part', target: 'lf', part: 'p1', restore: true },
     // (a critter's quality bought by the bond, with the negative taken alongside; one upgraded)
     {
       op: 'bond',

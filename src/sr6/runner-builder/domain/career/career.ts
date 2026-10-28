@@ -63,8 +63,8 @@ import {
   powerRefusal,
   runnerInfected,
 } from '../creation/infected'
-import { infectedTo, unfit } from '../creation/actions'
-import { mountsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
+import { accessoryProblem, infectedTo, setPart, unfit } from '../creation/actions'
+import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
 
 export type Preview = { ok: true; label: string; karma: number; nuyen: number } | { ok: false; reason: string }
@@ -187,6 +187,20 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'move': {
       const x = b.purchases.flatMap(y => y.accessories).find(y => y.uid === a.target)
       if (x) x.mount = a.mount
+      return
+    }
+    case 'part': {
+      // (price() has checked it; a replay only flips the id, so a void undoes it)
+      const host = b.purchases.find(x => x.uid === a.target)
+      if (!host) return
+      const rest = (host.removedParts ?? []).filter(u => u !== a.part)
+      host.removedParts = a.restore ? rest : [...rest, a.part]
+      if (!host.removedParts.length) delete host.removedParts
+      // a weapon in a mount that went with the part is out of it, as creation's setPart leaves it (an older entry: the part's own)
+      if (!a.restore) {
+        const gone = new Set(a.detach ?? [`part:${a.part}`])
+        for (const w of host.accessories) if (w.mount && gone.has(w.mount)) delete w.mount
+      }
       return
     }
     case 'bond': {
@@ -621,7 +635,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // yourself: half, a mod only, Double Clutch p. 120); what goes past the vehicle's limits is recorded (Review warns)
       const host = b.purchases.find(y => y.uid === a.target) ?? no('unknown-host')
       const x = a.line,
-        e = x.id ? (data.entry(x.kind, x.id) ?? no('unknown-entry')) : undefined
+        e = x.id ? (data.entry(x.kind, x.id) ?? x.snapshot ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       if (x.mount !== undefined) {
@@ -629,6 +643,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         if (!mountsOf(host, data).some(m => m.uid === x.mount)) no('not-a-mount')
       }
       if (x.diy && !diyAllowed(e)) no('no-diy')
+      if (x.derived) {
+        // (a GM-derived mod: the same room test as at creation, on the freed hook)
+        const why = accessoryProblem(host, x, data)
+        if (why) no(why)
+      }
       // (critter equipment on an owned critter only; on a critter what is printed in its Body reads at it: priced)
       if (critterOnly(e) && host.kind !== 'critters') no('critters-only')
       const pr = priced(x, data, cr, priced({ ...host, accessories: [] }, data, cr))
@@ -650,6 +669,14 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const why = shiftProblem(host, a.from, a.to, data)
       if (why) no(why)
       return { label: `Shift mod slots: 2 ${a.from} → 1 ${a.to} on ${lineLabel(host)}` }
+    }
+    case 'part': {
+      // a factory part off or back (decomposition plan D1/D4): free, no refund; checked on a copy, as creation's op does
+      const host = b.purchases.find(y => y.uid === a.target && y.kind === 'vehicles') ?? no('unknown-host')
+      const r = setPart(structuredClone(host), a.part, !!a.restore, data)
+      if (!r.ok) no(r.reason)
+      const p = partsOf(host, data).find(y => y.id === a.part)
+      return { label: `${a.restore ? 'Restored' : 'Removed'} factory part: ${p?.name ?? a.part} ${a.restore ? 'on' : 'from'} ${lineLabel(host)}` }
     }
     case 'move': {
       // no new charge; the weapon's size is checked only by Review's warning (vehiclemods.ts); a void puts it back
@@ -864,6 +891,22 @@ export function record(
     case 'unfit':
       adv.line = b.purchases.flatMap(x => x.accessories).find(x => x.uid === adv.target)
       break
+    case 'part': {
+      // (a part coming off takes its mounts, and its children's, with it: note which weapons' mounts, for a replay)
+      const host = b.purchases.find(x => x.uid === adv.target)
+      if (host && !adv.restore) {
+        const x = structuredClone(host)
+        setPart(x, adv.part, false, data)
+        const mounts = new Set(
+          partsOf(x, data)
+            .filter(p => p.removed)
+            .map(p => p.uid),
+        )
+        const hit = [...new Set(host.accessories.flatMap(w => (w.mount && mounts.has(w.mount) ? [w.mount] : [])))]
+        if (hit.length) adv.detach = hit
+      }
+      break
+    }
     case 'bond':
       // (bonded qualities; the upgraded one keeps how it came, applyAdvance)
       adv.line = { ...named(adv.line, data.qualities[adv.line.id]?.name), how: 'bonded' }

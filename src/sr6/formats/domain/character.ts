@@ -187,6 +187,14 @@ export interface Sr6Purchase {
    *  uid (`builtin:<n>`, its place among the entry's <builtin>s). A removed built-in no longer counts toward slots,
    *  hardpoints or mounts and no weapon can sit in it; restoring it clears the uid. Round-trips (charxml). */
   removedBuiltins?: string[]
+  /** Vehicle decomposition (docs/analysis/sr6-vehicle-decomposition.md 3.3): the catalog <part>s removed from this
+   *  instance, each by the part's `id`. Same semantics as removedBuiltins for the catalog's <part>s; the two coexist
+   *  (book-only vehicles keep <builtin>, ruling D2). Format only: nothing reads it yet. Round-trips (charxml). */
+  removedParts?: string[]
+  /** a GM-derived mod (decomposition plan 4.8, ruling D5): this accessory is custom content made from the catalog item `from`
+   *  (its price, availability, rules and text carried in the `snapshot`), set by the GM to take `size` of the host's `hook`
+   *  (a freed factory part's space, or any hook with room). origin synth: the app made it, so review says a GM must look. */
+  derived?: { from: string; kind: string; hook: string; size: number; review: 'needs-owner' | 'none' }
   /** GM override: slots added to this host instance so an item can be fitted that has no matching catalog host slot, or
    *  to widen a budget. Each is a `<slot id value>` the app treats as if the catalog entry carried it (actions.ts `slot`
    *  op; honoured by the add-time slot guard). The id is any slot vocabulary id; the value is the capacity it offers. */
@@ -209,6 +217,8 @@ export interface Sr6Design {
   /** start from a known vehicle: a catalog `vehicles` id. Its stats, price and Availability are the baseline and you
    *  add mods on top (the from-scratch chassis/powertrain/console build is for a design with no base). */
   base?: string
+  /** a based design: the starting vehicle's catalog <part>s (by id) taken off it (plan Stage 4); the bought design lacks them */
+  removedParts?: string[]
   chassis?: string
   powertrain?: string
   console?: string
@@ -424,6 +434,11 @@ export type Sr6Advance =
   /** a weapon (target: its uid) moved to another weapon mount of the same vehicle or drone (mount: that accessory's uid),
    *  no new charge; voiding it puts the weapon back in the mount it was in */
   | { op: 'move'; target: string; mount: string }
+  /** the factory part (vehicle decomposition plan 3.3; by the catalog <part>'s id) of the owned vehicle or drone whose uid is
+   *  target taken off, or (restore) put back while its hook has room; free, no refund by default; voiding it undoes it.
+   *  detach: the weapon mounts (`part:<id>`) that went with the part (its own and its children's), recorded when it
+   *  came off so a replay frees the weapons in them as creation's setPart does */
+  | { op: 'part'; target: string; part: string; restore?: boolean; detach?: string[] }
   /** a companion quality for the owned critter whose uid is target, bought with the runner's Karma (the Critter Bond
    *  path's Permanent Improvement, SWC p. 139), with the negative quality `with` taken alongside (Wild Life p. 184); a
    *  line whose uid names one of the critter's qualities upgrades that one (its id and level replaced) */
@@ -467,6 +482,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'unfit',
   'shift',
   'move',
+  'part',
   'bond',
   'teach',
   'contact',

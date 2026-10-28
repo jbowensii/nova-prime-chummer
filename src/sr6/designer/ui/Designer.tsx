@@ -24,6 +24,7 @@ import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
 import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
+import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
 import { n } from '../../runner-builder/ui/editor'
@@ -583,6 +584,36 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                   <p className="muted">
                     Its stats, price and Availability are the baseline; add mods below. Switch to a from-scratch build to pick a chassis instead.
                   </p>
+                  {(fp =>
+                    fp.length > 0 && (
+                      <p aria-label="Factory parts of the starting vehicle">
+                        Factory parts:{' '}
+                        {[...fp]
+                          .sort((a, b) => a.name.localeCompare(b.name))
+                          .map(fpart => (
+                            <span key={fpart.id} className={fpart.removed ? 'chip muted' : 'chip'}>
+                              {fpart.name}
+                              {fpart.origin === 'synth' ? ' (synthesized)' : ''} · {fpart.hook.replace(/^vehicle-/, '')} {fpart.cost}
+                              {fpart.removed ? ' (removed)' : ''}{' '}
+                              {(!fpart.removed || (d.removedParts ?? []).includes(fpart.id)) && (
+                                <button
+                                  className="btn small quiet"
+                                  aria-label={`${fpart.removed ? 'Restore' : 'Remove'} factory part ${fpart.name}`}
+                                  onClick={() =>
+                                    update(x => {
+                                      const rest = (x.removedParts ?? []).filter(u => u !== fpart.id)
+                                      x.removedParts = fpart.removed ? rest : [...rest, fpart.id]
+                                      if (!x.removedParts.length) delete x.removedParts
+                                    })
+                                  }
+                                >
+                                  {fpart.removed ? 'restore' : '×'}
+                                </button>
+                              )}
+                            </span>
+                          ))}
+                      </p>
+                    ))(factoryParts({ uid: '', kind: 'vehicles', id: d.base, qty: 1, accessories: [], removedParts: d.removedParts }, data))}
                   <button className="btn small quiet" onClick={() => update(x => void delete x.base)}>
                     Build from scratch instead
                   </button>

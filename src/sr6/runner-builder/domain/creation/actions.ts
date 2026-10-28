@@ -10,6 +10,7 @@ import { activeRules } from './rule-markers'
 // the runner lacks never refuses a step (owner, 2026-10-09): it is taken, and Review's error stands until a GM approves it.
 import { knowledgeNuyenAvailable } from './rule-markers'
 import { languageCap } from './skills'
+import type { Sr6Kind } from '../../../formats/domain/types'
 import { newId } from '../../../../core/shared/types'
 import {
   CONTACT_TYPES,
@@ -54,7 +55,8 @@ import {
   takesMaterial,
   toNuyenMax,
 } from './budgets'
-import { modsOf, mountsOf, shiftProblem } from '../assets/vehiclemods'
+import { deriveMod } from '../assets/derive'
+import { modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -127,6 +129,14 @@ export type Op =
    *  a removed one (character.ts removedBuiltins). Owner 2026-10-27: everything is removable, built-ins included. */
   | { op: 'builtin'; uid: string; remove: string }
   | { op: 'builtin'; uid: string; restore: string }
+  /** a player takes a factory part (the catalog's <part>, by its id) off a vehicle/drone, freeing its hook cost, or puts it
+   *  back (reversible, free: no refund by default, D4). Its children (parts it holds, weapons in a mount part) go and
+   *  return with it. Decomposition plan ruling D1: at creation and, as a ledger `part` entry, in career. */
+  | { op: 'part'; uid: string; remove: string }
+  | { op: 'part'; uid: string; restore: string }
+  /** a GM derives a mod from any catalog item (decomposition plan 4.8, D5): custom content with the source's price and
+   *  rules, set to take `size` of the vehicle's `hook` (a freed factory part's room), fitted to `host` if it fits there */
+  | { op: 'derive'; host: string; kind: Sr6Kind; id: string; hook: string; size: number; rating?: number }
   | { op: 'wear'; uid: string; worn: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
@@ -625,7 +635,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         line.diy = true
       }
       if (host.kind === 'vehicles' && line.kind === 'weapons' && !line.mount)
-        line.mount = mountsOf(host, data).find(m => !host.accessories.some(a => a.mount === m.uid))?.uid
+        line.mount = mountsOf(host, data).find(m => !m.taken && !host.accessories.some(a => a.mount === m.uid))?.uid
       const problem = accessoryProblem(host, line, data)
       if (problem) return no(problem)
       host.accessories.push(line) // (no grade of its own: on an implant it has the implant's, budgets.ts fitted)
@@ -723,6 +733,23 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       x.removedBuiltins = [...(x.removedBuiltins ?? []), op.remove]
       for (const a of x.accessories) if (a.mount === op.remove) delete a.mount
       return OK
+    }
+    case 'derive': {
+      const host = b.purchases.find(p => p.uid === op.host && p.kind === 'vehicles')
+      if (!host) return no('unknown-line')
+      const from = data.entry(op.kind, op.id)
+      if (!from) return no('unknown-entry')
+      if (!(op.size > 0) || !op.hook.startsWith('vehicle-')) return no('bad-derivation')
+      const line = deriveMod(from, op)
+      const problem = accessoryProblem(host, line, data)
+      if (problem) return no(problem)
+      host.accessories.push(line)
+      return OK
+    }
+    case 'part': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      return setPart(x, 'restore' in op ? op.restore : op.remove, 'restore' in op, data)
     }
     case 'critter': {
       const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'critters')
@@ -1210,7 +1237,7 @@ function newLine(
 }
 
 /** Shared add-time guard for all accessory pickers. */
-function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): string | undefined {
+export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): string | undefined {
   const he = entryOf(host, data),
     e = entryOf(line, data)
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
@@ -1226,16 +1253,50 @@ function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): 
   }
   if (host.kind !== 'vehicles') return
   if (line.kind === 'weapons') {
-    if (!line.mount || !mountsOf(host, data).some(m => m.uid === line.mount)) return 'A free weapon mount is required.'
-    if (host.accessories.some(a => a.mount === line.mount)) return 'This weapon mount is full.'
+    const mount = mountsOf(host, data).find(m => m.uid === line.mount)
+    if (!line.mount || !mount) return 'A free weapon mount is required.'
+    if (mount.taken || host.accessories.some(a => a.mount === line.mount)) return 'This weapon mount is full.'
   }
   const before = modsOf(host, data),
     after = modsOf({ ...host, accessories: [...host.accessories, line] }, data)
+  return budgetProblem(before, after)
+}
+
+/** Why `after` (a vehicle's mods once a change is made) is over a budget `before` was not: the one test the picker's
+ *  add, the guard and a restored factory part share (decomposition plan 3.4). `stock`: the vehicle as the factory built it
+ *  (nothing removed, nothing fitted): what the book's own fit already goes over (a Hornet's injector on a drone that has no
+ *  hardpoint to give) is not a reason to refuse putting that part back. */
+function budgetProblem(before: VehicleMods, after: VehicleMods, stock?: VehicleMods): string | undefined {
+  if (after.derivedOver.length > before.derivedOver.length) return 'Not enough room freed in that part of the vehicle.'
   const universal = after.builtin.reduce((n, b) => n + (b.category === 'universal' ? (b.slots ?? 0) : 0), 0)
-  const slotOver = (m: typeof after) => Object.values(m.slots ?? {}).reduce((n, s) => n + Math.max(0, s.used - s.max), 0)
-  if (slotOver(after) > Math.max(universal, slotOver(before))) return 'Not enough remaining mod slots.'
+  const slotOver = (m: VehicleMods) => Object.values(m.slots ?? {}).reduce((n, s) => n + Math.max(0, s.used - s.max), 0)
+  if (slotOver(after) > Math.max(universal, slotOver(before), stock ? slotOver(stock) : 0)) return 'Not enough remaining mod slots.'
   for (const key of ['hardpoints', 'mounts', 'autosofts'] as const) {
     const m = after[key]
-    if (m && m.used > Math.max(m.max, before[key]?.used ?? 0)) return 'Not enough remaining vehicle slots or mounts.'
+    if (m && m.used > Math.max(m.max, before[key]?.used ?? 0, stock?.[key]?.used ?? 0)) return 'Not enough remaining vehicle slots or mounts.'
   }
+}
+
+/** Takes a factory part off a vehicle, or (restore) puts it back while its hook has room; shared by the creation `part`
+ *  op and the career `part` entry. Removing refunds nothing (D4: vehiclemods.ts partRefund); a weapon sitting in a mount
+ *  part that goes falls out of it. Restoring under a removed parent is refused: restore the parent. */
+export function setPart(x: Sr6Purchase, id: string, restore: boolean, data: Sr6Data): Result {
+  const parts = partsOf(x, data),
+    p = parts.find(y => y.id === id)
+  if (!p) return no('not-a-part')
+  const gone = x.removedParts ?? []
+  if (restore) {
+    if (!gone.includes(id)) return no(p.removed ? 'parent-removed' : 'not-removed')
+    const next = gone.filter(u => u !== id),
+      back = { ...x, removedParts: next.length ? next : undefined }
+    if (budgetProblem(modsOf(x, data), modsOf(back, data), modsOf({ ...x, removedParts: undefined, accessories: [] }, data))) return no('no-room')
+    if (next.length) x.removedParts = next
+    else delete x.removedParts
+    return OK
+  }
+  if (p.removed) return no('already-removed')
+  x.removedParts = [...gone, id]
+  const after = partsOf(x, data).filter(y => y.removed)
+  for (const a of x.accessories) if (after.some(y => y.uid === a.mount)) delete a.mount
+  return OK
 }

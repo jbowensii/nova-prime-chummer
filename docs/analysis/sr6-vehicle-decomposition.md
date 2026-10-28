@@ -11,15 +11,21 @@ else.
 1. **CL6 already models factory equipment as structured, removable parts.** It does not use descriptive text for this.
    Each vehicle record lists its factory parts as `<embed type="GEAR" ref=… intoType="HOOK" intoRef=…>` entries, and
    each one occupies a named hook (chassis, hardpoint, electronics and so on). **251 of 337** English vehicle and drone
-   records carry at least one embedded part, **1,056** distinct part placements in all. **86 records carry none.**
+   records carry at least one embedded part. **86 records carry none.** Under ruling **D7 (latest printing wins)** the
+   oracle is **996** distinct placements (Stage 0 `embedmap`, "latest printing only" block). The earlier **1,056**
+   figure was a *union across all printings including ~97 `lang="de"` records the importer drops* — a measurement
+   artifact, not the import target. The Stage 2 gate checks the 996 set.
 2. **The MCT Hornet's injector exists in CL6.** The core record defines it inline as `mct_hornet_stinger` ("MCT Hornet
    Injector": close-combat blade, 1P, AR 4, 0.5 of a hardpoint, `modonly`). CL6's own data comment says the book gives no
    stats and the numbers were reasoned by the CL6 authors. Double Clutch's record of the same drone instead embeds
    `hornet_injector_mount` into `VEHICLE_BODY`, and that id is **defined nowhere in the jar**.
 3. **The GMC Bulldog's engine does not exist anywhere in CL6.** CL6 has no engine or powertrain *part* for any vehicle.
    Powertrain is a capacity (`VEHICLE_POWERTRAIN` slots), and the Bulldog's Double Clutch record only raises its chassis
-   capacity (`itemhookmod VEHICLE_CHASSIS CAPACITY 4`). An "engine" part would be pure synthesis. The recommendation
-   below is **not** to create one (owner decision D3).
+   capacity (`itemhookmod VEHICLE_CHASSIS CAPACITY 4`). Verified in the jar (2026-10-28): no gear id is an engine/motor
+   part; 15 real powertrain *upgrades* (improved_economy, nitro_boost, …) embed into `VEHICLE_POWERTRAIN` and import as
+   parts by the normal rule. **Owner ruling D3 (RULED): synthesize the missing whole-system parts anyway** — an "GMC
+   Bulldog Engine" and the like — each named after its source, sized by a derived/CL6 pattern, as an available removable
+   item, every one flagged `origin="synthesized"` + needs-review. Synthesis fills only gaps CL6 has no part for.
 4. **We import none of it.** `tools/cl6check/modifiers.py:145` lists `embed` as `UNSTATED` ("pre-installed gear … not
    modifiers of play"), and the importer has no other `embed` reader. Our only notion of factory parts is `<builtin>`.
    That comes from book box text (`importer/sr6/resolve.py:801-820`, `builtin_parts`). A builtin **never occupies a
@@ -32,9 +38,12 @@ else.
    derives a custom mod from the jammer, with a set hook and size such as 0.5 hardpoint, and approves it as persisted
    custom content (§4.8).
 
-So the work is mostly **import what CL6 already has, by pattern rules** (§4.6). Rules resolve 1,055 of the 1,056
-placements (99.91%). **Exactly one placement needs a hand override** (§4.7), and **true synthesis is 0**. Book-only
-vehicles are still to be counted (G6).
+So the work is mostly **import what CL6 already has, by pattern rules** (§4.6). On the D7 oracle (996 latest-printing
+placements) the rules resolve every placement but one: 12 of the 13 undefined refs resolve by rule, M7 recovers the
+Hornet's `mct_hornet_stinger`, and **exactly one placement needs a hand override** (§4.7) — the Scorpion's
+`meta_adjust_pilot_troll` (ruling D9 → driver troll seat). **Synthesis is now non-zero by ruling D3**: for any
+whole-system part CL6 lacks (engine/powerplant and the like) the importer synthesizes a named, flagged, removable
+part. Book-only vehicles are still to be counted (G6).
 
 ---
 
@@ -465,27 +474,36 @@ Placements: 792 re-fittable, 249 factory-only (128 + 121), 15 undefined. **Measu
 synthesis: 1,041 / 1,056 = 98.6%** from direct refs alone. **With the pattern rules (§4.6): 1,055 / 1,056 = 99.91%,
 measured, and exactly 1 forced override** (§4.7).
 
-### 5.2 Owner decisions needed
+### 5.2 Owner decisions — all RULED (owner 2026-10-28)
 
-1. **D1. Who may remove factory parts:** the player at creation and in career, or the GM only (today)? Recommendation:
-   the player, at creation and in Ledger career, since it is reversible.
-2. **D2. Retire text `<builtin>`** where CL6 embeds exist (CL6 wins). Keep it only for book-only vehicles?
-   Recommendation: yes.
-3. **D3. Synthesize engines and other "whole system" parts that CL6 does not have?** Recommendation: no. Powertrain
-   stays a budget.
-4. **D4. Refund on removal:** 0 (recommended), or a fraction of the part's catalog price?
-5. **D5. RULED (owner 2026-10-28):** carried gear on drones is allowed **through the GM custom mod** (§4.8). A GM
-   derives a new mod from any gear, sets its hook and size, and approves it as persisted custom content. Free-form
-   gear-in-slot is not allowed.
-6. **D6. RULED (owner 2026-10-28):** the Hornet injector defaults to CL6's `mct_hornet_stinger` on the **hardpoint at
-   0.5** (rule M7 maps DC's undefined `hornet_injector_mount` to it). The GM can adjust it through the same custom-mod
-   path.
-9. **D9 (new). The one forced override:** the Harley-Davidson Scorpion's `meta_adjust_pilot_troll`. Should it be
-   `driver_troll` (recommended) or `passenger_troll`?
-7. **D7. Records that disagree** (63 multi-record ids): confirm *latest printing wins* for embeds as a whole set (not
-   merged per part).
-8. **D8. The `included` flag** (58 placements): show it as "included in price" with removal at no refund, while non-included
-   factory options are priced? This depends on Stage 0 confirming the meaning.
+1. **D1. Who may remove factory parts — RULED: the player**, at creation and in Ledger career. It is reversible
+   (Restore re-installs), so no GM round-trip is needed for routine swaps.
+2. **D2. Deriving parts — RULED: derive from CL6's model via the pattern rules (§4.6); a hard override is used only
+   where the rules cannot resolve a part.** Where CL6 has structured embeds, those are the part list and the old
+   text `<builtin>` entries are retired for that vehicle; `<builtin>` survives only for book-only vehicles CL6 does
+   not cover.
+3. **D3. Synthesize "whole system" parts CL6 lacks — RULED: yes, for ALL such parts, not only engines.** Each
+   synthesized part is **named after its source object** (e.g. "GMC Bulldog Engine"), its size/slots come from a
+   **derived or CL6 pattern** (§4.x synthesis rule), and it is an **available, removable item**. Every synthesized
+   part carries `origin="synthesized"` and a **needs-review** flag (never silently invented). The powertrain remains
+   a capacity hook; genuine CL6 powertrain upgrades (improved_economy, nitro_boost, …) already import as parts by the
+   normal embed rule — synthesis fills only the gaps where no CL6 part exists (engine/powerplant and any other
+   whole-system component the vehicle implies).
+4. **D4. Refund on removal — RULED: 0 by default.** The factory kit is baked into the sticker price. A GM may enter a
+   **custom refund and approve it** (used goods, likely sold on the black market); there are **no standard amounts**.
+   Re-installing a removed part costs 0. Restore is always free and reversible.
+5. **D5. RULED:** carried gear on drones is allowed **through the GM custom mod** (§4.8). A GM derives a new mod from
+   any gear, sets its hook and size, and approves it as persisted custom content. Free-form gear-in-slot is not allowed.
+6. **D6. RULED:** the Hornet injector defaults to CL6's `mct_hornet_stinger` on the **hardpoint at 0.5** (rule M7 maps
+   DC's undefined `hornet_injector_mount` to it). The GM can adjust it through the same custom-mod path.
+7. **D7. Records that disagree — RULED: latest printing wins, whole embed set** (not merged per part). Matches the
+   standing "current latest printing wins, always" rule; avoids cross-edition loadouts no single book describes.
+8. **D8. The `included` flag — RULED: `included="true"` = in the base price** (remove freely, no refund per D4);
+   non-included factory parts are shown with their own price as add-ons. Stage 0 confirms the flag's exact meaning
+   against CL6 before the importer relies on it; if it means something else, flag it back to the owner.
+9. **D9. The ambiguous ref — RULED:** the Harley-Davidson Scorpion's `meta_adjust_pilot_troll` is a **driver/pilot
+   troll seat** occupying VEHICLE_CF. Removing it frees that CF capacity — enough for a standard-size pilot seat plus a
+   passenger seat.
 
 The fit plan's open decisions still apply (decompiler access; who emits vehicle slots, R8; book-only weapon size).
 
@@ -513,15 +531,56 @@ replay 1,079/1,079 with 0 diffs, completeness 4,474, accuracy 4,288) and the 18-
 
 ### Stage 2: importer (with fit-plan Stage 2; CL6 gates required)
 
+**Data channel — RULED (owner 2026-10-28, option a).** The app importer builds the catalog from the book PDFs and
+never reads the CL6 jar; tower04 and CI have no jar. So the per-vehicle part data is baked offline into a **committed,
+generated table** `importer/sr6/overrides/vehicle_parts.json`: one `tools/cl6check` generator reads the jar, resolves
+every part by the P/M rules on the D7 latest-printing oracle, keys each to **our** catalog id (via `match.py`), and
+writes rows of `(vehicle, part ref, hook, cost, parent, origin, review, note)`. The importer reads that table (no jar
+needed) to emit `<part>` and retire `<builtin>` (D2). **This is a narrow, owner-granted exception to the standing
+"no CL6 data in the repo" rule** (`tools/cl6check/CLAUDE.md`, `docs/cl6check.md:7-8`): the committed data is
+game-mechanical hook/slot/cost, generated reproducibly by a committed script and flagged by `origin`, not book prose.
+Vehicles the matcher cannot pair to a book catalog entry are **not dropped**: they go on an unmatched list and are
+flagged needs-review (a new Stage 2 gate; closes the G6 gap).
+
 1. Read `<embed>` into `<part>` (latest printing), with `intoId` → `parent`.
 2. Import `geardef` children as catalog entries. Stop hoisting their usage onto the vehicle (R15).
 3. Apply the pattern rules P1–P5 and M1–M7 (§4.6). The single ambiguous ref is an override row with a note. Anything
    else unresolved **fails the gate** (it is never shipped blank).
 4. `itemhookmod`/`valmod` fold into hook budgets. Retire `<builtin>` where parts exist (D2).
-- **Gate:** for every matched vehicle, our (ref, hook, cost, parent) multiset equals CL6's **100%** (Stage 0's map is
-  the oracle). Rule hits read M1–M5 1,053, M6 1, M7 1, and overrides **exactly 1**. Any new override fails the gate
-  until the owner rules on it. CL6 gates are unchanged, or moved
-  on purpose with the JSON rulings updated in the same change.
+- **Gate:** for every matched vehicle, our (ref, hook, cost, parent) multiset equals CL6's **100%** on the **D7 oracle
+  (Stage 0's "latest printing only" map, 996 placements)**. Overrides read **exactly 1** (the Scorpion's
+  `meta_adjust_pilot_troll`, D9). Any new override fails the gate until the owner rules on it. Synthesized parts (D3)
+  are additive beyond the 996 and are each flagged `origin="synthesized"`/needs-review. CL6 gates are unchanged, or
+  moved on purpose with the JSON rulings updated in the same change.
+
+### Stage 2b: synthesis (RULED/owner-approved)
+
+Owner approved building D3 without a separate design review (2026-10-28). The jar shows the only systematically missing
+whole-system part is the **powerplant**: Commlink6's powertrain embeds are upgrades (`improved_economy`, `nitro_boost`),
+never a base engine, and every other subsystem is a real item. So the generator mints **one** synthesized part per vehicle.
+
+1. **Scope.** Every catalog vehicle or drone of ours that is self-propelled (a Speed or an Acceleration stat above 0) gets
+   one part named "<Our Vehicle Name> Powerplant" (the vehicle's own catalog name, e.g. "GMC Bulldog Powerplant"). A vehicle
+   with no movement stats (a trailer, a static drone) gets none.
+2. **Hook.** `vehicle-powertrain`, as a part-hook value only (like `vehicle-body`). It is **not** added to the importer's
+   per-vehicle slot budget, and the part is not counted on the powertrain meter (`modsOf` leaves origin synth out of
+   `usedByHook`), so a stock vehicle's imported data and Review are unchanged.
+3. **Size** (the owner can tune it): `size = max(0.5, round(Body / 3))` in powertrain slot units, rounded half up. This is a
+   **synthesized heuristic of this app**, not a book or Commlink6 figure. It is the room a replacement may take.
+4. **Stats.** Price 0 (included in the vehicle, D8). The entry says "Powerplant: Speed X, Acceleration Y" from the vehicle's
+   own stats. `origin="synth"`, `review="needs-owner"`. It never claims a Commlink6 source (the table row has no `cl6` key).
+5. **Removal.** Removing it frees its size (`freedByHook`). While it is off and no mod is derived into `vehicle-powertrain`,
+   Review notes "no powerplant installed — vehicle cannot move under own power". It is reversible; the D5 derive-a-mod path
+   installs a replacement (a derived mod on this metered hook takes real powertrain slots).
+
+**Where it lives.** `tools/cl6check/vehicleparts.py` `powerplants()` writes a `part` row (`id="pp"`) per vehicle into
+`importer/sr6/classes/vehicle_parts.json` and a `gen: "vehicle-part"` add row for its catalog entry into the vehicle's book
+table (`overrides/<book>.json`). The entry id is the vehicle's id tail plus `-powerplant`. The importer keeps a vehicle's
+box-text builtins when its only part is the synthesized one.
+
+**Gate.** Synthesized rows are additive: `embedmap --ours` leaves them out of the 996-placement oracle comparison and counts
+them on their own line. The oracle still reads 996/996 with overrides exactly 1; completeness and effects parity do not move
+(the entries are "extra" rows with no Commlink6 record).
 
 ### Stage 3: domain (with fit-plan Stage 3)
 

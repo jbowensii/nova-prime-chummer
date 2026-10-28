@@ -22,8 +22,10 @@ replaced value is kept in a `<found how="errata">` child's text.
 
 Nothing here names an item: the readers are the books' column headers and value words."""
 
+import json
 import os
 import re
+from pathlib import Path
 
 from importer.sr6 import catalog, lifemodules
 from importer.sr6.recipes import current, published
@@ -667,6 +669,7 @@ def corpus(books, sources=None, apply_errata=True):
     n["abbreviations"] = _spelled_out(bs, entries, changed)
     n["run-ins"] = _run_in_names(entries, changed)
     n["builtin"] = _builtin_mods(bs, entries, changed)
+    n["parts"] = vehicle_parts(entries, changed)
     for b, src, kind, path, tree in files:
         if path in changed:
             body = etree.tostring(tree, encoding="unicode")
@@ -897,6 +900,46 @@ def _builtin_mods(bs, entries, changed):
                 add_kid(el, tag, attrs, t)
             changed.add(epath)
             done += 1
+    return done
+
+
+VEHICLE_PARTS = Path(__file__).with_name("classes") / "vehicle_parts.json"
+_PART_ATTRS = ("id", "ref", "hook", "cost", "rating", "variant", "count", "included", "parent", "origin", "review")
+
+
+def vehicle_parts(entries, changed, data=None):
+    """Each vehicle the committed table (classes/vehicle_parts.json, made by tools/cl6check/vehicleparts.py from
+    Commlink6's embeds: the importer never reads the jar) has rows for gets them as `part` children, and loses its
+    `builtin` names (owner ruling D2: Commlink6's structured parts replace the box-text ones). A `builtin` that grants
+    slots stays: that is a hook budget, not a part. A vehicle is HELD, keeping its builtins (never below today's
+    factory fit), when it has no rows (book-only), when the table lists a part of it as unmatched, or when a row's ref
+    is no entry of this library (an entry only the optional Commlink6 module has: no dangling `part`, the row is
+    skipped), or when its only parts are synthesized ones (origin synth: no Commlink6 part replaces its builtins).
+    Returns how many vehicles got parts."""
+    if data is None:
+        data = json.loads(VEHICLE_PARTS.read_text(encoding="utf8")) if VEHICLE_PARTS.is_file() else {}
+    known = {el.get("id") for _ob, _src, _kind, el, _path in entries}
+    by, held = {}, {v for u in data.get("unmatched", ()) for v in u.get("vehicle", ())}
+    for r in data.get("rows", ()):
+        if r["ref"] in known:
+            by.setdefault(r["vehicle"], []).append(r)
+        else:
+            held.add(r["vehicle"])
+    done = 0
+    for _ob, _src, kind, el, epath in entries:
+        rows = by.get(el.get("id")) if kind == "vehicles" else None
+        if not rows:
+            continue
+        for k in kids(el, "part"):
+            el.remove(k)
+        # (a synthesized powerplant alone, Stage 2b, replaces nothing: builtins stay unless Commlink6 parts came)
+        if el.get("id") not in held and any(r.get("origin") != "synth" for r in rows):
+            for k in [x for x in kids(el, "builtin") if not x.get("slots")]:
+                el.remove(k)
+        for r in rows:
+            add_kid(el, "part", {**{a: r.get(a) for a in _PART_ATTRS}, "removable": "true"})
+        changed.add(epath)
+        done += 1
     return done
 
 

@@ -609,6 +609,14 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
       text: '',
     }
   })
+  // a based design keeps the starting vehicle's factory parts, less those taken off it (the Designer); a part's children go with it
+  if (baseVeh) {
+    const gone = new Set(d.removedParts ?? []),
+      all = baseVeh.parts.filter(p => p.tag === 'part'),
+      off = (p: Sr6Part, depth = 0): boolean =>
+        gone.has(p.attrs.id) || (depth < 20 && !!p.attrs.parent && (a => !!a && off(a, depth + 1))(all.find(q => q.attrs.id === p.attrs.parent)))
+    parts.push(...all.filter(p => !off(p)))
+  }
   const universal = d.options.reduce((t, o) => t + (o.level > 0 && /easily modified/i.test(data.entry('vehicledesign', o.id)?.name ?? '') ? 2 * o.level : 0), 0)
   if (universal) parts.push({ tag: 'builtin', attrs: { name: 'Easily Modified', slots: String(universal), category: 'universal' }, text: '' })
   const id = `design.${doc.id}`
