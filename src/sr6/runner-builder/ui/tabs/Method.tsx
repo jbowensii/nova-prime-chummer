@@ -89,9 +89,17 @@ export function MethodTab() {
   }
   const missing = Object.fromEntries(SR6_METHODS.map(m => [m, m === b.method ? [] : missingLabels(m, cr, data)])) as Record<Sr6Method, string[]>
   const letters = b.method === 'priority' || b.method === 'sumtoten'
-  const metatypes = p.legalMetatypes(b),
-    magic = p.legalMagic(b)
-  const magicSkills = Object.values(data.skills).filter(s => s.attr === 'mag')
+  const metatypes = p
+      .legalMetatypes(b)
+      .slice()
+      .sort((a, z) => a.name.localeCompare(z.name)),
+    magic = p
+      .legalMagic(b)
+      .slice()
+      .sort((a, z) => MAGIC_KIND_LABELS[a.kind].localeCompare(MAGIC_KIND_LABELS[z.kind]))
+  const magicSkills = Object.values(data.skills)
+    .filter(s => s.attr === 'mag')
+    .sort((a, z) => a.name.localeCompare(z.name))
 
   return (
     <div className="stack">
