@@ -26,7 +26,7 @@ import type { Sr6Entry, Sr6Part } from '../../../formats/domain/types'
 import { makeProvider } from './providers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
-import { noteAttr } from './choices'
+import { choiceOptions, noteAttr } from './choices'
 import { categoryOf, entryLabel } from '../../../catalog/domain/categories'
 
 export interface Sr6Pool {
@@ -457,6 +457,13 @@ function partsOf(b: Sr6Character['build'], data: Sr6Data, target: string, on: bo
   const entries = [
     ...b.qualities.map(q => data.entry('qualities', q.id)),
     ...b.picks.map(x => data.entry(x.kind, x.id)),
+    // a pick that chooses a quality (Finding Your Way → a Way) grants that quality's effects too
+    ...b.picks.flatMap(x => {
+      const e = x.note ? data.entry(x.kind, x.id) : undefined
+      if (choiceOptions(data, e)?.kind !== 'quality') return []
+      const q = Object.values(data.qualities).find(v => v.name === x.note)
+      return q ? [data.entry('qualities', q.id)] : []
+    }),
     ...b.purchases.filter(x => x.kind !== 'critters').map(x => entryOf(x, data)),
   ].filter((e): e is Sr6Entry => !!e)
   return entries

@@ -258,6 +258,17 @@ test('adept powers: a power without levels twice is a duplicate; a leveled one r
 })
 
 // purchases (Forge's stacking tests)
+test('purchaseNote records a purchased line’s choice and clears it on blank', () => {
+  const { b, act } = runner()
+  expect(act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })).toEqual(ok)
+  const uid = b.purchases[0].uid
+  expect(act({ op: 'purchaseNote', uid, note: 'Agility' })).toEqual(ok)
+  expect(b.purchases[0].note).toBe('Agility')
+  expect(act({ op: 'purchaseNote', uid, note: '   ' })).toEqual(ok)
+  expect(b.purchases[0].note).toBeUndefined()
+  expect(act({ op: 'purchaseNote', uid: 'nope', note: 'x' })).toEqual(no('unknown-line'))
+})
+
 test('two Zap Guns are two lines and an accessory fits one; ammo stacks; the price is the same either way', () => {
   const { b, data, cr, act } = runner()
   expect(act({ op: 'purchase', kind: 'weapons', id: 'crb.zap-gun' })).toEqual(ok)
