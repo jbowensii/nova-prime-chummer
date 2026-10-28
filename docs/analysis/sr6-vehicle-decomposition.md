@@ -531,6 +531,17 @@ replay 1,079/1,079 with 0 diffs, completeness 4,474, accuracy 4,288) and the 18-
 
 ### Stage 2: importer (with fit-plan Stage 2; CL6 gates required)
 
+**Data channel — RULED (owner 2026-10-28, option a).** The app importer builds the catalog from the book PDFs and
+never reads the CL6 jar; tower04 and CI have no jar. So the per-vehicle part data is baked offline into a **committed,
+generated table** `importer/sr6/overrides/vehicle_parts.json`: one `tools/cl6check` generator reads the jar, resolves
+every part by the P/M rules on the D7 latest-printing oracle, keys each to **our** catalog id (via `match.py`), and
+writes rows of `(vehicle, part ref, hook, cost, parent, origin, review, note)`. The importer reads that table (no jar
+needed) to emit `<part>` and retire `<builtin>` (D2). **This is a narrow, owner-granted exception to the standing
+"no CL6 data in the repo" rule** (`tools/cl6check/CLAUDE.md`, `docs/cl6check.md:7-8`): the committed data is
+game-mechanical hook/slot/cost, generated reproducibly by a committed script and flagged by `origin`, not book prose.
+Vehicles the matcher cannot pair to a book catalog entry are **not dropped**: they go on an unmatched list and are
+flagged needs-review (a new Stage 2 gate; closes the G6 gap).
+
 1. Read `<embed>` into `<part>` (latest printing), with `intoId` → `parent`.
 2. Import `geardef` children as catalog entries. Stop hoisting their usage onto the vehicle (R15).
 3. Apply the pattern rules P1–P5 and M1–M7 (§4.6). The single ambiguous ref is an override row with a note. Anything
