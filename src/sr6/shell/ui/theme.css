@@ -719,3 +719,123 @@ h4.cr-sub {
     margin-left: 0.8rem;
   }
 }
+
+/* ---- the Designer's editor (Designer.tsx Sr6DesignEditor): a sheet of the book's rounded cyan panels — a header band,
+   the build parts beside the worked-out vehicle, then options, built-in mods and the Design Points/price receipt ---- */
+.dsn {
+  max-width: 68rem;
+}
+.dsn-head {
+  display: grid;
+  grid-template-columns: 1fr 12rem;
+  gap: 0.6rem 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+.dsn-head .dsn-flags {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.3rem;
+}
+.dsn .panel {
+  border: 1.5px solid var(--sr6-line);
+  border-radius: var(--r-box);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  box-shadow: var(--sr6-glow);
+  padding: 0.85rem 1.1rem 1rem;
+  margin-bottom: 1rem;
+}
+.dsn .panel > h3 {
+  color: var(--heading);
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+  padding-bottom: 0.3em;
+  background: var(--sr6-hatch) left bottom / 2.6rem 0.2em no-repeat;
+}
+.dsn .panel > h4 {
+  color: var(--heading);
+  font-family: var(--display);
+  margin: 1rem 0 0.4rem;
+  border-bottom: 1px solid var(--yellow);
+  padding-bottom: 0.15em;
+}
+.dsn-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+.dsn-top .panel {
+  margin-bottom: 0;
+}
+.dsn-picks {
+  display: grid;
+  gap: 0.6rem;
+}
+/* the worked-out vehicle: a tidy grid of read-only stat cells, the sheet's centrepiece */
+.dsn-vehicle .statgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(5.2rem, 1fr));
+  gap: 0.5rem;
+}
+.dsn-vehicle .stat {
+  border: 1px solid var(--rule);
+  border-radius: var(--r-md);
+  background: var(--zebra);
+  padding: 0.35rem 0.5rem;
+  text-align: center;
+}
+.dsn-vehicle .stat .sl {
+  display: block;
+  font-family: var(--display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-3);
+}
+.dsn-vehicle .stat b {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--heading);
+  font-variant-numeric: tabular-nums;
+}
+/* the options as a responsive grid of stepper rows, instead of one tall list */
+.dsn-opts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
+  gap: 0.35rem 1.2rem;
+}
+.dsn-opts .row,
+.dsn-toggles label {
+  align-items: center;
+}
+.dsn-toggles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
+  gap: 0.25rem 1.2rem;
+}
+/* the totals receipt: the book sidebar look, but full width under the sheet rather than docked */
+.dsn-totals.receipt {
+  position: static;
+  margin: 0;
+  max-height: none;
+  padding: 0.85rem 1.1rem 1rem;
+}
+.dsn-totals.receipt h2 {
+  margin: 0 0 0.5rem;
+  padding: 0 0 0.3em;
+  background: var(--sr6-hatch) left bottom / 2.6rem 0.2em no-repeat;
+}
+@media (max-width: 860px) {
+  .dsn-head {
+    grid-template-columns: 1fr;
+  }
+  .dsn-top {
+    grid-template-columns: 1fr;
+  }
+  .dsn-top .panel {
+    margin-bottom: 1rem;
+  }
+}

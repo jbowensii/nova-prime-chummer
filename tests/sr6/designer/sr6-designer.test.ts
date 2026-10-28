@@ -63,9 +63,8 @@ test('a player designs a vehicle: the parts, options by level, a modification, a
   await click(button('Add a mod…'))
   await click(option('Glitter Paint'))
   expect(pageText()).toMatch(/Glitter Paint · 0 slots, 0 DP · 4,000¥/)
-  expect(pageText()).toMatch(
-    /Body 9 · Armor 4 · Handling 3 · Seats 4 · Size Class 6 · Acceleration 17 · Speed interval 30 · Top speed 270 · Pilot 2 · Sensor 2 · Cargo 1 CF/,
-  )
+  // the worked-out vehicle, as the stat-cell grid (label then value, no separators)
+  expect(pageText()).toMatch(/Body9Armor4Handling3Seats4Size Class6Acceleration17Speed interval30Top speed270Pilot2Sensor2Cargo1 CF/)
   expect(pageText()).toMatch(/Design Points 53 · Price 53 × 1,000¥ \+ 4,000¥ of mods = 57,000¥ · Availability 6\(L\)/)
   expect(pageText()).toMatch(/Brainbox: special 12 \(as printed; no rule here reads it\)\./)
   // a quality factor multiplies the Design Points, not the mods' nuyen; do it yourself halves the price
@@ -102,12 +101,12 @@ test('Improved Handling: once taken, on-road and off-road or one of them (3 DP a
   const which = /^Improved Handling: on-road, off-road or both/
   expect(() => field(which)).toThrow()
   await click(button('Raise Improved Handling level'))
-  expect(pageText()).toMatch(/Handling 2 ·/)
+  expect(pageText()).toMatch(/Handling2Seats/) // the vehicle stat cell (Handling then Seats)
   await change(field<HTMLSelectElement>(which), 'off')
-  expect(pageText()).toMatch(/Handling 3\/2 ·/)
+  expect(pageText()).toMatch(/Handling3\/2Seats/)
   expect(pageText()).toMatch(/Design Points 56 ·/) // (Red Zip's 53 + 3; both would be + 5)
   await change(field<HTMLSelectElement>(which), '')
-  expect(pageText()).toMatch(/Handling 2 ·/)
+  expect(pageText()).toMatch(/Handling2Seats/)
   await change(field<HTMLSelectElement>(which), 'on')
   await click(button('Save'))
   expect(read(store.rows.get('d1')!.xml).design!.options.at(-1)).toEqual({ id: 'zz.improved-handling', level: 1, road: 'on' })
