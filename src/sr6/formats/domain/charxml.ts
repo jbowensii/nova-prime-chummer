@@ -225,7 +225,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'move':
       return [{ target: a.target, mount: a.mount }, '']
     case 'part':
-      return [{ target: a.target, partId: a.part, restore: a.restore ? 'true' : undefined }, '']
+      return [{ target: a.target, partId: a.part, restore: a.restore ? 'true' : undefined, detach: a.detach?.length ? a.detach.join(' ') : undefined }, '']
     case 'bond':
       return [{ target: a.target }, critterQualityXml(a.line) + (a.with ? critterQualityXml(a.with) : '')]
     case 'teach':
@@ -814,7 +814,13 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'move':
       return { op, target: req(e, 'target'), mount: req(e, 'mount') }
     case 'part':
-      return def({ op, target: req(e, 'target'), part: req(e, 'partId'), restore: e.getAttribute('restore') === 'true' ? true : undefined })
+      return def({
+        op,
+        target: req(e, 'target'),
+        part: req(e, 'partId'),
+        restore: e.getAttribute('restore') === 'true' ? true : undefined,
+        detach: (u => (u.length ? u : undefined))(str(e, 'detach')?.split(/\s+/).filter(Boolean) ?? []),
+      })
     case 'teach':
       return { op, target: req(e, 'target'), line: line(e, 'trained', readTrained, true) }
     case 'bond': {

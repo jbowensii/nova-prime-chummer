@@ -445,6 +445,8 @@
          put back); free, no refund by default -->
     <xs:attribute name="partId" type="xs:string"/>
     <xs:attribute name="restore" type="xs:boolean"/>
+    <!-- part, off: the weapon mounts (`part:<id>`) that went with it, so the weapons in them are freed -->
+    <xs:attribute name="detach" type="xs:string"/>
     <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
     <xs:attribute name="part" type="xs:positiveInteger"/>
     <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->

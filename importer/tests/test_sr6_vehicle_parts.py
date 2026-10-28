@@ -296,6 +296,26 @@ class Powerplants(unittest.TestCase):
         self.assertTrue(ok, lines)
         self.assertIn("1 powerplants on 1 vehicles", lines[-1])
 
+    def test_the_gate_fails_when_a_duplicate_placement_is_dropped(self):
+        # two cyberarms are two placements: the table holding one of them is a loss the distinct-set check could not see
+        latest = {"v": rec("v", [emb("mount", "VEHICLE_HARDPOINT", id="a"), emb("mount", "VEHICLE_HARDPOINT", id="b")])}
+        rows, un = vp.build(latest, {}, DEFS, VARIANTS, PARTS, {"v": ["x.v"]})
+        rows[0]["override"] = True
+        self.assertEqual(len(rows), 2)
+        page = '<d><gear id="x.mount"/><vehicle id="x.v">%s</vehicle></d>'
+        part = '<part ref="x.mount" hook="vehicle-hardpoint" cost="0.5"/>'
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "v.xml"), "w", encoding="utf8") as f:
+                f.write(page % (part + part))
+            lines, ok = vp.gate(d, {"rows": rows, "unmatched": un}, latest)
+            self.assertTrue(ok, lines)
+            self.assertIn("2 with duplicates", lines[0])
+            with open(os.path.join(d, "v.xml"), "w", encoding="utf8") as f:
+                f.write(page % part)
+            lines, ok = vp.gate(d, {"rows": rows[:1], "unmatched": un}, latest)  # one copy dropped from the table
+        self.assertFalse(ok)
+        self.assertIn("lost 1", lines[0])
+
     def test_only_a_synthesized_part_keeps_the_box_text_builtins(self):
         gb, _, entries = Reader.entries(self)
         resolve.vehicle_parts(

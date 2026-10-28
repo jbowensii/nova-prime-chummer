@@ -435,8 +435,10 @@ export type Sr6Advance =
    *  no new charge; voiding it puts the weapon back in the mount it was in */
   | { op: 'move'; target: string; mount: string }
   /** the factory part (vehicle decomposition plan 3.3; by the catalog <part>'s id) of the owned vehicle or drone whose uid is
-   *  target taken off, or (restore) put back while its hook has room; free, no refund by default; voiding it undoes it */
-  | { op: 'part'; target: string; part: string; restore?: boolean }
+   *  target taken off, or (restore) put back while its hook has room; free, no refund by default; voiding it undoes it.
+   *  detach: the weapon mounts (`part:<id>`) that went with the part (its own and its children's), recorded when it
+   *  came off so a replay frees the weapons in them as creation's setPart does */
+  | { op: 'part'; target: string; part: string; restore?: boolean; detach?: string[] }
   /** a companion quality for the owned critter whose uid is target, bought with the runner's Karma (the Critter Bond
    *  path's Permanent Improvement, SWC p. 139), with the negative quality `with` taken alongside (Wild Life p. 184); a
    *  line whose uid names one of the critter's qualities upgrades that one (its id and level replaced) */

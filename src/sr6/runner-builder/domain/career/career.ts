@@ -196,6 +196,11 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       const rest = (host.removedParts ?? []).filter(u => u !== a.part)
       host.removedParts = a.restore ? rest : [...rest, a.part]
       if (!host.removedParts.length) delete host.removedParts
+      // a weapon in a mount that went with the part is out of it, as creation's setPart leaves it (an older entry: the part's own)
+      if (!a.restore) {
+        const gone = new Set(a.detach ?? [`part:${a.part}`])
+        for (const w of host.accessories) if (w.mount && gone.has(w.mount)) delete w.mount
+      }
       return
     }
     case 'bond': {
@@ -886,6 +891,22 @@ export function record(
     case 'unfit':
       adv.line = b.purchases.flatMap(x => x.accessories).find(x => x.uid === adv.target)
       break
+    case 'part': {
+      // (a part coming off takes its mounts, and its children's, with it: note which weapons' mounts, for a replay)
+      const host = b.purchases.find(x => x.uid === adv.target)
+      if (host && !adv.restore) {
+        const x = structuredClone(host)
+        setPart(x, adv.part, false, data)
+        const mounts = new Set(
+          partsOf(x, data)
+            .filter(p => p.removed)
+            .map(p => p.uid),
+        )
+        const hit = [...new Set(host.accessories.flatMap(w => (w.mount && mounts.has(w.mount) ? [w.mount] : [])))]
+        if (hit.length) adv.detach = hit
+      }
+      break
+    }
     case 'bond':
       // (bonded qualities; the upgraded one keeps how it came, applyAdvance)
       adv.line = { ...named(adv.line, data.qualities[adv.line.id]?.name), how: 'bonded' }

@@ -15,7 +15,7 @@ invented data).
 import json
 import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from tools.cl6check import canon, corpus, embedmap, ours, reader
@@ -189,20 +189,36 @@ def table(rows, unmatched):
 
 def gate(folder, data, latest):
     """(lines, ok): the Stage 2 gate on an import (`folder`, `<part>`s on its vehicles) against the table `data` and the
-    D7 oracle (`latest`, embedmap.latest): (1) the oracle's distinct (vehicle, ref, hook) placements are all in the
-    table, as rows or as unmatched, none lost or invented; (2) every vehicle of the import that has rows carries exactly
-    the rows' (ref, hook, cost, parent) multiset, and no builtin of it survives except a slot grant; (3) overrides read
-    exactly 1."""
+    D7 oracle (`latest`, embedmap.latest). (1) The oracle's placements (vehicle, ref, hook), each counted as many times
+    as the vehicle embeds it (two cyberarms are two), are all in the table, as rows or as unmatched, with the same
+    multiplicity: none lost, none invented, so a dropped duplicate fails. (2) Every vehicle of the import that has rows
+    carries exactly the rows' (ref, hook, cost, parent) multiset, and no builtin of it survives except a slot grant.
+    (3) Overrides read exactly 1."""
     import xml.etree.ElementTree as ET
 
-    oracle = {(v, e["ref"], hook_id(e["intoRef"])) for v, r in latest.items() for e in r["embeds"]}
+    oracle = Counter((v, e["ref"], hook_id(e["intoRef"])) for v, r in latest.items() for e in r["embeds"])
     # (the synthesized powerplants, Stage 2b, are additive: no Commlink6 placement, so not in the oracle comparison;
     # they are still imported and checked below, and counted on their own line)
     cl6 = [r for r in data["rows"] if r.get("origin") != "synth"]
     synth = [r for r in data["rows"] if r.get("origin") == "synth"]
-    got = {
-        (c.partition("/")[0], c.partition("/")[2], r["hook"]) for r in (*cl6, *data["unmatched"]) for c in [r["cl6"]]
-    }
+
+    def key(r):
+        vid, _, ref = r["cl6"].partition("/")
+        return vid, ref, r["hook"]
+
+    # (a row is copied to each of our vehicles that is the Commlink6 vehicle: one copy's count is the placement's, and
+    # the copies must agree)
+    copies = defaultdict(Counter)
+    for r in cl6:
+        copies[key(r)][r["vehicle"]] += 1
+    got = Counter({k: min(c.values()) for k, c in copies.items()})
+    uneven = [k for k, c in copies.items() if len(set(c.values())) > 1]
+    for u in data["unmatched"]:
+        got[key(u)] += 1
+    lost, invented = (
+        oracle - got,
+        got - oracle,
+    )  # (Counter subtraction keeps the positive counts: a missing duplicate shows)
     ids, vehicles = set(), []
     for f in Path(folder).rglob("*.xml"):
         try:
@@ -231,8 +247,9 @@ def gate(folder, data, latest):
     bad = [v for v, parts in have.items() if parts != sorted(want[v])]
     over = len({r["cl6"] for r in data["rows"] if r.get("override")})
     lines = [
-        f"oracle {len(oracle)} placements; table covers {len(got)}: lost {len(oracle - got)}, "
-        f"invented {len(got - oracle)}",
+        f"oracle {len(oracle)} distinct placements ({sum(oracle.values())} with duplicates); table covers {len(got)} "
+        f"({sum(got.values())}): lost {sum(lost.values())}, invented {sum(invented.values())}, "
+        f"uneven copies {len(uneven)}",
         f"rows {len(data['rows'])} on {len(want)} vehicles; {len(have)} of them in this import, "
         f"{len(bad)} differ, {len(want) - len(have)} absent",
         f"held vehicles {len(held)} (an unmatched part, or {skipped} rows skipped for a ref only the optional module "
@@ -242,7 +259,7 @@ def gate(folder, data, latest):
         f"synthesized (additive, not in the oracle): {len(synth)} powerplants "
         f"on {len({r['vehicle'] for r in synth})} vehicles",
     ]
-    ok = not (oracle - got or got - oracle or bad or left or dangling or over != 1 or len(have) != len(want))
+    ok = not (lost or invented or uneven or bad or left or dangling or over != 1 or len(have) != len(want))
     return lines, ok
 
 

@@ -152,3 +152,25 @@ test('career: a part comes off and goes back as a free ledger entry; a void undo
   const v = voidEntry(ch, restored.id)
   expect(v.ok && currentBuild(v.ch).purchases[0].removedParts).toEqual(['p1'])
 })
+
+test('career: taking a mount part off frees the weapon fitted in it (and its children’s mounts), as creation does; the detach round-trips and a void puts it back', () => {
+  const { b, x } = own('zz.stock')
+  expect(apply(b, { op: 'part', uid: x.uid, remove: 'p4' }, data, cr)).toEqual({ ok: true }) // the factory weapon out of the mount
+  expect(apply(b, { op: 'accessory', host: x.uid, kind: 'weapons', id: 'zz.zap-smg', mount: 'part:p3' }, data, cr)).toEqual({ ok: true })
+  expect(x.accessories[0].mount).toBe('part:p3')
+  const at = '2026-10-28T00:00:00.000Z'
+  let ch: Sr6Character = { ...blankSr6('priority', 'made-up-m', at), build: b, finalizedAt: at }
+  ch.ledger = [{ id: 'f1', at, type: 'finalize', karma: 0, nuyen: 10000 }]
+  const r = record(ch, { op: 'part', target: x.uid, part: 'p3' }, data, cr)
+  if (!r.ok) throw new Error(r.reason)
+  ch = r.ch
+  const entry = ch.ledger.at(-1)!
+  expect(entry).toMatchObject({ advance: { op: 'part', part: 'p3', detach: ['part:p3'] } })
+  const v = currentBuild(ch).purchases[0]
+  expect(v.removedParts).toEqual(['p4', 'p3'])
+  expect(v.accessories[0].mount).toBeUndefined() // no dangling mount
+  const back = xmlToSr6(sr6ToXml(ch))
+  expect(back.ok && back.character.ledger.at(-1)).toMatchObject({ advance: { detach: ['part:p3'] } })
+  const voided = voidEntry(ch, entry.id)
+  expect(voided.ok && currentBuild(voided.ch).purchases[0].accessories[0].mount).toBe('part:p3')
+})
