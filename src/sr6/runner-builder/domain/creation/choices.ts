@@ -40,19 +40,27 @@ export function qualityChoice(name: string | undefined): 'attribute' | 'skill' |
 }
 
 export interface ChoiceSpec {
-  kind: 'attribute' | 'skill'
+  kind: 'attribute' | 'skill' | 'quality' | 'matrix'
   options: { value: string; label: string }[]
 }
 const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
 const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
-/** What an entry's choice is for and the values it may take (catalog `ref="CHOICE"` options, else every core attribute or every skill):
- *  each value parses back through noteAttr / noteSkill. Undefined when the entry names no choice. */
+const titleCase = (t: string) => t.toLowerCase().split(/[_\s]+/).map(cap).join(' ')
+// the Matrix attributes (ITEM_ATTRIBUTE choices), in their canonical A/S/D/F order
+const MATRIX_ATTRS: Record<string, string> = { ATTACK: 'Attack', SLEAZE: 'Sleaze', DATA_PROCESSING: 'Data Processing', FIREWALL: 'Firewall' }
+// a <selection> part's type → the choice kind it names
+const SEL_KIND: Record<string, ChoiceSpec['kind']> = { ATTRIBUTE: 'attribute', SKILL: 'skill', QUALITY: 'quality', ITEM_ATTRIBUTE: 'matrix' }
+/** What an entry's choice is for and the values it may take. The universal marker is a `<selection>` part naming the
+ *  choice domain (ATTRIBUTE/SKILL/QUALITY/ITEM_ATTRIBUTE) and its comma-separated `options`; older entries mark it with a
+ *  `ref="CHOICE"` modifier, an `attr/skill(-max):choice` effect, or the `(Attribute)`/`(Skill)` name suffix. Options keep the
+ *  data's order. A free-text selection (TEXT/PARAGON/…) returns undefined so the UI keeps a text box. */
 export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpec | undefined {
   if (!e) return undefined
   const parts = e.parts ?? []
   const typed = parts.find(p => p.attrs.ref === 'CHOICE' && /^(ATTRIBUTE|SKILL)$/.test(p.attrs.type ?? ''))
   const target = parts.find(p => p.tag === 'effect' && /^(attr|attr-max|skill|skill-max):choice$/.test(p.attrs.target ?? ''))
-  const kind = typed
+  const sel = parts.find(p => p.tag === 'selection' && /^(ATTRIBUTE|SKILL|QUALITY|ITEM_ATTRIBUTE)$/.test(p.attrs.type ?? ''))
+  const kind: ChoiceSpec['kind'] | undefined = typed
     ? typed.attrs.type === 'ATTRIBUTE'
       ? 'attribute'
       : 'skill'
@@ -60,11 +68,13 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
       ? target.attrs.target.startsWith('attr')
         ? 'attribute'
         : 'skill'
-      : qualityChoice(e.name)
+      : sel
+        ? SEL_KIND[sel.attrs.type!]
+        : qualityChoice(e.name)
   if (!kind) return undefined
-  // explicit catalog options are comma-separated; skill names hold spaces, so never split on whitespace. The options may sit
-  // on a separate <selection> part from the CHOICE modifier (e.g. Improved Mental Attribute), so take any typed CHOICE part.
-  const tokens = (parts.find(p => p.attrs.options && (p.attrs.ref === 'CHOICE' || p.attrs.type))?.attrs.options ?? '')
+  // explicit catalog options are comma-separated; skill names hold spaces, so never split on whitespace. Prefer the
+  // selection part's options, else any typed CHOICE part's (e.g. Improved Mental Attribute's separate selection).
+  const tokens = (sel?.attrs.options ?? parts.find(p => p.attrs.options && (p.attrs.ref === 'CHOICE' || p.attrs.type))?.attrs.options ?? '')
     .split(',')
     .map(s => s.trim())
     .filter(Boolean)
@@ -72,13 +82,19 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
   if (kind === 'attribute') {
     const picked = tokens.map(t => t.toLowerCase()).filter(t => ATTR_WORDS[t])
     names = (picked.length ? picked : CORE_ATTRS).map(cap) // fall back to every core attribute when nothing resolves
-  } else {
-    const picked = tokens.map(t => data.skills[noteSkill(data, t) ?? '']?.name).filter((s): s is string => !!s)
+  } else if (kind === 'skill') {
+    // tokens are skill ids (`biotech`) or names; resolve to the catalog skill name
+    const picked = tokens.map(t => data.skills[t]?.name ?? data.skills[noteSkill(data, t) ?? '']?.name).filter((s): s is string => !!s)
     names = picked.length
       ? picked
       : Object.values(data.skills)
           .map(s => s.name)
           .sort((a, b) => a.localeCompare(b))
+  } else if (kind === 'quality') {
+    // tokens are quality ids with underscores (`artisans_way`); the catalog uses hyphens
+    names = tokens.map(t => data.entry('qualities', t.replace(/_/g, '-'))?.name ?? data.entry('qualities', t)?.name).filter((s): s is string => !!s)
+  } else {
+    names = tokens.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) // matrix attribute labels
   }
   const options = [...new Set(names)].map(v => ({ value: v, label: v }))
   return options.length ? { kind, options } : undefined
