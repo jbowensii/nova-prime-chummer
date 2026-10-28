@@ -723,15 +723,19 @@ h4.cr-sub {
 /* ---- the Designer's editor (Designer.tsx Sr6DesignEditor): a sheet of the book's rounded cyan panels — a pinned top
    (header band + build parts + worked-out vehicle + facing circle), then options, built-in mods and the Design
    Points/price receipt ---- */
-.dsn {
+/* the editor's outer window is see-through, so the page art shows behind the panels (the panels keep their own fill) */
+.dsn.work {
   max-width: 68rem;
+  background: transparent;
+  box-shadow: none;
 }
-/* the top stays put while the options and mods scroll under it */
+/* the top stays put while the options and mods scroll under it — translucent + blur so pinned content stays legible */
 .dsn-sticky {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: var(--bg);
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  backdrop-filter: blur(10px);
   padding-top: 0.4rem;
   margin-bottom: 0.8rem;
   border-bottom: 1px solid var(--rule);
