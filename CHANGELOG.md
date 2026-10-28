@@ -1,5 +1,36 @@
 # Release notes
 
+## 0.30.0 — 2026-10-28
+
+A big round of Shadowrun 6 builder work: a redesigned vehicle/drone Designer, choice pickers across every kind, the
+Matrix persona, and Ledger quality-of-life. No re-import needed.
+
+**Shadowrun 6 — Designer**
+- **Redesigned as a sheet.** Header band, chassis/powertrain/console beside a live “The vehicle” stat grid, options and
+  mods below, a Design Points & price receipt — in the app’s own theme (the window is transparent so the page art shows).
+- **A facing diagram** with the terms that suit the vehicle: ground (Front/Rear/Left/Right/Roof/Underside), air
+  (Nose/Tail/Port/Starboard/Dorsal/Ventral), water (Bow/Stern/…/Topside/Keel) and spacecraft.
+- **Start a design from a known vehicle.** Pick a catalog vehicle and the design opens with its real stats, price and
+  Availability; **customise it** with options, modifications, quality factors and built-in mods on top.
+- **Hover any option, modification or quality factor** to see what it does.
+
+**Shadowrun 6 — choices**
+- **Every choice shows an ordered picker.** Qualities, adept powers, metamagics, cyberware/bioware and more that ask you
+  to choose an attribute, skill, quality or Matrix attribute now present a proper, alphabetised list instead of a blank
+  box — on the Augmentations/gear rows too. *Finding Your Way* grants the Way you pick.
+
+**Shadowrun 6 — Matrix**
+- **Matrix persona (Attack / Sleaze / Data Processing / Firewall)** on Review and the print sheet, from your best device,
+  and **Matrix Attribute Advancement** adds its level to the attribute you choose.
+
+**Shadowrun 6 — Ledger & lists**
+- **Buy several small things in one go** (“Record & buy another”), the spend list alphabetised with a filter box, and the
+  gear picker broken out by major category (weapons, cyberware, bioware, ammunition…). Catalog dropdowns alphabetised.
+
+**Fixes**
+- Autosofts and mods on a vehicle/drone no longer flag a false “is for …, not …” error.
+- GM price-adjust for a used vehicle/drone now works during character creation, not only in career.
+
 ## 0.27.7 — 2026-10-26
 
 **Shadowrun 6**

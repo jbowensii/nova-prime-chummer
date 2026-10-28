@@ -187,6 +187,76 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     cargo: null,
     cargoText: a.cargo ?? '—',
   }
+  // options, design modifications and quality factors applied to the vehicle's already-final stats as direct deltas
+  // (DESIGNER: a based vehicle is final, so the from-scratch speed-modifier recompute is NOT re-run; the GM approves the result)
+  const part = (id?: string) => (id ? data.entry('vehicledesign', id) : undefined)
+  const picked = d.options.flatMap(o => {
+    const pe = part(o.id)
+    if (!pe) warnings.push({ message: `The design part “${o.id}” is no longer in the catalog; left out.`, source: 'DC', page: 151 })
+    return pe && o.level ? [{ e: pe, level: o.level, k: key(pe), road: o.road }] : []
+  })
+  const has = (k: string) => picked.some(p => p.k === k)
+  const drone0 = d.kind === 'drone' || /drone/i.test(a.category ?? veh.name)
+  let dp = 0,
+    multiplier = 1
+  const addDp = (e: Sr6Entry, level = 1) => {
+    const v = partDp(e, level)
+    if (v === null)
+      warnings.push({
+        message: `${entryLabel(e)}: its Design Points “${e.attrs.dp ?? e.attrs.bp}” aren’t a number the app can read; counted 0.`,
+        source: e.source,
+        page: e.page || 151,
+      })
+    dp += v ?? 0
+  }
+  for (const { e, level, k, road } of picked) {
+    const p = designPart(e)
+    if (p === 'quality') {
+      multiplier *= multiplierOf(e)!
+      continue
+    }
+    addDp(e, level)
+    if (p === 'modification') continue
+    if (k === 'improved handling' && road) {
+      if (road === 'on') stats.handling -= level
+      else stats.offRoad -= level
+      continue
+    }
+    const per = PER_LEVEL[k]
+    if (!per) {
+      notes.push(`${entryLabel(e)} ${level}: its Design Points count; the app has no rule for what it changes here.`)
+      continue
+    }
+    for (const [st, v] of Object.entries(per) as [Stat, number][]) {
+      if (st === 'cargo') continue
+      if (st === 'handling') stats.offRoad += v * level
+      ;(stats as Record<Exclude<Stat, 'cargo'>, number>)[st] += v * level
+    }
+    if (k === 'improved size') stats.seats += Math.max(Math.floor(stats.seats * 0.5 * level), drone0 ? -Infinity : 0)
+  }
+  if (has('heavy duty')) stats.body = Math.floor(stats.body * 1.5)
+  if (has('lightweight')) stats.body = Math.floor(stats.body * 0.5)
+  if (has('mass transit')) stats.seats *= 3
+  if (has('cargo hauler')) stats.seats = Math.max(2, Math.floor(stats.seats / 2))
+  if (has('off road chassis')) {
+    stats.handling += 1
+    stats.offRoad -= 1
+    stats.topSpeed -= 10
+  }
+  for (const [ek, ac, tp] of [
+    ['high performance', 3, 50],
+    ['racing', 6, 100],
+    ['economy engines', -3, -50],
+  ] as [string, number, number][])
+    if (has(ek)) {
+      stats.accel += ac
+      stats.topSpeed += tp
+    }
+  if (has('multi engine')) {
+    stats.accel *= 2
+    stats.topSpeed *= 2
+  }
+  if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
   // the mods built in: their real slots and nuyen (no Design-Point conversion — this is not a point-buy)
   const find = dataFind(data)
   const mods = d.mods.map(x => {
@@ -201,7 +271,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     return { uid: x.uid, slots: v.ok ? (v.n ?? 0) : 0, dp: 0, nuyen: priced({ ...x, diy: undefined }, data, cr).cost }
   })
   const modsNuyen = mods.reduce((t, m) => t + m.nuyen, 0)
-  const full = num(a.cost) + modsNuyen
+  const full = Math.floor((num(a.cost) + modsNuyen) * multiplier)
   const price = d.diy ? Math.floor(full / 2) : full
   // Availability: the vehicle's, raised by any mod's
   let base = availability(a.avail, undefined).n ?? 0,
@@ -213,11 +283,11 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     const l = legality(e?.attrs.avail) ?? ''
     if (LEGAL_ORDER.indexOf(l) > LEGAL_ORDER.indexOf(legal)) legal = l
   }
-  notes.push(`Based on ${entryLabel(veh)} (${veh.source} p. ${veh.page}); its stats, price and Availability, with the mods below added.`)
+  notes.push(`Based on ${entryLabel(veh)} (${veh.source} p. ${veh.page}); its stats, price and Availability, plus the options, modifications and mods below.`)
   return {
     stats,
-    dp: 0,
-    multiplier: 1,
+    dp,
+    multiplier,
     dpv: 0,
     modsNuyen,
     price,
