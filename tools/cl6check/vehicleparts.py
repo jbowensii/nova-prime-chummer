@@ -148,6 +148,14 @@ def build(latest, others, defs, variants, part_ids, vehicle_ids):
             else:
                 rows += [{"vehicle": ov, **row} for ov in mine]
     rows.sort(key=lambda r: r["vehicle"])  # (stable: embed order inside a vehicle)
+    # A part id is unique within its vehicle: CL6 reuses an embed id inside a record, and a combined entry of ours takes
+    # the parts of two CL6 vehicles. The later one gets "#n", the same rule partsOf (vehiclemods.ts) applies at run time.
+    # No row is dropped; a child's `parent` keeps naming the first.
+    seen = defaultdict(int)
+    for r in rows:
+        seen[r["vehicle"], r["id"]] += 1
+        if seen[r["vehicle"], r["id"]] > 1:
+            r["id"] += f"#{seen[r['vehicle'], r['id']]}"
     return rows, unmatched
 
 
