@@ -264,6 +264,10 @@ export function Sr6Sheet() {
                       ['Matrix initiative (AR)', d.matrixInit && init(d.matrixInit.ar, d.on.matrixInit?.ar)],
                       ['Matrix initiative (VR cold)', d.matrixInit && init(d.matrixInit.cold, d.on.matrixInit?.cold)],
                       ['Matrix initiative (VR hot)', d.matrixInit && init(d.matrixInit.hot, d.on.matrixInit?.hot)],
+                      [
+                        'Matrix persona (A/S/D/F)',
+                        d.matrixPersona && `${d.matrixPersona.attack}/${d.matrixPersona.sleaze}/${d.matrixPersona.dataProcessing}/${d.matrixPersona.firewall}`,
+                      ],
                       ['Movement', d.movement ? `${d.movement.walk} m / Sprint ${d.movement.sprint} m +${d.movement.perHit} a hit` : undefined],
                     ] as [string, string | number | undefined][]
                   )

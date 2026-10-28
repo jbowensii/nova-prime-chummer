@@ -198,6 +198,11 @@ export function ReviewTab() {
         ['Matrix initiative (AR)', d.matrixInit && init(d.matrixInit.ar, d.on.matrixInit?.ar)],
         ['Matrix initiative (VR cold sim)', d.matrixInit && init(d.matrixInit.cold, d.on.matrixInit?.cold)],
         ['Matrix initiative (VR hot sim)', d.matrixInit && init(d.matrixInit.hot, d.on.matrixInit?.hot)],
+        [
+          'Matrix persona (A / S / D / F)',
+          d.matrixPersona &&
+            `${d.matrixPersona.attack} / ${d.matrixPersona.sleaze} / ${d.matrixPersona.dataProcessing} / ${d.matrixPersona.firewall} · ${d.matrixPersona.device}`,
+        ],
         ['Movement', move(d.movement)],
         ['Karma left', career ? bal.karma : d.karmaLeft],
         ['Nuyen left', `${n(career ? bal.nuyen : d.nuyenLeft)}¥`],
