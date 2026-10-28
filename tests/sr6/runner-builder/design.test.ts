@@ -54,6 +54,15 @@ test('a design that starts from a known vehicle takes its stats, price and Avail
   expect(designOf({ kind: 'vehicle', base: 'zz.grizzly', options: [], mods: [], diy: true }, data, cr).price).toBe(20000)
 })
 
+test('a based vehicle can be customised with options, modifications and quality factors: stats change, Design Points and the price multiplier apply', () => {
+  const { data, cr } = world()
+  const based = (over: Record<string, unknown>) => designOf({ kind: 'vehicle', base: 'zz.grizzly', options: [], mods: [], ...over }, data, cr)
+  const s = based({ options: [opt('improved-body', 2)] })
+  expect(s.stats.body).toBe(14) // the vehicle's 12 + 1 a level × 2
+  expect(s.dp).toBe(8) // 4 Design Points a level × 2
+  expect(based({ options: [opt('luxury')] }).price).toBe(60000) // 40,000¥ × 1.5
+})
+
 test('the quality factors’ multipliers multiply together, then × 1,000; a built-in mod 2 DP a slot (multiplied), its nuyen after (not); do it yourself halves the price', () => {
   const { data, cr } = world()
   const d = design({ options: [opt('one-off'), opt('drone')], mods: [mod('zap-grip')] })

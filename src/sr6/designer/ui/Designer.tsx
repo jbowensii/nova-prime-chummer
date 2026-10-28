@@ -19,6 +19,7 @@ import { loadTrash } from '../../../features/runner-store/Trash'
 import { ConflictDialog, SaveLine, useAutosave } from '../../../features/runner-store/useAutosave'
 import { newId } from '../../../core/shared/types'
 import { entryLabel } from '../../catalog/domain/categories'
+import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
@@ -329,6 +330,11 @@ const STATS: [keyof ReturnType<typeof designOf>['stats'], string][] = [
   ['pilot', 'Pilot'],
   ['sensor', 'Sensor'],
 ]
+/** What a design part does, for the row's hover tooltip: its effects (effectText) and any notes, else its name. */
+const descOf = (e: Sr6Entry): string =>
+  [...e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(effectText), ...(e.notes ?? []).map(x => x.text)].filter(Boolean).join('; ') ||
+  entryLabel(e)
+
 /** A part's Design Points as listed: `4 DP a level`, `+10 DP`, `×2`. */
 const dpText = (e: Sr6Entry) => {
   const m = multiplierOf(e)
@@ -483,7 +489,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   )
   const toggles = (p: DesignPart) =>
     partsOf(c, p).map(e => (
-      <label key={e.id} className="inline">
+      <label key={e.id} className="inline" title={descOf(e)}>
         <input type="checkbox" aria-label={entryLabel(e)} checked={levelOf(e.id) > 0} onChange={ev => setLevel(e.id, ev.target.checked ? 1 : 0)} />{' '}
         {entryLabel(e)} ({dpText(e)})
       </label>
@@ -610,31 +616,29 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
             </div>
           </div>
 
-          {/* options, modifications and quality factors — only when building from scratch (a based design adds mods instead) */}
-          {!d.base && (
-            <section className="panel" aria-label="Options">
-              <h3>Options</h3>
-              <div className="dsn-opts">
-                {partsOf(c, 'option').map(e => (
-                  <span key={e.id} className="row">
-                    <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
-                    {dpText(e)})
-                    {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
-                      <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
-                        <option value="">On- and off-road</option>
-                        <option value="on">On-road only</option>
-                        <option value="off">Off-road only</option>
-                      </select>
-                    )}
-                  </span>
-                ))}
-              </div>
-              <h4>Design modifications</h4>
-              <div className="dsn-toggles">{toggles('modification')}</div>
-              <h4>Quality factors</h4>
-              <div className="dsn-toggles">{toggles('quality')}</div>
-            </section>
-          )}
+          {/* options, modifications and quality factors — on a from-scratch design and a based one (customising a known vehicle) */}
+          <section className="panel" aria-label="Options">
+            <h3>Options</h3>
+            <div className="dsn-opts">
+              {partsOf(c, 'option').map(e => (
+                <span key={e.id} className="row" title={descOf(e)}>
+                  <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
+                  {dpText(e)})
+                  {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
+                    <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
+                      <option value="">On- and off-road</option>
+                      <option value="on">On-road only</option>
+                      <option value="off">Off-road only</option>
+                    </select>
+                  )}
+                </span>
+              ))}
+            </div>
+            <h4>Design modifications</h4>
+            <div className="dsn-toggles">{toggles('modification')}</div>
+            <h4>Quality factors</h4>
+            <div className="dsn-toggles">{toggles('quality')}</div>
+          </section>
 
           {/* mods built in */}
           <section className="panel" aria-label="Mods built in">
