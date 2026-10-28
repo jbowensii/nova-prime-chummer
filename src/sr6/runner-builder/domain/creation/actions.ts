@@ -109,6 +109,8 @@ export type Op =
   | { op: 'diy'; uid: string; diy: boolean }
   /** set (value) or clear (omitted) a vehicle/drone line's GM-adjusted price */
   | { op: 'gmprice'; uid: string; value?: number }
+  /** a purchased line's choice note: the attribute/skill/quality/matrix an item naming a choice is for ('' clears it) */
+  | { op: 'purchaseNote'; uid: string; note: string }
   /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
   | { op: 'material'; uid: string; material: string | null }
   /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
@@ -590,6 +592,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (OWN_LINE.has(x.kind)) return no('own-line')
       if (op.qty < 1) return no('below-one')
       x.qty = op.qty
+      return OK
+    }
+    case 'purchaseNote': {
+      const x = b.purchases.find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      const t = op.note.trim().slice(0, 200)
+      if (t) x.note = t
+      else delete x.note
       return OK
     }
     case 'accessory': {

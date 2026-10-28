@@ -8,6 +8,7 @@ import { ratingOf } from '../domain/creation/purchases'
 import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../../core/ui-kit/bits'
 import { entryOf, materialOf, priced, takesMaterial } from '../domain/creation/budgets'
+import { choiceOptions, choiceSelectOptions } from '../domain/creation/choices'
 import { num, type CreationRules } from '../../table-setup/domain/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../../catalog/domain/values'
 import { formulaOf, formulaText } from '../../../core/shared/formula'
@@ -639,6 +640,32 @@ const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear', 'ammoty
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
+const CHOICE_PROMPT: Record<string, string> = {
+  attribute: 'For which attribute',
+  skill: 'For which skill',
+  quality: 'Which',
+  matrix: 'Which Matrix attribute',
+}
+/** A purchased item that names a choice (an attribute/skill/quality/matrix): the ordered picker that records it, so a
+ *  cyberware or gear choice applies the same way a quality's or power's does. Nothing for an item with no choice. */
+function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; name: string }) {
+  const { data, act } = useSr6Editor()
+  const co = e && choiceOptions(data, e)
+  if (!co) return null
+  return (
+    <label className="inline">
+      {CHOICE_PROMPT[co.kind]}{' '}
+      <select aria-label={`${name}: ${co.kind} choice`} value={x.note ?? ''} onChange={ev => act({ op: 'purchaseNote', uid: x.uid, note: ev.target.value })}>
+        <option value="">Pick one</option>
+        {choiceSelectOptions(co, x.note).map(o => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
 export function PurchaseSection({
   kind,
   title,
@@ -716,6 +743,7 @@ export function PurchaseSection({
                     <td>
                       <LineName x={x} />
                       <RatingGrade x={x} name={name} grades={grades} />
+                      <ChoiceNote x={x} e={e} name={name} />
                       {detail && <div className="muted">{detail(x)}</div>}
                       {accessories && (
                         <div>
