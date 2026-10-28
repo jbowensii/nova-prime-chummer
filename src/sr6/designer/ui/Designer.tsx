@@ -296,23 +296,41 @@ const dpText = (e: Sr6Entry) => {
   return v === null ? `${e.attrs.dp ?? e.attrs.bp} DP` : `${v} DP${designPart(e) === 'option' ? ' a level' : ''}`
 }
 
-/** The six faces of a vehicle, for placing armour and weapons later. A quartered compass (fore/aft/port/starboard) with
- *  a silhouette in the middle, and dorsal/ventral (top/bottom) as a pair of chips. A reference for now; not yet wired to
- *  mounts. */
-function FacingCircle({ drone }: { drone: boolean }) {
-  const arcs: [string, string, string][] = [
-    ['fore', 'M60 60 L60 6 A54 54 0 0 1 114 60 Z', 'Fore'],
-    ['star', 'M60 60 L114 60 A54 54 0 0 1 60 114 Z', 'Starboard'],
-    ['aft', 'M60 60 L60 114 A54 54 0 0 1 6 60 Z', 'Aft'],
-    ['port', 'M60 60 L6 60 A54 54 0 0 1 60 6 Z', 'Port'],
+/** The facing terms by where a vehicle moves: the four faces, then the top and bottom. Ground vehicles say front/rear/
+ *  left/right; aircraft, ships and spacecraft keep the nautical/aero words. (Standard usage; the owner can refine.) */
+type FacingSet = { fore: string; aft: string; port: string; star: string; dorsal: string; ventral: string }
+const FACING: Record<'ground' | 'air' | 'water' | 'space', FacingSet> = {
+  ground: { fore: 'Front', aft: 'Rear', port: 'Left', star: 'Right', dorsal: 'Roof', ventral: 'Underside' },
+  air: { fore: 'Nose', aft: 'Tail', port: 'Port', star: 'Starboard', dorsal: 'Dorsal', ventral: 'Ventral' },
+  water: { fore: 'Bow', aft: 'Stern', port: 'Port', star: 'Starboard', dorsal: 'Topside', ventral: 'Keel' },
+  space: { fore: 'Fore', aft: 'Aft', port: 'Port', star: 'Starboard', dorsal: 'Dorsal', ventral: 'Ventral' },
+}
+/** Where the vehicle moves, from the chassis and powertrain names: air, water, space, else ground. */
+function vehicleDomain(d: Sr6Design, data: Sr6Data): keyof typeof FACING {
+  const t =
+    `${d.chassis ? (data.entry('vehicledesign', d.chassis)?.name ?? '') : ''} ${d.powertrain ? (data.entry('vehicledesign', d.powertrain)?.name ?? '') : ''}`.toLowerCase()
+  if (/space|orbital|rocket|spacecraft/.test(t)) return 'space'
+  if (/fixed[-\s]?wing|rotor|vtol|vstol|\blta\b|aircraft|flight|\bwing\b|glide|vectored|\bair\b/.test(t)) return 'air'
+  if (/boat|\bship\b|\bsub\b|submarine|watercraft|naval|\bhull\b|hover|amphib|aquatic/.test(t)) return 'water'
+  return 'ground'
+}
+
+/** The six faces of a vehicle, for placing armour and weapons later. A quartered compass with a silhouette in the
+ *  middle and the top/bottom faces as a pair of chips; the words follow the vehicle's domain. A reference for now. */
+function FacingCircle({ drone, set }: { drone: boolean; set: FacingSet }) {
+  const arcs: [keyof FacingSet, string][] = [
+    ['fore', 'M60 60 L60 6 A54 54 0 0 1 114 60 Z'],
+    ['star', 'M60 60 L114 60 A54 54 0 0 1 60 114 Z'],
+    ['aft', 'M60 60 L60 114 A54 54 0 0 1 6 60 Z'],
+    ['port', 'M60 60 L6 60 A54 54 0 0 1 60 6 Z'],
   ]
   return (
     <section className="panel dsn-facing" aria-label="Facing">
       <h3>Facing</h3>
-      <svg viewBox="0 0 120 120" role="img" aria-label="Fore, aft, port and starboard faces">
-        {arcs.map(([k, dPath, label]) => (
+      <svg viewBox="0 0 120 120" role="img" aria-label={`${set.fore}, ${set.aft}, ${set.port} and ${set.star} faces`}>
+        {arcs.map(([k, dPath]) => (
           <path key={k} className={`arc arc-${k}`} d={dPath}>
-            <title>{label}</title>
+            <title>{set[k]}</title>
           </path>
         ))}
         <circle cx="60" cy="60" r="27" className="hub" />
@@ -333,21 +351,21 @@ function FacingCircle({ drone }: { drone: boolean }) {
           )}
         </g>
         <text x="60" y="15" className="fl">
-          FORE
+          {set.fore.toUpperCase()}
         </text>
         <text x="60" y="110" className="fl">
-          AFT
+          {set.aft.toUpperCase()}
         </text>
         <text x="60" y="60" className="fl" transform="rotate(90 60 60)" dy="-46">
-          STAR
+          {set.star.toUpperCase()}
         </text>
         <text x="60" y="60" className="fl" transform="rotate(-90 60 60)" dy="-46">
-          PORT
+          {set.port.toUpperCase()}
         </text>
       </svg>
       <div className="dsn-dv">
-        <span className="chip">Dorsal (top)</span>
-        <span className="chip">Ventral (bottom)</span>
+        <span className="chip">{set.dorsal} (top)</span>
+        <span className="chip">{set.ventral} (bottom)</span>
       </div>
     </section>
   )
@@ -530,7 +548,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                   </div>
                 </div>
               </section>
-              <FacingCircle drone={sheet.drone} />
+              <FacingCircle drone={sheet.drone} set={FACING[vehicleDomain(d, data)]} />
             </div>
           </div>
 
