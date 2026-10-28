@@ -45,7 +45,12 @@ export interface ChoiceSpec {
 }
 const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
 const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
-const titleCase = (t: string) => t.toLowerCase().split(/[_\s]+/).map(cap).join(' ')
+const titleCase = (t: string) =>
+  t
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .map(cap)
+    .join(' ')
 // the Matrix attributes (ITEM_ATTRIBUTE choices), in their canonical A/S/D/F order
 const MATRIX_ATTRS: Record<string, string> = { ATTACK: 'Attack', SLEAZE: 'Sleaze', DATA_PROCESSING: 'Data Processing', FIREWALL: 'Firewall' }
 // a <selection> part's type → the choice kind it names

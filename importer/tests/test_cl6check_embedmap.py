@@ -1,3 +1,4 @@
+# pylint: disable=missing-class-docstring,missing-function-docstring,unnecessary-lambda-assignment,line-too-long  # (invented-data fixtures)
 """embedmap's placement classes and undefined-ref rules, on invented data (no jar)."""
 
 import unittest

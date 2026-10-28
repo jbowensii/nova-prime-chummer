@@ -242,7 +242,7 @@ class ActionAndPolearmRowsTest(unittest.TestCase):
         )
 
     def test_the_da_table_gives_the_four_polearm_rows_the_cougar_brand(self):
-        IDS = {
+        ids = {
             f"da.{n.lower()}" for n in ("Knife", "One-hand", "Spear", "Pike")
         }  # (the table's vehicle-part rows add more)
         xml = (
@@ -255,7 +255,7 @@ class ActionAndPolearmRowsTest(unittest.TestCase):
         )
         out = ET.fromstring(overrides.apply("da", {"weapons.xml": xml})["weapons.xml"].encode())
         self.assertEqual(
-            [(e.findtext("name"), [a.text for a in e.findall("alias")]) for e in out if e.get("id") in IDS],
+            [(e.findtext("name"), [a.text for a in e.findall("alias")]) for e in out if e.get("id") in ids],
             [(n, [f"Cougar Polearm ({n})"]) for n in ("Knife", "One-hand", "Spear", "Pike")],
         )
 
