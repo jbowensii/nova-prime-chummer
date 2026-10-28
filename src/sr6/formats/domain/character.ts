@@ -187,6 +187,10 @@ export interface Sr6Purchase {
    *  uid (`builtin:<n>`, its place among the entry's <builtin>s). A removed built-in no longer counts toward slots,
    *  hardpoints or mounts and no weapon can sit in it; restoring it clears the uid. Round-trips (charxml). */
   removedBuiltins?: string[]
+  /** Vehicle decomposition (docs/analysis/sr6-vehicle-decomposition.md 3.3): the catalog <part>s removed from this
+   *  instance, each by the part's `id`. Same semantics as removedBuiltins for the catalog's <part>s; the two coexist
+   *  (book-only vehicles keep <builtin>, ruling D2). Format only: nothing reads it yet. Round-trips (charxml). */
+  removedParts?: string[]
   /** GM override: slots added to this host instance so an item can be fitted that has no matching catalog host slot, or
    *  to widen a budget. Each is a `<slot id value>` the app treats as if the catalog entry carried it (actions.ts `slot`
    *  op; honoured by the add-time slot guard). The id is any slot vocabulary id; the value is the capacity it offers. */

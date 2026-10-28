@@ -654,6 +654,9 @@
     <!-- GM override: the built-in mods removed from a vehicle/drone instance (owner 2026-10-27), each by its builtin uid
          (`builtin:0 builtin:2`) -->
     <xs:attribute name="removedBuiltins" type="xs:string"/>
+    <!-- GM override: the catalog <part>s (factory parts, docs/analysis/sr6-vehicle-decomposition.md) removed from a
+         vehicle/drone instance, each by the part's id (`p1 p4`) -->
+    <xs:attribute name="removedParts" type="xs:string"/>
     <!-- an owned critter (kind critters; its <quality>s its companion qualities, its <trained> its named commands and
          special training): the pet class the player chose (absent: mundane; Awakened and Emerged come from its Magic or
          Resonance), tamed from the wild instead of bought (no price, Wild Life p. 184) -->

@@ -94,6 +94,7 @@ function purchaseXml(p: Sr6Purchase): string {
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
       addedSlots: p.addedSlots?.length ? p.addedSlots.map(s => (s.value ? `${s.id}:${s.value}` : s.id)).join(' ') : undefined,
       removedBuiltins: p.removedBuiltins?.length ? p.removedBuiltins.join(' ') : undefined,
+      removedParts: p.removedParts?.length ? p.removedParts.join(' ') : undefined,
       pet: p.pet,
       tamed: p.tamed,
     },
@@ -452,6 +453,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
         ?.split(/\s+/)
         .filter(w => /^builtin:\d+$/.test(w)) ?? [],
     ),
+    removedParts: (u => (u.length ? u : undefined))(str(e, 'removedParts')?.split(/\s+/).filter(Boolean) ?? []),
     pet: str(e, 'pet') === undefined ? undefined : oneOf(e.getAttribute('pet'), PET_CLASSES, 'pet class', undefined, fix),
     tamed: yes(e, 'tamed'),
     trained: listOrNone([...each(kids(e, 'trained'), readTrained, label, fix), ...olderTrained(e, fix)]),

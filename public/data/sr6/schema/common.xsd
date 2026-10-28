@@ -140,10 +140,41 @@
              resolves, its rating, or extra mod slots of a category; source and page: the box's. A part of the box that is
              a sentence is a <note field="builtin"> -->
         <xs:element name="builtin" type="sr6:Builtin"/>
+        <!-- a removable factory part of a vehicle/drone (docs/analysis/sr6-vehicle-decomposition.md 3.2): the catalog entry
+             it is (ref), the hook it occupies (hook: a slot vocabulary id, now including `vehicle-body`) and its cost in
+             that hook's unit, the part it sits in (parent: another part's id). origin says where the part came from (cl6:
+             Commlink6's embed, book, synth: the importer made it) and review whether the owner must look at it. Format
+             only: <builtin> stays for book-only vehicles and nothing reads <part> yet -->
+        <xs:element name="part" type="sr6:Part"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>
     </xs:sequence>
   </xs:group>
+  <xs:complexType name="Part">
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="ref" type="sr6:Id" use="required"/>
+    <xs:attribute name="hook" type="xs:string" use="required"/>
+    <xs:attribute name="cost" type="xs:string"/>
+    <xs:attribute name="rating" type="xs:string"/>
+    <xs:attribute name="variant" type="xs:string"/>
+    <xs:attribute name="count" type="xs:positiveInteger"/>
+    <xs:attribute name="included" type="xs:boolean"/>
+    <xs:attribute name="removable" type="xs:boolean"/>
+    <xs:attribute name="parent" type="xs:string"/>
+    <xs:attribute name="origin" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="cl6"/>
+        <xs:enumeration value="book"/>
+        <xs:enumeration value="synth"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="review" use="required">
+      <xs:simpleType><xs:restriction base="xs:string">
+        <xs:enumeration value="none"/>
+        <xs:enumeration value="needs-owner"/>
+      </xs:restriction></xs:simpleType>
+    </xs:attribute>
+  </xs:complexType>
   <xs:complexType name="Builtin">
     <xs:attribute name="name" type="xs:string" use="required"/>
     <xs:attribute name="ref" type="sr6:Id"/>
