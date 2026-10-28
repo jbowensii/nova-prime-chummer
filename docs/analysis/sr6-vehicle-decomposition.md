@@ -553,6 +553,35 @@ flagged needs-review (a new Stage 2 gate; closes the G6 gap).
   are additive beyond the 996 and are each flagged `origin="synthesized"`/needs-review. CL6 gates are unchanged, or
   moved on purpose with the JSON rulings updated in the same change.
 
+### Stage 2b: synthesis (RULED/owner-approved)
+
+Owner approved building D3 without a separate design review (2026-10-28). The jar shows the only systematically missing
+whole-system part is the **powerplant**: Commlink6's powertrain embeds are upgrades (`improved_economy`, `nitro_boost`),
+never a base engine, and every other subsystem is a real item. So the generator mints **one** synthesized part per vehicle.
+
+1. **Scope.** Every catalog vehicle or drone of ours that is self-propelled (a Speed or an Acceleration stat above 0) gets
+   one part named "<Our Vehicle Name> Powerplant" (the vehicle's own catalog name, e.g. "GMC Bulldog Powerplant"). A vehicle
+   with no movement stats (a trailer, a static drone) gets none.
+2. **Hook.** `vehicle-powertrain`, as a part-hook value only (like `vehicle-body`). It is **not** added to the importer's
+   per-vehicle slot budget, and the part is not counted on the powertrain meter (`modsOf` leaves origin synth out of
+   `usedByHook`), so a stock vehicle's imported data and Review are unchanged.
+3. **Size** (the owner can tune it): `size = max(0.5, round(Body / 3))` in powertrain slot units, rounded half up. This is a
+   **synthesized heuristic of this app**, not a book or Commlink6 figure. It is the room a replacement may take.
+4. **Stats.** Price 0 (included in the vehicle, D8). The entry says "Powerplant: Speed X, Acceleration Y" from the vehicle's
+   own stats. `origin="synth"`, `review="needs-owner"`. It never claims a Commlink6 source (the table row has no `cl6` key).
+5. **Removal.** Removing it frees its size (`freedByHook`). While it is off and no mod is derived into `vehicle-powertrain`,
+   Review notes "no powerplant installed — vehicle cannot move under own power". It is reversible; the D5 derive-a-mod path
+   installs a replacement (a derived mod on this metered hook takes real powertrain slots).
+
+**Where it lives.** `tools/cl6check/vehicleparts.py` `powerplants()` writes a `part` row (`id="pp"`) per vehicle into
+`importer/sr6/classes/vehicle_parts.json` and a `gen: "vehicle-part"` add row for its catalog entry into the vehicle's book
+table (`overrides/<book>.json`). The entry id is the vehicle's id tail plus `-powerplant`. The importer keeps a vehicle's
+box-text builtins when its only part is the synthesized one.
+
+**Gate.** Synthesized rows are additive: `embedmap --ours` leaves them out of the 996-placement oracle comparison and counts
+them on their own line. The oracle still reads 996/996 with overrides exactly 1; completeness and effects parity do not move
+(the entries are "extra" rows with no Commlink6 record).
+
 ### Stage 3: domain (with fit-plan Stage 3)
 
 - `hookBudgets` counts parts as occupants. `op:'part'` remove/restore replaces `op:'builtin'` (migration

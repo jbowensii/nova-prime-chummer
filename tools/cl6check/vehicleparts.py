@@ -196,10 +196,12 @@ def gate(folder, data, latest):
     import xml.etree.ElementTree as ET
 
     oracle = {(v, e["ref"], hook_id(e["intoRef"])) for v, r in latest.items() for e in r["embeds"]}
+    # (the synthesized powerplants, Stage 2b, are additive: no Commlink6 placement, so not in the oracle comparison;
+    # they are still imported and checked below, and counted on their own line)
+    cl6 = [r for r in data["rows"] if r.get("origin") != "synth"]
+    synth = [r for r in data["rows"] if r.get("origin") == "synth"]
     got = {
-        (c.partition("/")[0], c.partition("/")[2], r["hook"])
-        for r in (*data["rows"], *data["unmatched"])
-        for c in [r["cl6"]]
+        (c.partition("/")[0], c.partition("/")[2], r["hook"]) for r in (*cl6, *data["unmatched"]) for c in [r["cl6"]]
     }
     ids, vehicles = set(), []
     for f in Path(folder).rglob("*.xml"):
@@ -213,6 +215,7 @@ def gate(folder, data, latest):
     held = {v for u in data["unmatched"] for v in u["vehicle"]} | {
         r["vehicle"] for r in data["rows"] if r["ref"] not in ids
     }
+    held |= {r["vehicle"] for r in synth} - {r["vehicle"] for r in cl6}  # (only a synthesized part: its builtins stay)
     skipped = sum(1 for r in data["rows"] if r["ref"] not in ids)
     want, have, left, dangling = defaultdict(list), {}, 0, 0
     for r in data["rows"]:
@@ -236,6 +239,8 @@ def gate(folder, data, latest):
         f"has); dangling part refs {dangling}",
         f"unmatched {len(data['unmatched'])} (needs-owner); builtins left on vehicles with parts: {left}; "
         f"overrides {over}",
+        f"synthesized (additive, not in the oracle): {len(synth)} powerplants "
+        f"on {len({r['vehicle'] for r in synth})} vehicles",
     ]
     ok = not (oracle - got or got - oracle or bad or left or dangling or over != 1 or len(have) != len(want))
     return lines, ok
@@ -243,6 +248,7 @@ def gate(folder, data, latest):
 
 OVERRIDES_DIR = OUT.parents[1] / "overrides"
 SKILL = {"close_combat": "Close Combat", "engineering": "Engineering", "firearms": "Firearms"}
+SYNTH_NOTE = "Synthesized by the importer (not from a book or Commlink6)."
 TAC = {"TAC_NET": "Tactical network"}  # (an electronics part's category by its Commlink6 subtype)
 WEAPON = re.compile(r"WEAPON_(?:CLOSE_COMBAT|FIREARMS|VEHICLE|SPECIAL)$")
 
@@ -348,6 +354,8 @@ def write_entries(rows, root=OVERRIDES_DIR):
     """The add rows into the books' override tables: each table keeps its other rows and swaps its earlier
     gen=vehicle-part ones for the new. {recipe id: rows written}."""
     done = {}
+    for stem in sorted(rows.keys() - {p.stem for p in Path(root).glob("*.json")}):
+        (Path(root) / f"{stem}.json").write_text("[]\n", encoding="utf8", newline="\n")  # (a book with no table yet)
     for path in sorted(Path(root).glob("*.json")):
         old = json.loads(path.read_text(encoding="utf8"))
         keep = [r for r in old if r.get("gen") != "vehicle-part"]
@@ -357,6 +365,58 @@ def write_entries(rows, root=OVERRIDES_DIR):
             path.write_text("[\n" + lines + "\n]\n", encoding="utf8", newline="\n")
         done[path.stem] = len(new)
     return {k: v for k, v in done.items() if v}
+
+
+def _stat(v, key):
+    """A vehicle's stat as a number (its leading digits), else 0."""
+    m = re.match(r"\d+(?:\.\d+)?", (v["attrs"].get(key) or "").strip())
+    return float(m[0]) if m else 0.0
+
+
+def powerplants(vehicles, taken=()):
+    """Stage 2b, ruling D3 (docs/analysis/sr6-vehicle-decomposition.md): ([part rows], {book: [add rows]}) with one
+    synthesized `<Vehicle> Powerplant` for each self-propelled vehicle of ours (a Speed or an Acceleration stat above
+    0), and none for one that cannot move (a trailer). vehicles: [{id, name, page, attrs}]. Hook vehicle-powertrain;
+    size max(0.5, round(Body / 3)): a heuristic of this app, not Commlink6's or a book's, so the part is origin synth
+    and review needs-owner. Price 0 (included in the vehicle, D8). The entry says what it stands for in its Speed and
+    Acceleration. Never claims a source."""
+    rows, add, seen = [], defaultdict(list), set(taken)
+    for v in sorted(vehicles, key=lambda e: e["id"]):
+        a = v["attrs"]
+        if not (_stat(v, "topSpeed") > 0 or _stat(v, "accel") > 0):
+            continue
+        body = _stat(v, "body")
+        size = max(0.5, float(int(body / 3 + 0.5)))  # (round half up; Python's round() would go to even)
+        src, name = v["id"].split(".")[0], f"{v['name']} Powerplant"
+        # (its own id, the vehicle's id tail + -powerplant: unique as the vehicle's is, and never the vehicle's own
+        # id, as slug(name), cut at 60 letters, could be for a long name)
+        pid = f"{v['id'].split('.', 1)[1]}-powerplant"
+        ref = f"{src}.{pid}"
+        if ref in seen:
+            raise ValueError(f"two powerplants would be {ref}: name {name!r}")
+        seen.add(ref)
+        why = f"synthesized powerplant, size max(0.5, round(Body {body:g} / 3)): the importer's own, not from a book"
+        rows.append(
+            {"vehicle": v["id"], "id": "pp", "ref": ref, "hook": "vehicle-powertrain", "cost": f"{size:g}",
+             "origin": "synth", "review": "needs-owner", "rule": "D3 synthesized", "note": why}
+        )  # fmt: skip
+        page = str(v.get("page") or "")
+        text = f"Powerplant: Speed {a.get('topSpeed') or '?'}, Acceleration {a.get('accel') or '?'}. "
+        attrs = {
+            "category": "Vehicle modification",
+            "cost": "0",
+            "class": "MOD_POWER/MOD_PROPULSION",
+            "modonly": "true",
+        }
+        kids = [
+            {"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}},
+            {"tag": "note", "attrs": {"field": "powerplant"}, "text": text + SYNTH_NOTE},
+        ]  # fmt: skip
+        add[src].append(
+            {"cl6": name, "kind": "gear", "gen": "vehicle-part",
+             "add": {"page": int(page) if page.isdigit() else 1, "id": pid, "attrs": attrs, "kids": kids}}
+        )  # fmt: skip
+    return rows, add
 
 
 def main(argv):
@@ -370,6 +430,7 @@ def main(argv):
     if "--ours" not in opt:
         print("cl6check gen-vehicle-parts: --ours <import folder> is required.", file=sys.stderr)
         return 2
+    from importer.sr6.ids import slug
     from tools.cl6check.__main__ import compare
 
     vehicles, defs, variants = embedmap.read_jar(jar)
@@ -380,14 +441,24 @@ def main(argv):
         if v is not latest[v["id"]]:
             others[v["id"]].append(v)
     recs, _ = reader.read(jar)
-    results, _, _ = compare([canon.canonical(r) for r in recs], ours.load(opt["--ours"]), pdf=False)
+    mine = ours.load(opt["--ours"])
+    results, _, _ = compare([canon.canonical(r) for r in recs], mine, pdf=False)
     part_ids, vehicle_ids, vnames = keys(results, published)
     made, add = inline_entries(read_inline(jar), part_ids, vehicle_ids, vnames)
     part_ids |= made
     rows, unmatched = build(latest, others, defs, variants, part_ids, vehicle_ids)
-    n = len({r["cl6"] for r in rows})
+    taken = set(part_ids.values()) | {f"{k}.{slug(r['cl6'])}" for k, rs in add.items() for r in rs}
+    pp_rows, pp_add = powerplants([e for s in mine.values() for e in s.entries if e["kind"] == "vehicles"], taken)
+    rows = sorted(
+        rows + pp_rows, key=lambda r: r["vehicle"]
+    )  # (stable: a vehicle's Commlink6 parts, then its powerplant)
+    for k, rs in pp_add.items():
+        add[k] += rs
+    print(f"synthesized powerplants {len(pp_rows)} (additive)")
+    rows_cl6 = [r for r in rows if r.get("origin") != "synth"]
+    n = len({r["cl6"] for r in rows_cl6})
     print(f"rows {len(rows)} on {len({r['vehicle'] for r in rows})} of our vehicles ({n} distinct CL6 placements)")
-    print(f"overrides {len({r['cl6'] for r in rows if r.get('override')})}; unmatched {len(unmatched)}:")
+    print(f"overrides {len({r['cl6'] for r in rows_cl6 if r.get('override')})}; unmatched {len(unmatched)}:")
     why = defaultdict(list)
     for u in unmatched:
         why[re.sub(r"part \S+ not", "part not", u["why"])].append(u["cl6"])

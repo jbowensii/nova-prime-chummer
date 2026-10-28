@@ -914,7 +914,8 @@ def vehicle_parts(entries, changed, data=None):
     slots stays: that is a hook budget, not a part. A vehicle is HELD, keeping its builtins (never below today's
     factory fit), when it has no rows (book-only), when the table lists a part of it as unmatched, or when a row's ref
     is no entry of this library (an entry only the optional Commlink6 module has: no dangling `part`, the row is
-    skipped). Returns how many vehicles got parts."""
+    skipped), or when its only parts are synthesized ones (origin synth: no Commlink6 part replaces its builtins).
+    Returns how many vehicles got parts."""
     if data is None:
         data = json.loads(VEHICLE_PARTS.read_text(encoding="utf8")) if VEHICLE_PARTS.is_file() else {}
     known = {el.get("id") for _ob, _src, _kind, el, _path in entries}
@@ -931,7 +932,8 @@ def vehicle_parts(entries, changed, data=None):
             continue
         for k in kids(el, "part"):
             el.remove(k)
-        if el.get("id") not in held:
+        # (a synthesized powerplant alone, Stage 2b, replaces nothing: builtins stay unless Commlink6 parts came)
+        if el.get("id") not in held and any(r.get("origin") != "synth" for r in rows):
             for k in [x for x in kids(el, "builtin") if not x.get("slots")]:
                 el.remove(k)
         for r in rows:

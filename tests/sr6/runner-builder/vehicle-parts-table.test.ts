@@ -20,7 +20,10 @@ interface Row {
   rating?: string
   parent?: string
 }
-const rows: Row[] = JSON.parse(readFileSync('importer/sr6/classes/vehicle_parts.json', 'utf8')).rows
+const table: (Row & { origin?: string; review?: string })[] = JSON.parse(readFileSync('importer/sr6/classes/vehicle_parts.json', 'utf8')).rows
+// (Stage 2b's synthesized powerplants are additive and not on the meters; they are checked on their own below)
+const rows: Row[] = table.filter(r => r.origin !== 'synth')
+const synth = table.filter(r => r.origin === 'synth')
 const FORMULA: Record<string, (r: number) => number> = {
   '$$ARMOR*0.25': () => 2.5,
   '$RATING-$$SENSORS': r => Math.max(0, r - 3),
@@ -94,7 +97,7 @@ test('the named cases: Hornet, Scorpion, a car with weapons', () => {
   expect(setPart(h, inj.id, true, dcData)).toMatchObject({ ok: true })
   expect(modsOf(h, dcData).hardpoints!.used).toBeCloseTo(before, 9)
   expect(modsOf(owned('crb.harley-davidson-scorpion'), data).usedByHook).toEqual({ 'vehicle-cf': 1 })
-  expect(byVehicle.has('crb.gmc-bulldog')).toBe(false) // (CL6 gives the Bulldog capacity only: no part to show, synthesis is 2b)
+  expect(byVehicle.has('crb.gmc-bulldog')).toBe(false) // (CL6 gives the Bulldog capacity only: no CL6 part; its powerplant is the synthesized one, below)
 })
 
 test("every vehicle: taking one part off frees exactly its cost and its children's; putting it back restores the stock figures", () => {
@@ -119,4 +122,15 @@ test("every vehicle: taking one part off frees exactly its cost and its children
       expect(x.removedParts).toBeUndefined()
     }
   }
+})
+
+test('Stage 2b: every self-propelled vehicle has one synthesized powerplant on the powertrain, named after the vehicle, with the formula size', () => {
+  expect(synth.length).toBeGreaterThanOrEqual(300)
+  expect(new Set(synth.map(r => r.vehicle)).size).toBe(synth.length) // one each
+  for (const r of synth) {
+    expect(r, r.vehicle).toMatchObject({ id: 'pp', hook: 'vehicle-powertrain', origin: 'synth', review: 'needs-owner' })
+    expect(Number(r.cost), r.vehicle).toBeGreaterThanOrEqual(0.5)
+    expect(r.ref, r.vehicle).toMatch(/-powerplant$/)
+  }
+  expect(synth.find(r => r.vehicle === 'crb.gmc-bulldog')).toMatchObject({ ref: 'crb.gmc-bulldog-powerplant', cost: '5' }) // Body 16
 })

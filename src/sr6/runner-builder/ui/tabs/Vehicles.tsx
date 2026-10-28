@@ -282,6 +282,7 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
               return (
                 <span key={p.id} className={p.removed ? 'chip muted' : 'chip'}>
                   {p.name}
+                  {p.origin === 'synth' ? ' (synthesized, needs review)' : ''}
                   {p.rating ? ` ${p.rating}` : ''} · {p.hook.replace(/^vehicle-/, '')} {n(p.cost)}
                   {p.removed ? ' (removed)' : ''}{' '}
                   {(!p.removed || own) && (

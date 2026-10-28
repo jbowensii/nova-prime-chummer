@@ -1087,7 +1087,8 @@ export function LedgerTab() {
                   .sort((a, b) => a.name.localeCompare(b.name))
                   .map(p => (
                     <option key={p.id} value={p.id}>
-                      {p.name} · {p.hook.replace(/^vehicle-/, '')} {n(p.cost)}
+                      {p.name}
+                      {p.origin === 'synth' ? ' (synthesized)' : ''} · {p.hook.replace(/^vehicle-/, '')} {n(p.cost)}
                       {p.removed ? ' (off: put back)' : ''}
                     </option>
                   ))}

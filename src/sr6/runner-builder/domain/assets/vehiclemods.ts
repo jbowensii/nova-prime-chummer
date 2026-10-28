@@ -67,6 +67,8 @@ export interface FactoryPart {
   /** removed by the player (or with a removed ancestor): takes nothing of its hook, grants and holds nothing */
   removed: boolean
   review?: string
+  /** cl6 (Commlink6's embed), book, or synth (the importer made it: the powerplant, plan Stage 2b) */
+  origin?: string
   entry?: Sr6Entry
 }
 export interface VehicleMods {
@@ -204,6 +206,7 @@ export function partsOf(x: Sr6Purchase, data: Sr6Data): FactoryPart[] {
         ...(p.attrs.parent ? { parent: p.attrs.parent } : {}),
         removed: gone.has(id),
         ...(p.attrs.review === 'needs-owner' ? { review: 'needs-owner' } : {}),
+        ...(p.attrs.origin ? { origin: p.attrs.origin } : {}),
         ...(entry ? { entry } : {}),
       } as FactoryPart
     })
@@ -264,7 +267,9 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   const parts = partsOf(x, data),
     live = parts.filter(p => !p.removed),
     usedByHook: Record<string, number> = {}
-  for (const p of live) usedByHook[p.hook] = (usedByHook[p.hook] ?? 0) + p.cost
+  // (a synthesized part, the powerplant, is not on the meters: its size is only the room a replacement may take, so a stock
+  // vehicle's powertrain figure and Review are what they were)
+  for (const p of live) if (p.origin !== 'synth') usedByHook[p.hook] = (usedByHook[p.hook] ?? 0) + p.cost
   // a GM-derived mod takes `size` of its hook exactly as a part does (derive.ts); the space freed by removed parts is what it may take
   const freedByHook: Record<string, number> = {},
     derivedUse: Record<string, number> = {}
@@ -280,6 +285,12 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
     const room = (freedByHook[h] ?? 0) + added.filter(s => s.id === h).reduce((t, s) => t + (slotCap(s.value) ?? 0), 0)
     return !metered(h) && derivedUse[h] > room + 1e-9
   })
+  // a synthesized powerplant taken off and nothing derived into its place: the vehicle can't move under its own power
+  if (
+    parts.some(p => p.origin === 'synth' && p.hook === 'vehicle-powertrain' && p.removed) &&
+    !x.accessories.some(a => a.derived?.hook === 'vehicle-powertrain')
+  )
+    warn(`${vname}: no powerplant installed — vehicle cannot move under own power.`, 'DC', 120)
   const stale = legacyRemovals(e, x.removedBuiltins)
   if (stale.length)
     warn(

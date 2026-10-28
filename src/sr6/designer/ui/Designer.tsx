@@ -592,7 +592,8 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                           .sort((a, b) => a.name.localeCompare(b.name))
                           .map(fpart => (
                             <span key={fpart.id} className={fpart.removed ? 'chip muted' : 'chip'}>
-                              {fpart.name} · {fpart.hook.replace(/^vehicle-/, '')} {fpart.cost}
+                              {fpart.name}
+                              {fpart.origin === 'synth' ? ' (synthesized)' : ''} · {fpart.hook.replace(/^vehicle-/, '')} {fpart.cost}
                               {fpart.removed ? ' (removed)' : ''}{' '}
                               {(!fpart.removed || (d.removedParts ?? []).includes(fpart.id)) && (
                                 <button
