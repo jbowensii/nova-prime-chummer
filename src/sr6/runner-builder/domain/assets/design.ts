@@ -133,9 +133,106 @@ function cargoCf(s?: string): number | null {
 }
 const LEGAL_ORDER = ['', 'L', 'I', 'F']
 
+/** A design that starts from a known catalog vehicle (`d.base`): its stats, price and Availability are the vehicle's,
+ *  and the built-in mods are added on top (nuyen, slots and Availability). The from-scratch point-buy (chassis/powertrain/
+ *  console, options, modifications, quality factors) does not apply here — this is "buy a vehicle and customize it". */
+function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignSheet {
+  const warnings: DesignSheet['warnings'] = [],
+    notes: string[] = []
+  const veh = data.entry('vehicles', d.base!)
+  if (!veh) {
+    warnings.push({ message: `The vehicle this design starts from (“${d.base}”) is no longer in the catalog.`, source: 'DC', page: 150 })
+    return {
+      stats: {
+        body: 0,
+        armor: 0,
+        handling: 0,
+        offRoad: 0,
+        seats: 0,
+        size: 0,
+        accel: 0,
+        interval: 0,
+        topSpeed: 0,
+        pilot: 0,
+        sensor: 0,
+        cargo: null,
+        cargoText: '—',
+      },
+      dp: 0,
+      multiplier: 1,
+      dpv: 0,
+      modsNuyen: 0,
+      price: 0,
+      avail: '—',
+      drone: d.kind === 'drone',
+      mods: [],
+      notes,
+      warnings,
+    }
+  }
+  const a = veh.attrs
+  const [onH, offH] = (a.handling ?? '0').replace(/[–−]/g, '-').split('/')
+  const stats: DesignStats = {
+    body: num(a.body),
+    armor: num(a.armor),
+    handling: num(onH),
+    offRoad: offH ? num(offH) : num(onH),
+    seats: num(a.seats),
+    size: num(a.sizeClass ?? a.size),
+    accel: num(a.accel),
+    interval: num(a.interval ?? a.speedInterval),
+    topSpeed: num(a.topSpeed),
+    pilot: num(a.pilot),
+    sensor: num(a.sensor),
+    cargo: null,
+    cargoText: a.cargo ?? '—',
+  }
+  // the mods built in: their real slots and nuyen (no Design-Point conversion — this is not a point-buy)
+  const find = dataFind(data)
+  const mods = d.mods.map(x => {
+    const e = entryOf(x, data),
+      v = bookValue(e, 'slots', ratingOf(x, e), find)
+    if (!v.ok)
+      warnings.push({
+        message: `${e ? entryLabel(e) : 'A mod'}: its mod slots “${e?.attrs.slots ?? ''}” aren’t a number the app can read; counted 0.`,
+        source: 'DC',
+        page: 151,
+      })
+    return { uid: x.uid, slots: v.ok ? (v.n ?? 0) : 0, dp: 0, nuyen: priced({ ...x, diy: undefined }, data, cr).cost }
+  })
+  const modsNuyen = mods.reduce((t, m) => t + m.nuyen, 0)
+  const full = num(a.cost) + modsNuyen
+  const price = d.diy ? Math.floor(full / 2) : full
+  // Availability: the vehicle's, raised by any mod's
+  let base = availability(a.avail, undefined).n ?? 0,
+    legal = legality(a.avail) ?? ''
+  for (const x of d.mods) {
+    const e = entryOf(x, data),
+      av = availability(e?.attrs.avail, ratingOf(x, e))
+    if (av.ok && (av.n ?? 0) > base) base = av.n!
+    const l = legality(e?.attrs.avail) ?? ''
+    if (LEGAL_ORDER.indexOf(l) > LEGAL_ORDER.indexOf(legal)) legal = l
+  }
+  notes.push(`Based on ${entryLabel(veh)} (${veh.source} p. ${veh.page}); its stats, price and Availability, with the mods below added.`)
+  return {
+    stats,
+    dp: 0,
+    multiplier: 1,
+    dpv: 0,
+    modsNuyen,
+    price,
+    avail: `${base}${legal ? `(${legal})` : ''}`,
+    drone: d.kind === 'drone' || /drone/i.test(a.category ?? veh.name),
+    mods,
+    notes,
+    warnings,
+  }
+}
+
 /** The design worked out: its stats (DC p. 154's final calculations, rounded down), Design Points, price (owner Q1, Q2,
  *  Q6) and Availability (p. 155), notes and warnings. */
 export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignSheet {
+  if (d.base) return baseDesignOf(d, data, cr)
   const warnings: DesignSheet['warnings'] = [],
     notes: string[] = []
   const warn = (message: string, page: number, source = 'DC') => warnings.push({ message, source, page })
@@ -430,8 +527,10 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
     sheet = designOf(d, data, cr),
     st = sheet.stats
   const name = doc.identity.streetName || doc.identity.name || 'Custom design'
+  // a based design keeps the starting vehicle's own category/name; a from-scratch one reads its chassis
+  const baseVeh = d.base ? data.entry('vehicles', d.base) : undefined
   const chassis = d.chassis ? data.entry('vehicledesign', d.chassis) : undefined
-  const size = /\b(micro|mini|small|medium|large)\b/i.exec(chassis?.name ?? '')?.[1]
+  const size = /\b(micro|mini|small|medium|large)\b/i.exec(`${baseVeh?.attrs.category ?? ''} ${chassis?.name ?? ''}`)?.[1]
   const parts: Sr6Part[] = d.mods.map(x => {
     const e = entryOf(x, data)
     return {
@@ -460,7 +559,9 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
       text: '',
       parts,
       attrs: {
-        category: sheet.drone ? `${size ? `${size[0].toUpperCase()}${size.slice(1).toLowerCase()} ` : ''}drone` : (chassis?.name ?? 'Designed vehicle'),
+        category: sheet.drone
+          ? `${size ? `${size[0].toUpperCase()}${size.slice(1).toLowerCase()} ` : ''}drone`
+          : (baseVeh?.attrs.category ?? chassis?.name ?? 'Designed vehicle'),
         handling: handlingText(st),
         accel: String(st.accel),
         interval: String(st.interval),

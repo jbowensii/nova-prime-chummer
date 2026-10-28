@@ -38,10 +38,15 @@ export const DESIGN_GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zip-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" slots="1" avail="4(I)" cost="1500"><name>Zip Weapon Mount</name></gear>
   <gear id="zz.glitter-paint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_SKIN" slots="0" avail="6(L)" cost="4000"><name>Glitter Paint</name></gear>
 </sr6:data>`
+// a made-up catalog vehicle, for the "start from a known vehicle" path
+export const DESIGN_VEHICLE = `<sr6:data ${NS} kind="vehicles" version="1">
+  <vehicle id="zz.grizzly" source="ZZ" page="200" category="Truck" body="12" armor="10" handling="4/3" accel="7" interval="20" topSpeed="90" pilot="3" sensor="3" seats="6" avail="6" cost="40000"><name>Custom Grizzly</name></vehicle>
+</sr6:data>`
 /** The fixture catalog with the made-up design parts and mods. */
 export const designCatalog = () =>
   fixtureCatalog(undefined, [
     { file: 'custom/sr6/imported/zz/vehicledesign.xml', xml: DESIGN_PARTS },
     { file: 'custom/sr6/imported/zz/gear.xml', xml: DESIGN_GEAR },
+    { file: 'custom/sr6/imported/zz/vehicles.xml', xml: DESIGN_VEHICLE },
   ])
 export const designWorld = () => ({ data: sr6Data(designCatalog()), cr: fixtureCreation() })

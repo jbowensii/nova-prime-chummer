@@ -206,6 +206,9 @@ export interface Sr6Purchase {
  *  derived is stored (src/sr6/runner-builder/domain/assets/design.ts works it out). */
 export interface Sr6Design {
   kind: 'vehicle' | 'drone'
+  /** start from a known vehicle: a catalog `vehicles` id. Its stats, price and Availability are the baseline and you
+   *  add mods on top (the from-scratch chassis/powertrain/console build is for a design with no base). */
+  base?: string
   chassis?: string
   powertrain?: string
   console?: string
