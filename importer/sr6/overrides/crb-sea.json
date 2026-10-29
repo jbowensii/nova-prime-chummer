@@ -20,9 +20,11 @@
   {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "gen": "cl6", "why": "the book gives swimming speed; Commlink6 also gives +1 toxin resistance a level (apply: character)", "effects": [{"target": "test:toxin-resistance", "op": "add", "value": "R"}]},
   {"cl6": "The Briar Patch", "cl6id": "the_briar_patch", "kind": "qualities", "id": "the-briar-patch", "set": {"maxLevel": "2", "perLevel": "true"}, "gen": "max"},
   {"cl6": "Water Born", "cl6id": "water_born", "kind": "qualities", "id": "water-born", "set": {"maxLevel": "2"}, "gen": "max"},
+  {"cl6": "MapMaster drone", "cl6id": "mapmaster_drone", "kind": "gear", "id": "mapmaster-drone", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "MapMaster sensor fob", "cl6id": "mapmaster_sensor_fob", "kind": "gear", "id": "mapmaster-sensor-fob", "kids": [{"tag": "fits", "attrs": {"slot": "electronic-accessory", "mode": "embedded"}}], "gen": "slot"},
   {"cl6": "Ballistic Hood", "cl6id": "ballistic_hood", "kind": "armor", "id": "ballistic-hood", "kids": [{"tag": "fits", "attrs": {"slot": "armor", "cost": "0", "mode": "embedded"}}], "gen": "slot"},
-  {"cl6": "Armorweave cloak", "cl6id": "armorweave_cloak", "kind": "armor", "id": "armorweave-cloak", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "slot"},
-  {"cl6": "Trés Chic cloak", "cl6id": "tres_chick_cloak", "kind": "armor", "id": "tres-chic-cloak", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "5"}}], "gen": "slot"},
+  {"cl6": "Disposable cloak", "cl6id": "disposable_cloak", "kind": "armor", "id": "disposable-cloak", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Armorweave cloak", "cl6id": "armorweave_cloak", "kind": "armor", "id": "armorweave-cloak", "set": {"usage": "carried"}, "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "slot"},
+  {"cl6": "Trés Chic cloak", "cl6id": "tres_chick_cloak", "kind": "armor", "id": "tres-chic-cloak", "set": {"usage": "carried"}, "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "5"}}], "gen": "slot"},
   {"cl6": "Water-Repellent Coating", "cl6id": "water_repellent_coating", "kind": "armor", "id": "water-repellent-coating", "kids": [{"tag": "fits", "attrs": {"slot": "armor", "cost": "0", "mode": "embedded"}}], "gen": "slot"}
 ]

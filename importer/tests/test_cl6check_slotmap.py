@@ -32,6 +32,7 @@ class SlotMapTest(unittest.TestCase):
                     "cl6id": "van",
                     "kind": "vehicles",
                     "id": "van",
+                    "set": {"usage": "carried"},  # (an item with no usage: Commlink6 carries it, never fits it)
                     "kids": [
                         {"tag": "slot", "attrs": {"id": "vehicle-chassis", "value": "7"}},
                         {"tag": "slot", "attrs": {"id": "vehicle-cf"}},
@@ -112,6 +113,13 @@ class SlotMapTest(unittest.TestCase):
         self.assertEqual(got[0]["kids"], [old[0]["kids"][2]])  # (the owner's own prerequisite stays)
         self.assertEqual(got[1], old[1])  # (an entry the generator has no row for is left)
 
+    def test_an_item_enhancement_and_a_usage_with_a_hook(self):
+        c, o = pair(kind="weapons", oid="zz.rail")
+        c["el"].tag = "itemenhancement"
+        self.assertEqual(slotmap.usage_of(c["el"]), "enhancement")
+        c, o = pair(kind="weapons", oid="zz.scope", embeds=["TOP"])
+        self.assertIsNone(slotmap.usage_of(c["el"]))
+
 
 class RowsTest(unittest.TestCase):
     def test_the_generated_rows_carry_commlink6s_hooks(self):
@@ -121,7 +129,7 @@ class RowsTest(unittest.TestCase):
         self.assertGreater(len(rows), 100)
         for r in rows:
             self.assertTrue(r["cl6id"])
-            for k in r["kids"]:
+            for k in r.get("kids", []):
                 self.assertIn(k["tag"], ("slot", "fits", "prerequisite"))
 
 

@@ -1641,7 +1641,7 @@ const RULES: Rule[] = [
         const unplaced = roomed ? new Set(mountSlots(he, items, rating, extra).unplaced) : new Set<string>()
         return lines.flatMap(a => {
           const e = entryOf(a, c.data)
-          if (!e || (vehicle && !structureOf(e).usages.length)) return []
+          if (!e || e.attrs.usage === 'carried' || (vehicle && !structureOf(e).usages.length)) return [] // (carried: catalog.carried)
           const f = fit(he, e, [], 1, extra)
           const hit = (why: string) => [{ path, message: `${nameOf(c, a)} ${why}, not ${nameOf(c, x)}.`, ...entryCite(e) }]
           if (f.ok === null) return fitsHost(c.data.categories, e, he, extra) === false ? hit(`is for ${hostsOf(c.data.categories, e).join(' or ')}`) : []
@@ -1650,6 +1650,22 @@ const RULES: Rule[] = [
           return unplaced.has(a.uid) ? hit(`has no room left in ${structureOf(e).fits.map(slotLabel).join(' or ')}`) : []
         })
       }),
+  },
+  // an item Commlink6 has as stand-alone (usage="carried": ammunition, a tripod drone, a harness) fitted to a host, as an
+  // older file may have it: kept, a warning (owner 2026-10-29); buy it on its own
+  {
+    code: 'catalog.carried',
+    severity: 'warning',
+    tab: 'gear',
+    check: c =>
+      c.b.purchases.flatMap(x =>
+        x.accessories.flatMap(a => {
+          const e = entryOf(a, c.data)
+          return e?.attrs.usage === 'carried'
+            ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, a)} is carried on its own, not fitted to ${nameOf(c, x)}.`, ...entryCite(e) }]
+            : []
+        }),
+      ),
   },
   // an accessory whose host fails one of its requirements (structure.ts requirementsOf: Commlink6's DATA_ITEM tests and
   // selreq groups; a holster's weapon size, a silencer's weapon type): a warning for now (owner ruling 5, 2026-10-29),

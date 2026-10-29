@@ -205,6 +205,9 @@
     <!-- bought only as an add-on to another item (Commlink6's modonly), a weapon's size class and the ammunition class it
          draws on -->
     <xs:attribute name="modonly" type="xs:boolean"/>
+    <!-- usage: how Commlink6 uses the item where it gives it no hook (tools/cl6check/slotmap.py): `enhancement` (an item
+         enhancement, applied to a host its requirements accept) or `carried` (stand-alone, never fitted) -->
+    <xs:attribute name="usage" type="xs:string"/>
     <xs:attribute name="size" type="xs:string"/>
     <!-- sizeFrom: how an unsized weapon's size was set: `class` (Commlink6's own subtype rule) or `category` (a guess
          from the printed category, needs owner review); absent: the data gave it -->

@@ -60,7 +60,7 @@ test('a bare part shows its category; the printed name stays the name; search fi
   expect(entryLabel(data.entry('augmentations', 'crb.glow-eyes')!)).toBe('Glow Eyes') // a named item: as printed
 })
 
-test('an accessory fits its host category exactly; a kind’s word no longer matches (KIND_WORDS removed)', () => {
+test('an accessory fits its host category exactly, or a book-only one its kind by the kind’s word', () => {
   const { data } = setup()
   const e = (k: Parameters<typeof data.entry>[0], id: string) => data.entry(k, id)!
   const limb = e('augmentations', 'crb.limb-synthetic'),
@@ -69,7 +69,27 @@ test('an accessory fits its host category exactly; a kind’s word no longer mat
   expect(fitsHost(data.categories, e('augmentations', 'crb.plating'), limb)).toBe(true)
   expect(fitsHost(data.categories, e('augmentations', 'crb.plating'), eyes)).toBe(false)
   expect(fitsHost(data.categories, e('augmentations', 'crb.glare-filter'), limb)).toBe(false)
-  expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), gun)).toBe(false) // fits "Weapon": a kind word, no hook (owner 2026-10-29)
+  expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), gun)).toBe(true) // fits "Weapon": book-only (no Commlink6 usage), so every weapon
+  // (an entry Commlink6 knows: an item enhancement by its requirements, a stand-alone item never)
+  const scope = e('gear', 'crb.zap-scope')
+  const as = (attrs: Record<string, string>, parts = scope.parts) => ({ ...scope, attrs: { ...scope.attrs, ...attrs }, parts })
+  const rifleOnly = [
+    { tag: 'prerequisite', attrs: { kind: 'valuereq', type: 'ITEM_ATTRIBUTE', ref: 'ITEMTYPE', value: 'WEAPON_FIREARMS', group: '1' }, text: '' },
+  ]
+  expect(fitsHost(data.categories, as({ usage: 'enhancement' }), gun)).toBe(true)
+  expect(
+    fitsHost(data.categories, as({ usage: 'enhancement' }, [...scope.parts, ...rifleOnly] as typeof scope.parts), {
+      ...gun,
+      attrs: { ...gun.attrs, class: 'WEAPON_CLOSE_COMBAT/BLADES' },
+    }),
+  ).toBe(false)
+  expect(
+    fitsHost(data.categories, as({ usage: 'enhancement' }, [...scope.parts, ...rifleOnly] as typeof scope.parts), {
+      ...gun,
+      attrs: { ...gun.attrs, class: 'WEAPON_FIREARMS/SHOTGUNS' },
+    }),
+  ).toBe(true)
+  expect(fitsHost(data.categories, as({ usage: 'carried' }), gun)).toBe(false)
   expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), limb)).toBe(false)
   expect(fitsHost(data.categories, eyes, limb)).toBeNull() // no accessory: nothing to check
   expect([capacityOf(limb), capacityUsed(e('augmentations', 'crb.plating'), 3), capacityUsed(e('augmentations', 'crb.glare-filter'))]).toEqual([6, 3, 2])
@@ -117,7 +137,7 @@ test('a vehicle’s accessories go through the same fit engine: an autosoft in t
     },
     {
       file: 'zz-autosoft',
-      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="software" mode="embedded"/></gear><gear id="t.tyres" source="CRB" page="1" category="Tyres" avail="4" cost="500"><name>Test Tyres</name><fits slot="vehicle-tires" mode="embedded"/></gear></sr6:data>`,
+      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="software" mode="embedded"/></gear><gear id="t.tripod" source="CRB" page="1" category="Tripod" usage="carried" avail="2" cost="100"><name>Test Tripod</name></gear><gear id="t.tyres" source="CRB" page="1" category="Tyres" avail="4" cost="500"><name>Test Tyres</name><fits slot="vehicle-tires" mode="embedded"/></gear></sr6:data>`,
     },
   ]
   const data = sr6Data(fixtureCatalog((_, x) => x, extra))
@@ -134,6 +154,16 @@ test('a vehicle’s accessories go through the same fit engine: an autosoft in t
   // tyres on a drone (no tyre hook: Commlink6 gives drones none), as an imported file would carry them
   b.purchases[0].accessories.push({ uid: 'a2', kind: 'gear', id: 't.tyres', name: 'Test Tyres', accessories: [] })
   expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.accessoryHost')?.message).toBe('Test Tyres goes into vehicle-tires, not Test Drone.')
+  // a stand-alone item an older file has fitted: kept, a warning, not the fit error
+  b.purchases[0].accessories.push({ uid: 'a3', kind: 'gear', id: 't.tripod', name: 'Test Tripod', accessories: [] })
+  const v = validateSr6(data, cr, ch)
+  expect(v.find(x => x.code === 'catalog.carried')).toMatchObject({
+    severity: 'warning',
+    message: 'Test Tripod is carried on its own, not fitted to Test Drone.',
+  })
+  expect(v.filter(x => x.code === 'catalog.accessoryHost')).toHaveLength(1) // (the tyres only)
+  expect(b.purchases[0].accessories).toHaveLength(3)
+  b.purchases[0].accessories.pop()
   // a GM's added slot makes it fit
   b.purchases[0].addedSlots = [{ id: 'vehicle-tires', value: '1' }]
   expect(validateSr6(data, cr, ch).map(v => v.code)).not.toContain('catalog.accessoryHost')

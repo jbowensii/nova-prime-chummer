@@ -103,6 +103,19 @@ def kids_of(rec, entry, rating, report=None):
     return kids
 
 
+def usage_of(el):
+    """`enhancement` for a Commlink6 item enhancement (applied to a host its requirements' item type/subtype tests
+    accept, never through a hook); `carried` for an ammunition type or an `<item>` that declares no usage with a hook
+    (Commlink6's default: carried, never fitted); else None."""
+    if el.tag == "itemenhancement":
+        return "enhancement"
+    if el.tag == "ammotype" or (
+        el.tag == "item" and not any(u["hook"] for u in hookmap.usages(el) if u["source"] == "data")
+    ):
+        return "carried"
+    return None
+
+
 def rows_of(pairs, report=None):
     """{src: [row]}: one `gen="slot"` row per matched entry whose Commlink6 record gives a hook, a usage with
     a slot or a requirement. `pairs` are (canonical Commlink6 record, our entry), as `compare(...)[2]` gives them; an
@@ -112,7 +125,8 @@ def rows_of(pairs, report=None):
         if not o["id"].startswith(o["src"] + "."):
             continue
         kids = kids_of(c, o, familymap.level(o), report)
-        if not kids:
+        use = usage_of(c["el"])
+        if not kids and not use:
             continue
         key = (o["src"], o["kind"], o["id"])
         row = by.get(key)
@@ -122,11 +136,14 @@ def rows_of(pairs, report=None):
                 "cl6id": c["el"].get("id"),
                 "kind": o["kind"],
                 "id": o["id"][len(o["src"]) + 1 :],
-                "kids": kids,
+                **({"set": {"usage": use}} if use else {}),
+                **({"kids": kids} if kids else {}),
                 "gen": "slot",
             }
         else:
-            row["kids"] += [k for k in kids if k not in row["kids"]]
+            row["kids"] = row.get("kids", []) + [k for k in kids if k not in row.get("kids", [])]
+            if use and not row.get("set"):
+                row["set"] = {"usage": use}
     rows = defaultdict(list)
     for (src, _, _), row in by.items():
         rows[src].append(row)
@@ -145,7 +162,7 @@ def _strip_family(old, new):
             continue
         cl6 = {
             tuple(k["attrs"].get(a) for a in ("kind", "type", "ref", "value"))
-            for k in n["kids"]
+            for k in n.get("kids", [])
             if k["tag"] == "prerequisite"
         }
         kids = [

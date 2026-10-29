@@ -191,12 +191,13 @@ export function fit(host: Sr6Entry | undefined, item: Sr6Entry, fitted: SlotItem
  *  embed time (Stage 0 findings, owner 2026-10-29): only `apply="DATA_ITEM"` tests; a `<selreq>` group (`group` n > 0)
  *  holds when any one of its tests holds, and a member with no `apply` holds by itself, so such a group never fails.
  *  One exception, owner ruling 6: a holster's gun-type group is tested whatever its `apply`. `negate` turns a test
- *  round. Owner ruling 5: a warning, not an error, for now. */
-export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined): { failed: string[]; unchecked: string[] } {
+ *  round. Owner ruling 5: a warning, not an error, for now. `every`: test them all, whatever their `apply` (an item
+ *  enhancement's applicability: enhancementFits). */
+export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined, every = false): { failed: string[]; unchecked: string[] } {
   const holster = /holster/i.test(item.name)
   const all = structureOf(item).prerequisites
   const grouped = (p: Record<string, string>) => !!p.group && p.group !== '0'
-  const tests = all.filter(p => (grouped(p) ? holster || all.every(q => q.group !== p.group || q.apply === 'DATA_ITEM') : p.apply === 'DATA_ITEM'))
+  const tests = all.filter(p => every || (grouped(p) ? holster || all.every(q => q.group !== p.group || q.apply === 'DATA_ITEM') : p.apply === 'DATA_ITEM'))
   const failed: string[] = [],
     unchecked: string[] = []
   if (!host || !tests.length) return { failed, unchecked }
@@ -224,6 +225,10 @@ export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined): { fa
   }
   return { failed, unchecked }
 }
+
+/** Whether a Commlink6 item enhancement (`usage="enhancement"`: a barrel extension, accessory rails) applies to a host:
+ *  its requirements' item type/subtype tests hold (Commlink6 has it modify the host, through no hook). Owner 2026-10-29. */
+export const enhancementFits = (item: Sr6Entry, host: Sr6Entry) => !requirementsOf(item, host, true).failed.length
 
 export const slotLabel = (id: string) =>
   id

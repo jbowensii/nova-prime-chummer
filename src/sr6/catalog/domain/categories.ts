@@ -3,10 +3,10 @@
 // category to the hosts it fits (`Cyberlimb accessory` fits `Cyberlimb`). A row whose printed name needs its category
 // (a bare part: `Arm (synthetic)`) carries `group`; the app shows `Cyberlimb: Arm (synthetic)`. The printed name stays
 // the entry's name.
-import type { Sr6Entry } from '../../formats/domain/types'
+import type { Sr6Entry, Sr6Kind } from '../../formats/domain/types'
 import { normName } from './names'
 import { rated } from './values'
-import { fit, fitsOnly, structureOf, type Slot } from './structure'
+import { enhancementFits, fit, fitsOnly, structureOf, type Slot } from './structure'
 
 /** How a catalog entry is named in lists, pickers, Review, the ledger, sheets and exports: its category first when its
  *  own name needs it. */
@@ -58,20 +58,50 @@ export const hostsOf = (index: Map<string, Sr6Entry[]>, acc: Sr6Entry): string[]
     .map(s => s.trim())
     .filter(Boolean)
 
+/** A host named by a kind's or an augmentation type's own word (`Weapon accessories` fit every weapon): kept only for an
+ *  entry Commlink6 has no record of (no `usage`, no `<fits>`: book-only; owner ruling 2026-10-29). */
+const KIND_WORDS: Record<string, Sr6Kind> = {
+  weapon: 'weapons',
+  armor: 'armor',
+  armour: 'armor',
+  vehicle: 'vehicles',
+  drone: 'vehicles',
+  device: 'electronics',
+  electronic: 'electronics',
+  commlink: 'electronics',
+  cyberdeck: 'electronics',
+  augmentation: 'augmentations',
+  implant: 'augmentations',
+  cyberware: 'augmentations',
+  bioware: 'augmentations',
+  geneware: 'augmentations',
+  nanoware: 'augmentations',
+  gear: 'gear',
+  program: 'programs',
+  ammunition: 'ammotypes',
+}
+const TYPE_WORDS = new Set(['cyberware', 'bioware', 'geneware', 'nanoware'])
+
 /** Whether an accessory fits a host item. One that declares usages (`<fits>`) fits by hook alone (fit plan I1: the host,
- *  with the instance's `extra` hooks less `removed`, offers one of them). One that declares none fits a host of the exact
- *  category its category record names. null when it declares neither (nothing to check). The old kind-word match
- *  (`Weapon accessories` fit any weapon) is gone (owner ruling 2026-10-29). */
+ *  with the instance's `extra` hooks less `removed`, offers one of them). A Commlink6 item enhancement (`usage=
+ *  "enhancement"`) fits a host its requirements' item type/subtype accept; a Commlink6 stand-alone item (`usage=
+ *  "carried"`) fits none. Any other fits a host of the exact category its category record names, or, when Commlink6 has
+ *  no record of it (book-only), of the kind its word names. null when it declares nothing (nothing to check). Owner
+ *  rulings 2026-10-29. */
 export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr6Entry, extra: Slot[] = [], removed: string[] = []): boolean | null {
   if (structureOf(acc).usages.length) {
     const f = fit(host, acc, [], 1, extra, removed)
     return f.ok !== false || f.reason === 'room'
   }
+  if (acc.attrs.usage === 'enhancement') return enhancementFits(acc, host)
+  if (acc.attrs.usage === 'carried') return false
   const hosts = hostsOf(index, acc)
   if (!hosts.length) return null
-  return hosts.some(h => catKey(h) === catKey(host.attrs.category))
+  return hosts.some(h => {
+    const k = catKey(h)
+    return k === catKey(host.attrs.category) || (KIND_WORDS[k] === host.kind && (!TYPE_WORDS.has(k) || host.attrs.type === k))
+  })
 }
-
 /** Whether the picker offers `e` as an accessory of `host`. An entry that fits the host (fitsHost) is offered. One that
  *  is fitted only (an embedded usage of its own: fitsOnly) or has a category, and does not fit, never is: it belongs to
  *  other hosts (a weapon's flashlight on a pair of cyberears). Only an entry that declares neither (a pre-categories
