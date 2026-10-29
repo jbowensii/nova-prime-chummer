@@ -32,7 +32,8 @@ def check(recs, mine):
         for c, hits, _ in match.match(cs, entries):
             pairs.append((c, hits))
             used.update(id(h) for h in hits)
-    misses = [(c, hits) for c, hits in pairs if not any(h["attrs"].get("multi") == "true" for h in hits)]
+    # a match whose own prose says "only once" (multi="false") is book-ruled, not a miss (owner ruling 2026-10-29)
+    misses = [(c, hits) for c, hits in pairs if not any(h["attrs"].get("multi") in ("true", "false") for h in hits)]
     extras = [
         e
         for s in mine.values()
