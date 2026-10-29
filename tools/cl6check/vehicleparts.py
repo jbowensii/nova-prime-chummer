@@ -481,6 +481,49 @@ _BY_CLASS = {
     "VEHICLES/VANS": "wheeled",
 }
 
+# owner-verified 2026-10-29 vs rulebooks: vehicle id -> DC_TYPES key, for vehicles the heuristic could only default
+PROPULSION_OVERRIDE = {
+    **dict.fromkeys(
+        (
+            "adv.jimmy-kincaids-turbobunny-special-ford-americar",
+            "aor.buzzard-transit",
+            "da.bae-archer-iii-high-mobility-artillery-system",
+            "da.hua-tuo-mash-vehicle",
+            "da.otokar-jamal",
+            "da.renraku-omukade-command-car",
+            "ssv.kwonsham-dream-genie",
+        ),
+        "wheeled",
+    ),
+    **dict.fromkeys(
+        (
+            "dc.dsec",
+            "ed.aresspace-mr-hydrone",
+            "ed.carrack-class-modular-transport",
+            "ed.evo-dragonfly",
+            "ed.evomars-dark-delver",
+            "ed.evomars-dark-matter",
+            "ed.evomars-darkblade",
+            "ed.evomars-exodus",
+            "ed.evomars-rifter",
+            "ed.evomars-trailblazer",
+            "ed.evomars-traveller",
+            "ed.evomars-voidsearcher",
+            "ed.generic-escape-pod",
+            "ed.gm-nissan-crash-beta",
+            "ed.gti-dagger",
+            "ed.gti-falchion",
+            "ed.hawker-siddley-golem-vi",
+            "ed.sikorsky-bell-stevedore",
+            "ed.spin-radical-solar-sailboard-5000",
+            "ed.spin-radical-solar-sailboard-5000xl",
+            "ed.vigilance-class-rescue-cutter",
+        ),
+        "vectored-thrust",
+    ),
+    **dict.fromkeys(("ssv.samsung-jind-0", "ssv.samsung-jind-0-sporting-breed"), "walker"),
+}
+
 
 def powertrain(v):
     """(DC type key, confident) for a vehicle of ours. Heuristic, first hit wins:
@@ -496,6 +539,8 @@ def powertrain(v):
     Anything else (SPACE_*, SPACECRAFT, no class, an unnamed special vehicle) falls to a NOT confident default
     (Vectored Thrust in space, else Wheeled); its row note says so for the owner.
     ponytail: name keywords are guesses; the owner corrects a wrong one on the part row, not in this code."""
+    if v["id"] in PROPULSION_OVERRIDE:
+        return PROPULSION_OVERRIDE[v["id"]], True
     a = v["attrs"]
     cls, name = a.get("class") or "", (v["name"] or "").lower()
     kind, _, tail = cls.partition("/")
