@@ -497,6 +497,11 @@
             }
           }
         },
+        "rules": {
+          "description": "The creation-cost RULE refs the entry carries (POLYGLOT: language ranks cost 1 Karma less, never below 1, up to rank 4), for a reader that applies them in play.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "links": {
           "description": "Another entry this one grants (rel grants) or works as (rel as), by its printed name (and kind and id when the book tells): a reader uses that entry's effects.",
           "type": "array",

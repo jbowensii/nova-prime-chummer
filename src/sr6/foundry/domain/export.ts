@@ -19,6 +19,7 @@ import type {
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../../formats/domain/types'
 import type { Sr6Compendium } from '../../formats/domain/character'
 import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
+import { ruleRefsOf } from '../../runner-builder/domain/creation/rule-markers'
 import { bonusValue, linkedViews, ownParts, type LinkLookup } from '../../catalog/domain/effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
 import { sr6CompendiumSource } from '../../formats/domain/compendium'
@@ -154,6 +155,8 @@ export interface Sr6ExportItem {
   effects?: Sr6ExportEffect[]
   tests?: Sr6ExportTest[]
   links?: Sr6ExportLink[]
+  /** the creation-cost RULE refs the entry carries (rule-markers.ts: `POLYGLOT`), for a reader that applies them in play */
+  rules?: string[]
   /** the ids the entry had in earlier imports (the catalog's <alias id kind>, Sr6Catalog.moved): kind only when it was
    *  another kind. A reader that keyed things by the old id finds them again. */
   aliases?: { id: string; kind?: Sr6Kind }[]
@@ -538,6 +541,7 @@ const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived =>
 function item(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return {
     ...effectsOf(e, data),
+    ...(ruleRefsOf(e).length ? { rules: ruleRefsOf(e) } : {}),
     ...aliasesOf(c, e),
     id: e.id,
     kind: e.kind,
