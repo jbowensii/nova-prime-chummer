@@ -2,6 +2,7 @@
 generator's per-level capacity, and the importer's class rule. Invented names and numbers only."""
 
 import unittest
+from collections import Counter
 import xml.etree.ElementTree as ET
 
 from importer.sr6 import classes
@@ -104,11 +105,17 @@ class ClassRuleTest(unittest.TestCase):
         out = classes.associations({f"{kind}.xml": doc})[f"{kind}.xml"]
         return [(c.tag, dict(c.attrib)) for c in ET.fromstring(out.split("?>", 1)[1])[0]]
 
-    def test_a_rated_eyeware_or_earware_host_gets_its_slot_at_its_capacity(self):
+    def slots(self, xml, kind):
+        """{slot id: attributes} of the entry after the rule."""
+        return {a["id"]: a for t, a in self.run_rule(xml, kind) if t == "slot"}
+
+    def test_a_book_only_eyeware_or_earware_host_falls_back_to_its_printed_capacity(self):
         eyes = '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="8"><name>E</name></augmentation>'
-        self.assertIn(("slot", {"id": "cybereye-implant", "value": "8"}), self.run_rule(eyes))
+        self.assertIn(("slot", {"id": "cybereye-implant", "value": "8", "unit": "capacity"}), self.run_rule(eyes))
         ears = eyes.replace("EYEWARE", "EARWARE")
-        self.assertIn(("slot", {"id": "cyberear-implant", "value": "8"}), self.run_rule(ears))
+        self.assertIn(("slot", {"id": "cyberear-implant", "value": "8", "unit": "capacity"}), self.run_rule(ears))
+        arm = eyes.replace("CYBER_EYEWARE", "CYBER_LIMBS").replace('"8"', '"15"')
+        self.assertIn(("slot", {"id": "cyberlimb-implant", "value": "15", "unit": "capacity"}), self.run_rule(arm))
 
     def test_an_accessory_gets_no_slot_and_a_host_no_fit(self):
         acc = '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="[2]"><name>A</name></augmentation>'
@@ -117,55 +124,77 @@ class ClassRuleTest(unittest.TestCase):
         host = '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="4"><name>A</name></augmentation>'
         self.assertNotIn("fits", [t for t, _ in self.run_rule(host)])
 
-    def test_a_firearm_gets_the_firearms_external_slot_a_melee_weapon_none(self):
+    def test_standard_hooks_by_class(self):
+        # rule S: firearms AND special weapons get firearms-external, melee melee-external, bows ranged-external
         gun = '<weapon id="a" class="WEAPON_FIREARMS/PISTOLS_LIGHT"><name>G</name></weapon>'
-        self.assertIn(("slot", {"id": "firearms-external"}), self.run_rule(gun, "weapons"))
-        self.assertNotIn(
-            "slot",
-            [t for t, _ in self.run_rule(gun.replace("FIREARMS/PISTOLS_LIGHT", "CLOSE_COMBAT/BLADES"), "weapons")],
-        )
+        self.assertEqual(self.slots(gun, "weapons")["firearms-external"]["value"], "99")
+        for cls, slot in (
+            ("WEAPON_SPECIAL/TASERS", "firearms-external"),
+            ("WEAPON_CLOSE_COMBAT/BLADES", "melee-external"),
+            ("WEAPON_RANGED/BOWS", "ranged-external"),
+        ):
+            self.assertIn(slot, self.slots(gun.replace("WEAPON_FIREARMS/PISTOLS_LIGHT", cls), "weapons"))
+        # matrix devices only: a commlink gets software and electronic-accessory, other electronics neither
+        com = '<electronic id="a" class="ELECTRONICS/COMMLINK"><name>C</name></electronic>'
+        self.assertEqual(set(self.slots(com, "electronics")), {"software", "electronic-accessory"})
+        self.assertEqual(self.slots(com.replace("COMMLINK", "SENSOR"), "electronics"), {})
 
-    def test_a_cyberlimb_host_gets_its_implant_slot_at_the_printed_capacity(self):
-        # obvious limbs carry more than synthetic; the printed capacity is the slot's value
-        arm = (
-            '<augmentation id="a" class="CYBERWARE/CYBER_LIMBS" capacity="15"><name>Arm (obvious)</name></augmentation>'
+    def test_vehicle_capacities_are_computed_the_commlink6_way(self):
+        car = '<vehicle id="a" class="VEHICLES/CARS" body="11" seats="2+2" pilot="3"><name>Car</name></vehicle>'
+        got = {k: a["value"] for k, a in self.slots(car, "vehicles").items()}
+        self.assertEqual(
+            got,
+            {
+                "vehicle-chassis": "11",
+                "vehicle-electronics": "11",
+                "vehicle-powertrain": "11",
+                "vehicle-accessory": "99",
+                "software": "2",
+                "vehicle-cf": "6",
+                "vehicle-hardpoint": "3",
+                "vehicle-tires": "1",
+            },
         )
-        self.assertIn(("slot", {"id": "cyberlimb-implant", "value": "15"}), self.run_rule(arm))
-        # a skull holds headware, not a cyberlimb implant
-        skull = arm.replace("Arm (obvious)", "Skull (synthetic)").replace('capacity="15"', 'capacity="4"')
-        self.assertIn(("slot", {"id": "headware-implant", "value": "4"}), self.run_rule(skull))
-        # an accessory (bracketed capacity) in the cyberlimb-accessory class gets no host slot
-        acc = (
-            '<augmentation id="a" class="ACCESSORY/CYBER_LIMB_ACCESSORY" capacity="[2]">'
-            "<name>Holster</name></augmentation>"
+        # a data HOOK adds to the computed base, a removal takes the hook away
+        boat = car.replace("CARS", "BOATS").replace(
+            "<name>Car</name>",
+            '<name>B</name><slot id="vehicle-chassis" value="-3"/><slot id="vehicle-cf" remove="true"/>',
         )
-        self.assertEqual([t for t, _ in self.run_rule(acc)], ["name"])
-
-    def test_a_drivable_vehicle_gets_the_general_mod_slots_and_a_statline_none(self):
-        car = '<vehicle id="a" body="11"><name>Car</name></vehicle>'
-        got = [a["id"] for t, a in self.run_rule(car, "vehicles") if t == "slot"]
-        self.assertEqual(got, list(classes.VEHICLE_MOD_SLOTS))
+        got = self.slots(boat, "vehicles")
+        self.assertEqual(got["vehicle-chassis"]["value"], "8")
+        self.assertNotIn("vehicle-cf", got)
+        self.assertNotIn("vehicle-tires", got)  # (tyres: wheeled VEHICLES only)
+        # a small drone with Body over 3: half a hardpoint, items up to 0.5; no tyres on any drone
+        drone = '<vehicle id="a" class="DRONE_SMALL/GROUND" body="4" pilot="3"><name>D</name></vehicle>'
+        got = self.slots(drone, "vehicles")
+        self.assertEqual((got["vehicle-hardpoint"]["value"], got["vehicle-hardpoint"]["maxSize"]), ("0.5", "0.5"))
+        self.assertNotIn("vehicle-tires", got)
         # an entry in vehicles.xml with no Body (a stat line, a mod) is not a drivable host
         self.assertEqual(
             [t for t, _ in self.run_rule('<vehicle id="a"><name>X</name></vehicle>', "vehicles")], ["name"]
         )
 
-    def test_tyres_only_for_ground_wheeled_vehicles(self):
-        # Commlink6 gates ACCESSORY/TIRES to wheeled ground subtypes: a car and a ground drone get a tyre slot;
-        # a fixed-wing aircraft, a flying drone, a tracked tank and a walker do not.
-        def tyres(cls):
-            v = f'<vehicle id="a" body="6" class="{cls}"><name>V</name></vehicle>'
-            return "vehicle-tires" in [a["id"] for t, a in self.run_rule(v, "vehicles") if t == "slot"]
-
-        self.assertTrue(tyres("VEHICLES/CARS"))
-        self.assertTrue(tyres("VEHICLES/BIKES"))
-        self.assertTrue(tyres("DRONE_SMALL/GROUND"))
-        self.assertFalse(tyres("VEHICLES/FIXED_WING"))
-        self.assertFalse(tyres("VEHICLES/ROTORCRAFT"))
-        self.assertFalse(tyres("VEHICLES/TRACKED"))
-        self.assertFalse(tyres("VEHICLES/WALKER"))
-        self.assertFalse(tyres("DRONE_SMALL/AIR"))
-        self.assertFalse(tyres(""))  # unknown locomotion: no tyres (CL6 has them on wheeled only)
+    def test_a_weapon_gets_its_size_and_mount_and_implant_usages(self):
+        gun = '<weapon id="a" class="WEAPON_FIREARMS/PISTOLS_HEAVY"><name>G</name></weapon>'
+        got = self.run_rule(gun, "weapons")
+        self.assertEqual(
+            [(a["slot"], a["rule"]) for t, a in got if t == "fits"],
+            [
+                ("vehicle-weapon-small", "W"),
+                ("vehicle-weapon", "W"),
+                ("vehicle-weapon-large", "W"),
+                ("implant-pistol-heavy", "I"),
+            ],
+        )
+        # an unclassed weapon's size is a guess from its category, flagged
+        doc = f'<?xml version="1.0"?>\n<sr6:data xmlns:sr6="u">\n  {gun}\n</sr6:data>\n'.replace(
+            'class="WEAPON_FIREARMS/PISTOLS_HEAVY"', 'category="Assault Rifles"'
+        )
+        report = Counter()
+        out = classes.associations({"weapons.xml": doc}, report)["weapons.xml"]
+        el = ET.fromstring(out.split("?>", 1)[1])[0]
+        self.assertEqual((el.get("size"), el.get("sizeFrom")), ("Large", "category"))
+        self.assertEqual(report["size.category"], 1)
 
     def test_a_weapon_accessory_fits_each_mount_it_prints_and_nothing_else(self):
         w = '<weapon id="a" class="ACCESSORY/WEAPON_ACCESSORY" mount="%s"><name>A</name></weapon>'
@@ -176,19 +205,21 @@ class ClassRuleTest(unittest.TestCase):
         self.assertEqual([a["slot"] for t, a in side if t == "fits"], ["side-l", "side-r"])
         self.assertEqual([t for t, _ in self.run_rule(w % "—", "weapons")], ["name"])
 
-    def test_it_is_idempotent_and_leaves_a_slot_a_row_gave(self):
+    def test_it_is_idempotent_and_keeps_one_slot_and_fit_per_id(self):
         eyes = (
             '<augmentation id="a" class="CYBERWARE/CYBER_EYEWARE" capacity="8"><name>E</name>'
-            '<slot id="cybereye-implant" value="3"/></augmentation>'
+            '<slot id="cybereye-implant"/><slot id="cybereye-implant" value="3"/></augmentation>'
         )
         got = self.run_rule(eyes)
-        self.assertEqual(got.count(("slot", {"id": "cybereye-implant", "value": "3"})), 1)
-        self.assertEqual([t for t, _ in got].count("slot"), 1)
+        self.assertEqual(
+            [a for t, a in got if t == "slot"], [{"id": "cybereye-implant", "value": "3", "unit": "capacity"}]
+        )
         w = (
             '<weapon id="a" class="ACCESSORY/WEAPON_ACCESSORY" mount="Under">'
-            '<name>A</name><fits slot="under"/></weapon>'
+            '<name>A</name><fits slot="under"/><fits slot="under" cost="1" mode="embedded"/></weapon>'
         )
-        self.assertEqual([t for t, _ in self.run_rule(w, "weapons")].count("fits"), 1)
+        fits = [a for t, a in self.run_rule(w, "weapons") if t == "fits"]
+        self.assertEqual(fits, [{"slot": "under", "cost": "1", "mode": "embedded"}])
 
 
 if __name__ == "__main__":

@@ -232,6 +232,9 @@ def _entries(src_dir, src):
                     ],
                     "attrs": attrs,
                     "families": families(e, kind),
+                    # (the hook values and usage costs: hookmap compares them with Commlink6's)
+                    "slotvals": {s.get("id"): s.get("value") for s in e.findall("slot")},
+                    "fitcost": {f.get("slot"): f.get("cost") for f in e.findall("fits")},
                     "issues": [(i.get("field"), i.get("code")) for i in e.findall("issue")],
                     # where the importer found a value the row leaves out (resolve.py): field -> how
                     "found": {x.get("field"): x.get("how") for x in e.findall("found")},

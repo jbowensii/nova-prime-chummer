@@ -5,11 +5,7 @@
   {"cl6": "Trés Chic cloak", "kind": "armor", "id": "tres-chic-cloak", "set": {"class": "ARMOR/ARMOR_BODY"}, "gen": "class"},
   {"cl6": "MapMaster drone", "kind": "gear", "id": "mapmaster-drone", "set": {"class": "DRONE_MINI/AIR"}, "gen": "class"},
   {"cl6": "MapMaster sensor fob", "kind": "gear", "id": "mapmaster-sensor-fob", "set": {"class": "ELECTRONICS/ELECTRONIC_ACCESSORIES"}, "gen": "class"},
-  {"cl6": "Armorweave cloak", "kind": "armor", "id": "armorweave-cloak", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "family"},
-  {"cl6": "Trés Chic cloak", "kind": "armor", "id": "tres-chic-cloak", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "5"}}], "gen": "family"},
-  {"cl6": "MapMaster sensor fob", "kind": "gear", "id": "mapmaster-sensor-fob", "kids": [{"tag": "fits", "attrs": {"slot": "electronic-accessory"}}], "gen": "family"},
-  {"cl6": "Ballistic Hood", "kind": "armor", "id": "ballistic-hood", "kids": [{"tag": "fits", "attrs": {"slot": "armor"}}, {"tag": "modifier", "attrs": {"kind": "itemmod", "type": "GEAR", "apply": "CHARACTER", "ref": "ballistic_hood_armor"}}], "gen": "family"},
-  {"cl6": "Water-Repellent Coating", "kind": "armor", "id": "water-repellent-coating", "kids": [{"tag": "fits", "attrs": {"slot": "armor"}}], "gen": "family"},
+  {"cl6": "Ballistic Hood", "kind": "armor", "id": "ballistic-hood", "kids": [{"tag": "modifier", "attrs": {"kind": "itemmod", "type": "GEAR", "apply": "CHARACTER", "ref": "ballistic_hood_armor"}}], "gen": "family"},
   {"cl6": "Big Brother's Blindspot", "kind": "qualities", "id": "big-brothers-blindspot", "kids": [{"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "stealth", "value": "1", "what": "EDGE_ONLY_TEST", "cond": "true"}}, {"tag": "modifier", "attrs": {"kind": "checkmod", "type": "SKILL", "ref": "perception", "value": "1", "what": "EDGE_ONLY_TEST", "cond": "true"}}, {"tag": "modifier", "attrs": {"kind": "itemmod", "type": "SKILL", "ref": "knowledge"}}], "gen": "family"},
   {"cl6": "Bilko Contact", "kind": "qualities", "id": "bilko-contacts", "kids": [{"tag": "selection", "attrs": {"type": "CONTACT"}}, {"tag": "selection", "attrs": {"type": "SUBSELECT", "ref": "variant"}}], "gen": "family"},
   {"cl6": "Clean Living", "kind": "qualities", "id": "clean-living", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "BODY", "value": "1", "set": "NATURAL"}}], "gen": "family"},
@@ -23,5 +19,10 @@
   {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "kids": [{"tag": "modifier", "attrs": {"kind": "valmod", "type": "ATTRIBUTE", "ref": "RESIST_TOXIN", "value": "1", "set": "NATURAL", "apply": "CHARACTER"}}], "gen": "family"},
   {"cl6": "Water Born", "kind": "qualities", "id": "water-born", "gen": "cl6", "why": "the book gives swimming speed; Commlink6 also gives +1 toxin resistance a level (apply: character)", "effects": [{"target": "test:toxin-resistance", "op": "add", "value": "R"}]},
   {"cl6": "The Briar Patch", "cl6id": "the_briar_patch", "kind": "qualities", "id": "the-briar-patch", "set": {"maxLevel": "2", "perLevel": "true"}, "gen": "max"},
-  {"cl6": "Water Born", "cl6id": "water_born", "kind": "qualities", "id": "water-born", "set": {"maxLevel": "2"}, "gen": "max"}
+  {"cl6": "Water Born", "cl6id": "water_born", "kind": "qualities", "id": "water-born", "set": {"maxLevel": "2"}, "gen": "max"},
+  {"cl6": "MapMaster sensor fob", "cl6id": "mapmaster_sensor_fob", "kind": "gear", "id": "mapmaster-sensor-fob", "kids": [{"tag": "fits", "attrs": {"slot": "electronic-accessory", "mode": "embedded"}}], "gen": "slot"},
+  {"cl6": "Ballistic Hood", "cl6id": "ballistic_hood", "kind": "armor", "id": "ballistic-hood", "kids": [{"tag": "fits", "attrs": {"slot": "armor", "cost": "0", "mode": "embedded"}}], "gen": "slot"},
+  {"cl6": "Armorweave cloak", "cl6id": "armorweave_cloak", "kind": "armor", "id": "armorweave-cloak", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "slot"},
+  {"cl6": "Trés Chic cloak", "cl6id": "tres_chick_cloak", "kind": "armor", "id": "tres-chic-cloak", "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "5"}}], "gen": "slot"},
+  {"cl6": "Water-Repellent Coating", "cl6id": "water_repellent_coating", "kind": "armor", "id": "water-repellent-coating", "kids": [{"tag": "fits", "attrs": {"slot": "armor", "cost": "0", "mode": "embedded"}}], "gen": "slot"}
 ]

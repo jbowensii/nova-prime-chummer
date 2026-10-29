@@ -1,53 +1,106 @@
-"""Makes the per-vehicle mod-slot rows (`"gen": "slot"`) from Commlink6: each drivable vehicle's declared slot-family
-capacities (its `<valmod/itemmod type="HOOK" ref="VEHICLE_*" value="N">`: accessory, tires, cf, hardpoint, chassis,
-powertrain, electronics; the EXACT ref, incl `vehicle-weapon-small/-large/-military`) and each vehicle mod's `<fits>`
-(its `usage mode="EMBEDDED" slot="VEHICLE_*"`), owner ruling 2026-10-27:
+"""Makes the hook rows (`"gen": "slot"`) from Commlink6 (fit plan Stage 2.1): for every matched entry, the hooks its
+Commlink6 record's DATA gives (the code's are rules, importer/sr6/hooks.py, applied by classes.associations):
 
   python -m tools.cl6check.slotmap <runs dir> [--jar JAR] [--dry]
 
-importer/sr6/overrides/<src>.json: one row `{"cl6", "cl6id", "kind", "id", "kids": [<slot id value>|<fits slot>...],
-"gen": "slot"}` for each matched entry of kind vehicles/gear/weapons whose Commlink6 record declares a `vehicle-*` HOOK
-or a `vehicle-*` EMBEDDED usage. The slots gate (fields.py) compares (type, normalized-id) tuples only — it ignores
-slot VALUES and is one-directional — so a diff-driven generator (familymap, which reads cl6-diffs.csv) never emits the
-hook VALUES. This one walks the matched pairs directly (maxmap style: `compare(...)[2]`). It is NOT the only source of
-vehicle slots: importer/sr6/classes.py `associations()` still gives every vehicles.xml entry with a Body the six generic
-value-less family slots (VEHICLE_MOD_SLOTS) and wheeled classes `vehicle-tires`; these rows add the values Commlink6
-writes in its data, and the runtime (src/sr6/.../vehiclemods.ts) supplies the Body fallback where no value is given.
-(Owner ruling 2026-10-29: the importer will compute the generic capacities the Commlink6 way, from Body/Seats/Pilot,
-with these rows' values overriding them; until then the above holds.) Rows of an earlier run (`gen`) are replaced; the
-rest of a table is left as it is. Read-only on the runs; no cl6check report."""
+importer/sr6/overrides/<src>.json: one row `{"cl6", "cl6id", "kind", "id", "kids", "gen": "slot"}` per matched entry
+whose record declares any, with kids
+- `<slot id value? remove?>` each `itemmod/valmod type=HOOK` (the record's and its variants'; the value at the entry's
+  level; `remove="true"` a hook the record takes away). A hook its variants give different capacities (a cyberarm: 8
+  synthetic, 15 obvious) takes the variant the entry is: the one whose capacity the entry prints, else whose id's words
+  its name carries, else the first (counted in `variant.first`, listed in the run's output);
+- `<fits slot cost? mode>` each `<usage>` with a slot (cost: the usage value; mode: embedded, implanted, carried,
+  virtual);
+- `<prerequisite kind type ref value? apply? group negate?>` each test of its `<requires>`, grouped (group 0 all must
+  hold; each `<selreq>` its own group 1, 2 …, any one holds).
+This generator is the one emitter of those kids for a matched entry: it takes them out of the entry's `gen: "family"`
+rows (familymap's older, flattened copies; a family prerequisite Commlink6 does not give, the owner's, stays). The slots
+gate (fields.py) compares ids only, so the values come from here. Read-only on the runs; no cl6check report."""
 
 import json
+import re
 import sys
-from collections import defaultdict
+from collections import Counter, defaultdict
 from pathlib import Path
 
-from tools.cl6check import canon, familymap
+from tools.cl6check import canon, familymap, hookmap
 from tools.cl6check.classmap import OVERRIDES
 
-KINDS = ("vehicles", "gear", "weapons")  # (a host vehicle; a vehicle mod; a vehicle-mounted weapon)
+TAGS = ("slot", "fits", "prerequisite")
 
 
-def vehicle_kids(rec, rating):
-    """The slot/fits kids of a Commlink6 record that name a `vehicle-*` slot (its HOOK values and EMBEDDED fits), with
-    their capacity values; [] when it declares none."""
-    _, kids = familymap.structure({"el": rec["el"], "attrs": {}}, rating)
-    return [
-        k
-        for k in kids
-        if k["tag"] in ("slot", "fits") and (k["attrs"].get("id") or k["attrs"].get("slot", "")).startswith("vehicle-")
-    ]
+def _variant_pick(hooks_by_var, entry):
+    """The variant id whose HOOK capacities the entry takes (see the module doc), and whether it was a guess."""
+    cap = (entry.get("attrs", {}).get("capacity") or "").strip()
+    name = (entry.get("name") or "").casefold()
+    for var, caps in hooks_by_var.items():
+        if cap and any(v == cap for v in caps.values()):
+            return var, False
+    for var in hooks_by_var:
+        if var and all(w in name for w in re.split(r"[_\W]+", var.casefold()) if len(w) > 2):
+            return var, False
+    return next(iter(hooks_by_var)), True
 
 
-def rows_of(pairs):
-    """{src: [row]} — one `gen="slot"` row per matched entry (kind vehicles/gear/weapons) whose Commlink6 record names
-    a vehicle-* slot. `pairs` are (canonical Commlink6 record, our entry), as `compare(...)[2]` gives them; an entry
-    several Commlink6 records match (a printing, a variant) is one row, its vehicle-* kids unioned."""
+def kids_of(rec, entry, rating, report=None):
+    """The slot/fits/prerequisite kids Commlink6's record gives our entry."""
+    report = Counter() if report is None else report
+    el = rec["el"]
+    by_var = defaultdict(dict)  # {variant: {hook: value}}
+    removes = []
+    for var, scope in hookmap._scopes(el):  # pylint: disable=protected-access
+        for x in hookmap._walk(scope):  # pylint: disable=protected-access
+            if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref"):
+                if x.get("remove") == "true":
+                    removes.append(x.get("ref"))
+                else:
+                    by_var[var].setdefault(x.get("ref"), familymap.slot_value(x, rating))
+    hooks = dict(by_var.pop(None, {}))
+    multi = [h for h in {h for c in by_var.values() for h in c} if len({c.get(h) for c in by_var.values()}) > 1]
+    if multi:
+        var, guess = _variant_pick(by_var, entry)
+        report["variant.first" if guess else "variant.matched"] += 1
+        for h in multi:
+            hooks.setdefault(h, by_var[var].get(h))
+    for c in by_var.values():
+        for h, v in c.items():
+            hooks.setdefault(h, v)
+    kids = [{"tag": "slot", "attrs": {"id": hookmap.norm(h), **({"value": v} if v else {})}} for h, v in hooks.items()]
+    kids += [{"tag": "slot", "attrs": {"id": hookmap.norm(h), "remove": "true"}} for h in dict.fromkeys(removes)]
+    seen = set()
+    for u in hookmap.usages(el):
+        if u["source"] != "data" or not u["hook"] or u["hook"] in seen:
+            continue
+        seen.add(u["hook"])
+        cost = u["cost"]
+        cost = f"{cost:g}" if isinstance(cost, float) else (str(cost) if cost is not None else None)
+        attrs = {
+            "slot": hookmap.norm(u["hook"]),
+            **({"cost": cost} if cost else {}),
+            **({"mode": u["mode"].lower()} if u["mode"] else {}),
+        }
+        kids.append({"tag": "fits", "attrs": attrs})
+    for r in hookmap.requirements(el):
+        attrs = {"kind": r["tag"], "type": r["type"], "ref": r["ref"], "value": r["value"], "apply": r["apply"]}
+        attrs = {k: v for k, v in attrs.items() if v}
+        if r["group"]:
+            attrs["group"] = str(r["group"])
+        if r["negate"]:
+            attrs["negate"] = "true"
+        if attrs not in [k["attrs"] for k in kids if k["tag"] == "prerequisite"]:
+            kids.append({"tag": "prerequisite", "attrs": attrs})
+    return kids
+
+
+def rows_of(pairs, report=None):
+    """{src: [row]}: one `gen="slot"` row per matched entry whose Commlink6 record gives a hook, a usage with
+    a slot or a requirement. `pairs` are (canonical Commlink6 record, our entry), as `compare(...)[2]` gives them; an
+    entry several records match (printings) is one row, its kids unioned."""
     by = {}  # (src, kind, oid) -> row
     for c, o in pairs:
-        if o["kind"] not in KINDS or not o["id"].startswith(o["src"] + "."):
+        if not o["id"].startswith(o["src"] + "."):
             continue
-        kids = vehicle_kids(c, familymap.level(o))
+        kids = kids_of(c, o, familymap.level(o), report)
         if not kids:
             continue
         key = (o["src"], o["kind"], o["id"])
@@ -69,15 +122,45 @@ def rows_of(pairs):
     return rows
 
 
+def _strip_family(old, new):
+    """old's rows, each `gen: "family"` row of an entry `new` has a row for less its slot and fits kids and the
+    prerequisites Commlink6 gives (new's, compared without group/negate/apply); a row left with nothing goes."""
+    have = {(r["kind"], r["id"]): r for r in new}
+    out = []
+    for r in old:
+        n = have.get((r["kind"], r["id"])) if r.get("gen") == "family" else None
+        if n is None:
+            out.append(r)
+            continue
+        cl6 = {
+            tuple(k["attrs"].get(a) for a in ("kind", "type", "ref", "value"))
+            for k in n["kids"]
+            if k["tag"] == "prerequisite"
+        }
+        kids = [
+            k
+            for k in r.get("kids", [])
+            if k["tag"] not in ("slot", "fits")
+            and not (
+                k["tag"] == "prerequisite" and tuple(k["attrs"].get(a) for a in ("kind", "type", "ref", "value")) in cl6
+            )
+        ]
+        r = {k: v for k, v in {**r, "kids": kids}.items() if k != "kids" or v}
+        if r.get("kids") or r.get("set"):
+            out.append(r)
+    return out
+
+
 def write_rows(rows, root=OVERRIDES):
-    """Each table keeps its other rows; the generated ones replace the earlier `gen="slot"` ones. {src: count}."""
+    """Each table keeps its other rows; the generated ones replace the earlier `gen="slot"` ones and their kids leave
+    the family rows. {src: count}."""
     done = {}
     for src in sorted({p.stem for p in Path(root).glob("*.json")} | set(rows)):
         path = Path(root) / f"{src}.json"
         old = json.loads(path.read_text(encoding="utf8")) if path.is_file() else []
-        keep = [r for r in old if r.get("gen") != "slot"]
         new = rows.get(src, [])
-        if len(keep) != len(old) or new:
+        keep = _strip_family([r for r in old if r.get("gen") != "slot"], new)
+        if keep + new != old:
             lines = ",\n".join("  " + json.dumps(r, ensure_ascii=False) for r in keep + new)
             path.write_text("[\n" + lines + "\n]\n" if keep or new else "[]\n", encoding="utf8", newline="\n")
         done[src] = len(new)
@@ -85,19 +168,21 @@ def write_rows(rows, root=OVERRIDES):
 
 
 def main(argv):
-    """Command line entry: the slot rows for a library import (or a folder of per-book runs) and a Commlink6 jar."""
+    """Command line entry: the hook rows for a library import (or a folder of per-book runs) and a Commlink6 jar."""
     args = [a for a in argv if not a.startswith("--")]
     jar = argv[argv.index("--jar") + 1] if "--jar" in argv else None
+    args = [a for a in args if a != jar]
     if not args:
         print(__doc__)
         return 2
-    from tools.cl6check import ours, reader
-    from tools.cl6check.__main__ import compare
+    from tools.cl6check import ours, reader  # pylint: disable=import-outside-toplevel
+    from tools.cl6check.__main__ import compare  # pylint: disable=import-outside-toplevel
 
-    recs, _ = reader.read(reader.find_jar(jar if jar and not jar.startswith("--") else None))
+    recs, _ = reader.read(reader.find_jar(jar))
     pairs = compare([canon.canonical(r) for r in recs], ours.load(args[0]), pdf=False)[2]
-    rows = rows_of(pairs)
-    print(f"slot rows: {sum(map(len, rows.values()))} in {len(rows)} tables")
+    report = Counter()
+    rows = rows_of(pairs, report)
+    print(f"slot rows: {sum(map(len, rows.values()))} in {len(rows)} tables; {dict(report)}")
     if "--dry" not in argv:
         print("rows per table:", write_rows(rows))
     return 0

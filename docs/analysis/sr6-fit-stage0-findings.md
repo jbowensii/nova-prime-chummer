@@ -205,11 +205,22 @@ which code never does), `vehicle-cf` 68, `vehicle-powertrain` 8, `vehicle-electr
 | R10 | 33 items carry selreq groups (152 tests) and 10 tests are negated. `familymap` flattens both. Note that most selreq tests have no `apply`, so CL6 itself does not enforce them at embed time. |
 | R12 | A size cap appears only on DRONE_SMALL hardpoints with Body over 3 (10 items, cap 0.5). The cost read against the cap is the usage value (SIZE). WEAPON_SIZE is in the data on 90 weapons; rule Z sizes 165 more. |
 
-## Not settled by this stage
+## Settled by the Stage 1–4 decompile (2026-10-29)
 
-- Does a data `remove="true"` HOOK survive the vehicle step? Removal is applied while the data's modifications are
-  read, and the vehicle step runs later and re-adds the hook if its computed size is not 0. `hookmap.final_hooks`
-  assumes removal wins, as the data's intent says. Confirming it means decompiling the modifications step.
-- What `itemhookmod CAPACITY` does to a computed base (6 rows): replace it or add to it. Not decompiled. `hookmap`
-  reports it as its own source.
-- Whether a loader gives requirements a default `apply` (see "Requirement gate" above).
+Classes read: `GetModificationsStep`, `ApplyStockModificationsStep`, `CopyRequirementsStep`, `Requirement`,
+`DataItemModification`, plus a byte search of every class in the jar.
+
+- **`remove="true"` wins.** The data's HOOK modifications are not applied while they are read: they are queued and
+  applied by the stock-modifications step, which runs **after** the vehicle (V) and standard (S) steps. There a remove
+  deletes the hook outright. So zodiac's VEHICLE_ELECTRONICS/HARDPOINT/CF are gone for good. `hookmap.final_hooks` was
+  right.
+- **A HOOK valmod adds to a computed base.** When the hook already exists (V or S made it), a valmod becomes a
+  modification on that hook's capacity (it adds; a negative value subtracts). Only when the hook does not exist yet does
+  the valmod create it with its value. An `itemmod` HOOK (no value) on an existing capacity hook adds **1**.
+- **`itemhookmod` does nothing in 1.14.0.** No class in the jar names the element (the modification list that parses
+  `valmod`, `itemmod`, … does not list it), so the 6 rows are dropped at load. The computed base stands (hyundai
+  shin-hyung keeps powertrain = Body 7, not 4). The importer therefore ignores `itemhookmod` too.
+- **No default `apply`.** No loader fills one in. When an item is built, requirements with no `apply`, `CHARACTER` or
+  `DATA_ITEM` are kept; `PARENT` and others are dropped. At embed time only `DATA_ITEM` tests and `selreq` groups are
+  evaluated (above). Our app mirrors exactly that: it evaluates `apply="DATA_ITEM"` tests and selreq groups against the
+  host, and treats the rest as not a fit gate.

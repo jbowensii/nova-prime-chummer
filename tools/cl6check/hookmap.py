@@ -13,79 +13,14 @@ from collections import Counter
 
 from tools.cl6check import canon
 
-UNBOUNDED = 99.0  # (Commlink6's "no limit": a capacity of 99 or more is never checked)
-# Rule S (standard hooks by class): every weapon of these types gets its external carry hook, unbounded
-STANDARD_BY_TYPE = {
-    "WEAPON_FIREARMS": "FIREARMS_EXTERNAL",
-    "WEAPON_SPECIAL": "FIREARMS_EXTERNAL",  # (not MELEE_EXTERNAL, as the bytecode-strings reading had guessed)
-    "WEAPON_CLOSE_COMBAT": "MELEE_EXTERNAL",
-    "WEAPON_RANGED": "RANGED_EXTERNAL",
-}
-TIRE_SUBTYPES = {"BIKES", "ATVS", "CARS", "TRUCKS", "VANS", "BUS"}  # (type VEHICLES only: tyres capacity 1)
-# matrix devices: get ELECTRONIC_ACCESSORY and SOFTWARE, both unbounded (any type with one of these subtypes)
-MATRIX_SUBTYPES = {"CYBERDECK", "COMMLINK", "DATATERM", "CYBERTERM", "COMMNODE", "RIGGER_CONSOLE", "TAC_NET"}
-
-VEHICLE_TYPES = {"VEHICLES", "DRONE_MICRO", "DRONE_MINI", "DRONE_SMALL", "DRONE_MEDIUM", "DRONE_LARGE"}
-FASHION_SUBTYPES = {"ARMOR_BODY", "ARMOR_CLOTHES", "ARMOR_SOCIAL"}
-
-# Rule Z (size): a firearm or special weapon without WEAPON_SIZE gets one by subtype
-SIZE_BY_SUBTYPE = {
-    **dict.fromkeys(("TASERS", "HOLDOUTS", "PISTOLS_LIGHT"), "TINY"),
-    **dict.fromkeys(("MACHINE_PISTOLS", "PISTOLS_HEAVY", "DMSO", "DART"), "SMALL"),
-    "SUBMACHINE_GUNS": "MEDIUM",
-    **dict.fromkeys(("SHOTGUNS", "RIFLE_ASSAULT"), "LARGE"),
-    **dict.fromkeys(
-        ("LAUNCHERS", "RIFLE_HUNTING", "RIFLE_SNIPER", "LMG", "MMG", "HMG", "ASSAULT_CANNON", "THROWERS", "BALLISTAS"),
-        "BIG",
-    ),
-    "CANNON": "BIG",
-    "VEHICLE_MILITARY": "MILITARY",
-}
-# Rule W (vehicle weapon mounts): the mount hooks a weapon of a size goes into; BUILDING none
-_SML = ("VEHICLE_WEAPON_SMALL", "VEHICLE_WEAPON", "VEHICLE_WEAPON_LARGE")
-MOUNTS_BY_SIZE = {
-    "TINY": _SML,
-    "SMALL": _SML,
-    "MEDIUM": _SML,
-    "LARGE": ("VEHICLE_WEAPON", "VEHICLE_WEAPON_LARGE"),
-    "BIG": ("VEHICLE_WEAPON_LARGE",),
-    "MILITARY": ("VEHICLE_WEAPON_MILITARY",),
-    "BUILDING": (),
-}
-# ... and, for a weapon with no size (melee, bows, or a firearm the size rule missed), by subtype
-MOUNTS_BY_SUBTYPE = {
-    **dict.fromkeys(
-        ("BLADES", "WHIPS", "CLUBS", "BOWS", "CROSSBOWS", "LAUNCHERS", "RIFLE_HUNTING", "RIFLE_SNIPER", "LMG", "MMG")
-        + ("HMG", "THROWERS"),
-        ("VEHICLE_WEAPON_LARGE",),
-    ),
-    **dict.fromkeys(("SHOTGUNS", "RIFLE_ASSAULT"), ("VEHICLE_WEAPON", "VEHICLE_WEAPON_LARGE")),
-    **dict.fromkeys(
-        ("TASERS", "HOLDOUTS", "PISTOLS_LIGHT", "MACHINE_PISTOLS", "PISTOLS_HEAVY", "SUBMACHINE_GUNS"), _SML
-    ),
-}
-# Rule I (implant weapons): a firearm or special weapon can go into a cyber-implant hook by subtype
-IMPLANT_BY_SUBTYPE = {
-    **dict.fromkeys(("BLADES", "WHIPS", "CLUBS"), "IMPLANT_MELEE"),
-    **dict.fromkeys(("BOWS", "CROSSBOWS"), "IMPLANT_RANGED"),
-    **dict.fromkeys(("TASERS", "HOLDOUTS"), "IMPLANT_HOLDOUT"),
-    "PISTOLS_LIGHT": "IMPLANT_PISTOL_LIGHT",
-    "MACHINE_PISTOLS": "IMPLANT_PISTOL_MACHINE",
-    "PISTOLS_HEAVY": "IMPLANT_PISTOL_HEAVY",
-    "SUBMACHINE_GUNS": "IMPLANT_SMG",
-    "SHOTGUNS": "IMPLANT_SHOTGUN",
-    **dict.fromkeys(
-        ("LAUNCHERS", "RIFLE_ASSAULT", "RIFLE_HUNTING", "RIFLE_SNIPER", "LMG", "MMG", "HMG", "ASSAULT_CANNON")
-        + ("THROWERS",),
-        "IMPLANT_HEAVY",
-    ),
-}
-IMPLANT_BY_SIZE = {  # (subtype OTHER_SPECIAL only)
-    "TINY": "IMPLANT_PISTOL_LIGHT",
-    "SMALL": "IMPLANT_PISTOL_HEAVY",
-    "MEDIUM": "IMPLANT_SMG",
-    "LARGE": "IMPLANT_SHOTGUN",
-}
+from importer.sr6.hooks import (  # (the rules live with the importer, which applies them; this tool measures with them)
+    UNBOUNDED,
+    fashion_hook,
+    standard_hooks,
+    synth_usages,
+    vehicle_hooks,
+    weapon_size,
+)
 
 
 def _int(s):
@@ -96,80 +31,6 @@ def _int(s):
             break
         digits += ch
     return int(digits) if digits else 0
-
-
-def _round(x):
-    """Java's Math.round: half away from zero for positives (Python's round is banker's)."""
-    return int(x + 0.5)
-
-
-def standard_hooks(typ, sub):
-    """{hook: capacity} the code adds to any item of class typ/sub that does not already offer the hook (Rule S)."""
-    out = {}
-    if typ in STANDARD_BY_TYPE:
-        out[STANDARD_BY_TYPE[typ]] = UNBOUNDED
-    if typ == "VEHICLES" and sub in TIRE_SUBTYPES:
-        out["VEHICLE_TIRES"] = 1.0
-    if sub in MATRIX_SUBTYPES:
-        out["SOFTWARE"] = UNBOUNDED
-        if typ == "ELECTRONICS":
-            out["ELECTRONIC_ACCESSORY"] = UNBOUNDED
-    return out
-
-
-def vehicle_hooks(typ, sub, body, seats, pilot, cf_without_seats=False):
-    """({hook: capacity}, {hook: maxSizePerItem}) the code computes for a vehicle or drone (Rule V). Zero capacities
-    are left out (the code removes a hook it computes as 0). `cf_without_seats`: the table rule, off by default."""
-    out, max_size = {}, {}
-    if typ in VEHICLE_TYPES:
-        out["VEHICLE_CHASSIS"] = out["VEHICLE_ELECTRONICS"] = float(body)
-        out["VEHICLE_POWERTRAIN"] = 0.0 if sub == "MOD_TRAILER" else float(body)
-        out["VEHICLE_ACCESSORY"] = UNBOUNDED
-        if pilot > 0:
-            out["SOFTWARE"] = float(_round(pilot / 2))  # (only when the data gives no SOFTWARE hook: see offered())
-    if seats:
-        cf = _round(
-            seats * ((0.25 if cf_without_seats else 1.25) if sub == "BIKES" else (0.5 if cf_without_seats else 1.5))
-        )
-        out["VEHICLE_CF"] = float(cf + (4 if sub == "TRUCKS" else 0))
-    if body:
-        if typ in ("VEHICLES", "DRONE_LARGE", "DRONE_MEDIUM"):
-            out["VEHICLE_HARDPOINT"] = float(body // 3)
-        elif typ == "DRONE_SMALL" and body > 3:
-            out["VEHICLE_HARDPOINT"] = 0.5
-            max_size["VEHICLE_HARDPOINT"] = 0.5  # (DRONE_MINI never reaches here: the code returns before it)
-    return {h: c for h, c in out.items() if c}, max_size
-
-
-def fashion_hook(typ, sub, social):
-    """{FASHION: n} for body armor/clothes/social armor with a Social rating: 1 below 0, 3 above, 2 at 0 (Rule F)."""
-    if typ != "ARMOR" or sub not in FASHION_SUBTYPES or social is None:
-        return {}
-    return {"FASHION": 1.0 if social < 0 else 3.0 if social > 0 else 2.0}
-
-
-def weapon_size(typ, sub, declared):
-    """The weapon's WEAPON_SIZE: as the data gives it, else by subtype for firearms and special weapons (Rule Z)."""
-    if declared:
-        return declared.upper()
-    return SIZE_BY_SUBTYPE.get(sub) if typ in ("WEAPON_FIREARMS", "WEAPON_SPECIAL") else None
-
-
-def synth_usages(typ, sub, size, embedded):
-    """[(hook, rule)] the usages the code adds to a weapon (Rules W and I). `embedded`: the hooks of its own EMBEDDED
-    usages (an implant usage is added unless one of them is already an IMPLANT_* hook)."""
-    if not typ.startswith("WEAPON_"):
-        return []
-    if typ in ("WEAPON_FIREARMS", "WEAPON_SPECIAL", "WEAPON_VEHICLE") and size:
-        mounts = MOUNTS_BY_SIZE.get(size, ())
-    else:
-        mounts = MOUNTS_BY_SUBTYPE.get(sub, ())
-    out = [(h, "W") for h in mounts]
-    if typ in ("WEAPON_FIREARMS", "WEAPON_SPECIAL") and not any(h.startswith("IMPLANT") for h in embedded):
-        imp = IMPLANT_BY_SIZE.get(size) if sub == "OTHER_SPECIAL" else IMPLANT_BY_SUBTYPE.get(sub)
-        if imp:
-            out.append((imp, "I"))
-    return out
 
 
 def _stats(el):
@@ -200,9 +61,10 @@ def _scopes(el):
 
 
 def _walk(scope):
-    """Every descendant of `scope`, except what sits inside a nested `<variant>` or `<mode>` (their own scopes)."""
+    """Every descendant of `scope`, except what sits inside a nested `<variant>` or `<mode>` (their own scopes) or a
+    `<geardef>` (another item)."""
     for c in scope:
-        if c.tag in ("variant", "mode"):
+        if c.tag in ("variant", "mode", "geardef"):
             continue
         yield c
         yield from _walk(c)
@@ -303,6 +165,35 @@ def final_hooks(el):
     return {o["hook"] for o in rows if o["source"] != "remove"} - gone
 
 
+def capacities(el):
+    """{hook: capacity | None} the item ends up with, as Commlink6 builds it: the vehicle (V), standard (S) and fashion
+    (F) hooks first, then the record's own HOOK modifications (not its variants'): a valmod adds to a hook that exists
+    and makes one that doesn't, an itemmod adds 1 to a capacity hook (makes it at 1; a one-item hook at None), a remove
+    takes it away (Stage 1-4 decompile). `itemhookmod` is ignored, as Commlink6 1.14.0 ignores it."""
+    from importer.sr6.hooks import CAPACITY_HOOKS  # pylint: disable=import-outside-toplevel
+
+    typ, sub = el.get("type") or "", el.get("subtype") or ""
+    body, seats, pilot, social = _stats(el)
+    out = dict(vehicle_hooks(typ, sub, body, seats, pilot)[0])
+    mods = [x for x in _walk(el) if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref")]
+    if any(x.get("ref") == "SOFTWARE" and x.get("remove") != "true" for x in mods):
+        out.pop("SOFTWARE", None)
+    for h, c in {**standard_hooks(typ, sub), **fashion_hook(typ, sub, social)}.items():
+        if h not in {x.get("ref") for x in mods}:
+            out.setdefault(h, c)
+    for x in mods:
+        h = x.get("ref")
+        if x.get("remove") == "true":
+            out.pop(h, None)
+        elif x.tag == "valmod" and isinstance(_num(x.get("value")), float):
+            out[h] = (out.get(h) or 0.0) + _num(x.get("value"))
+        elif h in CAPACITY_HOOKS and x.tag == "itemmod":
+            out[h] = (out.get(h) or 0.0) + 1.0
+        else:
+            out.setdefault(h, None)
+    return out
+
+
 def norm(h):
     """Our slot id for a Commlink6 hook (`VEHICLE_CF` -> `vehicle-cf`)."""
     return canon._norm(h)  # pylint: disable=protected-access
@@ -366,6 +257,21 @@ def compare_ours(pairs, raw):
                 c[f"miss.offer.{r['source']}.{r['hook']}"] += 1
         for h in oslot - cl6slots:
             c[f"extra.slot.{h}"] += 1
+        vals = o.get("slotvals") or {}
+        for h, cap in capacities(el).items():  # (the capacity, where Commlink6 has a number and ours has the hook)
+            if isinstance(cap, float) and norm(h) in vals:
+                c["value"] += 1
+                ok = _num(vals.get(norm(h))) == cap or (
+                    cap >= UNBOUNDED and (_num(vals.get(norm(h))) or 0) >= UNBOUNDED
+                )
+                c["value.ours"] += ok
+                if not ok:
+                    c[f"miss.value.{h}"] += 1
+        costs = o.get("fitcost") or {}
+        for u in usages(el):
+            if u["source"] == "data" and u["hook"] and isinstance(u["cost"], float) and norm(u["hook"]) in costs:
+                c["cost"] += 1
+                c["cost.ours"] += _num(costs.get(norm(u["hook"]))) == u["cost"]
         for u in usages(el):
             if u["mode"] != "EMBEDDED" or not u["hook"]:
                 continue

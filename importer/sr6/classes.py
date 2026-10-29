@@ -11,9 +11,10 @@ the player's pickers; the Companion's Infected qualities are `INFECTED` and its 
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
-from importer.sr6 import overrides
+from importer.sr6 import hooks, overrides
 
 FILE = Path(__file__).with_name("classes") / "category_class.json"
 PREFIXES = Path(__file__).with_name("classes") / "section_prefix.json"
@@ -89,29 +90,7 @@ def apply(files, cmap=None, src=None, rules=None):
 
 
 HOST_SLOTS = {"CYBERWARE/CYBER_EYEWARE": "cybereye-implant", "CYBERWARE/CYBER_EARWARE": "cyberear-implant"}
-# every drivable vehicle offers these general modification categories (CRB p.280+): a mod's `<fits>` names one. The
-# specific weapon/hardpoint slots stay Commlink6's, per armed vehicle. No value: vehicle mod capacity is CF-accounted
-# at runtime (the Body rule), and Review matches only the slot id.
-VEHICLE_MOD_SLOTS = (
-    "vehicle-accessory",
-    "vehicle-cf",
-    "vehicle-electronics",
-    "vehicle-chassis",
-    "vehicle-powertrain",
-    "vehicle-hardpoint",
-)
-# Commlink6 gates its two tyre accessories (ACCESSORY/TIRES) to ground vehicles that run on wheels: small tyres allow
-# BIKES/ATVS/GROUND (drones), large tyres CARS/TRUCKS/VANS/BUS/SPECIAL_VEHICLES. So only those get a `vehicle-tires`
-# slot — not aircraft, rotorcraft, VTOL, airships, boats/ships/subs, hovercraft/grav, tracked, walkers, or flying/
-# aquatic/anthro drones. The locomotion is the vehicle's class subtype (VEHICLES/CARS, DRONE_SMALL/GROUND).
-TIRE_SUBTYPES = {"CARS", "TRUCKS", "VANS", "BIKES", "ATVS", "BUS", "SPECIAL_VEHICLES", "GROUND"}
-
-
-def ground_wheeled(cls):
-    """Whether a vehicle of Commlink6 class `cls` runs on tyres (its subtype is one Commlink6's tyres allow)."""
-    sub = (cls or "").split("/", 1)[-1].strip().upper() if "/" in (cls or "") else ""
-    return sub in TIRE_SUBTYPES
-
+IMPLANT_HOST_SLOTS = {"cybereye-implant", "cyberear-implant", "cyberlimb-implant", "headware-implant"}
 
 MOUNTS = {
     "top": ("top",),
@@ -120,60 +99,185 @@ MOUNTS = {
     "stock": ("stock",),
     "side": ("side-l", "side-r"),
 }
+# a weapon with no class subtype and no size: its size guessed from its printed category (fit plan Stage 2.5, owner
+# ruling 3: every guess is flagged `sizeFrom="category"` for review, never silent). Same bands as rule Z.
+SIZE_GUESS = (
+    (r"hold-?out|taser|light pistol", "TINY"),
+    (r"heavy pistol|machine pistol|dart", "SMALL"),
+    (r"submachine|\bsmg", "MEDIUM"),
+    (r"shotgun|assault rifle", "LARGE"),
+    (r"sniper|hunting|rifle|\b[lmh]mg\b|machine gun|cannon|launcher|thrower|ballista", "BIG"),
+)
 
 
-def associations(files):
-    """files with the slots and fits Commlink6's model gives by class and by the printed column, wherever the entry
-    has none of that id yet (a row's own stays): a host's `<slot>` for its eyeware/earware implants and a cyberlimb's
-    for the weapons and enhancements it holds (the capacity it prints, when that is a plain number: an accessory prints
-    `[1]`), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A host never gets a `<fits>` and an
-    accessory never a `<slot>`."""
+def _num(s):
+    """A capacity as a number (`4`, `0.5`), else None (a formula, nothing)."""
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
+def _seats(s):
+    """The seats a vehicle prints, front and back added (`2/6`, `2+2`: docs/sr6-data-format/categories.md)."""
+    return sum(int(n) for n in re.findall(r"\d+", s or ""))
+
+
+def _first(s):
+    """The first whole number printed (`5`, `4/6`: 4), else 0."""
+    m = re.search(r"\d+", s or "")
+    return int(m.group()) if m else 0
+
+
+def _social(s):
+    """An armor's printed Social (`+2`, `–4`), else None (`—`, nothing)."""
+    m = re.fullmatch(r"\s*([+\-–]?)\s*(\d+)\s*", s or "")
+    if not m:
+        return None
+    return -int(m.group(2)) if m.group(1) in ("-", "–") else int(m.group(2))
+
+
+def _fmt(x):
+    return f"{x:g}"
+
+
+def _host_hooks(e, kind, typ, sub, slots):
+    """{slot id: (capacity, maxSize)} Commlink6's code adds (rules S, V, F), the vehicle bases with the data's HOOK
+    value added to them (the stock-modifications step runs after the vehicle step: a valmod adds, an itemmod with no
+    value adds 1, Stage 1-4 decompile). slots: {id: element} the entry offers already."""
+    out = {}
+    if kind == "vehicles" and (e.get("body") or "").strip():
+        body = _first(e.get("body"))
+        vhooks, max_size = hooks.vehicle_hooks(typ, sub, body, _seats(e.get("seats")), _first(e.get("pilot")))
+        for hook, cap in vhooks.items():
+            sid = hooks.slot_id(hook)
+            if hook == "SOFTWARE" and sid in slots:
+                continue  # (autosofts by Pilot only where the data gives no SOFTWARE hook)
+            have = slots.get(sid)
+            add = 0.0 if have is None else (_num(have.get("value")) if have.get("value") else 1.0)
+            if add is None:
+                continue  # (a formula the data gives: left as it is)
+            out[sid] = (cap + add, max_size.get(hook))
+    std = hooks.standard_hooks(typ, sub)
+    if kind == "armor":
+        std.update(hooks.fashion_hook(typ, sub, _social(e.get("social"))))
+    for hook, cap in std.items():  # (S and F: only where the entry offers no such hook)
+        if hooks.slot_id(hook) not in slots and hooks.slot_id(hook) not in out:
+            out[hooks.slot_id(hook)] = (cap, None)
+    return out
+
+
+def _weapon_size(e, typ, sub):
+    """(size, how) of a weapon: the data's (how None), Commlink6's subtype rule (`class`), a guess from its printed
+    category for one with no subtype (`category`), else (None, None)."""
+    if e.get("size"):
+        return e.get("size").upper(), None
+    size = hooks.weapon_size(typ, sub, None)
+    if size:
+        return size, "class"
+    if not sub and not typ.startswith(("WEAPON_CLOSE", "WEAPON_RANGED")):
+        cat = f"{e.get('category') or ''} {e.findtext('name') or ''}".casefold()
+        for pat, s in SIZE_GUESS:
+            if re.search(pat, cat):
+                return s, "category"
+    return None, None
+
+
+def associations(files, report=None):
+    """files with the hooks Commlink6's model gives each entry (importer/sr6/hooks.py), wherever a row has not given
+    them: a host's `<slot id value unit maxSize>` by its class (standard hooks, the vehicle capacities computed from
+    Body, Seats and Pilot, fashion on armor), a weapon's size and its synthesized `<fits rule="W|I">` (vehicle mounts,
+    implants), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A slot a row marks
+    `remove="true"` is taken away, a slot two rows give is kept once (the one with a value). An eyeware/earware/
+    cyberlimb host with no implant slot from Commlink6 gets one from its printed capacity (a book-only item). report: a
+    Counter, given the counts (sizes guessed, fallbacks)."""
     from lxml import etree
 
+    report = Counter() if report is None else report
     out = dict(files)
     for name, xml in files.items():
-        if not xml or not name.endswith(".xml") or name[:-4] not in ("augmentations", "weapons", "gear", "vehicles"):
+        kind = name[:-4]
+        if not xml or not name.endswith(".xml") or kind not in KINDS_WITH_HOOKS:
             continue
         root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", xml).encode("utf8"))
         changed = False
         for e in root:
             if not isinstance(e.tag, str):
                 continue
-            want = []  # (tag, attrs)
-            cap = (e.get("capacity") or "").strip()
-            # ponytail: a bare-integer capacity marks the eyeware/earware/cyberlimb HOST (a limb prints 4/8/10/15…); an
-            # accessory prints `[n]`/`[Rating]`/`—`. Sound on current data; if a future eyeware/earware/cyberlimb
-            # ACCESSORY ever prints a bare integer capacity it would wrongly get a host slot — tighten with an explicit
-            # host/accessory flag then.
             cls = e.get("class") or ""
-            if name == "vehicles.xml":
-                # a drivable vehicle (it prints a Body) offers the general mod categories; a vehicle mod or a stat
-                # line without a Body gets none. Tyres only when it runs on wheels (Commlink6's ACCESSORY/TIRES gate).
-                if (e.get("body") or "").strip():
-                    want += [("slot", {"id": s}) for s in VEHICLE_MOD_SLOTS]
-                    if ground_wheeled(cls):
-                        want.append(("slot", {"id": "vehicle-tires"}))
-            elif (slot := HOST_SLOTS.get(cls)) and re.fullmatch(r"\d+", cap):
-                want.append(("slot", {"id": slot, "value": cap}))
-            elif cls == "CYBERWARE/CYBER_LIMBS" and re.fullmatch(r"\d+", cap):
-                # a limb holds implanted weapons/enhancements in its capacity; a skull holds headware instead. The
-                # capacity the book prints is the slot's value (obvious limbs carry more than synthetic: Arm 15 vs 8).
-                skull = "skull" in (e.findtext("name") or "").casefold()
-                want.append(("slot", {"id": "headware-implant" if skull else "cyberlimb-implant", "value": cap}))
-            elif name == "weapons.xml" and cls.startswith("WEAPON_FIREARMS/"):
-                # owner ruling: every clip/magazine/speed loader is a weapon accessory fitting the firearm's carry slot
-                want.append(("slot", {"id": "firearms-external"}))
-            elif cls == "ACCESSORY/WEAPON_ACCESSORY":
-                for m in re.split(r"\s*(?:/|,|\bor\b)\s*", e.get("mount") or ""):
-                    want += [("fits", {"slot": x}) for x in MOUNTS.get(m.strip().casefold(), ())]
-            for tag, attrs in want:
-                key, have = next(iter(attrs.items())), [c for c in e if c.tag == tag]
-                if any(c.get(key[0]) == key[1] for c in have):
-                    continue
+            typ, _, sub = cls.partition("/")
+            before = etree.tostring(e)
+
+            def add(tag, attrs, e=e):
                 k = etree.Element(tag, attrs)
                 t = next((c for c in e if c.tag == "text"), None)
                 e.insert(list(e).index(t) if t is not None else len(e), k)
-                changed = True
+                return k
+
+            # slots: removals, then one per id (the one with a value), then the code's
+            gone = {c.get("id") for c in e if c.tag == "slot" and c.get("remove") == "true"}
+            slots = {}
+            for c in [c for c in e if c.tag == "slot"]:
+                sid = c.get("id")
+                if sid in gone:
+                    e.remove(c)
+                elif sid in slots and (slots[sid].get("value") or not c.get("value")):
+                    e.remove(c)
+                else:
+                    if sid in slots:
+                        e.remove(slots[sid])
+                    slots[sid] = c
+            for sid, (cap, max_size) in _host_hooks(e, kind, typ, sub, slots).items():
+                if sid in gone:
+                    continue
+                attrs = {"id": sid, "value": _fmt(cap), **({"maxSize": _fmt(max_size)} if max_size else {})}
+                if sid in slots:
+                    slots[sid].attrib.update(attrs)
+                else:
+                    slots[sid] = add("slot", attrs)
+            cap = (e.get("capacity") or "").strip()
+            # ponytail: a bare-integer capacity marks the eyeware/earware/cyberlimb HOST of a book-only item
+            # (Commlink6's variant HOOK gives a matched one its slot); an accessory prints `[n]`. Tighten if an
+            # accessory ever prints a bare integer.
+            if re.fullmatch(r"\d+", cap) and not IMPLANT_HOST_SLOTS & set(slots):
+                sid = HOST_SLOTS.get(cls) or ("cyberlimb-implant" if cls == "CYBERWARE/CYBER_LIMBS" else None)
+                if sid:
+                    add("slot", {"id": sid, "value": cap})
+                    report["fallback.implant-slot"] += 1
+            for c in e:
+                if c.tag == "slot" and not c.get("unit"):
+                    c.set("unit", hooks.unit(c.get("id")))
+            # fits: one per slot (the one with a cost or mode: the latest generator's)
+            fits = {}
+            for c in [c for c in e if c.tag == "fits"]:
+                s = c.get("slot")
+                if s in fits:
+                    keep, drop = (c, fits[s]) if len(c.attrib) > len(fits[s].attrib) else (fits[s], c)
+                    e.remove(drop)
+                    fits[s] = keep
+                else:
+                    fits[s] = c
+            if kind == "weapons" and (typ.startswith("WEAPON_") or not cls):
+                size, how = _weapon_size(e, typ, sub)
+                if how:
+                    e.set("size", size.capitalize())
+                    e.set("sizeFrom", how)
+                    report[f"size.{how}"] += 1
+                embedded = {hooks.hook_of(s) for s, c in fits.items() if c.get("mode", "embedded") == "embedded"}
+                for hook, rule in hooks.synth_usages(typ or "WEAPON_FIREARMS", sub, size, embedded):
+                    if hooks.slot_id(hook) not in fits:
+                        add("fits", {"slot": hooks.slot_id(hook), "mode": "embedded", "rule": rule})
+                        fits[hooks.slot_id(hook)] = True
+            elif cls == "ACCESSORY/WEAPON_ACCESSORY":
+                for m in re.split(r"\s*(?:/|,|\bor\b)\s*", e.get("mount") or ""):
+                    for x in MOUNTS.get(m.strip().casefold(), ()):
+                        if x not in fits:
+                            add("fits", {"slot": x})
+                            fits[x] = True
+            changed = changed or etree.tostring(e) != before
         if changed:
             out[name] = overrides.dump(xml, root)
     return out
+
+
+KINDS_WITH_HOOKS = ("augmentations", "weapons", "gear", "vehicles", "armor", "electronics")
