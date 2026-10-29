@@ -1,4 +1,4 @@
-// Background art (server only): the admin's uploaded images, one picked at random on each page load and shown faintly
+// Background art (server only): the admin's uploaded images, one picked at random on each page or tab change and shown faintly
 // behind every page (app.css .bg-art: faint under the content, a little stronger toward the edges; hidden when printing,
 // with reduced transparency, or when this browser's Settings hide it). Settings → Background art: the admin's gallery.
 // Each game has its own set (Anarchy's at /api/backgrounds, Shadowrun 6's at /api/sr6/backgrounds): a page shows its game's.
@@ -18,6 +18,17 @@ const src = (game: Game, id: string) => `./api/${route(game)}/${id}`
 
 /** This page load's pick per game, shared by the page layer and the character sheet's (src/ca2/print/ui/Sheet.tsx). */
 const picked: Record<Game, string | null> = { ca2: null, sr6: null }
+/** The last fetched enabled list per game, and the event sent when a hashchange re-picks (every useArtId re-reads `picked`). */
+const lists: Partial<Record<Game, string[]>> = {},
+  SHIFT = 'ca2-backgrounds-shift'
+if (typeof addEventListener === 'function')
+  addEventListener('hashchange', () => {
+    for (const g of ['ca2', 'sr6'] as const) {
+      const others = (lists[g] ?? []).filter(i => i !== picked[g])
+      if ((lists[g]?.length ?? 0) > 1 && others.length) picked[g] = others[Math.floor(Math.random() * others.length)]
+    }
+    dispatchEvent(new Event(SHIFT))
+  })
 export function useArtId(game: Game) {
   const [got, setGot] = useState({ game, id: picked[game] })
   useEffect(() => {
@@ -28,14 +39,20 @@ export function useArtId(game: Game) {
           b => {
             const on: string[] = b?.enabled ?? [],
               p = picked[game]
+            lists[game] = on
             picked[game] = p && on.includes(p) ? p : on.length ? on[Math.floor(Math.random() * on.length)] : null
             setGot({ game, id: picked[game] })
           },
           () => {},
         )
+    const shift = () => setGot({ game, id: picked[game] })
     void load()
     addEventListener(CHANGED, load)
-    return () => removeEventListener(CHANGED, load)
+    addEventListener(SHIFT, shift)
+    return () => {
+      removeEventListener(CHANGED, load)
+      removeEventListener(SHIFT, shift)
+    }
   }, [game])
   return got.game === game ? got.id : picked[game] // (another game: its pick so far, until its load)
 }
@@ -143,8 +160,12 @@ export function BackgroundSettings({ game }: { game: Game }) {
           ? 'The Shadowrun 6 side’s own images, kept apart from Anarchy’s: shown faintly behind its pages and on its printed sheets'
           : 'Your own images, shown faintly behind every Anarchy page and on its printed sheets'}{' '}
         for everyone signed in:{' '}
-        {on === 0 ? 'none are on now' : on === 1 ? 'the one that’s on always shows' : `one of the ${on} that are on, picked at random on each page load`}. PNG,
-        JPEG or WebP, 10 MB each, 50 at most. They’re never printed.
+        {on === 0
+          ? 'none are on now'
+          : on === 1
+            ? 'the one that’s on always shows'
+            : `one of the ${on} that are on, picked at random, changing on each page or tab change`}
+        . PNG, JPEG or WebP, 10 MB each, 50 at most. They’re never printed.
       </p>
       {items === null && !msg ? (
         <p className="muted">Loading…</p>
