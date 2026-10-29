@@ -129,6 +129,10 @@ const addsHardpoint = (e?: Sr6Entry): Hardpoint | undefined => /^(small|standard
 /** How big a weapon is for a mount (DC p. 142; CRB p. 295): 0 an SMG or smaller, 1 an assault rifle or smaller (a rifle,
  *  a shotgun), 2 bigger (machine guns, cannons, launchers); undefined: not known (not checked). */
 export function weaponSize(e?: Sr6Entry): 0 | 1 | 2 | undefined {
+  // its WEAPON_SIZE (Commlink6's, or the importer's rule Z): the mount bands of rule W (TINY-MEDIUM any mount, LARGE a
+  // standard or large one, BIG and up a large one); the class/category words only for a weapon with no size
+  const z = (e?.attrs.size ?? '').toUpperCase()
+  if (z) return /^(TINY|SMALL|MEDIUM)$/.test(z) ? 0 : z === 'LARGE' ? 1 : 2
   const s = `${e?.attrs.class ?? ''} ${e?.attrs.category ?? ''}`
   return /hold-?outs?|pistol|submachine|taser/i.test(s)
     ? 0
@@ -139,7 +143,14 @@ export function weaponSize(e?: Sr6Entry): 0 | 1 | 2 | undefined {
         : undefined
 }
 /** The biggest weapon a mount holds: a small one an SMG, a standard one an assault rifle, a large (heavy) one any. */
-const mountHolds = (e: Sr6Entry) => (/\bsmall\b/i.test(e.name) ? 0 : /\b(heavy|large|huge)\b/i.test(e.name) ? 2 : 1)
+const mountHolds = (e: Sr6Entry) => {
+  // by the weapon hook it offers (Commlink6's VEHICLE_WEAPON_SMALL/-/LARGE/MILITARY); by its name only when it offers none
+  const ids = structureOf(e).slots.map(s => s.id)
+  if (ids.some(i => /^vehicle-weapon-(large|military)$/.test(i))) return 2
+  if (ids.includes('vehicle-weapon')) return 1
+  if (ids.includes('vehicle-weapon-small')) return 0
+  return /\bsmall\b/i.test(e.name) ? 0 : /\b(heavy|large|huge)\b/i.test(e.name) ? 2 : 1
+}
 const HOLDS = ['an SMG or smaller', 'an assault rifle or smaller', 'any weapon']
 
 /** The mods built into a vehicle: its entry's (or design snapshot's) <builtin>s, each with its uid; those the GM removed

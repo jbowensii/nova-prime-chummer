@@ -1649,7 +1649,7 @@ export function LedgerTab() {
                     ? critterWearable
                     : host?.kind === 'vehicles'
                       ? e => e.kind !== 'weapons' || !isAccessory(e)
-                      : e => offeredOn(data.categories, e, entryOf(host!, data), undefined, isAccessory) // only accessories that fit the implant/host
+                      : e => offeredOn(data.categories, e, entryOf(host!, data), undefined, isAccessory, host!.addedSlots) // only accessories that fit the implant/host
                   : undefined
         }
         note={
