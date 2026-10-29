@@ -729,12 +729,13 @@ h4.cr-sub {
   background: transparent;
   box-shadow: none;
 }
-/* the top stays put while the options and mods scroll under it — translucent + blur so pinned content stays legible */
+/* the top stays put while the options and mods scroll under it — no fill (page art shows through); blur keeps
+   pinned content legible over busy art */
 .dsn-sticky {
   position: sticky;
   top: 0;
   z-index: 3;
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
+  background: transparent;
   backdrop-filter: blur(10px);
   padding-top: 0.4rem;
   margin-bottom: 0.8rem;

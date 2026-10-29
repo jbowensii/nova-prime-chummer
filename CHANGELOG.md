@@ -16,6 +16,10 @@ Two Shadowrun 6 usability fixes. **Code-only — no re-import needed.**
   spell picker (every catalog spell, A–Z), and attribute-choice powers like **Draconic Power** get their
   attribute picker. Powers whose choice is free text (and unmodelled selection types) keep the text box.
 
+**Designer**
+- The Vehicle/Drone Designer's pinned top bar now has a fully transparent background, so the page art shows
+  through it (the blur that keeps the pinned header legible stays).
+
 ## 0.32.1 — 2026-10-29
 
 Locks in the powertrain propulsion types for the 30 vehicles that 0.32.0 had to guess — all owner-verified against
