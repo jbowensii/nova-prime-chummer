@@ -2,6 +2,7 @@
 // notes for fixed values, and the optional blocks (printed numbers, rules, migrated ids, NPC stats). Invented data.
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
+import { blankSr6 } from '../../../src/sr6/formats/domain/character'
 
 const NS = 'xmlns:sr6="urn:chummer-sr6:character:1"'
 const doc = (root = 'id="r"', body = '<build method="priority" magic="mundane"/>') => `<sr6:character ${NS} formatVersion="1" ${root}>${body}</sr6:character>`
@@ -238,4 +239,11 @@ test('a house entry’s prefixed and namespaced attributes are dropped, so the r
   const xml = sr6ToXml(ch)
   expect(xml).not.toContain('page="0"')
   expect(good(xml).house).toEqual(ch.house)
+})
+
+test('a custom design mod (no id) keeps its slots, cost, avail and rating through save and read', () => {
+  const d = blankSr6('priority', 'r1', '2026-10-16T00:00:00.000Z')
+  const m = { uid: 'c1', kind: 'gear' as const, name: 'Home Brew', cost: 1500, avail: 4, slots: 2, rating: 3, qty: 1, accessories: [] }
+  d.design = { kind: 'vehicle', options: [], mods: [m] }
+  expect(good(sr6ToXml(d)).design?.mods[0]).toMatchObject({ name: 'Home Brew', cost: 1500, avail: 4, slots: 2, rating: 3 })
 })
