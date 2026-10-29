@@ -1,9 +1,12 @@
 # Nova Prime Chummer as a Foundry-style app: plan (revised 2026-10-23)
 
 Prepared for John Owens. Version 2: updated with John's decisions of 2026-10-23. Version 1 (the first examination, with
-the full Foundry findings) is in `Old Versions/`. **Status: plan only, not started. Architecture-reviewed 2026-10-23
-(opus, via Chief Architect): all phases GO or GO-WITH-CHANGES; Phase 1 re-scoped below — it is not a thin wrapper
-around the unchanged server.**
+the full Foundry findings) is in `Old Versions/`. **Status: IMPLEMENTED — all six phases are built and merged to
+`main` (Phase 1 via PR #161; Phases 2–6 via the feat/desktop-app-phase2 merge). Windows packaging verified unsigned
+2026-10-29 (embeddable Python 3.13.9 bundle green on a clean CI runner and locally; electron-builder produced the
+NSIS installer + portable exe). The only unverified piece is code-signing, blocked externally on the eSigner cert.
+Architecture-reviewed 2026-10-23 (opus, via Chief Architect): all phases GO or GO-WITH-CHANGES; Phase 1 re-scoped
+below — it is not a thin wrapper around the unchanged server.**
 
 ## Bottom line
 
