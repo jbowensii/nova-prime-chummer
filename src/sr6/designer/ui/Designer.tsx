@@ -433,6 +433,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const { doc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe())
   const [adding, setAdding] = useState(false)
+  const [making, setMaking] = useState<Record<'name' | 'cost' | 'slots' | 'rating' | 'avail', string> | null>(null)
   const back = <a href="#/sr6/designs">Back to the Designer</a>
   if (!loaded)
     return (
@@ -697,7 +698,50 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
               <button className="btn small quiet" onClick={() => setAdding(true)}>
                 Add a mod…
               </button>
+              <button className="btn small quiet" onClick={() => setMaking({ name: '', cost: '', slots: '', rating: '', avail: '' })}>
+                Create a mod…
+              </button>
             </span>
+            {making && (
+              <form
+                className="row"
+                aria-label="Create a mod"
+                onSubmit={e => {
+                  e.preventDefault()
+                  const f = making,
+                    nm = f.name.trim()
+                  if (!nm) return
+                  update(
+                    y =>
+                      void y.mods.push({
+                        uid: newId(),
+                        kind: 'gear',
+                        name: nm,
+                        qty: 1,
+                        accessories: [],
+                        cost: Math.max(0, Number(f.cost) || 0),
+                        avail: Math.max(0, Number(f.avail) || 0),
+                        ...(Number(f.slots) > 0 ? { slots: Number(f.slots) } : {}),
+                        ...(Number(f.rating) > 0 ? { rating: Number(f.rating) } : {}),
+                      }),
+                  )
+                  setMaking(null)
+                }}
+              >
+                {(['name', 'cost', 'slots', 'rating', 'avail'] as const).map(k => (
+                  <label key={k}>
+                    {{ name: 'Mod name', cost: 'Mod price ¥', slots: 'Mod slots', rating: 'Mod rating', avail: 'Mod avail' }[k]}
+                    <input value={making[k]} onChange={e => setMaking({ ...making, [k]: e.target.value })} />
+                  </label>
+                ))}
+                <button className="btn small" type="submit" disabled={!making.name.trim()}>
+                  Save mod
+                </button>
+                <button className="btn small quiet" type="button" onClick={() => setMaking(null)}>
+                  Cancel
+                </button>
+              </form>
+            )}
           </section>
         </fieldset>
 

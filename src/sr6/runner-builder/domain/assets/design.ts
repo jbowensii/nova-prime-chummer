@@ -261,7 +261,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   const find = dataFind(data)
   const mods = d.mods.map(x => {
     const e = entryOf(x, data),
-      v = bookValue(e, 'slots', ratingOf(x, e), find)
+      v = e ? bookValue(e, 'slots', ratingOf(x, e), find) : { ok: true, n: x.slots ?? 0 } // (no entry: a custom mod's own slots)
     if (!v.ok)
       warnings.push({
         message: `${e ? entryLabel(e) : 'A mod'}: its mod slots “${e?.attrs.slots ?? ''}” aren’t a number the app can read; counted 0.`,
@@ -278,7 +278,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     legal = legality(a.avail) ?? ''
   for (const x of d.mods) {
     const e = entryOf(x, data),
-      av = availability(e?.attrs.avail, ratingOf(x, e))
+      av = e ? availability(e.attrs.avail, ratingOf(x, e)) : { ok: true, n: x.avail ?? 0 }
     if (av.ok && (av.n ?? 0) > base) base = av.n!
     const l = legality(e?.attrs.avail) ?? ''
     if (LEGAL_ORDER.indexOf(l) > LEGAL_ORDER.indexOf(legal)) legal = l
@@ -449,7 +449,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const find = dataFind(data)
   const mods = d.mods.map(x => {
     const e = entryOf(x, data),
-      v = bookValue(e, 'slots', ratingOf(x, e), find)
+      v = e ? bookValue(e, 'slots', ratingOf(x, e), find) : { ok: true, n: x.slots ?? 0 } // (no entry: a custom mod's own slots)
     if (!v.ok) warn(`${e ? entryLabel(e) : 'A mod'}: its mod slots “${e?.attrs.slots ?? ''}” aren’t a number the app can read; counted 0.`, 151)
     const slots = v.ok ? (v.n ?? 0) : 0
     return { uid: x.uid, slots, dp: 2 * slots, nuyen: priced({ ...x, diy: undefined }, data, cr).cost }
@@ -478,7 +478,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   }
   for (const x of d.mods) {
     const e = entryOf(x, data),
-      v = availability(e?.attrs.avail, ratingOf(x, e))
+      v = e ? availability(e.attrs.avail, ratingOf(x, e)) : { ok: true, n: x.avail ?? 0 }
     if (v.ok && (v.n ?? 0) > a) a = v.n!
     legal = raise(legality(e?.attrs.avail) ?? '')
   }

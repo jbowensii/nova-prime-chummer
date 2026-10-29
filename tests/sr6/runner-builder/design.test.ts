@@ -332,3 +332,14 @@ test('bought from a design with no chassis, no name, a custom mod at a rating: s
   expect(line.snapshot!.parts.map(p => p.attrs)).toEqual([{ name: 'Odd Box', rating: '2' }])
   expect(boughtDesign({ ...doc, design: { ...doc.design, kind: 'vehicle' } }, data, cr).snapshot!.attrs.category).toBe('Designed vehicle')
 })
+
+test('a custom (id-less) mod counts its own slots (2 DP each), nuyen and Availability, with no "counted 0" warning', () => {
+  const { data, cr } = world()
+  const base = designOf(design(), data, cr)
+  const custom = { uid: 'c1', kind: 'gear' as const, name: 'Home Brew', cost: 1000, avail: 4, slots: 2, qty: 1, accessories: [] }
+  const s = designOf(design({ mods: [custom] }), data, cr)
+  expect(s.dp).toBe(base.dp + 4)
+  expect(s.modsNuyen).toBe(1000)
+  expect(Number.parseInt(s.avail)).toBeGreaterThanOrEqual(4)
+  expect(s.warnings.filter(w => /counted 0/.test(w.message))).toEqual([])
+})

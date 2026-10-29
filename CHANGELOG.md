@@ -1,5 +1,14 @@
 # Release notes
 
+## 0.33.1 — 2026-10-29
+
+Code-only — no re-import needed.
+
+**Designer**
+- **Create a mod…** — next to "Add a mod…" in a design's "Mods built in" panel, define a mod that isn't in the
+  catalog: name, price, slots, rating and Availability. It costs its slots in design points, adds its price and
+  counts its Availability like any catalog mod, and saves with the design.
+
 ## 0.33.0 — 2026-10-29
 
 Two Shadowrun 6 usability fixes. **Code-only — no re-import needed.**

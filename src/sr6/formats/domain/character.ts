@@ -160,6 +160,8 @@ export interface Sr6Purchase {
   /** a vehicle or drone bought at a GM-adjusted nuyen price instead of the catalog/design price (career Ledger); Review warns until a GM approves it */
   gmPrice?: number
   avail?: number
+  /** a custom (id-less) mod built into a design: its own mod slots */
+  slots?: number
   essence?: number
   rating?: number
   qty: number
