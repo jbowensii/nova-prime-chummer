@@ -260,9 +260,8 @@ def compare_ours(pairs, raw):
         for h, cap in capacities(el).items():  # (the capacity, where Commlink6 has a number and ours has the hook)
             if isinstance(cap, float) and norm(h) in vals:
                 c["value"] += 1
-                ok = _num(vals.get(norm(h))) == cap or (
-                    cap >= UNBOUNDED and (_num(vals.get(norm(h))) or 0) >= UNBOUNDED
-                )
+                v = _num(vals.get(norm(h)))
+                ok = v == cap or (cap >= UNBOUNDED and isinstance(v, float) and v >= UNBOUNDED)
                 c["value.ours"] += ok
                 if not ok:
                     c[f"miss.value.{h}"] += 1
