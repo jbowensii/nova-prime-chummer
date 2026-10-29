@@ -79,7 +79,13 @@ export interface Bonus {
   /** a `set` effect (Hardening's unarmed Attack Rating 6, a centaur body's 10/20/4 movement): a replacement value, never added
    *  (augmentBonus leaves it out; setBonus reads it) */
   set?: true
+  /** the times a situational effect (a prose `when`) is switched on, set by the engine from the line's `sit`, never stored:
+   *  its value is counted that many times (a `per barrel` one is counted as many times as the player says) */
+  count?: number
 }
+/** The player's situational switches on a line (owner, 2026-10-29): effect index (in the line's bonuses) -> times on. 1 is
+ *  an on switch, a bigger number the count of a `per ...` effect; absent or 0 is off (the bracketed total only). */
+export type Sr6Situational = Record<string, number>
 /** the switch both games' effects share (src/core/shared/effects.ts) */
 export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
@@ -168,6 +174,7 @@ export interface Sr6Purchase {
   grade?: string
   worn?: true
   bonuses?: Bonus[]
+  sit?: Sr6Situational
   note?: string
   accessories: Sr6Purchase[]
   snapshot?: Sr6Entry
@@ -257,6 +264,7 @@ export interface Sr6Quality {
   id: string
   level: number
   free?: true
+  sit?: Sr6Situational
   note?: string
   name?: string
   karma?: number
@@ -270,6 +278,7 @@ export interface Sr6Pick {
   id: string
   level?: number
   bonuses?: Bonus[]
+  sit?: Sr6Situational
   name?: string
   note?: string
 }

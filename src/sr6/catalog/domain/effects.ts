@@ -11,6 +11,9 @@ import { counts, type EffectState } from '../../../core/shared/effects'
  *  (the shared rule, src/core/shared/effects.ts counts); the bracketed total (`on`) adds the switchable ones and, in SR6, the
  *  ones holding on some tests only (`when`: `Con 6 (9)`, replacing "shown beside, not added"). Never a low-confidence
  *  one, nor a spell's effect on its target (it counts on the character it is cast on). */
+/** Whether a situation in words scales (`per additional barrel`, `for each cyberlimb`): the player gives a count, not a switch. */
+export const perCount = (when?: string) => /\b(per|each)\b/i.test(when ?? '')
+
 export const sr6Counts = (e: EffectState, on = false) => counts(e, on)
 
 /** What a machine condition is decided from: the runner's attribute ratings, metatype (its name and its parent's), every
@@ -80,7 +83,10 @@ export function effectValue(v: string | undefined): { value: number; perRating?:
 /** What a bonus gives at a rating or level (the one place it is counted: budgets, the export): its value times the
  *  rating when per rating, less its `minus` (`R-1`: nothing at rating 1), or its table's value for that rating
  *  (`byRating`: the last one beyond the table). */
-export function bonusValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating'>, rating: number): number {
+export function bonusValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating' | 'count'>, rating: number): number {
+  return (b.count ?? 1) * stepValue(b, rating)
+}
+function stepValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating'>, rating: number): number {
   if (b.byRating?.length) return b.byRating[Math.min(Math.max(1, Math.round(rating)), b.byRating.length) - 1]
   if (!b.perRating) return b.value
   return b.minus ? Math.max(0, rating * b.value - b.minus) : rating * b.value // (`R*2-2`: twice the rating, less 2: none at rating 1)

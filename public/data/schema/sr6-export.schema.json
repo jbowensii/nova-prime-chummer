@@ -343,6 +343,11 @@
             "caster",
             "target"
           ]
+        },
+        "on": {
+          "description": "A situational effect (a prose `when`) the player switched on: 1, or the count of a `per ...` one; value is per step, the total is value * on. Absent: off (in derivedOn's totals only) or not situational. derived already holds the switched-on ones; a reader mirrors the switch (an Active Effect on while `on`, times `on`).",
+          "type": "integer",
+          "minimum": 1
         }
       },
       "if": {

@@ -129,6 +129,26 @@ describe('SR6 export: runners', () => {
     ])
     expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
+  test('a situational effect the player switched on carries its on / count; the schema accepts it', () => {
+    const { data, cr } = made(),
+      ch = career()
+    ch.build.purchases.push({
+      uid: 's1',
+      kind: 'gear',
+      name: 'Gun',
+      qty: 1,
+      accessories: [],
+      bonuses: [
+        { target: 'str', value: 1, switch: 'conditional', when: 'animal form' },
+        { target: 'str', value: 2, switch: 'conditional', when: 'per additional barrel' },
+        { target: 'rea', value: 1, switch: 'conditional', when: 'in the dark' },
+      ],
+      sit: { '0': 1, '1': 3 },
+    })
+    const f = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS)
+    expect(f.runners![0].purchases.find(p => p.uid === 's1')!.bonuses.map(b => b.on)).toEqual([1, 3, undefined])
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
   test('a custom line: no catalog entry, not canon, the player’s numbers', () => {
     const { data, cr } = made(),
       ch = career()

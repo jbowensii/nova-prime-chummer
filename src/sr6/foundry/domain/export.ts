@@ -17,9 +17,9 @@ import type {
   SlotShift,
 } from '../../formats/domain/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../../formats/domain/types'
-import type { Sr6Compendium } from '../../formats/domain/character'
+import type { Sr6Compendium, Sr6Situational } from '../../formats/domain/character'
 import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
-import { bonusValue, linkedViews, ownParts, type LinkLookup } from '../../catalog/domain/effects'
+import { bonusValue, linkedViews, ownParts, perCount, type LinkLookup } from '../../catalog/domain/effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
 import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
@@ -97,6 +97,9 @@ export type Sr6ExportBonus = ({ target: Exclude<Bonus['target'], 'skill'>; value
   switch?: Bonus['switch']
   spec?: string
   affects?: Bonus['affects']
+  /** a situational effect (a prose `when`) the player switched on: 1, or the count of a `per ...` one (value is per step; the
+   *  total is value * on). Absent: off (derivedOn only) or not situational. derived already holds the switched-on ones. */
+  on?: number
 }
 /** What the entry's printed text and tables say it does (the catalog's <effect>, importer/sr6/effects.py; the targets,
  *  operations and values docs/sr6-data-format/kinds.md "Effects" lists): low: read with low confidence (shown, never applied);
@@ -564,10 +567,11 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem => ({
 })
 
 // every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
-const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
+const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1, sit?: Sr6Situational): Sr6ExportBonus[] =>
   (bs ?? [])
-    .filter(b => !b.set) // (a set replaces a base value: derived holds it, not these adds)
-    .map(b => {
+    .map((b, i) => ({ b, on: b.when && (sit?.[i] ?? 0) > 0 ? (perCount(b.when) ? sit![i] : 1) : undefined }))
+    .filter(({ b }) => !b.set) // (a set replaces a base value: derived holds it, not these adds)
+    .map(({ b, on }) => {
       const value = bonusValue(b, rating) * times
       // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
       const when = {
@@ -575,6 +579,7 @@ const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times =
         ...(b.switch ? { switch: b.switch } : {}),
         ...(b.spec ? { spec: b.spec } : {}),
         ...(b.affects ? { affects: b.affects } : {}),
+        ...(on ? { on } : {}),
       }
       return b.target === 'skill'
         ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when }
@@ -607,7 +612,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     grade: x.grade,
     worn: !!x.worn,
     note: x.note,
-    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1),
+    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1, x.sit),
     accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
     mount: x.mount,
     diy: x.diy,
@@ -783,7 +788,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         uid: p.uid,
         pick: p.kind,
         level: p.level,
-        bonuses: bonuses(data, lineBonuses(data, p.bonuses, e), p.level ?? 1),
+        bonuses: bonuses(data, lineBonuses(data, p.bonuses, e), p.level ?? 1, 1, p.sit),
       })
     }),
     martialArts: b.martialArts.map(m => {

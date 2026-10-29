@@ -1,12 +1,12 @@
 // The bonuses a runner's picks, purchases and qualities give (their entered ones, else their catalog entry's effects), and
 // what they add to an attribute, a skill's pool or a host item.
-import type { Bonus, Sr6Attr, Sr6Build, Sr6Purchase } from '../../../formats/domain/character'
+import type { Bonus, Sr6Attr, Sr6Build, Sr6Pick, Sr6Purchase, Sr6Quality, Sr6Situational } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { own } from '../../../../core/shared/effects'
 import { entryLabel } from '../../../catalog/domain/categories'
-import { bonusValue, effectBonuses, sr6Counts as counts, whenHolds, type WhenFacts } from '../../../catalog/domain/effects'
+import { bonusValue, effectBonuses, perCount, sr6Counts as counts, whenHolds, type WhenFacts } from '../../../catalog/domain/effects'
 import { MAGIC_KINDS } from '../../../catalog/domain/data'
 import { baseMetatype, metatypeName } from './infected'
 import { entryOf, ratingOf } from './purchases'
@@ -39,33 +39,52 @@ function facts(b: Sr6Build, data: Sr6Data): WhenFacts {
   }
 }
 /** A line's bonuses with their machine conditions decided (owner, 2026-10-29: calculated, not notes): one that holds is
- *  always on (its `when` and a `conditional` switch dropped), one that doesn't is left out; prose stays bracketed. */
-function decided(bs: Bonus[], f: () => WhenFacts): Bonus[] {
+ *  always on (its `when` and a `conditional` switch dropped), one that doesn't is left out; prose stays bracketed unless the
+ *  player switched it on (`sit`, by the effect's place in `bs`): then it counts, a `per ...` one `count` times. */
+function decided(bs: Bonus[], f: () => WhenFacts, sit?: Sr6Situational): Bonus[] {
   if (!bs.some(x => x.when)) return bs
-  return bs.flatMap(x => {
+  return bs.flatMap((x, i) => {
     const h = whenHolds(x.when, f())
-    if (h === undefined) return [x]
+    if (h === undefined) {
+      const n = sit?.[i] ?? 0
+      if (!x.when || n <= 0) return [x]
+      const { when: _w, ...y } = x
+      return [{ ...y, switch: y.switch === 'conditional' ? undefined : y.switch, ...(perCount(x.when) && n > 1 ? { count: n } : {}) }]
+    }
     if (!h) return []
     const { when: _w, ...y } = x
     return [y.switch === 'conditional' ? { ...y, switch: undefined } : y]
   })
+}
+/** The effects a purchase, pick or quality gives, in the order its `sit` keys count them (the ones eachLine reads). */
+export function effectsOf(data: Sr6Data, x: Sr6Purchase | Sr6Pick | Sr6Quality): Bonus[] {
+  if ('accessories' in x) return lineBonuses(data, x.bonuses, entryOf(x, data))
+  if ('kind' in x) return lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note))
+  return entryBonuses(data, data.entry('qualities', x.id), choiceOf(data, x.note))
+}
+/** The effects of a line (its bonuses as lineBonuses has them) that only the player can decide, a situation in words (`in
+ *  animal form`, `per additional barrel`): where in the line's effects each is (the key of its `sit`) and whether it
+ *  scales (so it takes a count, not a switch). */
+export function situations(b: Sr6Build, data: Sr6Data, bs: Bonus[]): { i: number; bonus: Bonus; scales: boolean }[] {
+  const f = facts(b, data)
+  return bs.flatMap((x, i) => (x.when && whenHolds(x.when, f) === undefined ? [{ i, bonus: x, scales: perCount(x.when) }] : []))
 }
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity; their
  *  machine conditions decided (decide false: as the catalog has them, what facts sums). */
 function eachLine(b: Sr6Build, data: Sr6Data, g: (bs: Bonus[], rating: number, times: number, from: string) => void, decide = true) {
   let memo: WhenFacts | undefined
   const fx = () => (memo ??= facts(b, data))
-  const f = (bs: Bonus[], rating: number, times: number, from: string) => g(decide ? decided(bs, fx) : bs, rating, times, from)
+  const f = (bs: Bonus[], rating: number, times: number, from: string, sit?: Sr6Situational) => g(decide ? decided(bs, fx, sit) : bs, rating, times, from)
   for (const x of b.picks)
-    f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
+    f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id, x.sit)
   // (an owned critter's stat block and powers are its own, never the runner's)
   for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     const e = entryOf(x, data)
-    f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item')
+    f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item', x.sit)
   }
   for (const q of b.qualities) {
     const e = data.entry('qualities', q.id)
-    f(entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level, e?.name ?? q.name ?? q.id)
+    f(entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level, e?.name ?? q.name ?? q.id, q.sit)
   }
 }
 /** The skill and attribute a pick's or quality's note names: its `skill:choice` and `attr:choice` effects' target. */
@@ -160,17 +179,17 @@ export function bonusSources(
   }
   for (const x of b.picks) {
     const e = data.entry(x.kind, x.id)
-    const bs = decided(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), fx)
+    const bs = decided(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), fx, x.sit)
     add(bonusOf(bs, k, x.level ?? 1, skill), e, x.kind, x.id, x.name, bs, x.level ?? 1)
   }
   for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     const e = entryOf(x, data)
-    const bs = decided(lineBonuses(data, x.bonuses, e), fx)
+    const bs = decided(lineBonuses(data, x.bonuses, e), fx, x.sit)
     add(bonusOf(bs, k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name, bs, ratingOf(x, e))
   }
   for (const q of b.qualities) {
     const e = data.entry('qualities', q.id)
-    const bs = decided(entryBonuses(data, e, choiceOf(data, q.note)), fx)
+    const bs = decided(entryBonuses(data, e, choiceOf(data, q.note)), fx, q.sit)
     add(bonusOf(bs, k, 1, skill) * q.level, e, 'qualities', q.id, q.name, bs, 1)
   }
   return out
