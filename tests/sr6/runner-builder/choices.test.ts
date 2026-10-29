@@ -96,3 +96,12 @@ test('a free-text selection (TEXT) stays a text box — no dropdown', () => {
   const { data } = made()
   expect(choiceOptions(data, entry('Bane', [part('selection', { type: 'TEXT' })]))).toBeUndefined()
 })
+
+test('a critter power’s SPELL selection offers the catalog spells A to Z, or just its listed ones', () => {
+  const { data } = made()
+  const c = choiceOptions(data, entry('Innate Spell', [part('selection', { type: 'SPELL' })]))!
+  expect(c.kind).toBe('spell')
+  expect(c.options.map(o => o.value)).toEqual(data.spellNames)
+  expect(data.spellNames.length).toBeGreaterThan(0)
+  expect(data.spellNames).toEqual([...data.spellNames].sort((a, b) => a.localeCompare(b)))
+})

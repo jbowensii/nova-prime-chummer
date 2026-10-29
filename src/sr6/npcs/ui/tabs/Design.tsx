@@ -11,7 +11,8 @@ import { firstNumber } from '../../../runner-builder/domain/assets/critters'
 import type { Sr6CritterPower, Sr6Npc } from '../../../formats/domain/character'
 import { useSr6Editor } from '../../../runner-builder/ui/editor'
 import { Sr6Ref } from '../../../runner-builder/ui/EntryRef'
-import { CatalogPicker } from '../../../runner-builder/ui/Picker'
+import { CatalogPicker, CHOICE_PROMPT } from '../../../runner-builder/ui/Picker'
+import { choiceOptions, choiceSelectOptions } from '../../../runner-builder/domain/creation/choices'
 
 const DERIVED_LABELS: Record<(typeof DERIVED)[number], [string, string]> = {
   cm: ['Condition monitor', 'the table’s monitor base + Body ÷ its divisor, rounded up (CRB Hong Kong p. 38)'],
@@ -62,6 +63,7 @@ export function DesignTab() {
       set(n => {
         fn(n.design![list][i])
       })
+    const co = p.id ? choiceOptions(data, data.entry('critterpowers', p.id)) : undefined
     return (
       <li key={`${p.id ?? p.name}-${i}`} className="row">
         {p.id ? (
@@ -91,17 +93,37 @@ export function DesignTab() {
         </label>
         <label className="inline">
           Note
-          <input
-            aria-label={`${p.name} note`}
-            value={p.note ?? ''}
-            maxLength={200}
-            onChange={e =>
-              edit(q => {
-                if (e.target.value) q.note = e.target.value
-                else delete q.note
-              })
-            }
-          />
+          {co ? (
+            <select
+              aria-label={`${p.name} note`}
+              value={p.note ?? ''}
+              onChange={e =>
+                edit(q => {
+                  if (e.target.value) q.note = e.target.value
+                  else delete q.note
+                })
+              }
+            >
+              <option value="">{CHOICE_PROMPT[co.kind]}…</option>
+              {choiceSelectOptions(co, p.note).map(o => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              aria-label={`${p.name} note`}
+              value={p.note ?? ''}
+              maxLength={200}
+              onChange={e =>
+                edit(q => {
+                  if (e.target.value) q.note = e.target.value
+                  else delete q.note
+                })
+              }
+            />
+          )}
         </label>
         <button
           className="btn small quiet"

@@ -128,6 +128,8 @@ export interface Sr6Data extends CreationCatalog {
   /** adept powers */
   powers: Record<string, Sr6PowerView>
   metamagics: Record<string, Sr6MetamagicView>
+  /** every catalog spell's name, A to Z (the Innate Spell critter power's picker) */
+  spellNames: string[]
   lifemodules: Record<string, Sr6LifeModuleView>
   /** the catalog's implant grades by key (alpha, omega…); a later one with the same key replaces an earlier */
   grades: Record<string, Sr6GradeView>

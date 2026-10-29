@@ -645,11 +645,12 @@ const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear', 'ammoty
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
-const CHOICE_PROMPT: Record<string, string> = {
+export const CHOICE_PROMPT: Record<string, string> = {
   attribute: 'For which attribute',
   skill: 'For which skill',
   quality: 'Which',
   matrix: 'Which Matrix attribute',
+  spell: 'Which spell',
 }
 /** A purchased item that names a choice (an attribute/skill/quality/matrix): the ordered picker that records it, so a
  *  cyberware or gear choice applies the same way a quality's or power's does. Nothing for an item with no choice. */

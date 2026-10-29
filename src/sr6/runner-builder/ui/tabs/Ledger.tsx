@@ -183,6 +183,7 @@ export function LedgerTab() {
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
   const designs = useSr6Designs()
   const kindDesigns = designs.filter(d => (d.design!.kind === 'drone') === (op === 'drone'))
+  const dropLabel = (x: Sr6Purchase) => (x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'
   const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
   // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them), and critters (critterware, gear)
   const vehicles = ch.build.purchases.filter(x => x.kind === 'vehicles'),
@@ -711,11 +712,14 @@ export function LedgerTab() {
               }}
             >
               <option value="">Pick one</option>
-              {b.martialArts.map(m => (
-                <option key={m.uid} value={m.uid}>
-                  {styleName(data, m)}
-                </option>
-              ))}
+              {b.martialArts
+                .slice()
+                .sort((a, z) => styleName(data, a).localeCompare(styleName(data, z)))
+                .map(m => (
+                  <option key={m.uid} value={m.uid}>
+                    {styleName(data, m)}
+                  </option>
+                ))}
             </select>
           </label>
         )}
@@ -730,12 +734,15 @@ export function LedgerTab() {
               }}
             >
               <option value="">Pick one</option>
-              {upgradable.map(x => (
-                <option key={x.uid} value={x.uid}>
-                  {entryLabel(data.entry(x.kind, x.id!)!)}
-                  {x.grade ? `, ${gradeName(data, x.grade)}` : ''}
-                </option>
-              ))}
+              {upgradable
+                .slice()
+                .sort((a, z) => entryLabel(data.entry(a.kind, a.id!)!).localeCompare(entryLabel(data.entry(z.kind, z.id!)!)))
+                .map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {entryLabel(data.entry(x.kind, x.id!)!)}
+                    {x.grade ? `, ${gradeName(data, x.grade)}` : ''}
+                  </option>
+                ))}
             </select>
           </label>
         )}
@@ -820,6 +827,7 @@ export function LedgerTab() {
               <option value="">Pick one</option>
               {b.qualities
                 .filter(q => !q.free && data.qualities[q.id]?.positive === false)
+                .sort((a, z) => (data.qualities[a.id]?.name ?? '').localeCompare(data.qualities[z.id]?.name ?? ''))
                 .map(q => (
                   <option key={q.uid} value={q.uid}>
                     {data.qualities[q.id]?.name ?? q.name ?? q.id}
@@ -925,11 +933,14 @@ export function LedgerTab() {
               Critter
               <select aria-label="Taught critter" value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {critters.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {itemName(x)}
-                  </option>
-                ))}
+                {critters
+                  .slice()
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {itemName(x)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
@@ -957,11 +968,14 @@ export function LedgerTab() {
               Critter
               <select aria-label="Bonded critter" value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {critters.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {itemName(x)}
-                  </option>
-                ))}
+                {critters
+                  .slice()
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {itemName(x)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
@@ -1004,11 +1018,14 @@ export function LedgerTab() {
               }}
             >
               <option value="">Pick one</option>
-              {hosts.map(x => (
-                <option key={x.uid} value={x.uid}>
-                  {itemName(x)}
-                </option>
-              ))}
+              {hosts
+                .slice()
+                .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                .map(x => (
+                  <option key={x.uid} value={x.uid}>
+                    {itemName(x)}
+                  </option>
+                ))}
             </select>
           </label>
         )}
@@ -1017,12 +1034,15 @@ export function LedgerTab() {
             Weapon mount
             <select aria-label="In weapon mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
               <option value="">None</option>
-              {mountsOf(host, data).map(m => (
-                <option key={m.uid} value={m.uid}>
-                  {m.name}
-                  {m.builtin ? ' (built in)' : ''}
-                </option>
-              ))}
+              {mountsOf(host, data)
+                .slice()
+                .sort((a, z) => a.name.localeCompare(z.name))
+                .map(m => (
+                  <option key={m.uid} value={m.uid}>
+                    {m.name}
+                    {m.builtin ? ' (built in)' : ''}
+                  </option>
+                ))}
             </select>
           </label>
         )}
@@ -1037,11 +1057,14 @@ export function LedgerTab() {
               Vehicle or drone
               <select aria-label="Shift on" value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {vehicles.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {itemName(x)}
-                  </option>
-                ))}
+                {vehicles
+                  .slice()
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {itemName(x)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
@@ -1072,11 +1095,14 @@ export function LedgerTab() {
               Vehicle or drone
               <select aria-label="Part on" value={f.target} onChange={e => set({ target: e.target.value, name: '' })}>
                 <option value="">Pick one</option>
-                {vehicles.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {itemName(x)}
-                  </option>
-                ))}
+                {vehicles
+                  .slice()
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {itemName(x)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
@@ -1102,11 +1128,14 @@ export function LedgerTab() {
               Vehicle or drone
               <select aria-label="Derive on" value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {vehicles.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {itemName(x)}
-                  </option>
-                ))}
+                {vehicles
+                  .slice()
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {itemName(x)}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
@@ -1131,27 +1160,29 @@ export function LedgerTab() {
               Weapon
               <select aria-label="Weapon to move" value={f.target} onChange={e => set({ target: e.target.value, mount: '' })}>
                 <option value="">Pick one</option>
-                {vehicles.flatMap(x =>
-                  x.accessories
-                    .filter(a => a.kind === 'weapons')
-                    .map(a => (
-                      <option key={a.uid} value={a.uid}>
-                        {itemName(a)} on {itemName(x)}
-                      </option>
-                    )),
-                )}
+                {vehicles
+                  .flatMap(x => x.accessories.filter(a => a.kind === 'weapons').map(a => ({ a, l: `${itemName(a)} on ${itemName(x)}` })))
+                  .sort((p, q) => p.l.localeCompare(q.l))
+                  .map(({ a, l }) => (
+                    <option key={a.uid} value={a.uid}>
+                      {l}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
               Into mount
               <select aria-label="Move to mount" value={f.mount} onChange={e => set({ mount: e.target.value })}>
                 <option value="">Pick one</option>
-                {(v => (v ? mountsOf(v, data) : []))(vehicles.find(x => x.accessories.some(a => a.uid === f.target))).map(m => (
-                  <option key={m.uid} value={m.uid}>
-                    {m.name}
-                    {m.builtin ? ' (built in)' : ''}
-                  </option>
-                ))}
+                {(v => (v ? mountsOf(v, data) : []))(vehicles.find(x => x.accessories.some(a => a.uid === f.target)))
+                  .slice()
+                  .sort((a, z) => a.name.localeCompare(z.name))
+                  .map(m => (
+                    <option key={m.uid} value={m.uid}>
+                      {m.name}
+                      {m.builtin ? ' (built in)' : ''}
+                    </option>
+                  ))}
               </select>
             </label>
           </>
@@ -1161,13 +1192,14 @@ export function LedgerTab() {
             Fitted item
             <select aria-label="Fitted item" value={f.target} onChange={e => set({ target: e.target.value })}>
               <option value="">Pick one</option>
-              {hosts.flatMap(x =>
-                x.accessories.map(a => (
+              {hosts
+                .flatMap(x => x.accessories.map(a => ({ a, l: `${itemName(a)} on ${itemName(x)}` })))
+                .sort((p, q) => p.l.localeCompare(q.l))
+                .map(({ a, l }) => (
                   <option key={a.uid} value={a.uid}>
-                    {itemName(a)} on {itemName(x)}
+                    {l}
                   </option>
-                )),
-              )}
+                ))}
             </select>
           </label>
         )}
@@ -1198,11 +1230,14 @@ export function LedgerTab() {
               Item
               <select value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {b.purchases.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}
-                  </option>
-                ))}
+                {b.purchases
+                  .slice()
+                  .sort((a, z) => dropLabel(a).localeCompare(dropLabel(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {(x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'}
+                    </option>
+                  ))}
               </select>
             </label>
             {f.target && (
@@ -1291,22 +1326,28 @@ export function LedgerTab() {
               Item
               <select aria-label="Licensed item" value={f.target} onChange={e => set({ target: e.target.value })}>
                 <option value="">Pick one</option>
-                {licensable.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {(e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))}
-                  </option>
-                ))}
+                {licensable
+                  .slice()
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {(e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
               SIN
               <select aria-label="Licensed on" value={sin} onChange={e => set({ sin: e.target.value })}>
                 {!b.sins.length && <option value="">The runner has no SIN</option>}
-                {b.sins.map((s, i) => (
-                  <option key={s.uid} value={s.uid}>
-                    {sinName(s, `SIN ${i + 1}`)}
-                  </option>
-                ))}
+                {b.sins
+                  .map((s, i) => ({ s, l: sinName(s, `SIN ${i + 1}`) }))
+                  .sort((p, q) => p.l.localeCompare(q.l))
+                  .map(({ s, l }) => (
+                    <option key={s.uid} value={s.uid}>
+                      {l}
+                    </option>
+                  ))}
               </select>
             </label>
           </>
@@ -1359,11 +1400,14 @@ export function LedgerTab() {
                 }}
               >
                 <option value="">New contact</option>
-                {b.contacts.map(x => (
-                  <option key={x.uid} value={x.uid}>
-                    {x.name || 'Unnamed'}
-                  </option>
-                ))}
+                {b.contacts
+                  .slice()
+                  .sort((a, z) => (a.name || 'Unnamed').localeCompare(z.name || 'Unnamed'))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {x.name || 'Unnamed'}
+                    </option>
+                  ))}
               </select>
             </label>
             <label>
