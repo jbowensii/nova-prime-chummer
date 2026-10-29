@@ -263,13 +263,50 @@ class Powerplants(unittest.TestCase):
         r = rows[0]
         self.assertEqual(
             (r["ref"], r["hook"], r["cost"], r["origin"], r["review"]),
-            ("crb.bulldog-powerplant", "vehicle-powertrain", "5", "synth", "needs-owner"),
+            ("crb.powertrain-wheeled", "vehicle-powertrain", "5", "synth", "needs-owner"),
         )
         self.assertNotIn("cl6", r)  # (never claims a Commlink6 source)
         e = add["crb"][0]
-        self.assertEqual((e["cl6"], e["kind"], e["add"]["attrs"]["cost"]), ("GMC Bulldog Powerplant", "gear", "0"))
+        self.assertEqual((e["cl6"], e["kind"], e["add"]["attrs"]["cost"]), ("Wheeled Powertrain", "gear", "0"))
         self.assertEqual(e["add"]["kids"][0], {"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}})
-        self.assertIn("Powerplant: Speed 100, Acceleration 10", e["add"]["kids"][1]["text"])
+        self.assertIn("Powertrain type Wheeled", e["add"]["kids"][1]["text"])
+
+    def test_one_shared_item_per_type_used_and_the_heuristic(self):
+        v = lambda vid, name, cls, **a: {
+            "id": vid,
+            "name": name,
+            "page": "1",
+            "attrs": {"body": "6", "accel": "5", "class": cls, **a},
+        }  # noqa: E731
+        vs = [
+            v("a.1", "Car", "VEHICLES/CARS"),
+            v("a.2", "Van", "VEHICLES/VANS"),
+            v("a.3", "Tank", "VEHICLES/TRACKED"),
+            v("a.4", "Sloop", "VEHICLES/BOATS"),
+            v("a.5", "Sail Cat", "VEHICLES/BOATS"),
+            v("a.6", "Hover Dog", "DRONE_SMALL/GROUND"),
+            v("a.7", "Jet Ski", "VEHICLES/PWC"),
+            v("a.8", "Quad Fly", "DRONE_MINI/AIR"),
+            v("a.9", "Shuttle", "VEHICLES/SPACECRAFT"),
+        ]
+        rows, add = vp.powerplants(vs)
+        self.assertEqual(
+            [r["ref"].split("-", 1)[1] for r in rows],
+            [
+                "wheeled",
+                "wheeled",
+                "tracked",
+                "propeller-water",
+                "sail",
+                "hover",
+                "jet-water",
+                "rotor",
+                "vectored-thrust",
+            ],
+        )
+        self.assertEqual(len(add["a"]), 8)  # (one item per type used, in the vehicles' own book)
+        self.assertIn("DEFAULT", rows[-1]["note"])  # (space: not classifiable)
+        self.assertNotIn("DEFAULT", rows[0]["note"])
 
     def test_size_is_max_half_round_body_over_three(self):
         size = lambda body: vp.powerplants([self.veh("x.v", "V", body=str(body))])[0][0]["cost"]  # noqa: E731
@@ -277,7 +314,7 @@ class Powerplants(unittest.TestCase):
 
     def test_a_name_clash_is_refused_not_silently_merged(self):
         with self.assertRaises(ValueError):
-            vp.powerplants([self.veh("a.v", "V")], taken={"a.v-powerplant"})
+            vp.powerplants([self.veh("a.v", "V")], taken={"a.powertrain-wheeled"})
 
     def test_the_gate_leaves_synthesized_rows_out_of_the_oracle_and_counts_them(self):
         latest = {"v": rec("v", [emb("mount", "VEHICLE_HARDPOINT")])}
@@ -288,13 +325,13 @@ class Powerplants(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with open(os.path.join(d, "v.xml"), "w", encoding="utf8") as f:
                 f.write(
-                    '<d><gear id="x.mount"/><gear id="x.v-powerplant"/><vehicle id="x.v">'
+                    '<d><gear id="x.mount"/><gear id="x.powertrain-wheeled"/><vehicle id="x.v">'
                     '<part ref="x.mount" hook="vehicle-hardpoint" cost="0.5"/>'
-                    '<part ref="x.v-powerplant" hook="vehicle-powertrain" cost="2"/></vehicle></d>'
+                    '<part ref="x.powertrain-wheeled" hook="vehicle-powertrain" cost="2"/></vehicle></d>'
                 )
             lines, ok = vp.gate(d, data, latest)
         self.assertTrue(ok, lines)
-        self.assertIn("1 powerplants on 1 vehicles", lines[-1])
+        self.assertIn("1 powertrain parts on 1 vehicles", lines[-1])
 
     def test_the_gate_fails_when_a_duplicate_placement_is_dropped(self):
         # two cyberarms are two placements: the table holding one of them is a loss the distinct-set check could not see

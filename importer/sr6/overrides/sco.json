@@ -27,5 +27,5 @@
   {"cl6": "Power maul (Double-sided)", "kind": "weapons", "id": "double-sided-2", "rename": "Power maul (Double-sided)"},
   {"cl6": "Chainblade", "kind": "gear", "id": "chainblade", "remove": true},
   {"cl6": "Chainblade", "kind": "weapons", "id": "chainblade", "set": {"class": "WEAPON_CLOSE_COMBAT/BLADES"}},
-  {"cl6": "Mr. Grey CWV Powerplant", "kind": "gear", "gen": "vehicle-part", "add": {"page": 184, "id": "mr-grey-cwv-powerplant", "attrs": {"category": "Vehicle modification", "cost": "0", "class": "MOD_POWER/MOD_PROPULSION", "modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}, {"tag": "note", "attrs": {"field": "powerplant"}, "text": "Powerplant: Speed 30, Acceleration 15. Synthesized by the importer (not from a book or Commlink6)."}]}}
+  {"cl6": "Walker Powertrain", "kind": "gear", "gen": "vehicle-part", "add": {"page": 150, "id": "powertrain-walker", "attrs": {"category": "Vehicle modification", "cost": "0", "class": "MOD_POWER/MOD_PROPULSION", "modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}, {"tag": "note", "attrs": {"field": "powertrain"}, "text": "Powertrain type Walker (Double Clutch design rules, p.150): Acceleration 10, Interval 15, Top Speed 30, BP 15. Descriptive only: a vehicle keeps its own stats. Synthesized by the importer (not from a book or Commlink6)."}]}}
 ]

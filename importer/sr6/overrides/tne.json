@@ -1,5 +1,5 @@
 [
   {"cl6": "MCT Firefly Racing Drone", "kind": "vehicles", "id": "mct-firefly-racing-drone", "set": {"class": "DRONE_MEDIUM/AIR"}},
   {"cl6": "Special notes", "kind": "vehicles", "id": "special-notes", "remove": true},
-  {"cl6": "MCT Firefly Racing Drone Powerplant", "kind": "gear", "gen": "vehicle-part", "add": {"page": 48, "id": "mct-firefly-racing-drone-powerplant", "attrs": {"category": "Vehicle modification", "cost": "0", "class": "MOD_POWER/MOD_PROPULSION", "modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}, {"tag": "note", "attrs": {"field": "powerplant"}, "text": "Powerplant: Speed 105, Acceleration 20. Synthesized by the importer (not from a book or Commlink6)."}]}}
+  {"cl6": "Propeller (Air) Powertrain", "kind": "gear", "gen": "vehicle-part", "add": {"page": 150, "id": "powertrain-propeller-air", "attrs": {"category": "Vehicle modification", "cost": "0", "class": "MOD_POWER/MOD_PROPULSION", "modonly": "true"}, "kids": [{"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}}, {"tag": "note", "attrs": {"field": "powertrain"}, "text": "Powertrain type Propeller (Air) (Double Clutch design rules, p.150): Acceleration 15, Interval 25, Top Speed 300, BP 50. Descriptive only: a vehicle keeps its own stats. Synthesized by the importer (not from a book or Commlink6)."}]}}
 ]

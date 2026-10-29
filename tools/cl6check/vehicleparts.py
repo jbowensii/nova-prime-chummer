@@ -27,7 +27,9 @@ COMMENT = (
     "ruling D7), keyed to our catalog ids. CL6-derived: an owner-granted exception to the no-Commlink6-data rule (game "
     "hook/slot/cost only, ruling 2026-10-28 option a). DO NOT HAND-EDIT: regenerate. `rows` become <part>s on the "
     "vehicle (origin cl6) and retire its <builtin>s (D2); `unmatched` is what the rules or the matcher could not "
-    "resolve (review needs-owner): reported, never imported. The importer keeps a vehicle's builtins when any of its "
+    "resolve (review needs-owner): reported, never imported. `excluded_weapons` are placements of the five "
+    "Commlink6 vehicles that are weapons/mounts in our model (owner ruling): listed, never imported, not "
+    "needs-owner. The importer keeps a vehicle's builtins when any of its "
     "parts is unmatched or its row's ref is no entry of the library (the optional CL6 module's): held vehicles."
 )
 # the single hand override (D9, owner 2026-10-28): (vehicle id, undefined ref) -> (base ref, variant, note). The
@@ -49,6 +51,25 @@ GLOBAL_PARTS = {
     "weapon_mount_military": ("ares_vicksburg", "Mil-Spec Weapon Mount (part)"),
     "mtoc_fob": ("evo_nightwing", "M-TOC Fob (part)"),
 }
+
+
+# CL6 "vehicles" that are weapons / weapon mounts in our model, not buildable vehicles (owner ruling): tripod_powered,
+# tripod_wheeled, smart_firing_reinforced (Deadly Arts weapon mods), smart_firing_platform_drone (CRB accessory),
+# krime_ripper (Krime Katalog weapon). Their placements go to "excluded_weapons", not "unmatched".
+WEAPON_NOT_VEHICLE = {
+    "tripod_powered",
+    "tripod_wheeled",
+    "smart_firing_reinforced",
+    "smart_firing_platform_drone",
+    "krime_ripper",
+}
+EXCLUDED_WHY = "weapon/weapon-mount, not a vehicle (owner ruling)"
+
+
+def split_excluded(unmatched):
+    """(unmatched, excluded_weapons): placements of a WEAPON_NOT_VEHICLE id move to the second list, with a why."""
+    ex = [{**u, "why": EXCLUDED_WHY} for u in unmatched if u["cl6"].partition("/")[0] in WEAPON_NOT_VEHICLE]
+    return [u for u in unmatched if u["cl6"].partition("/")[0] not in WEAPON_NOT_VEHICLE], ex
 
 
 def hook_id(into):
@@ -159,6 +180,20 @@ def build(latest, others, defs, variants, part_ids, vehicle_ids):
     return rows, unmatched
 
 
+# CL6 vehicle id -> our id, for hosts the compare never matches (reader.NON_CONTENT drops other_us; keys() takes vehicle
+# kind only); hand-keyed placements, not a matcher change. Our crb entry combines Sunrunner and Nightrunner.
+VEHICLE_ALIASES = {
+    "aztechnology_nightrunner": "crb.aztechnology-sunrunner-nightrunner",
+    "aztechnology_sunrunner": "crb.aztechnology-sunrunner-nightrunner",
+    "buzzard_transit": "aor.buzzard-transit",
+    "kwonsham_dream_genie": "ssv.kwonsham-dream-genie",
+    "shiawase_inu_better_suit": "crb.shiawase-inu-w-better-suit",  # (override add row in overrides/crb.json)
+    "samsung_jind_o": "ssv.samsung-jind-0",  # (our id has a zero)
+    "samsung_jind_o_sporting": "ssv.samsung-jind-0-sporting-breed",
+    "turbobunny_americar": "adv.jimmy-kincaids-turbobunny-special-ford-americar",
+}
+
+
 def keys(results, published):
     """({Commlink6 item id: our id}, {Commlink6 vehicle id: [our ids]}, {our vehicle id: name}) from compare()
     results: an item takes the our-id
@@ -174,17 +209,23 @@ def keys(results, published):
         if r["kind"] == "vehicles" and r["our_kind"] == "vehicles":  # (not a weapon or sample entry the matcher took)
             veh[r["id"]].add(r["our_id"])
             names[r["our_id"]] = r["our_name"]
+    for cid, oid in VEHICLE_ALIASES.items():
+        veh[cid].add(oid)
     return {i: v[1] for i, v in best.items()}, {i: sorted(v) for i, v in veh.items()}, names
 
 
-def table(rows, unmatched):
+def table(rows, unmatched, excluded=()):
     """The committed table's text: one row per line, so a regeneration diffs by row."""
 
     def lines(xs):
         return ",\n".join("  " + json.dumps(x, ensure_ascii=False) for x in xs)
 
     head = ' "_comment": ' + json.dumps(COMMENT, ensure_ascii=False)
-    return f'{{\n{head},\n "rows": [\n{lines(rows)}\n ],\n "unmatched": [\n{lines(unmatched)}\n ]\n}}\n'
+    return (
+        f'{{\n{head},\n "rows": [\n{lines(rows)}\n ],\n'
+        f' "unmatched": [\n{lines(unmatched)}\n ],\n'
+        f' "excluded_weapons": [\n{lines(excluded)}\n ]\n}}\n'
+    )
 
 
 def gate(folder, data, latest):
@@ -213,7 +254,7 @@ def gate(folder, data, latest):
         copies[key(r)][r["vehicle"]] += 1
     got = Counter({k: min(c.values()) for k, c in copies.items()})
     uneven = [k for k, c in copies.items() if len(set(c.values())) > 1]
-    for u in data["unmatched"]:
+    for u in data["unmatched"] + data.get("excluded_weapons", []):
         got[key(u)] += 1
     lost, invented = (
         oracle - got,
@@ -256,7 +297,7 @@ def gate(folder, data, latest):
         f"has); dangling part refs {dangling}",
         f"unmatched {len(data['unmatched'])} (needs-owner); builtins left on vehicles with parts: {left}; "
         f"overrides {over}",
-        f"synthesized (additive, not in the oracle): {len(synth)} powerplants "
+        f"synthesized (additive, not in the oracle): {len(synth)} powertrain parts "
         f"on {len({r['vehicle'] for r in synth})} vehicles",
     ]
     ok = not (lost or invented or uneven or bad or left or dangling or over != 1 or len(have) != len(want))
@@ -390,35 +431,155 @@ def _stat(v, key):
     return float(m[0]) if m else 0.0
 
 
+# Double Clutch "Build Your Dream" powertrain types (core rigger rulebook p.150, vehicledesign category "powertrain type"):
+# key -> (name verbatim, accel, interval, topSpeed, bp). Every self-propelled vehicle gets ONE of these shared
+# items as its removable powertrain part (owner ruling 2026-10-29: the smallest shared set, not one per vehicle).
+DC_PAGE = 150
+DC_TYPES = {
+    "wheeled": ("Wheeled", 15, 20, "250", 10),
+    "tracked": ("Tracked", 10, 25, "150", 12),
+    "walker": ("Walker", 10, 15, "30", 15),
+    "hover": ("Hover", 15, 45, "120", 12),
+    "propeller-water": ("Propeller (Water)", 10, 15, "100", 12),
+    "jet-water": ("Jet (Water)", 10, 25, "150", 20),
+    "sail": ("Sail", 5, 5, "20", 8),
+    "propeller-air": ("Propeller (Air)", 15, 25, "300", 50),
+    "jet-air": ("Jet (Air)", 20, 40, "400", 75),
+    "vectored-thrust": ("Vectored Thrust", 40, 60, "500", 100),
+    "glide": ("Glide", 15, 25, "150", 5),
+    "rotor": ("Rotor", 15, 25, "350", 70),
+    "gravtech": ("Gravtech", 20, 200, "1,000", 1000),
+}
+_WATER = ("VEHICLES/BOATS", "VEHICLES/PWC", "VEHICLES/SHIPS", "VEHICLES/SUBMARINES")
+_AIR = (
+    "VEHICLES/FIXED_WING",
+    "VEHICLES/AIRSHIP",
+    "VEHICLES/ROTORCRAFT",
+    "VEHICLES/VTOL",
+    "VEHICLES/LAV",
+    "VEHICLES/LTAV",
+)
+# class -> type where the class alone decides (confident)
+_BY_CLASS = {
+    "VEHICLES/TRACKED": "tracked",
+    "VEHICLES/HOVERCRAFT": "hover",
+    "VEHICLES/WALKER": "walker",
+    "VEHICLES/GRAV": "gravtech",
+    "VEHICLES/ROTORCRAFT": "rotor",
+    "VEHICLES/VTOL": "vectored-thrust",
+    "VEHICLES/LAV": "vectored-thrust",
+    "VEHICLES/LTAV": "vectored-thrust",
+    "VEHICLES/AIRSHIP": "propeller-air",
+    "VEHICLES/PWC": "jet-water",
+    "VEHICLES/SUBMARINES": "propeller-water",
+    "VEHICLES/SHIPS": "propeller-water",
+    "VEHICLES/BOATS": "propeller-water",
+    "VEHICLES/ATVS": "wheeled",
+    "VEHICLES/BIKES": "wheeled",
+    "VEHICLES/CARS": "wheeled",
+    "VEHICLES/TRUCKS": "wheeled",
+    "VEHICLES/VANS": "wheeled",
+}
+
+
+def powertrain(v):
+    """(DC type key, confident) for a vehicle of ours. Heuristic, first hit wins:
+    1. name keywords, by medium (medium = class tail AIR / AQUATIC / GROUND / ANTHRO, or a water/air VEHICLES class):
+       "hover" -> Hover; WATER: "sail" -> Sail, "jet" -> Jet (Water); AIR: "jet" -> Jet (Air), vtol/vstol/vectored/
+       ducted -> Vectored Thrust, rotor/copter/heli/quad -> Rotor; GROUND: track/tank/apc -> Tracked, walker/anthro/
+       biped -> Walker.
+    2. the class where it decides (_BY_CLASS: TRACKED, HOVERCRAFT, WALKER, GRAV -> Gravtech, ROTORCRAFT -> Rotor,
+       VTOL/LAV/LTAV -> Vectored Thrust, AIRSHIP -> Propeller (Air), PWC -> Jet (Water), boats/ships/subs -> Propeller
+       (Water), cars/bikes/trucks/vans -> Wheeled); FIXED_WING -> Glide when a glider else Propeller (Air);
+       SPECIAL_VEHICLES -> Vectored Thrust for a thruster pack.
+    3. the medium default: AIR Propeller (Air), AQUATIC Propeller (Water), ANTHRO Walker, GROUND Wheeled.
+    Anything else (SPACE_*, SPACECRAFT, no class, an unnamed special vehicle) falls to a NOT confident default
+    (Vectored Thrust in space, else Wheeled); its row note says so for the owner.
+    ponytail: name keywords are guesses; the owner corrects a wrong one on the part row, not in this code."""
+    a = v["attrs"]
+    cls, name = a.get("class") or "", (v["name"] or "").lower()
+    kind, _, tail = cls.partition("/")
+    water, air = tail == "AQUATIC" or cls in _WATER, tail == "AIR" or cls in _AIR
+    ground = tail in ("GROUND", "ANTHRO") or (kind == "VEHICLES" and not (water or air))
+
+    def has(rx):
+        return re.search(rx, name)
+
+    if has(r"hover") and (ground or water):
+        return "hover", True
+    if water:
+        if has(r"\bsail"):
+            return "sail", True
+        if has(r"\bjet\b"):
+            return "jet-water", True
+    if air:
+        if has(r"\bjet\b"):
+            return "jet-air", True
+        if has(r"vtol|vstol|vectored|ducted"):
+            return "vectored-thrust", True
+        if has(r"rotor|copter|\bheli|quad"):
+            return "rotor", True
+    if (
+        ground
+        and kind == "VEHICLES"
+        and has(r"\btrack|\btank\b|\bapc\b")
+        or tail == "GROUND"
+        and has(r"\btrack|\btank\b")
+    ):
+        return "tracked", True
+    if has(r"walker|anthro|biped"):
+        return "walker", True
+    if cls in _BY_CLASS:
+        return _BY_CLASS[cls], True
+    if cls == "VEHICLES/FIXED_WING":
+        return ("glide" if has(r"glider") or "glider" in (a.get("category") or "").lower() else "propeller-air"), True
+    if cls == "VEHICLES/SPECIAL_VEHICLES":
+        return ("vectored-thrust", True) if "thruster" in (a.get("category") or "").lower() else ("wheeled", False)
+    if tail in ("AIR", "AQUATIC", "ANTHRO", "GROUND"):
+        return {"AIR": "propeller-air", "AQUATIC": "propeller-water", "ANTHRO": "walker", "GROUND": "wheeled"}[
+            tail
+        ], True
+    return ("vectored-thrust" if "SPACE" in cls else "wheeled"), False
+
+
 def powerplants(vehicles, taken=()):
-    """Stage 2b, ruling D3 (docs/analysis/sr6-vehicle-decomposition.md): ([part rows], {book: [add rows]}) with one
-    synthesized `<Vehicle> Powerplant` for each self-propelled vehicle of ours (a Speed or an Acceleration stat above
-    0), and none for one that cannot move (a trailer). vehicles: [{id, name, page, attrs}]. Hook vehicle-powertrain;
-    size max(0.5, round(Body / 3)): a heuristic of this app, not Commlink6's or a book's, so the part is origin synth
-    and review needs-owner. Price 0 (included in the vehicle, D8). The entry says what it stands for in its Speed and
-    Acceleration. Never claims a source."""
-    rows, add, seen = [], defaultdict(list), set(taken)
+    """Stage 2b, ruling D3 (docs/analysis/sr6-vehicle-decomposition.md), consolidated by the owner 2026-10-29:
+    ([part rows], {book: [add rows]}). Each self-propelled vehicle of ours (a Speed or an Acceleration stat above 0; a
+    trailer has none) gets a part row on hook vehicle-powertrain that references the SHARED Double Clutch powertrain
+    type item for its propulsion (powertrain(), `<its own book>.powertrain-<type>`). The shared items (one per book
+    and type USED: gear, in that book's own table so no book depends on Double Clutch being imported; names/stats are
+    the DC design rules; synthetic) are the add rows.
+    The row's size stays per vehicle, max(0.5, round(Body / 3)): a heuristic of this app, so the row is origin synth and
+    review needs-owner. Price 0 (included in the vehicle, D8). The type's Accel/Interval/Top Speed are descriptive text
+    only; a vehicle keeps its own stats. A default (not confident) classification says so in the row's note."""
+    rows, used = [], set()  # used: {(book, type)}
     for v in sorted(vehicles, key=lambda e: e["id"]):
-        a = v["attrs"]
         if not (_stat(v, "topSpeed") > 0 or _stat(v, "accel") > 0):
             continue
         body = _stat(v, "body")
         size = max(0.5, float(int(body / 3 + 0.5)))  # (round half up; Python's round() would go to even)
-        src, name = v["id"].split(".")[0], f"{v['name']} Powerplant"
-        # (its own id, the vehicle's id tail + -powerplant: unique as the vehicle's is, and never the vehicle's own
-        # id, as slug(name), cut at 60 letters, could be for a long name)
-        pid = f"{v['id'].split('.', 1)[1]}-powerplant"
-        ref = f"{src}.{pid}"
-        if ref in seen:
-            raise ValueError(f"two powerplants would be {ref}: name {name!r}")
-        seen.add(ref)
-        why = f"synthesized powerplant, size max(0.5, round(Body {body:g} / 3)): the importer's own, not from a book"
+        t, sure = powertrain(v)
+        book = v["id"].split(".", 1)[0]  # (the vehicle's own book: no dependency on Double Clutch being imported)
+        used.add((book, t))
+        why = (
+            f"synthesized {DC_TYPES[t][0]} powertrain, size max(0.5, round(Body {body:g} / 3)): the importer's own, "
+            "not from a book"
+            + ("" if sure else "; propulsion type is a DEFAULT guess (not classifiable), owner to confirm")
+        )
         rows.append(
-            {"vehicle": v["id"], "id": "pp", "ref": ref, "hook": "vehicle-powertrain", "cost": f"{size:g}",
-             "origin": "synth", "review": "needs-owner", "rule": "D3 synthesized", "note": why}
+            {"vehicle": v["id"], "id": "pp", "ref": f"{book}.powertrain-{t}", "hook": "vehicle-powertrain",
+             "cost": f"{size:g}", "origin": "synth", "review": "needs-owner", "rule": "D3 synthesized", "note": why}
         )  # fmt: skip
-        page = str(v.get("page") or "")
-        text = f"Powerplant: Speed {a.get('topSpeed') or '?'}, Acceleration {a.get('accel') or '?'}. "
+    clash = {f"{b}.powertrain-{t}" for b, t in used} & set(taken)
+    if clash:
+        raise ValueError(f"powertrain ids clash: {sorted(clash)}")
+    add = defaultdict(list)
+    for book, t in sorted(used):
+        name, acc, itv, top, bp = DC_TYPES[t]
+        text = (
+            f"Powertrain type {name} (Double Clutch design rules, p.{DC_PAGE}): Acceleration {acc}, Interval {itv}, "
+            f"Top Speed {top}, BP {bp}. Descriptive only: a vehicle keeps its own stats. "
+        )
         attrs = {
             "category": "Vehicle modification",
             "cost": "0",
@@ -427,11 +588,12 @@ def powerplants(vehicles, taken=()):
         }
         kids = [
             {"tag": "fits", "attrs": {"slot": "vehicle-powertrain"}},
-            {"tag": "note", "attrs": {"field": "powerplant"}, "text": text + SYNTH_NOTE},
+            {"tag": "note", "attrs": {"field": "powertrain"}, "text": text + SYNTH_NOTE},
         ]  # fmt: skip
-        add[src].append(
-            {"cl6": name, "kind": "gear", "gen": "vehicle-part",
-             "add": {"page": int(page) if page.isdigit() else 1, "id": pid, "attrs": attrs, "kids": kids}}
+        # page = DC p.150, the stats' real source (schema needs a positive page; the note credits it).
+        add[book].append(
+            {"cl6": f"{name} Powertrain", "kind": "gear", "gen": "vehicle-part",
+             "add": {"page": DC_PAGE, "id": f"powertrain-{t}", "attrs": attrs, "kids": kids}}
         )  # fmt: skip
     return rows, add
 
@@ -464,6 +626,7 @@ def main(argv):
     made, add = inline_entries(read_inline(jar), part_ids, vehicle_ids, vnames)
     part_ids |= made
     rows, unmatched = build(latest, others, defs, variants, part_ids, vehicle_ids)
+    unmatched, excluded = split_excluded(unmatched)
     taken = set(part_ids.values()) | {f"{k}.{slug(r['cl6'])}" for k, rs in add.items() for r in rs}
     pp_rows, pp_add = powerplants([e for s in mine.values() for e in s.entries if e["kind"] == "vehicles"], taken)
     rows = sorted(
@@ -471,11 +634,19 @@ def main(argv):
     )  # (stable: a vehicle's Commlink6 parts, then its powerplant)
     for k, rs in pp_add.items():
         add[k] += rs
-    print(f"synthesized powerplants {len(pp_rows)} (additive)")
+    print(f"synthesized powertrain parts {len(pp_rows)} (additive), {sum(map(len, pp_add.values()))} per-book items:")
+    for t, n in sorted(Counter(r["ref"] for r in pp_rows).items()):
+        print(f"  {n:4}  {t}")
+    for r in pp_rows:
+        if "DEFAULT" in r["note"]:
+            print("  default (needs owner):", r["vehicle"])
     rows_cl6 = [r for r in rows if r.get("origin") != "synth"]
     n = len({r["cl6"] for r in rows_cl6})
     print(f"rows {len(rows)} on {len({r['vehicle'] for r in rows})} of our vehicles ({n} distinct CL6 placements)")
-    print(f"overrides {len({r['cl6'] for r in rows_cl6 if r.get('override')})}; unmatched {len(unmatched)}:")
+    print(
+        f"overrides {len({r['cl6'] for r in rows_cl6 if r.get('override')})}; "
+        f"unmatched {len(unmatched)}; excluded weapons {len(excluded)}:"
+    )
     why = defaultdict(list)
     for u in unmatched:
         why[re.sub(r"part \S+ not", "part not", u["why"])].append(u["cl6"])
@@ -483,7 +654,7 @@ def main(argv):
         print(f"  {len(xs):4}  {w}  e.g. {', '.join(xs[:4])}")
     if "--dry" not in args:
         out = Path(opt.get("--out", OUT))
-        out.write_text(table(rows, unmatched), encoding="utf8", newline="\n")
+        out.write_text(table(rows, unmatched, excluded), encoding="utf8", newline="\n")
         print(
             "wrote",
             out,

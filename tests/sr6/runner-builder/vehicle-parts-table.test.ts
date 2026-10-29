@@ -124,13 +124,14 @@ test("every vehicle: taking one part off frees exactly its cost and its children
   }
 })
 
-test('Stage 2b: every self-propelled vehicle has one synthesized powerplant on the powertrain, named after the vehicle, with the formula size', () => {
+test('Stage 2b: every self-propelled vehicle has one synthesized powertrain part on the powertrain, its own-book shared type item (no Double Clutch dependency), with the per-vehicle formula size', () => {
   expect(synth.length).toBeGreaterThanOrEqual(300)
   expect(new Set(synth.map(r => r.vehicle)).size).toBe(synth.length) // one each
   for (const r of synth) {
     expect(r, r.vehicle).toMatchObject({ id: 'pp', hook: 'vehicle-powertrain', origin: 'synth', review: 'needs-owner' })
     expect(Number(r.cost), r.vehicle).toBeGreaterThanOrEqual(0.5)
-    expect(r.ref, r.vehicle).toMatch(/-powerplant$/)
+    expect(r.ref, r.vehicle).toMatch(/^[a-z0-9-]+\.powertrain-[a-z-]+$/)
+    expect(r.ref.split('.')[0], r.vehicle).toBe(r.vehicle.split('.')[0])
   }
-  expect(synth.find(r => r.vehicle === 'crb.gmc-bulldog')).toMatchObject({ ref: 'crb.gmc-bulldog-powerplant', cost: '5' }) // Body 16
+  expect(synth.find(r => r.vehicle === 'crb.gmc-bulldog')).toMatchObject({ ref: 'crb.powertrain-wheeled', cost: '5' }) // Body 16
 })
