@@ -32,6 +32,7 @@ KID_TAGS = {
     "power",
 }  # (an owner row's: an Infected type's gained power, corrected)
 VALUE_ATTRS = {
+    "multi",
     "cost",
     "avail",
     "karma",

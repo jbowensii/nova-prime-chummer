@@ -440,5 +440,6 @@
   {"cl6": "Laser Sight (Standard, German Rules only)", "kind": "weapons", "add": {"id": "laser-sight-standard", "page": 73, "text_from": "Laser Sight, Low Power", "attrs": {"category": "Weapon accessory", "avail": "1", "cost": "125", "class": "ACCESSORY/WEAPON_ACCESSORY"}}},
   {"cl6": "Laser Sight (Standard, German Rules only)", "kind": "weapons", "id": "laser-sight-standard", "gen": "cl6", "why": "the book prints a Close, Near and Medium stat block under Low Power with no name; Commlink6 names it the standard laser sight (German rules)", "effects": [{"target": "item:ar", "op": "add", "value": "1,1,1,0,0"}]},
   {"cl6": "Laser Sight (Low Power)", "kind": "weapons", "id": "laser-sight-low-power", "kids": [{"tag": "fits", "attrs": {"slot": "top"}}, {"tag": "fits", "attrs": {"slot": "under"}}], "gen": "family"},
-  {"cl6": "Pacifist", "cl6id": "pacifist", "kind": "qualities", "id": "pacifist", "set": {"maxLevel": "4", "perLevel": "true"}, "gen": "max"}
+  {"cl6": "Pacifist", "cl6id": "pacifist", "kind": "qualities", "id": "pacifist", "set": {"maxLevel": "4", "perLevel": "true"}, "gen": "max"},
+  {"cl6": "Phobia", "kind": "qualities", "id": "phobia-object", "set": {"multi": "true"}, "note": "repeatable (a different choice each time); book p. 130 prints no repeat statement; CL6 multi, owner-ruled 2026-10-29", "gen": "owner"}
 ]

@@ -557,6 +557,8 @@
       <xs:attribute name="karmaSteps" type="xs:string"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+      <!-- multi: its text lets it be taken more than once (each copy its own choice) -->
+      <xs:attribute name="multi" type="sr6:True"/>
       <!-- the list it is printed in (`Returned Soldier power`); granted: never bought on its own, only granted (by a
            quality's choice: Karma 0) -->
       <xs:attribute name="category" type="xs:string"/>

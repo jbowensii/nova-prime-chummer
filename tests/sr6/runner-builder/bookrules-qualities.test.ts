@@ -68,14 +68,19 @@ test('a choice quality may be taken again for another choice; twice for one attr
   const ch = runner(),
     s = setup()
   expect(act(ch, s, { op: 'quality', id: 'crb.gifted-attribute' })).toEqual({ ok: true })
+  // (a second copy while the first names no choice is the same, empty, choice: refused)
+  expect(act(ch, s, { op: 'quality', id: 'crb.gifted-attribute' })).toEqual({ ok: false, reason: 'duplicate-choice' })
+  expect(codes(ch, s).filter(c => c === 'quality.choice')).toHaveLength(1)
+  const a = ch.build.qualities[0]
+  expect(act(ch, s, { op: 'quality', id: a.id, uid: a.uid, note: 'Agility' })).toEqual({ ok: true })
   expect(act(ch, s, { op: 'quality', id: 'crb.gifted-attribute' })).toEqual({ ok: true })
   expect(ch.build.qualities.filter(q => q.id === 'crb.gifted-attribute')).toHaveLength(2)
-  expect(codes(ch, s).filter(c => c === 'quality.choice')).toHaveLength(2)
-  const [a, b] = ch.build.qualities
-  expect(act(ch, s, { op: 'quality', id: a.id, uid: a.uid, note: 'Agility' })).toEqual({ ok: true })
-  act(ch, s, { op: 'quality', id: b.id, uid: b.uid, note: 'agility' })
+  const b = ch.build.qualities[1]
+  // (the same attribute twice is refused; one already on the build, kept from older data, is still a review error)
+  expect(act(ch, s, { op: 'quality', id: b.id, uid: b.uid, note: 'agility' })).toEqual({ ok: false, reason: 'duplicate-choice' })
+  b.note = 'agility'
   expect(codes(ch, s)).toContain('quality.choiceTwice')
-  act(ch, s, { op: 'quality', id: b.id, uid: b.uid, note: 'Logic' })
+  expect(act(ch, s, { op: 'quality', id: b.id, uid: b.uid, note: 'Logic' })).toEqual({ ok: true })
   expect(codes(ch, s).filter(c => c.startsWith('quality.choice'))).toEqual([])
   expect(act(ch, s, { op: 'quality', id: 'crb.knack' })).toEqual({ ok: true })
   expect(act(ch, s, { op: 'quality', id: 'crb.knack' })).toEqual({ ok: false, reason: 'already-taken' }) // (no choice in its name)

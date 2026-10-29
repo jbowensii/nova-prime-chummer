@@ -259,6 +259,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         karma: bookNum(e, e.attrs.karma, 'karma'),
         karmaMax: bookNum(e, e.attrs.karmaMax, 'karma'),
         ...levels(e),
+        ...(e.attrs.multi === 'true' ? { multi: true } : {}),
         page: e.page,
         ...(e.attrs.karmaSteps ? { karmaSteps: e.attrs.karmaSteps.split(/\s+/).map(Number).filter(Number.isFinite) } : {}),
         ...(e.attrs.category ? { category: e.attrs.category } : {}),
