@@ -1,5 +1,29 @@
 # Release notes
 
+## 0.32.0 — 2026-10-29
+
+Finishes the vehicle-parts work: every factory part Commlink6 models now lands on the right vehicle, and the
+per-vehicle "powerplants" are replaced by a clean, shared set of Double Clutch powertrain types.
+
+**Requires a full re-import** (Settings → Re-import all books) for the changes to appear. A re-import resets the
+creation-rules table, so any GM creation toggles you changed will revert and need re-applying.
+
+**Shadowrun 6 — vehicle parts cleanup**
+- **18 previously-missing factory parts now attach.** Vehicles we carried under a different name now get their
+  Commlink6 parts — the Aztechnology Sunrunner/Nightrunner, Buzzard Transit, Kwonsham Dream Genie, Samsung Jind-O (and
+  Sporting breed), and Jimmy Kincaid's Turbobunny Americar. The **Shiawase Inu "w/better suit"** variant was added so it
+  can carry its part too.
+- **Weapon platforms stay weapons.** The Heavy Tripods, Smart Firing Platforms and the Krime Ripper are weapon
+  mounts/platforms, not buildable vehicles, so their mounts are no longer reported as missing vehicle parts.
+
+**Shadowrun 6 — powertrains**
+- **Consolidated powerplants into Double Clutch powertrain types.** Each self-propelled vehicle's engine is now one of
+  the named Double Clutch powertrains (Wheeled, Tracked, Walker, Hover, Propeller/Jet by water or air, Rotor, Glide,
+  Gravtech, Vectored Thrust), with the design-rules Acceleration / Interval / Top Speed / Build Points — replacing the
+  357 one-off per-vehicle powerplants. The powertrain is descriptive and removable; it does not change the vehicle's own
+  speed. Each is added from the vehicle's own book, so it works even without Double Clutch imported. Propulsion type is
+  derived automatically and flagged for GM review where it had to be guessed.
+
 ## 0.31.0 — 2026-10-28
 
 Vehicles and drones are now built from parts. Every factory component Commlink6 models — weapon mounts, rigger
