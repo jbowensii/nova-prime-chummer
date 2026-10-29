@@ -143,6 +143,8 @@ export type Op =
   | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
   /** the bonuses on a purchase, accessory or pick */
   | { op: 'bonus'; uid: string; bonuses: Bonus[] }
+  /** switch a situational effect of a purchase, pick or quality on (times 1, or a count for a `per ...` one) or off (0); index: its place in the line's effects */
+  | { op: 'situational'; uid: string; index: number; times: number }
   /** add a contact, or change one (uid) */
   | { op: 'contact'; uid?: string; name?: string; archetype?: string; connection?: number; loyalty?: number; types?: ContactType[] }
   | { op: 'contact'; remove: string }
@@ -907,6 +909,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.bonuses.some(y => y.target === 'skill' && !y.skill)) return no('no-skill') // (a skill bonus names its skill)
       if (op.bonuses.length) x.bonuses = op.bonuses
       else delete x.bonuses
+      return OK
+    }
+    case 'situational': {
+      const x: { sit?: Record<string, number> } | undefined =
+        allLines(b).find(p => p.uid === op.uid) ?? b.picks.find(p => p.uid === op.uid) ?? b.qualities.find(q => q.uid === op.uid)
+      if (!x) return no('unknown-line')
+      const n = Math.min(99, Math.max(0, Math.trunc(op.times) || 0))
+      const sit: Record<string, number> = { ...x.sit, [op.index]: n }
+      if (!n) delete sit[op.index]
+      if (Object.keys(sit).length) x.sit = sit
+      else delete x.sit
       return OK
     }
     case 'contact': {

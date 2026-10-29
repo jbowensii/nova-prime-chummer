@@ -268,6 +268,8 @@
     <xs:attribute name="name" type="xs:string"/>
     <!-- Stolen Gear (No Future errata, NF p. 162): the karma converted at creation bought off so far, a part at a time -->
     <xs:attribute name="boughtOff" type="c:Count"/>
+    <!-- the player's situational switches: `index:times` words, the index of an effect in the line's effects (1 on, a number for a per-... one) -->
+    <xs:attribute name="sit" type="xs:string"/>
     <!-- an owned critter's companion quality only (Wild Life pp. 184-186): tamed, the Wild Soul and the negative balancing
          it a tamed critter gets (p. 184); bonded, bought with the runner's Karma through the Critter Bond path's Permanent
          Improvement (SWC p. 139); absent: specified with the critter's purchase (its Karma moves the price, p. 180) -->
@@ -309,6 +311,7 @@
     <xs:attribute name="name" type="xs:string"/>
     <!-- the skill or attribute a power naming its choice is for (Improved Ability (Skill): Firearms) -->
     <xs:attribute name="note" type="xs:string"/>
+    <xs:attribute name="sit" type="xs:string"/>
   </xs:complexType>
 
   <!-- a martial arts style and the techniques learned under it (Firing Squad p. 97); name: the catalog name when added -->
@@ -659,6 +662,8 @@
     <!-- GM override: mod slots added to a vehicle/drone (or other host) instance so an item fits or a budget is widened
          (owner 2026-10-27); each `id` or `id:value` (`vehicle-cf:4`) -->
     <xs:attribute name="addedSlots" type="xs:string"/>
+    <!-- the player's situational switches: `index:times` words, the index of an effect in the line's effects (1 on, a number for a per-... one) -->
+    <xs:attribute name="sit" type="xs:string"/>
     <!-- GM override: the built-in mods removed from a vehicle/drone instance (owner 2026-10-27), each by its builtin uid
          (`builtin:0 builtin:2`) -->
     <xs:attribute name="removedBuiltins" type="xs:string"/>

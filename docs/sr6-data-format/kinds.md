@@ -377,6 +377,13 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   spirit's role `magician`/`adept`). A switchable or conditional effect counts in the bracketed total, `Con 6 (9)`, as
   a book's stat block prints it (owner decision 2026-10-10). `confidence="low"` (a condition the importer found no
   words for, a formula per point of something) is shown, never applied.
+- **Machine conditions** (owner, 2026-10-29: calculated, not notes): a `when` the app decides from the runner, never a
+  note: `attr:<abbr>>=N` or `attr:<abbr><=N` (the importer writes `if the character's Strength is 6 or greater` as
+  `attr:str>=6`, `emit.py machine_when`), a metatype's name (`Troll`: the runner's metatype or its parent), or a role
+  `adept`, `magician`, `mystic adept`, `technomancer` (the runner's magic kind). When it holds the effect is always on
+  (its `conditional` switch dropped); when it does not, it is left out of both totals (`effects.ts whenHolds`,
+  `bonuses.ts decided`). Any other `when` is a situation only the table knows (`in animal form`, `per additional
+  barrel fired`): it stays a switch, off in the total shown first and on in the bracketed one.
 - **Specialization** (`spec`): a skill effect limited to a specialization (`+2 dice on climbing tests`: `Climbing`;
   `Influence (Etiquette or Negotiation)`: either). It is added to that specialization's pool when the runner has it,
   else to the skill's bracketed total (owner decision 2026-10-10).

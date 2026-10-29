@@ -444,7 +444,9 @@
     <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/>
       <xs:enumeration value="conditional"/></xs:restriction></xs:simpleType></xs:attribute>
-    <!-- the condition's words (`while in the Matrix`) or a test the book names by activity (`escaping bonds`) -->
+    <!-- the condition's words (`while in the Matrix`) or a test the book names by activity (`escaping bonds`); or a
+         machine condition the app decides from the runner (`attr:str>=6`, `attr:mag<=3`, a metatype's name, `adept`,
+         `magician`, `mystic adept`, `technomancer`: docs/sr6-data-format/kinds.md "Machine conditions") -->
     <xs:attribute name="when" type="xs:string"/>
     <!-- the specialization a skill effect is limited to (`Climbing`): added to that specialization's pool when the
          runner has it, else to the skill's bracketed total (owner decision 2026-10-10) -->

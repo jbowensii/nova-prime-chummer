@@ -4,6 +4,7 @@ import re
 
 from .words import (
     ADDON_STATS,
+    ATTRIBUTES,
     ITEM_KINDS,
     SENSES,
     SKILLS,
@@ -740,9 +741,28 @@ def _attrs(tag):
     return {k: _unesc(v) for k, v in _ATTR.findall(tag)}
 
 
+_ATTR_WHEN = re.compile(
+    rf"(?:if |when |while )?(?:the character['’]s |your )?({'|'.join(ATTRIBUTES)}) (?:is |of )?(\d+) or "
+    r"(greater|higher|more|less|lower)",
+    re.I,
+)
+
+
+def machine_when(w):
+    """A condition the app decides from the character (`if the character's Strength is 6 or greater` -> `attr:str>=6`,
+    docs/sr6-data-format/kinds.md "Machine conditions"); any other prose unchanged."""
+    m = _ATTR_WHEN.fullmatch(w.strip())
+    if not m:
+        return w
+    op = ">=" if m.group(3).lower() in ("greater", "higher", "more") else "<="
+    return f"attr:{ATTRIBUTES[m.group(1).lower()]}{op}{m.group(2)}"
+
+
 def _tag(name, a):
     from xml.sax.saxutils import escape
 
+    if a.get("when"):
+        a = {**a, "when": machine_when(a["when"])}
     return f"<{name}" + "".join(f' {k}="{escape(v, {chr(34): "&quot;"})}"' for k, v in a.items()) + "/>"
 
 

@@ -15,7 +15,7 @@ import { pickFlags } from '../view'
 import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../../formats/domain/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
-import { Bonuses, House } from '../Picker'
+import { Bonuses, House, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
 
@@ -132,6 +132,7 @@ export function MagicTab() {
                             <span className={chosen ? 'muted small' : 'err small'}>{chosen ? `For ${chosen}` : `Name the ${want}`}</span>
                           </div>
                         )}
+                        <Situational line={x} name={name} />
                         <div>
                           <Bonuses uid={x.uid} name={name} bonuses={x.bonuses} rated={max !== null} />
                         </div>
