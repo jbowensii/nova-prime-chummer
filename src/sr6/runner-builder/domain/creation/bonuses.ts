@@ -6,7 +6,9 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { own } from '../../../../core/shared/effects'
 import { entryLabel } from '../../../catalog/domain/categories'
-import { bonusValue, effectBonuses, sr6Counts as counts } from '../../../catalog/domain/effects'
+import { bonusValue, effectBonuses, sr6Counts as counts, whenHolds, type WhenFacts } from '../../../catalog/domain/effects'
+import { MAGIC_KINDS } from '../../../catalog/domain/data'
+import { baseMetatype, metatypeName } from './infected'
 import { entryOf, ratingOf } from './purchases'
 import { noteAttr, noteSkill } from './choices'
 
@@ -19,8 +21,41 @@ const bonusOf = (bonuses: Bonus[] | undefined, k: Bonus['target'], rating: numbe
     .reduce((s, x) => s + bonusValue(x, rating), 0)
 // (`Etiquette or Negotiation`: either)
 const sameSpec = (a?: string, b?: string) => !!a && !!b && a.split(/,\s*|\s+(?:or|and)\s+/).some(x => normName(x) === normName(b))
-/** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity. */
-function eachLine(b: Sr6Build, data: Sr6Data, f: (bs: Bonus[], rating: number, times: number, from: string) => void) {
+/** What a runner's machine conditions are decided from (whenHolds). An attribute is its natural points (1 + points +
+ *  adjustment + Karma) plus the always-on bonuses. */
+// ponytail: no Provider here, so a lifepath start bonus and Magic/Resonance's method rating are not counted; pass attrRating in if a threshold on them shows up
+function facts(b: Sr6Build, data: Sr6Data): WhenFacts {
+  const plain = (k: Sr6Attr) => {
+    let t = 0
+    eachLine(b, data, (bs, rating, times) => (t += bonusOf(bs, k, rating) * times), false)
+    return t
+  }
+  const a = (k: Sr6Attr) => b.attributes[k] ?? { points: 0, adjust: 0, karma: 0 }
+  return {
+    attr: k => 1 + a(k).points + a(k).adjust + a(k).karma + plain(k),
+    metatype: [metatypeName(data, b.metatype), baseMetatype(data, b.metatype)],
+    metatypes: Object.values(data.metatypes).map(m => m.name),
+    kind: MAGIC_KINDS[b.magic] ?? MAGIC_KINDS.mundane,
+  }
+}
+/** A line's bonuses with their machine conditions decided (owner, 2026-10-29: calculated, not notes): one that holds is
+ *  always on (its `when` and a `conditional` switch dropped), one that doesn't is left out; prose stays bracketed. */
+function decided(bs: Bonus[], f: () => WhenFacts): Bonus[] {
+  if (!bs.some(x => x.when)) return bs
+  return bs.flatMap(x => {
+    const h = whenHolds(x.when, f())
+    if (h === undefined) return [x]
+    if (!h) return []
+    const { when: _w, ...y } = x
+    return [y.switch === 'conditional' ? { ...y, switch: undefined } : y]
+  })
+}
+/** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity; their
+ *  machine conditions decided (decide false: as the catalog has them, what facts sums). */
+function eachLine(b: Sr6Build, data: Sr6Data, g: (bs: Bonus[], rating: number, times: number, from: string) => void, decide = true) {
+  let memo: WhenFacts | undefined
+  const fx = () => (memo ??= facts(b, data))
+  const f = (bs: Bonus[], rating: number, times: number, from: string) => g(decide ? decided(bs, fx) : bs, rating, times, from)
   for (const x of b.picks)
     f(lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note)), x.level ?? 1, 1, data.entry(x.kind, x.id)?.name ?? x.name ?? x.id)
   // (an owned critter's stat block and powers are its own, never the runner's)
@@ -114,6 +149,8 @@ export function bonusSources(
   skill?: string,
 ): { from: string; kind?: Sr6Kind; id?: string; value: number; set?: true }[] {
   const out: { from: string; kind?: Sr6Kind; id?: string; value: number; set?: true }[] = []
+  let memo: WhenFacts | undefined
+  const fx = () => (memo ??= facts(b, data))
   const add = (value: number, e: Sr6Entry | undefined, kind: Sr6Kind, id: string | undefined, name: string | undefined, bs: Bonus[], rating: number) => {
     const from = e ? entryLabel(e) : (name ?? id ?? 'Custom item')
     if (value) out.push({ from, kind, id, value })
@@ -123,17 +160,17 @@ export function bonusSources(
   }
   for (const x of b.picks) {
     const e = data.entry(x.kind, x.id)
-    const bs = lineBonuses(data, x.bonuses, e, choiceOf(data, x.note))
+    const bs = decided(lineBonuses(data, x.bonuses, e, choiceOf(data, x.note)), fx)
     add(bonusOf(bs, k, x.level ?? 1, skill), e, x.kind, x.id, x.name, bs, x.level ?? 1)
   }
   for (const x of b.purchases.filter(y => y.kind !== 'critters')) {
     const e = entryOf(x, data)
-    const bs = lineBonuses(data, x.bonuses, e)
+    const bs = decided(lineBonuses(data, x.bonuses, e), fx)
     add(bonusOf(bs, k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name, bs, ratingOf(x, e))
   }
   for (const q of b.qualities) {
     const e = data.entry('qualities', q.id)
-    const bs = entryBonuses(data, e, choiceOf(data, q.note))
+    const bs = decided(entryBonuses(data, e, choiceOf(data, q.note)), fx)
     add(bonusOf(bs, k, 1, skill) * q.level, e, 'qualities', q.id, q.name, bs, 1)
   }
   return out

@@ -13,6 +13,32 @@ import { counts, type EffectState } from '../../../core/shared/effects'
  *  one, nor a spell's effect on its target (it counts on the character it is cast on). */
 export const sr6Counts = (e: EffectState, on = false) => counts(e, on)
 
+/** What a machine condition is decided from: the runner's attribute ratings, metatype (its name and its parent's), every
+ *  metatype name the catalog knows, and its magic kind's flags. */
+export interface WhenFacts {
+  attr: (k: Sr6Attr) => number
+  metatype: string[]
+  metatypes: string[]
+  kind: { spells: boolean; powers: boolean; resonance: boolean }
+}
+const ROLES: Record<string, (k: WhenFacts['kind']) => boolean> = {
+  adept: k => k.powers,
+  magician: k => k.spells,
+  'mystic adept': k => k.spells && k.powers,
+  technomancer: k => k.resonance,
+}
+/** Whether a machine condition (docs/sr6-data-format/kinds.md "Machine conditions") holds for the runner: `attr:str>=6`
+ *  (`>=` or `<=`), a metatype's name (`Troll`: the runner's metatype or its parent), `adept`, `magician`, `mystic adept`,
+ *  `technomancer`. undefined: prose (`in animal form`), a situation only the table knows: the bracketed total keeps it. */
+export function whenHolds(when: string | undefined, f: WhenFacts): boolean | undefined {
+  if (!when) return undefined
+  const a = /^attr:([a-z]{3})(>=|<=)(\d+)$/.exec(when)
+  if (a) return (SR6_ATTRS as string[]).includes(a[1]) ? (a[2] === '>=' ? f.attr(a[1] as Sr6Attr) >= +a[3] : f.attr(a[1] as Sr6Attr) <= +a[3]) : undefined
+  const n = normName(when)
+  if (ROLES[n]) return ROLES[n](f.kind)
+  return f.metatypes.some(m => normName(m) === n) ? f.metatype.some(m => m && normName(m) === n) : undefined
+}
+
 /** The book's lists of which skills a test type covers (a vocabulary, as importer/sr6/effects.py TEST_TYPES): Social
  *  tests influence or con someone (CRB p. 97), Matrix tests are Matrix actions (CRB p. 179), magical tests the magic
  *  skills, combat tests an attack with a weapon skill. physical and mental: the skills linked to those attributes;
