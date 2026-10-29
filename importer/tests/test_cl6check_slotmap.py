@@ -114,10 +114,10 @@ class SlotMapTest(unittest.TestCase):
         self.assertEqual(got[1], old[1])  # (an entry the generator has no row for is left)
 
     def test_an_item_enhancement_and_a_usage_with_a_hook(self):
-        c, o = pair(kind="weapons", oid="zz.rail")
+        c, _ = pair(kind="weapons", oid="zz.rail")
         c["el"].tag = "itemenhancement"
         self.assertEqual(slotmap.usage_of(c["el"]), "enhancement")
-        c, o = pair(kind="weapons", oid="zz.scope", embeds=["TOP"])
+        c, _ = pair(kind="weapons", oid="zz.scope", embeds=["TOP"])
         self.assertIsNone(slotmap.usage_of(c["el"]))
 
 
