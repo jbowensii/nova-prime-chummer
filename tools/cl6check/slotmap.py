@@ -9,10 +9,13 @@ importer/sr6/overrides/<src>.json: one row `{"cl6", "cl6id", "kind", "id", "kids
 "gen": "slot"}` for each matched entry of kind vehicles/gear/weapons whose Commlink6 record declares a `vehicle-*` HOOK
 or a `vehicle-*` EMBEDDED usage. The slots gate (fields.py) compares (type, normalized-id) tuples only — it ignores
 slot VALUES and is one-directional — so a diff-driven generator (familymap, which reads cl6-diffs.csv) never emits the
-hook VALUES. This one walks the matched pairs directly (maxmap style: `compare(...)[2]`). classes.py `associations()` no
-longer emits the generic value-less vehicle category/tyre slots: this generator is their sole source, with the runtime
-(src/sr6/.../vehiclemods.ts) supplying the Body fallback where a vehicle declares no hook for a family. Rows of an
-earlier run (`gen`) are replaced; the rest of a table is left as it is. Read-only on the runs; no cl6check report."""
+hook VALUES. This one walks the matched pairs directly (maxmap style: `compare(...)[2]`). It is NOT the only source of
+vehicle slots: importer/sr6/classes.py `associations()` still gives every vehicles.xml entry with a Body the six generic
+value-less family slots (VEHICLE_MOD_SLOTS) and wheeled classes `vehicle-tires`; these rows add the values Commlink6
+writes in its data, and the runtime (src/sr6/.../vehiclemods.ts) supplies the Body fallback where no value is given.
+(Owner ruling 2026-10-29: the importer will compute the generic capacities the Commlink6 way, from Body/Seats/Pilot,
+with these rows' values overriding them; until then the above holds.) Rows of an earlier run (`gen`) are replaced; the
+rest of a table is left as it is. Read-only on the runs; no cl6check report."""
 
 import json
 import sys
