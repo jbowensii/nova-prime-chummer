@@ -195,10 +195,10 @@ def associations(files, report=None):
     """files with the hooks Commlink6's model gives each entry (importer/sr6/hooks.py), wherever a row has not given
     them: a host's `<slot id value unit maxSize rule>` by its class (standard hooks, the vehicle capacities
     computed from Body, Seats and Pilot, fashion on armor), a weapon's size and its synthesized `<fits rule="W|I">`
-    (vehicle mounts, implants), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A slot a row marks
-    `remove="true"` is taken away, a slot two rows give is kept once (the one with a value). An eyeware/earware/
-    cyberlimb host with no implant slot from Commlink6 gets one from its printed capacity (a book-only item). report: a
-    Counter, given the counts (sizes guessed, fallbacks)."""
+    (vehicle mounts, implants), and a weapon accessory's `<fits>` for each mount its MOUNT column names. Slots apply in
+    the data's order: a `remove="true"` takes the hook away, a slot two rows give is kept once (the one with a value).
+    An eyeware/earware/cyberlimb host with no implant slot from Commlink6 gets one from its printed capacity (a
+    book-only item). report: a Counter, given the counts (sizes guessed, fallbacks)."""
     from lxml import etree
 
     report = Counter() if report is None else report
