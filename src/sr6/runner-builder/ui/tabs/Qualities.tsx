@@ -232,7 +232,7 @@ export function QualitiesTab() {
               .map(q => ({
                 id: q.id,
                 name: q.name,
-                disabled: !qualityChoice(q.name) && b.qualities.some(x => x.id === q.id),
+                disabled: !q.multi && !qualityChoice(q.name) && b.qualities.some(x => x.id === q.id),
                 ...cardOf(c, 'qualities', q.id),
                 text:
                   data.levelOf(data.entry('qualities', q.id)) !== undefined

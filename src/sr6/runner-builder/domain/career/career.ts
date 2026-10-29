@@ -63,7 +63,7 @@ import {
   powerRefusal,
   runnerInfected,
 } from '../creation/infected'
-import { accessoryProblem, infectedTo, setPart, unfit } from '../creation/actions'
+import { accessoryProblem, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
 import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
 
@@ -118,7 +118,9 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       return
     case 'quality': {
       // (target: the lower level of its family it replaces, levels.ts)
-      const had = b.qualities.find(q => (a.target ? q.uid === a.target : q.id === a.line.id) && !q.free)
+      // (a repeatable one taken for a new choice (another note) is a new line: preview refused the same choice twice)
+      const note = (n?: string) => (n ?? '').trim().toLowerCase()
+      const had = b.qualities.find(q => (a.target ? q.uid === a.target : q.id === a.line.id && note(q.note) === note(a.line.note)) && !q.free)
       if (had && a.target) Object.assign(had, { id: a.line.id, level: a.line.level, ...(a.line.name ? { name: a.line.name } : {}) })
       else if (had) had.level += a.line.level
       else b.qualities.push(structuredClone(a.line))
@@ -445,7 +447,9 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // the lower level, at the difference in Karma
       const fam = data.family('qualities', a.line.id)
       if (fam) {
-        const cur = b.qualities.find(q => !q.free && data.family('qualities', q.id) === fam)
+        const multi = !!data.qualities[a.line.id]?.multi
+        if (multi && !a.target && sameChoice(b, data, a.line.id, a.line.note)) no('already-known')
+        const cur = multi ? b.qualities.find(q => q.uid === a.target && !q.free) : b.qualities.find(q => !q.free && data.family('qualities', q.id) === fam)
         const curLevel = cur ? (data.levelOf(data.entry('qualities', cur.id)) ?? 1) : 0
         const e = data.atLevel('qualities', a.line.id, data.levelOf(data.entry('qualities', a.line.id)) ?? curLevel + (a.line.level || 1)) ?? no('at-maximum')
         const v = data.qualities[e.id],
@@ -458,7 +462,9 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       }
       const v = data.qualities[a.line.id] ?? no('unknown-entry')
       if (v.karma === null) no('book-value')
-      const had = b.qualities.find(q => q.id === a.line.id && !q.free)
+      const had = b.qualities.find(
+        q => q.id === a.line.id && !q.free && (!v.multi || (q.note ?? '').trim().toLowerCase() === (a.line.note ?? '').trim().toLowerCase()),
+      )
       if (had && !v.perLevel) no('already-known')
       if (!(a.line.level >= 1)) no('below-one')
       if ((had?.level ?? 0) + a.line.level > (v.perLevel ? (v.maxLevel ?? Infinity) : 1)) no('at-maximum')

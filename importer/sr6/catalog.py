@@ -679,6 +679,8 @@ class Catalog:
         elif kind == "gear" and self.last_weapon and (sup := supply_aliases(name, self.last_weapon)):
             e["children"] += [("alias", {}, a) for a in sup]
             e["aliases"] += sup
+        if kind == "qualities" and _repeatable(text):
+            e["attrs"]["multi"] = "true"  # (its own text lets it be taken more than once)
         self.entries[kind].append(e)
         if text.strip():
             self.texts.append((kind, i, text.strip()))
@@ -1847,6 +1849,28 @@ def block_text(b, skip=()):
 
     lines = [f"**{k}:** {v}" for k, v in b.labels.items() if k not in skip and not printed(k, v)]
     return "\n".join(lines + ([b.text] if b.text else []))
+
+
+_REPEAT_NO = re.compile(
+    r"\b(?:only|cannot|can't|may not|not)\b[^.]{0,40}\b(?:once|more than once|twice)\b(?!\s+per\b)", re.I
+)  # (`may only choose this quality once`, `may not take this quality more than once`: the sentence says no)
+_REPEAT_YES = re.compile(
+    r"\b(?:multiple times|more than once|several times|(?:taken|take|purchased|purchase|chosen|choose)\s+"
+    r"(?:this quality\s+)?twice|for multiple \w+|each time you \w+|once per)\b",
+    re.I,
+)
+_REPEAT_VERB = re.compile(r"\b(?:tak|purchas|buy|bought|choos|chos|select)", re.I)
+
+
+def _repeatable(text):
+    """Whether a quality's own prose lets it be taken more than once (`may take this quality multiple times`, `can
+    purchase this quality for multiple contacts`, `select … each time you take this quality`, `purchased once per
+    attribute`, `quality may be taken twice`); a sentence that forbids it (`only … once`) does not count."""
+    flat = re.sub(r"(\w)-\s+([a-z])", r"\1\2", " ".join((text or "").split()))  # (a word hyphenated at a line end)
+    return any(
+        "quality" in s and _REPEAT_VERB.search(s) and _REPEAT_YES.search(s) and not _REPEAT_NO.search(s)
+        for s in re.split(r"(?<=[.!?])\s+|\s•\s", flat)
+    )
 
 
 def _karma_line(karma, text):

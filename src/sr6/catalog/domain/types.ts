@@ -52,6 +52,8 @@ export interface Sr6QualityView {
   perLevel: boolean
   /** none printed: no limit */
   maxLevel: number | null
+  /** its text lets it be taken more than once (each copy its own choice) */
+  multi?: boolean
   page: number
   category?: string
   /** never bought on its own, only granted by another quality's choice of its category (`Returned Soldier power`) */

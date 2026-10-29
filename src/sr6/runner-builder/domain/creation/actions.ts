@@ -412,7 +412,16 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // a family of levels (levels.ts): the level's own entry, its line at level 1; a level the family lacks is refused
       const fam = data.family('qualities', op.id)
       if (fam) {
-        const cur = b.qualities.find(x => !x.free && data.family('qualities', x.id) === fam)
+        // (a repeatable one, Matrix Attribute Advancement: one line per choice, each with its own level; the line is named by uid)
+        const multi = !!data.qualities[op.id]?.multi
+        const cur = multi
+          ? op.uid
+            ? b.qualities.find(x => x.uid === op.uid)
+            : undefined
+          : b.qualities.find(x => !x.free && data.family('qualities', x.id) === fam)
+        if (multi && !op.uid && sameChoice(b, data, op.id, op.note)) return no('duplicate-choice')
+        if (multi && op.uid && !cur) return no('not-taken')
+        if (multi && cur && op.note !== undefined && sameChoice(b, data, op.id, op.note, cur.uid)) return no('duplicate-choice')
         if (op.level !== undefined && op.level < 1) return no('below-one')
         const e = data.atLevel('qualities', op.id, op.level ?? data.levelOf(data.entry('qualities', op.id)) ?? Math.min(...fam.levels.keys()))
         if (!e) return no('max-level')
@@ -431,7 +440,15 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
           cur.level = 1
           cur.name = v.name
           if (op.karma !== undefined) cur.karma = op.karma
-        } else b.qualities.push({ uid: newId(), id: e.id, level: 1, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
+        } else
+          b.qualities.push({
+            uid: newId(),
+            id: e.id,
+            level: 1,
+            name: v.name,
+            ...(op.karma !== undefined ? { karma: op.karma } : {}),
+            ...(multi && op.note?.trim() ? { note: op.note.trim().slice(0, 200) } : {}),
+          })
         return OK
       }
       const v = data.qualities[op.id]
@@ -443,12 +460,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // owner's decision 2: Aptitude and Incompetent never on the same skill (exact opposites)
       if (op.note !== undefined && opposite(b, data, cr, op.id, op.note, taken?.uid)) return no('aptitude-incompetent')
       if (op.note !== undefined && taken) {
+        if (sameChoice(b, data, op.id, op.note, taken.uid)) return no('duplicate-choice')
         const t = op.note.trim().slice(0, 200)
         if (t) taken.note = t
         else delete taken.note
       }
       // (a quality naming its choice is taken again for another: CRB Hong Kong p. 71, "once per attribute")
-      const again = !op.uid && !!qualityChoice(v.name) && op.level === undefined && op.karma === undefined && op.note === undefined
+      const again = !op.uid && (!!v.multi || !!qualityChoice(v.name)) && op.level === undefined && op.karma === undefined && op.note === undefined
+      if (taken && again && sameChoice(b, data, op.id, undefined)) return no('duplicate-choice')
       if (taken && !again && op.level === undefined && op.karma === undefined) return op.note !== undefined ? OK : no('already-taken')
       const level = op.level ?? taken?.level ?? 1
       if (level !== 1 && !v.perLevel) return no('no-levels')
@@ -1183,6 +1202,16 @@ export const adeptBars = (b: Sr6Build, data: Sr6Data, id: string) =>
 
 /** Whether quality `id` with note `note` would name the skill an opposite quality names (Aptitude against Incompetent,
  *  aptitudeQuality and incompetentQuality; owner's decision 2, 2026-10-11). self: the line being changed. */
+/** Whether the runner already holds quality `id` (or a level of its family) for the same choice (`note`, none: an unnamed
+ *  copy), another line than `self`: a repeatable quality is taken again only for a different choice. */
+export function sameChoice(b: Sr6Build, data: Sr6Data, id: string, note: string | undefined, self?: string): boolean {
+  const fam = data.family('qualities', id),
+    key = (note ?? '').trim().toLowerCase()
+  return b.qualities.some(
+    x => !x.free && x.uid !== self && (x.id === id || (!!fam && data.family('qualities', x.id) === fam)) && (x.note ?? '').trim().toLowerCase() === key,
+  )
+}
+
 export function opposite(b: Sr6Build, data: Sr6Data, cr: CreationRules, id: string, note: string, self?: string): boolean {
   const apt = str(cr, 'aptitudeQuality'),
     inc = str(cr, 'incompetentQuality'),
