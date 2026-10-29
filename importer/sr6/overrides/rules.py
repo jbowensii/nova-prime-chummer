@@ -65,6 +65,7 @@ VALUE_ATTRS = {
     "spec",
     "social",
     "modonly",
+    "usage",  # (Commlink6's enhancement/carried, tools/cl6check/slotmap.py)
     "size",
     "ammoClass",
     "accel",

@@ -72,6 +72,7 @@ import { modsOf } from '../assets/vehiclemods'
 import { critterView } from '../assets/critters'
 import { gradeFits, gradeKnown, gradeName } from '../creation/grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from '../../../catalog/domain/categories'
+import { fit, mountSlots, requirementsOf, slotLabel, structureOf } from '../../../catalog/domain/structure'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from '../creation/infected'
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
@@ -1618,34 +1619,73 @@ const RULES: Rule[] = [
       return hits
     },
   },
-  // an accessory whose category is for another kind of host (categories.ts: a cyberlimb's armor on a weapon): fitted
-  // anyway, a prerequisite it lacks
+  // an accessory that doesn't fit its host (the one fit engine, structure.ts fit): no hook the host offers (with the
+  // GM's added slots, less its removed ones), too big for the hook, or no room left in a host that prints no capacity;
+  // one with no usage, by its category's host. A vehicle's weapons sit in mounts and its other lines with no usage
+  // are metered by modsOf (vehicle.mods)
   {
     code: 'catalog.accessoryHost',
     severity: 'error',
     tab: 'gear',
     check: c =>
       c.b.purchases.flatMap(x => {
-        // a vehicle's/drone's mods, weapons and autosofts are governed by modsOf (the vehicle.mods warning), not fitsHost
-        if (x.kind === 'vehicles') return []
         const he = entryOf(x, c.data)
-        return he
-          ? x.accessories.flatMap(a => {
-              const e = entryOf(a, c.data)
-              return e && fitsHost(c.data.categories, e, he) === false
-                ? [
-                    {
-                      path: `${PURCHASE_TAB[x.kind]}.${x.uid}`,
-                      message: `${nameOf(c, a)} is for ${hostsOf(c.data.categories, e).join(' or ')}, not ${nameOf(c, x)}.`,
-                      ...entryCite(e),
-                    },
-                  ]
-                : []
-            })
-          : []
+        if (!he) return []
+        const path = `${PURCHASE_TAB[x.kind]}.${x.uid}`,
+          vehicle = x.kind === 'vehicles',
+          rating = ratingOf(x, he),
+          extra = x.addedSlots ?? []
+        const lines = x.accessories.filter(a => !a.derived && !(vehicle && a.kind === 'weapons'))
+        const items = lines.map(a => ({ uid: a.uid, entry: entryOf(a, c.data), qty: a.qty }))
+        const roomed = !vehicle && capacityOf(he, rating) === null
+        const unplaced = roomed ? new Set(mountSlots(he, items, rating, extra).unplaced) : new Set<string>()
+        return lines.flatMap(a => {
+          const e = entryOf(a, c.data)
+          if (!e || e.attrs.usage === 'carried' || (vehicle && !structureOf(e).usages.length)) return [] // (carried: catalog.carried)
+          const f = fit(he, e, [], 1, extra)
+          const hit = (why: string) => [{ path, message: `${nameOf(c, a)} ${why}, not ${nameOf(c, x)}.`, ...entryCite(e) }]
+          if (f.ok === null) return fitsHost(c.data.categories, e, he, extra) === false ? hit(`is for ${hostsOf(c.data.categories, e).join(' or ')}`) : []
+          if (f.reason === 'hook') return hit(`goes into ${f.hooks.map(slotLabel).join(' or ')}`)
+          if (f.reason === 'size') return hit(`is too big for the ${f.hooks.map(slotLabel).join(' or ')} of`)
+          return unplaced.has(a.uid) ? hit(`has no room left in ${structureOf(e).fits.map(slotLabel).join(' or ')}`) : []
+        })
       }),
   },
-  // the accessories' bracketed capacity ([2], [Rating]) comes out of the host's capacity
+  // an item Commlink6 has as stand-alone (usage="carried": ammunition, a tripod drone, a harness) fitted to a host, as an
+  // older file may have it: kept, a warning (owner 2026-10-29); buy it on its own
+  {
+    code: 'catalog.carried',
+    severity: 'warning',
+    tab: 'gear',
+    check: c =>
+      c.b.purchases.flatMap(x =>
+        x.accessories.flatMap(a => {
+          const e = entryOf(a, c.data)
+          return e?.attrs.usage === 'carried'
+            ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, a)} is carried on its own, not fitted to ${nameOf(c, x)}.`, ...entryCite(e) }]
+            : []
+        }),
+      ),
+  },
+  // an accessory whose host fails one of its requirements (structure.ts requirementsOf: Commlink6's DATA_ITEM tests and
+  // selreq groups; a holster's weapon size, a silencer's weapon type): a warning for now (owner ruling 5, 2026-10-29),
+  // to become an error once the owner has reviewed it on real runners
+  {
+    code: 'catalog.requirement',
+    severity: 'warning',
+    tab: 'gear',
+    check: c =>
+      c.b.purchases.flatMap(x => {
+        const he = entryOf(x, c.data)
+        return x.accessories.flatMap(a => {
+          const e = entryOf(a, c.data)
+          const failed = e && he ? requirementsOf(e, he).failed : []
+          return failed.length
+            ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, a)} needs ${failed.join('; ')} (on ${nameOf(c, x)}).`, ...entryCite(e) }]
+            : []
+        })
+      }),
+  }, // the accessories' bracketed capacity ([2], [Rating]) comes out of the host's capacity
   {
     code: 'catalog.capacity',
     severity: 'error',

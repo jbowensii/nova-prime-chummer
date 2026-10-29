@@ -6,7 +6,7 @@
 import type { Sr6Entry, Sr6Kind } from '../../formats/domain/types'
 import { normName } from './names'
 import { rated } from './values'
-import { structureOf } from './structure'
+import { enhancementFits, fit, fitsOnly, structureOf, type Slot } from './structure'
 
 /** How a catalog entry is named in lists, pickers, Review, the ledger, sheets and exports: its category first when its
  *  own name needs it. */
@@ -35,29 +35,6 @@ export const catKey = (s: string | undefined) =>
     .map(stem)
     .join(' ')
 
-/** A host named by a kind's or an augmentation type's own word (`Weapon accessories` fit every weapon). */
-const KIND_WORDS: Record<string, Sr6Kind> = {
-  weapon: 'weapons',
-  armor: 'armor',
-  armour: 'armor',
-  vehicle: 'vehicles',
-  drone: 'vehicles',
-  device: 'electronics',
-  electronic: 'electronics',
-  commlink: 'electronics',
-  cyberdeck: 'electronics',
-  augmentation: 'augmentations',
-  implant: 'augmentations',
-  cyberware: 'augmentations',
-  bioware: 'augmentations',
-  geneware: 'augmentations',
-  nanoware: 'augmentations',
-  gear: 'gear',
-  program: 'programs',
-  ammunition: 'ammotypes',
-}
-const TYPE_WORDS = new Set(['cyberware', 'bioware', 'geneware', 'nanoware'])
-
 /** The categories' records by `<kind>|<category key>`, the latest loaded last (a source's own first, see categoryOf). */
 export function categoryIndex(records: Iterable<Sr6Entry>): Map<string, Sr6Entry[]> {
   const out = new Map<string, Sr6Entry[]>()
@@ -81,11 +58,43 @@ export const hostsOf = (index: Map<string, Sr6Entry[]>, acc: Sr6Entry): string[]
     .map(s => s.trim())
     .filter(Boolean)
 
-/** Whether an accessory fits a host item: its category's `fits` names the host's exact category, or the host's kind or
- *  augmentation type by its own word. null when the accessory's category names no host (nothing to check). */
-export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr6Entry): boolean | null {
-  const slots = structureOf(acc).fits
-  if (slots.length) return slots.some(id => structureOf(host).slots.some(s => s.id === id))
+/** A host named by a kind's or an augmentation type's own word (`Weapon accessories` fit every weapon): kept only for an
+ *  entry Commlink6 has no record of (no `usage`, no `<fits>`: book-only; owner ruling 2026-10-29). */
+const KIND_WORDS: Record<string, Sr6Kind> = {
+  weapon: 'weapons',
+  armor: 'armor',
+  armour: 'armor',
+  vehicle: 'vehicles',
+  drone: 'vehicles',
+  device: 'electronics',
+  electronic: 'electronics',
+  commlink: 'electronics',
+  cyberdeck: 'electronics',
+  augmentation: 'augmentations',
+  implant: 'augmentations',
+  cyberware: 'augmentations',
+  bioware: 'augmentations',
+  geneware: 'augmentations',
+  nanoware: 'augmentations',
+  gear: 'gear',
+  program: 'programs',
+  ammunition: 'ammotypes',
+}
+const TYPE_WORDS = new Set(['cyberware', 'bioware', 'geneware', 'nanoware'])
+
+/** Whether an accessory fits a host item. One that declares usages (`<fits>`) fits by hook alone (fit plan I1: the host,
+ *  with the instance's `extra` hooks less `removed`, offers one of them). A Commlink6 item enhancement (`usage=
+ *  "enhancement"`) fits a host its requirements' item type/subtype accept; a Commlink6 stand-alone item (`usage=
+ *  "carried"`) fits none. Any other fits a host of the exact category its category record names, or, when Commlink6 has
+ *  no record of it (book-only), of the kind its word names. null when it declares nothing (nothing to check). Owner
+ *  rulings 2026-10-29. */
+export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr6Entry, extra: Slot[] = [], removed: string[] = []): boolean | null {
+  if (structureOf(acc).usages.length) {
+    const f = fit(host, acc, [], 1, extra, removed)
+    return f.ok !== false || f.reason === 'room'
+  }
+  if (acc.attrs.usage === 'enhancement') return enhancementFits(acc, host)
+  if (acc.attrs.usage === 'carried') return false
   const hosts = hostsOf(index, acc)
   if (!hosts.length) return null
   return hosts.some(h => {
@@ -93,29 +102,29 @@ export function fitsHost(index: Map<string, Sr6Entry[]>, acc: Sr6Entry, host: Sr
     return k === catKey(host.attrs.category) || (KIND_WORDS[k] === host.kind && (!TYPE_WORDS.has(k) || host.attrs.type === k))
   })
 }
-
 /** Whether the picker offers `e` as an accessory of `host`. An entry that fits the host (fitsHost) is offered. One that
- *  declares what it fits (a `<fits>` slot) or a category, and does not fit, never is: it belongs to other hosts (a
- *  weapon's flashlight on a pair of cyberears). Only an entry that declares neither (a pre-categories import) falls
- *  through, by `filter`, and not to a host whose own accessories are slot-based. With no `filter` (a line that takes any
- *  gear, a vehicle's) the entry is offered when it is no accessory (`isAccessory`) and declares no fit. */
+ *  is fitted only (an embedded usage of its own: fitsOnly) or has a category, and does not fit, never is: it belongs to
+ *  other hosts (a weapon's flashlight on a pair of cyberears). Only an entry that declares neither (a pre-categories
+ *  import) falls through, by `filter`, and not to a host whose own accessories are slot-based. With no `filter` (a line
+ *  that takes any gear, a vehicle's) the entry is offered when it is no accessory (`isAccessory`) and is not fitted only. */
 export function offeredOn(
   index: Map<string, Sr6Entry[]>,
   e: Sr6Entry,
   host: Sr6Entry | undefined,
   filter: ((e: Sr6Entry) => boolean) | undefined,
   isAccessory: (e: Sr6Entry) => boolean,
+  extra: Slot[] = [],
+  removed: string[] = [],
 ): boolean {
-  if (host && fitsHost(index, e, host) === true) return true
+  if (host && fitsHost(index, e, host, extra, removed) === true) return true
   const s = structureOf(e)
   // a mod-only item (CL6 modonly="true": a spare clip, a core vehicle mod) exists only embedded in a host — never
   // offered standalone, only through the fitsHost path above.
   if (s.modOnly) return false
-  const declared = s.fits.length > 0
+  const declared = fitsOnly(s)
   if (!filter) return !isAccessory(e) && !declared
   return !declared && !categoryOf(index, e) && !(host && structureOf(host).slots.length > 0) && filter(e)
 }
-
 /** The capacity a host item has at its rating (`8`, `Rating × 2`), null when it prints none or the app can't read it. */
 export function capacityOf(e: Sr6Entry | undefined, rating = 1): number | null {
   const c = e?.attrs.capacity
@@ -140,8 +149,9 @@ export function capacityUsed(e: Sr6Entry | undefined, rating = 1): number {
 export const isAmmoType = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !isMaterial(e) && !/^AMMUNITION\//i.test(e.attrs.class ?? '')
 
 /** A base ammunition line (CRB p. 261: `Ammo by weapon type`, priced per 10 rounds): a gear entry an ammunition type is fitted to. */
-/** Designer fashion (owner ruling 2026-10-25): any armor entry with a `fashion` slot. */
-export const isDesignerFashion = (e?: Sr6Entry) => e?.kind === 'armor' && structureOf(e).slots.some(s => s.id === 'fashion')
+/** Designer fashion (owner ruling 2026-10-25): any armor entry with a `fashion` slot of its own data. The FASHION hook
+ *  Commlink6's code gives every body armor with a Social rating (rule F) is not one. */
+export const isDesignerFashion = (e?: Sr6Entry) => e?.kind === 'armor' && structureOf(e).slots.some(s => s.id === 'fashion' && s.rule !== 'F')
 export const isAmmoGear = (e?: Sr6Entry) => e?.kind === 'gear' && /ammo by weapon/i.test(e.attrs.category ?? '')
 
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other

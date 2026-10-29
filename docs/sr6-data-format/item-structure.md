@@ -18,6 +18,29 @@ importer reads none of it from the text). Children of any entry (`common.xsd` ta
   of the weapon subtypes it fits: a weapon it is fitted to is a revolver when its ammunition prints `(cy)` (a cylinder), a
   shotgun when its category is Shotgun. The row is filed under weapons, the kind of our entry (the id is an implant weapon's too). cl6check keeps ours for its `requires` family (value_keep.json).
 - `src/sr6/catalog/domain/structure.ts` `structureOf(entry)` reads them all.
+
+**Fit (plan docs/analysis/sr6-item-classification-fit.md, Stages 1-4, 2026-10-29).** Hooks, usages and host
+requirements are now applied:
+- `<slot id value unit maxSize rule remove>`: `unit` is `capacity` (fitted items' costs add up to `value`; 99 or more
+  is no limit) or `one` (one item per hook); no unit is an old catalog (one item per unit of value). `maxSize` caps one
+  item's cost (a small drone's half hardpoint). `rule` S, V or F: made by the importer the way Commlink6's code does it
+  (importer/sr6/hooks.py: standard hooks by class, vehicle capacities from Body/Seats/Pilot with the data's HOOK
+  values added, fashion on body armor with a Social rating); a `rule="F"` fashion hook is not designer fashion.
+  `remove="true"`: a hook Commlink6 takes away (the app reads none).
+- `<fits slot cost mode rule>`: cost in the hook's capacity (none: 1), mode `embedded`, `implanted`, `carried` or
+  `virtual`; `rule` W or I when the importer synthesized it (a weapon's vehicle-mount and implant usages, by its
+  size and subtype). An item with an embedded usage of its own (no rule) is fitted only, never bought on its own.
+- A weapon with no WEAPON_SIZE gets one: `sizeFrom="class"` by Commlink6's own subtype rule, `sizeFrom="category"` a
+  guess from its printed category for one with no class (owner ruling 3: listed for review).
+- `<prerequisite … group negate apply>`: group 0 all must hold, each other group (a Commlink6 `<selreq>`) any one.
+  The app tests against the host what Commlink6 tests at embed time (`structure.ts requirementsOf`): `apply="DATA_ITEM"`
+  tests, and a selreq group whose members all carry that `apply` (a member with none holds by itself). A holster's
+  gun-type group is the one exception, always tested (owner ruling 6). A failure is Review's `catalog.requirement`
+  warning, and the accessory picker lists the entry greyed with the reason.
+- One fit test (`structure.ts fit`) serves the accessory picker, the add-time guard and Review: the host's hooks plus
+  the instance's added slots less its removed ones, the size cap, then room (alternatives placed by matching).
+- Where they come from: `python -m tools.cl6check.slotmap <runs>` writes each matched entry's data hooks, usages and
+  grouped requirements (`"gen": "slot"` rows); `importer/sr6/classes.py associations` adds the code's.
 Where they come from: `python -m tools.cl6check.familymap <cl6-diffs.csv>` writes the id rows `{"id", "set", "kids", "gen":
 "family"}` of the per-book tables from the Commlink6 record of each entry with a difference in that family; applied by
 `overrides/` after the import (a child the entry already has is not added twice). An entry several Commlink6 records match

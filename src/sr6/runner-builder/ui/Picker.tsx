@@ -1,6 +1,6 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
 import type { Sr6Build } from '../../formats/domain/character'
-import { mountSlots, slotLabel } from '../../catalog/domain/structure'
+import { mountSlots, requirementsOf, slotLabel } from '../../catalog/domain/structure'
 import { modsOf } from '../domain/assets/vehiclemods'
 import { ratingOf } from '../domain/creation/purchases'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
@@ -117,6 +117,7 @@ export function CatalogPicker({
   filter,
   grades,
   note,
+  blocked,
   onAdd,
   from,
   critter,
@@ -128,6 +129,8 @@ export function CatalogPicker({
   filter?: (e: Sr6Entry) => boolean
   grades?: boolean
   note?: (e: Sr6Entry) => string | undefined
+  /** why an entry can't be picked here (a host requirement it fails): listed greyed with the reason, owner ruling 4 */
+  blocked?: (e: Sr6Entry) => string | undefined
   onAdd: (p: PickedItem) => string | null
   /** the catalog and rules outside a runner's editor (the Designer's) */
   from?: Pick<Sr6Ctx, 'c' | 'cr' | 'data'>
@@ -267,6 +270,7 @@ export function CatalogPicker({
                 p.essence && `Essence ${p.essence}`,
                 e.kind === 'armor' && social(e.attrs.social),
                 note?.(e),
+                blocked?.(e),
               ]
                 .filter(Boolean)
                 .join(', '),
@@ -280,6 +284,7 @@ export function CatalogPicker({
               ),
               search: `${entrySearch(e)} ${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
               price: formula ?? (p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}`),
+              ...(blocked?.(e) ? { disabled: true } : {}),
             }
           })}
         />
@@ -474,7 +479,8 @@ export function Accessories({
   const he = entryOf(host, data)
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
-  const slots = mountSlots(he, items, ratingOf(host, he))
+  const slots = mountSlots(he, items, ratingOf(host, he), host.addedSlots)
+  for (const [id, left] of slots.remaining) if (left === Infinity) slots.remaining.delete(id) // (a hook with no limit: nothing to count)
   // a vehicle's factory parts take their hooks too (vehiclemods.ts usedByHook: the figure the guard and Review use)
   if (host.kind === 'vehicles')
     for (const [id, used] of Object.entries(modsOf(host, data).usedByHook))
@@ -483,7 +489,12 @@ export function Accessories({
   const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
   // only accessories that fit this host are offered (its category's `fits` names the host, or it carries a matching slot);
   // a line taking any gear (a vehicle's) takes no accessory; else an entry with no category record (a pre-categories import) by `filter`
-  const fits = (e: Sr6Entry) => (critter || ammo ? !filter || filter(e) : offeredOn(data.categories, e, he, filter, isAccessory))
+  const fits = (e: Sr6Entry) => (critter || ammo ? !filter || filter(e) : offeredOn(data.categories, e, he, filter, isAccessory, host.addedSlots))
+  // one that fits by hook but fails a host requirement (a holster for a bigger gun): shown greyed with the reason
+  const blocked = (e: Sr6Entry) => {
+    const failed = critter || ammo ? [] : requirementsOf(e, he).failed
+    return failed.length ? `needs ${failed.join('; ')}` : undefined
+  }
   return (
     <span className="row">
       {remaining !== null && <span className="muted">Capacity remaining: {n(remaining)}</span>}
@@ -569,6 +580,7 @@ export function Accessories({
         kinds={kinds}
         critter={critter}
         filter={fits}
+        blocked={blocked}
         onAdd={p => act({ op: 'accessory', host: host.uid, kind: p.e.kind as PurchaseKind, id: p.e.id, rating: p.rating })}
       />
     </span>

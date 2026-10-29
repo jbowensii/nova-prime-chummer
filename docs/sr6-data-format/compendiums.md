@@ -59,7 +59,7 @@ priority skill points; step four (CRB p. 66) spends the customization karma on a
 costs `advance.expertise` karma (5) at creation too, unless `skillPointsExpertise` gives it skill points. Its prerequisites
 are the two errors above.
 | `gear.grade` | `<tab>.<line uid>` | an augmentation type the grade comes in | CRB p. 283, or the catalog grade's page |
-| `catalog.accessoryHost` | `<tab>.<host uid>` | a host the accessory's category fits | the accessory's page |
+| `catalog.accessoryHost` | `<tab>.<host uid>` | a host offering a hook the accessory fits (with room, not too big); one with no usage, a host of the category it fits (structure.ts `fit`) | the accessory's page |
 | `lifepath.requires` | `method.<module id>` | the magic kind an adult life module is for | the module's page |
 | `quality.granted` | `qualities.<uid>` | a quality offering a granted-only quality's list | the quality's page |
 

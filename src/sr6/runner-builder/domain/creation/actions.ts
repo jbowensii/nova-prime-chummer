@@ -1,5 +1,5 @@
 import { capacityRemaining, capacityUsed, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
-import { mountSlots } from '../../../catalog/domain/structure'
+import { fit } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
 import { activeRules } from './rule-markers'
 // Build actions, the editor's mutators (a port of SR6 Forge's ChargenEngine setters and spend). Each one changes the
@@ -1290,8 +1290,9 @@ export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6
   // Only a slot-only host (no Capacity: weapon mounts, vehicle hardpoints) is limited by its mount slots themselves. A
   // vehicle is governed by modsOf below (its declared-or-Body mod-slot budget), not the generic mount-slot placement.
   if (remaining === null && host.kind !== 'vehicles') {
-    const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he), host.addedSlots)
-    if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he), host.addedSlots).unplaced.length) return 'No compatible mount slot remaining.'
+    // (the one fit engine, as Review's catalog.accessoryHost and the picker)
+    const f = e ? fit(he, e, items, ratingOf(host, he), host.addedSlots) : undefined
+    if (f?.ok === false) return f.reason === 'size' ? 'Too big for this mount.' : 'No compatible mount slot remaining.'
   }
   if (host.kind !== 'vehicles') return
   if (line.kind === 'weapons') {

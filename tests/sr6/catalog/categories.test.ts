@@ -60,7 +60,7 @@ test('a bare part shows its category; the printed name stays the name; search fi
   expect(entryLabel(data.entry('augmentations', 'crb.glow-eyes')!)).toBe('Glow Eyes') // a named item: as printed
 })
 
-test('an accessory fits its host category exactly, or its kind by the kind’s word', () => {
+test('an accessory fits its host category exactly, or a book-only one its kind by the kind’s word', () => {
   const { data } = setup()
   const e = (k: Parameters<typeof data.entry>[0], id: string) => data.entry(k, id)!
   const limb = e('augmentations', 'crb.limb-synthetic'),
@@ -69,7 +69,27 @@ test('an accessory fits its host category exactly, or its kind by the kind’s w
   expect(fitsHost(data.categories, e('augmentations', 'crb.plating'), limb)).toBe(true)
   expect(fitsHost(data.categories, e('augmentations', 'crb.plating'), eyes)).toBe(false)
   expect(fitsHost(data.categories, e('augmentations', 'crb.glare-filter'), limb)).toBe(false)
-  expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), gun)).toBe(true) // fits "Weapon": every weapon
+  expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), gun)).toBe(true) // fits "Weapon": book-only (no Commlink6 usage), so every weapon
+  // (an entry Commlink6 knows: an item enhancement by its requirements, a stand-alone item never)
+  const scope = e('gear', 'crb.zap-scope')
+  const as = (attrs: Record<string, string>, parts = scope.parts) => ({ ...scope, attrs: { ...scope.attrs, ...attrs }, parts })
+  const rifleOnly = [
+    { tag: 'prerequisite', attrs: { kind: 'valuereq', type: 'ITEM_ATTRIBUTE', ref: 'ITEMTYPE', value: 'WEAPON_FIREARMS', group: '1' }, text: '' },
+  ]
+  expect(fitsHost(data.categories, as({ usage: 'enhancement' }), gun)).toBe(true)
+  expect(
+    fitsHost(data.categories, as({ usage: 'enhancement' }, [...scope.parts, ...rifleOnly] as typeof scope.parts), {
+      ...gun,
+      attrs: { ...gun.attrs, class: 'WEAPON_CLOSE_COMBAT/BLADES' },
+    }),
+  ).toBe(false)
+  expect(
+    fitsHost(data.categories, as({ usage: 'enhancement' }, [...scope.parts, ...rifleOnly] as typeof scope.parts), {
+      ...gun,
+      attrs: { ...gun.attrs, class: 'WEAPON_FIREARMS/SHOTGUNS' },
+    }),
+  ).toBe(true)
+  expect(fitsHost(data.categories, as({ usage: 'carried' }), gun)).toBe(false)
   expect(fitsHost(data.categories, e('gear', 'crb.zap-scope'), limb)).toBe(false)
   expect(fitsHost(data.categories, eyes, limb)).toBeNull() // no accessory: nothing to check
   expect([capacityOf(limb), capacityUsed(e('augmentations', 'crb.plating'), 3), capacityUsed(e('augmentations', 'crb.glare-filter'))]).toEqual([6, 3, 2])
@@ -108,33 +128,46 @@ test('another host’s accessory is fitted, an error a GM may approve; Review fl
   expect(codes().find(x => x.code === 'catalog.accessoryHost')?.approved).toBe(true)
 })
 
-test('an autosoft (or any non-fitting accessory) on a vehicle/drone does not trip catalog.accessoryHost (vehicle.mods governs)', () => {
+test('a vehicle’s accessories go through the same fit engine: an autosoft in the drone’s software hook fits, a mod for a hook it lacks does not', () => {
   const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
   const extra = [
     {
       file: 'zz-drone',
-      xml: `<sr6:data ${NS} kind="vehicles" version="1"><vehicle id="t.drone" source="CRB" page="1" category="Small drone" body="3" pilot="2" avail="2" cost="2000"><name>Test Drone</name></vehicle></sr6:data>`,
+      xml: `<sr6:data ${NS} kind="vehicles" version="1"><vehicle id="t.drone" source="CRB" page="1" category="Small drone" body="3" pilot="2" avail="2" cost="2000"><name>Test Drone</name><slot id="software" value="1" unit="capacity"/><slot id="vehicle-chassis" value="3" unit="capacity"/></vehicle></sr6:data>`,
     },
-    // an autosoft-style accessory that fits a slot the drone does not declare → fitsHost is false
     {
       file: 'zz-autosoft',
-      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="autosofts"/></gear></sr6:data>`,
+      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="software" mode="embedded"/></gear><gear id="t.tripod" source="CRB" page="1" category="Tripod" usage="carried" avail="2" cost="100"><name>Test Tripod</name></gear><gear id="t.tyres" source="CRB" page="1" category="Tyres" avail="4" cost="500"><name>Test Tyres</name><fits slot="vehicle-tires" mode="embedded"/></gear></sr6:data>`,
     },
   ]
   const data = sr6Data(fixtureCatalog((_, x) => x, extra))
   const { cr } = made()
-  expect(fitsHost(data.categories, data.entry('gear', 't.autosoft')!, data.entry('vehicles', 't.drone')!)).toBe(false)
+  expect(fitsHost(data.categories, data.entry('gear', 't.autosoft')!, data.entry('vehicles', 't.drone')!)).toBe(true)
+  expect(fitsHost(data.categories, data.entry('gear', 't.tyres')!, data.entry('vehicles', 't.drone')!)).toBe(false)
   const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
   ch.build = buildOf('priority', { letters: 'ACDBE', metatype: STONE })
   const b = ch.build
   const act = (op: Parameters<typeof apply>[1]) => apply(b, op, data, cr)
   act({ op: 'purchase', kind: 'vehicles', id: 't.drone' })
-  // force the autosoft on, as an imported file would carry it
   b.purchases[0].accessories.push({ uid: 'a1', kind: 'gear', id: 't.autosoft', name: 'Test Autosoft', accessories: [] })
-  // fitsHost is false, but a vehicle's accessories are governed by the vehicle.mods warning, not this error
+  expect(validateSr6(data, cr, ch).map(v => v.code)).not.toContain('catalog.accessoryHost')
+  // tyres on a drone (no tyre hook: Commlink6 gives drones none), as an imported file would carry them
+  b.purchases[0].accessories.push({ uid: 'a2', kind: 'gear', id: 't.tyres', name: 'Test Tyres', accessories: [] })
+  expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.accessoryHost')?.message).toBe('Test Tyres goes into vehicle-tires, not Test Drone.')
+  // a stand-alone item an older file has fitted: kept, a warning, not the fit error
+  b.purchases[0].accessories.push({ uid: 'a3', kind: 'gear', id: 't.tripod', name: 'Test Tripod', accessories: [] })
+  const v = validateSr6(data, cr, ch)
+  expect(v.find(x => x.code === 'catalog.carried')).toMatchObject({
+    severity: 'warning',
+    message: 'Test Tripod is carried on its own, not fitted to Test Drone.',
+  })
+  expect(v.filter(x => x.code === 'catalog.accessoryHost')).toHaveLength(1) // (the tyres only)
+  expect(b.purchases[0].accessories).toHaveLength(3)
+  b.purchases[0].accessories.pop()
+  // a GM's added slot makes it fit
+  b.purchases[0].addedSlots = [{ id: 'vehicle-tires', value: '1' }]
   expect(validateSr6(data, cr, ch).map(v => v.code)).not.toContain('catalog.accessoryHost')
 })
-
 test('an accessory’s bonuses are its host’s: the limb’s own STR and armor change, the runner’s attributes don’t', () => {
   const { b, data, cr, ch, act } = setup()
   act({ op: 'purchase', kind: 'augmentations', id: 'crb.limb-synthetic' })
