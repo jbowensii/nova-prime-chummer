@@ -1,5 +1,20 @@
 # Release notes
 
+## 0.32.1 — 2026-10-29
+
+Locks in the powertrain propulsion types for the 30 vehicles that 0.32.0 had to guess — all owner-verified against
+the rulebooks, so their "needs review" flags are cleared.
+
+**Requires a full re-import** (Settings → Re-import all books) for the changes to appear. A re-import resets the
+creation-rules table, so any GM creation toggles you changed will revert and need re-applying.
+
+**Shadowrun 6 — powertrains**
+- **Samsung Jind-O (and Sporting breed) → Walker.** The Jind-O pet drones are anthro (legged) drones, so they get a
+  Walker powertrain instead of Wheeled.
+- **The other 28 guesses confirmed:** the Kwonsham Dream Genie is a wheeled drone, the Buzzard Transit is a van
+  (Wheeled), the EVO/Eden craft are spacecraft (Vectored Thrust), and the special-purpose vehicles are Wheeled — all
+  verified and no longer flagged for review.
+
 ## 0.32.0 — 2026-10-29
 
 Finishes the vehicle-parts work: every factory part Commlink6 models now lands on the right vehicle, and the
