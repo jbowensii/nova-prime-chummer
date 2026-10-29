@@ -200,3 +200,16 @@ test('a GM approves the bought design on Review; one bought from a GM’s (appro
   gm.design!.approved = true
   expect(boughtDesign(gm, data, cr).snapshot!.attrs.approved).toBe('true')
 })
+
+test('Create a mod… adds a named custom mod with its own price and slots', async () => {
+  const blank = blankSr6('priority', 'd1', '2026-10-16T00:00:00.000Z')
+  blank.design = { kind: 'vehicle', options: [], mods: [] }
+  stubFetch([fakeStore('sr6/designs', { d1: sr6ToXml(blank) }).route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  await click(button('Create a mod…'))
+  await change(field('Mod name'), 'Home Brew')
+  await change(field('Mod price ¥'), '1500')
+  await change(field('Mod slots'), '2')
+  await click(button('Save mod'))
+  expect(pageText()).toMatch(/Home Brew · 2 slots, 4 DP · 1,500¥/)
+})
