@@ -726,5 +726,6 @@
   {"cl6": "Addiction", "kind": "qualities", "id": "addiction-substance-1-to-6", "set": {"multi": "true"}, "note": "repeatable (a different choice each time); book p. 74 prints no repeat statement; CL6 multi, owner-ruled 2026-10-29", "gen": "owner"},
   {"cl6": "Allergy", "kind": "qualities", "id": "allergy-substance-severity", "set": {"multi": "true"}, "note": "repeatable (a different choice each time); book p. 74 prints no repeat statement; CL6 multi, owner-ruled 2026-10-29", "gen": "owner"},
   {"cl6": "Impaired", "kind": "qualities", "id": "impaired-attribute", "set": {"multi": "true"}, "note": "repeatable (a different choice each time); book p. 76 prints no repeat statement; CL6 multi, owner-ruled 2026-10-29", "gen": "owner"},
-  {"cl6": "Prejudiced", "kind": "qualities", "id": "prejudiced-group", "set": {"multi": "true"}, "note": "repeatable (a different choice each time); book p. 78 prints no repeat statement; CL6 multi, owner-ruled 2026-10-29", "gen": "owner"}
+  {"cl6": "Prejudiced", "kind": "qualities", "id": "prejudiced-group", "set": {"multi": "true"}, "note": "repeatable (a different choice each time); book p. 78 prints no repeat statement; CL6 multi, owner-ruled 2026-10-29", "gen": "owner"},
+  {"cl6": "Exceptional Attribute", "kind": "qualities", "id": "exceptional-attribute", "set": {"multi": "true"}, "note": "repeatable, a different attribute each time (book p. 71 says once = once per attribute); CL6 multi, owner-ruled 2026-10-29", "gen": "owner"}
 ]
