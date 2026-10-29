@@ -681,8 +681,6 @@ class Catalog:
             e["aliases"] += sup
         if kind == "qualities" and _repeatable(text):
             e["attrs"]["multi"] = "true"  # (its own text lets it be taken more than once)
-        elif kind == "qualities" and _once(text):
-            e["attrs"]["multi"] = "false"  # (its own text says only once: the book rules it over Commlink6)
         self.entries[kind].append(e)
         if text.strip():
             self.texts.append((kind, i, text.strip()))
@@ -1868,19 +1866,11 @@ def _repeatable(text):
     """Whether a quality's own prose lets it be taken more than once (`may take this quality multiple times`, `can
     purchase this quality for multiple contacts`, `select … each time you take this quality`, `purchased once per
     attribute`, `quality may be taken twice`); a sentence that forbids it (`only … once`) does not count."""
-    return any(_REPEAT_YES.search(s) and not _REPEAT_NO.search(s) for s in _quality_sentences(text))
-
-
-def _once(text):
-    """Whether a quality's own prose says it can be taken only once (`You may only choose this quality once`): the book
-    rules it, over Commlink6's multi flag (owner ruling 2026-10-29)."""
-    return any(_REPEAT_NO.search(s) for s in _quality_sentences(text))
-
-
-def _quality_sentences(text):
-    """The sentences of a quality's prose that speak of taking the quality."""
     flat = re.sub(r"(\w)-\s+([a-z])", r"\1\2", " ".join((text or "").split()))  # (a word hyphenated at a line end)
-    return [s for s in re.split(r"(?<=[.!?])\s+|\s•\s", flat) if "quality" in s and _REPEAT_VERB.search(s)]
+    return any(
+        "quality" in s and _REPEAT_VERB.search(s) and _REPEAT_YES.search(s) and not _REPEAT_NO.search(s)
+        for s in re.split(r"(?<=[.!?])\s+|\s•\s", flat)
+    )
 
 
 def _karma_line(karma, text):

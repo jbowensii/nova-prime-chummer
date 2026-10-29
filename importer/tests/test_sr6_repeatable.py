@@ -2,7 +2,7 @@
 
 import unittest
 
-from importer.sr6.catalog import _once, _repeatable
+from importer.sr6.catalog import _repeatable
 
 
 class RepeatableTest(unittest.TestCase):
@@ -26,12 +26,6 @@ class RepeatableTest(unittest.TestCase):
             "",
         ):
             self.assertFalse(_repeatable(text), text)
-
-    def test_prose_that_says_only_once(self):
-        self.assertTrue(_once("You may only choose this quality once."))
-        self.assertTrue(_once("This quality can only be purchased once."))
-        self.assertFalse(_once("This quality can only be purchased once per attribute."))
-        self.assertFalse(_once("You may take this quality multiple times."))
 
 
 if __name__ == "__main__":
