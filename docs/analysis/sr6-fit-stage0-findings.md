@@ -224,3 +224,116 @@ Classes read: `GetModificationsStep`, `ApplyStockModificationsStep`, `CopyRequir
   `DATA_ITEM` are kept; `PARENT` and others are dropped. At embed time only `DATA_ITEM` tests and `selreq` groups are
   evaluated (above). Our app mirrors exactly that: it evaluates `apply="DATA_ITEM"` tests and selreq groups against the
   host, and treats the rest as not a fit gate.
+
+## Category-only accessories (owner ruling 2026-10-29, Q2: keep the exact category match)
+
+After Stages 1-4, 94 entries declare no usage (`<fits>`) and fit a host only through their category record's
+`fits` naming the host's exact category (`categories.ts fitsHost`). No hook was synthesized for them. **85 of them
+lost the old kind-word match** (`KIND_WORDS`, removed: `Weapon` no longer fits every weapon, `Vehicle` every
+vehicle). Those now fit only a host whose own category is literally that name. Fix them one at a time as they turn up
+(a Commlink6 usage, or a corrected category record). Measured on the fresh import of 2026-10-29 (78 books).
+
+| Entry | Kind | Name | Category | Category fits | Lost kind-word match |
+|---|---|---|---|---|---|
+| `bn.silver-bullets-copper` | ammotypes | Silver Bullets (copper) | Ammunition accessory | Ammunition | yes |
+| `bn.silver-bullets-silver` | ammotypes | Silver Bullets (silver) | Ammunition accessory | Ammunition | yes |
+| `bn.silver-bullets-gold` | ammotypes | Silver Bullets (gold) | Ammunition accessory | Ammunition | yes |
+| `bs.enhanced-movement` | augmentations | Enhanced Movement | Critter cyberlimb accessory | Critter cyberlimb |  |
+| `bs.gecko-pads` | augmentations | Gecko Pads | Critter cyberlimb accessory | Critter cyberlimb |  |
+| `bs.agility-increase` | augmentations | Agility Increase | Critter cyberlimb accessory | Critter cyberlimb |  |
+| `bs.armor-increase` | augmentations | Armor Increase | Critter cyberlimb accessory | Critter cyberlimb |  |
+| `bs.strength-increase` | augmentations | Strength Increase | Critter cyberlimb accessory | Critter cyberlimb |  |
+| `bs.hydraulic-jacks` | augmentations | Hydraulic Jacks | Critter cyberlimb accessory | Critter cyberlimb |  |
+| `crb.gyromount` | augmentations | Gyromount | Cyberlimb accessory | Cyberlimb |  |
+| `crb.cyberlimb-accessories.smuggling-compartment` | augmentations | Smuggling compartment | Cyberlimb accessory | Cyberlimb |  |
+| `crb.armor` | augmentations | Armor | Cyberlimb accessory | Cyberlimb |  |
+| `crb.manual-operation` | gear | Manual operation | Vehicle modification | Vehicle | yes |
+| `crb.smart-firing-platform` | weapons | Smart firing platform | Weapon accessory | Weapon | yes |
+| `da.weapon-power-supplies-power-clip` | gear | Weapon Power Supplies (Power Clip) | New weapon mod | Weapon | yes |
+| `da.weapon-power-supplies-satchel-power-pack` | gear | Weapon Power Supplies (Satchel Power Pack) | New weapon mod | Weapon | yes |
+| `da.weapon-power-supplies-power-backpack` | gear | Weapon Power Supplies (Power Backpack) | New weapon mod | Weapon | yes |
+| `da.weapon-power-supplies-power-bank` | gear | Weapon Power Supplies (Power Bank) | New weapon mod | Weapon | yes |
+| `da.ergonomic-optimization` | weapons | Ergonomic Optimization | Weapon mod | Weapon | yes |
+| `da.powered-heavy-tripod` | weapons | Powered Heavy Tripod | Weapon mod | Weapon | yes |
+| `da.reinforced-smart-firing-platform` | weapons | Reinforced Smart Firing Platform | Weapon mod | Weapon | yes |
+| `da.wheeled-heavy-tripod` | weapons | Wheeled Heavy Tripod | Weapon mod | Weapon | yes |
+| `dc.interior-finish-amenities-squatter` | gear | Interior Finish/Amenities (Squatter) | Chassis mod | Vehicle | yes |
+| `dc.interior-finish-amenities-low` | gear | Interior Finish/Amenities (Low) | Chassis mod | Vehicle | yes |
+| `dc.interior-finish-amenities-middle` | gear | Interior Finish/Amenities (Middle) | Chassis mod | Vehicle | yes |
+| `dc.interior-finish-amenities-high` | gear | Interior Finish/Amenities (High) | Chassis mod | Vehicle | yes |
+| `dc.interior-finish-amenities-luxury` | gear | Interior Finish/Amenities (Luxury) | Chassis mod | Vehicle | yes |
+| `dc.gecko-tips-size-class-2` | gear | Gecko Tips (Size Class 2) | Powertrain mod | Vehicle | yes |
+| `dc.gecko-tips-size-class-3` | gear | Gecko Tips (Size Class 3) | Powertrain mod | Vehicle | yes |
+| `dc.gecko-tips-size-class-4` | gear | Gecko Tips (Size Class 4) | Powertrain mod | Vehicle | yes |
+| `dc.secondary-propulsion-system-amphibious-surface` | gear | Amphibious, Surface | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-glide-package` | gear | Glide Package | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-hovercraft` | gear | Hovercraft | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-rocket-booster` | gear | Rocket Booster: | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-rotor` | gear | Rotor | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-tracked` | gear | Tracked | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-vector-thrust-lav` | gear | Vector Thrust (LAV) | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-walker` | gear | Walker: | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-wheeled` | gear | Wheeled | Secondary propulsion system | Vehicle | yes |
+| `dc.secondary-propulsion-system-winged` | gear | Winged | Secondary propulsion system | Vehicle | yes |
+| `dc.rigger-interface` | gear | Rigger Interface | Electronics mod | Vehicle | yes |
+| `dc.expanded-drone-storage-small` | gear | Expanded Drone Storage (Small) | Expanded drone storage | Vehicle | yes |
+| `dc.expanded-drone-storage-medium` | gear | Expanded Drone Storage (Medium) | Expanded drone storage | Vehicle | yes |
+| `dc.expanded-drone-storage-large` | gear | Expanded Drone Storage (Large) | Expanded drone storage | Vehicle | yes |
+| `dc.pop-out-concealment-standard` | gear | Pop-Out Concealment (Standard) | Electronics mod | Vehicle | yes |
+| `dc.pop-out-concealment-large` | gear | Pop-Out Concealment (Large) | Electronics mod | Vehicle | yes |
+| `dc.pop-out-concealment-huge` | gear | Pop-Out Concealment (Huge) | Electronics mod | Vehicle | yes |
+| `fs.modular-equipment-mounting-system-mems-mems-harness` | armor | MEMS Harness | Armor modification | Armor | yes |
+| `fs.modular-equipment-mounting-system-mems-mems-ammo-pouch-large` | armor | MEMS Ammo Pouch (large) | Armor modification | Armor | yes |
+| `fs.modular-equipment-mounting-system-mems-mems-medkit-pouch` | armor | MEMS Medkit Pouch (rank 1-3) | Armor modification | Armor | yes |
+| `fs.quick-draw-holster` | armor | Quick-Draw Holster | Armor modification | Armor | yes |
+| `fs.accessory-rails` | weapons | Accessory Rails | Weapon modification | Weapon | yes |
+| `fs.barrel-extension` | weapons | Barrel Extension | Weapon modification | Weapon | yes |
+| `fs.biometric-gun-lock` | weapons | Biometric Gun Lock | Weapon modification | Weapon | yes |
+| `fs.collapsible-stock` | weapons | Collapsible Stock | Weapon modification | Weapon | yes |
+| `fs.custom-style` | weapons | Custom Style | Weapon modification | Weapon | yes |
+| `fs.dikote` | weapons | Dikote | Weapon modification | Weapon | yes |
+| `fs.easy-breakdown` | weapons | Easy Breakdown | Weapon modification | Weapon | yes |
+| `fs.folding-stock` | weapons | Folding Stock | Weapon modification | Weapon | yes |
+| `fs.foregrip` | weapons | Foregrip | Weapon modification | Weapon | yes |
+| `fs.gas-vent-improved` | weapons | Gas Vent (improved) | Weapon modification | Weapon | yes |
+| `fs.gecko-grip` | weapons | Gecko Grip | Weapon modification | Weapon | yes |
+| `fs.gyro-mount-ii` | weapons | Gyro Mount II | Weapon modification | Weapon | yes |
+| `fs.heavyweight` | weapons | Heavyweight | Weapon modification | Weapon | yes |
+| `fs.lightweight` | weapons | Lightweight | Weapon modification | Weapon | yes |
+| `fs.melee-hardening` | weapons | Melee Hardening | Weapon modification | Weapon | yes |
+| `fs.metahuman-adaptation` | weapons | Metahuman Adaptation | Weapon modification | Weapon | yes |
+| `fs.nanoconstruction` | weapons | Nanoconstruction | Weapon modification | Weapon | yes |
+| `fs.no-stock` | weapons | No Stock | Weapon modification | Weapon | yes |
+| `fs.personalized-grip` | weapons | Personalized Grip | Weapon modification | Weapon | yes |
+| `fs.revolution-arms-collapsible-stock` | weapons | rEVOlution Arms Collapsible Stock | Weapon modification | Weapon | yes |
+| `fs.rigid-stock` | weapons | Rigid Stock | Weapon modification | Weapon | yes |
+| `fs.safe-firing-iff-system` | weapons | Safe Firing IFF System | Weapon modification | Weapon | yes |
+| `fs.short-barrel` | weapons | Short Barrel | Weapon modification | Weapon | yes |
+| `fs.side-ammo-mount` | weapons | Side Ammo Mount | Weapon modification | Weapon | yes |
+| `fs.smart-materials` | weapons | Smart Materials | Weapon modification | Weapon | yes |
+| `fs.stock` | weapons | Stock | Weapon modification | Weapon | yes |
+| `fs.trigger-removal` | weapons | Trigger Removal | Weapon modification | Weapon | yes |
+| `fs.underbarrel-weapon-attachment-mount` | weapons | Underbarrel Weapon Attachment Mount | Weapon modification | Weapon | yes |
+| `fs.underbarrel-weight-heavy-barrel` | weapons | Underbarrel weight/heavy barrel | Weapon modification | Weapon | yes |
+| `fs.weapon-security-system` | weapons | Weapon Security System | Weapon modification | Weapon | yes |
+| `fs.ap-spikes` | weapons | Weapon security system (AP Spikes) | Weapon modification | Weapon | yes |
+| `fs.taser-shock` | weapons | Weapon security system (Taser-Shock) | Weapon modification | Weapon | yes |
+| `fs.rfid-tracker` | weapons | Weapon security system (RFID Tracker) | Weapon modification | Weapon | yes |
+| `fs.weapon-commlink` | weapons | Weapon Commlink | Weapon modification | Weapon | yes |
+| `fs.flashing-blade` | weapons | Flashing Blade | Melee weapon modification | Weapon | yes |
+| `fs.spikes` | weapons | Spikes | Melee weapon modification | Weapon | yes |
+| `fs.spikes-retractable` | weapons | Spikes, retractable | Melee weapon modification | Weapon | yes |
+| `fs.zapper-coating` | weapons | Zapper Coating | Melee weapon modification | Weapon | yes |
+| `fs.glowcoat` | weapons | Glowcoat | Melee weapon modification | Weapon | yes |
+| `fs.dynamic-tension-system` | weapons | Dynamic Tension System | Melee weapon modification | Weapon | yes |
+| `fs.ruthenium-rifle-sheath` | weapons | Ruthenium Rifle Sheath | Weapon accessory | Weapon | yes |
+| `sif-no.flashlight-uv` | gear | Flashlight, UV | Weapon modification | Weapon | yes |
+| `ts.trauma-response-system-trauma-response-system-advanced` | gear | Trauma Response System (Advanced) | Armor modification | Armor | yes |
+
+## Requirement scope (owner ruling 2026-10-29)
+
+The app tests what Commlink6 tests at embed time: `apply="DATA_ITEM"` tests, and a `<selreq>` group only when
+every member has `apply="DATA_ITEM"` (a member with no `apply` holds by itself, so such a group never fails). The
+one exception is ruling 6: a holster (by name) has its gun-type group tested whatever its `apply`. The owner's
+`WEAPON_TYPE` silencer exclusions are no longer tested. Catalog entries with any host test in force: 233 before, 146
+after.

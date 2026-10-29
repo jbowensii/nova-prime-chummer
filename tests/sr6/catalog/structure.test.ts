@@ -73,13 +73,13 @@ test('Commlink6’s own rule data on an entry changes none of the maths: only th
 })
 
 // the one fit engine (fit plan Stages 3-4), one test per gate, invented entries
-const item = (attrs: Record<string, string>, kids = '', kind = 'gear'): Sr6Entry =>
+const item = (attrs: Record<string, string>, kids = '', kind = 'gear', name = 'X'): Sr6Entry =>
   toEntry(
     new DOMParser()
       .parseFromString(
         `<sr6:data xmlns:sr6="${NS}"><x id="zz.${Math.random()}" source="ZZ" page="1" ${Object.entries(attrs)
           .map(([k, v]) => `${k}="${v}"`)
-          .join(' ')}><name>X</name>${kids}</x></sr6:data>`,
+          .join(' ')}><name>${name}</name>${kids}</x></sr6:data>`,
         'text/xml',
       )
       .getElementsByTagName('x')[0],
@@ -137,22 +137,28 @@ test('fitsOnly: an embedded usage of its own; a synthesized (W/I) or carried/imp
   expect(fitsOnly(structureOf(item({}, '<fits slot="cyberlimb-implant" mode="implanted"/>')))).toBe(false)
 })
 
-test('requirementsOf: DATA_ITEM tests and selreq groups against the host, negate, the owner’s weapon type; the rest unchecked', () => {
+test('requirementsOf: as Commlink6, DATA_ITEM tests only (a selreq with no apply passes); a holster’s gun-type group always', () => {
   const pistol = item({ class: 'WEAPON_FIREARMS/PISTOLS_HEAVY', size: 'Small', category: 'Heavy Pistols', ammo: '6(cy)' })
   const rifle = item({ class: 'WEAPON_FIREARMS/RIFLE_ASSAULT', size: 'Large', category: 'Assault Rifles', ammo: '30(c)' })
-  const holster = item(
-    {},
-    '<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="WEAPON_SIZE" value="TINY" group="1"/><prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="WEAPON_SIZE" value="SMALL" group="1"/>',
-  )
+  const sizes =
+    '<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="WEAPON_SIZE" value="TINY" group="1"/><prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="WEAPON_SIZE" value="SMALL" group="1"/>'
+  const holster = item({}, sizes, 'gear', 'Concealable holster')
   expect(requirementsOf(holster, pistol).failed).toEqual([])
   expect(requirementsOf(holster, rifle).failed).toEqual(['weapon size tiny or weapon size small'])
+  // (the same group on anything else: its members carry no apply, so Commlink6 passes it, a silencer's subtype list too)
+  expect(requirementsOf(item({}, sizes, 'gear', 'Silencer'), rifle).failed).toEqual([])
+  const sel = (apply: string) =>
+    item(
+      {},
+      `<prerequisite kind="datareq" type="ITEMSUBTYPE" ref="SHOTGUNS" group="1"${apply}/><prerequisite kind="datareq" type="ITEMSUBTYPE" ref="RIFLE_SNIPER" group="1"${apply}/>`,
+    )
+  expect(requirementsOf(sel(' apply="DATA_ITEM"'), rifle).failed).toEqual(['itemsubtype shotguns or itemsubtype rifle sniper'])
+  expect(requirementsOf(sel(''), rifle).failed).toEqual([])
   const ammo = item({}, '<prerequisite kind="datareq" type="ITEMSUBTYPE" ref="RIFLE_ASSAULT" apply="DATA_ITEM"/>')
   expect(requirementsOf(ammo, pistol).failed).toEqual(['itemsubtype rifle assault'])
   expect(requirementsOf(ammo, rifle).failed).toEqual([])
-  const silencer = item({}, '<prerequisite kind="valuereq" type="WEAPON_TYPE" ref="revolvers" negate="true"/>')
-  expect(requirementsOf(silencer, pistol).failed).toEqual(['not weapon_type revolvers'.replace('_', ' ')])
-  expect(requirementsOf(silencer, rifle).failed).toEqual([])
-  // (no apply and no group: Commlink6 does not test it at embed time; an unknown test is listed, never failed)
+  // (the owner's WEAPON_TYPE exclusion has no apply: Commlink6 would not test it, so neither does the app)
+  expect(requirementsOf(item({}, '<prerequisite kind="valuereq" type="WEAPON_TYPE" ref="revolvers" negate="true"/>'), pistol).failed).toEqual([]) // (no apply and no group: Commlink6 does not test it at embed time; an unknown test is listed, never failed)
   expect(requirementsOf(item({}, '<prerequisite kind="datareq" type="ITEMTYPE" ref="BOWS"/>'), pistol).failed).toEqual([])
   expect(requirementsOf(item({}, '<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="PILOT" value="3" apply="DATA_ITEM"/>'), pistol)).toEqual({
     failed: [],

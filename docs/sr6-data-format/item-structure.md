@@ -33,9 +33,10 @@ requirements are now applied:
 - A weapon with no WEAPON_SIZE gets one: `sizeFrom="class"` by Commlink6's own subtype rule, `sizeFrom="category"` a
   guess from its printed category for one with no class (owner ruling 3: listed for review).
 - `<prerequisite … group negate apply>`: group 0 all must hold, each other group (a Commlink6 `<selreq>`) any one.
-  The app tests, against the host, the `apply="DATA_ITEM"` tests, the selreq groups and the owner's `WEAPON_TYPE`
-  exclusions (`structure.ts requirementsOf`): Review's `catalog.requirement` warning, and the accessory picker lists a
-  failing entry greyed with the reason. Other tests are character gates or ones Commlink6 does not test at embed time.
+  The app tests against the host what Commlink6 tests at embed time (`structure.ts requirementsOf`): `apply="DATA_ITEM"`
+  tests, and a selreq group whose members all carry that `apply` (a member with none holds by itself). A holster's
+  gun-type group is the one exception, always tested (owner ruling 6). A failure is Review's `catalog.requirement`
+  warning, and the accessory picker lists the entry greyed with the reason.
 - One fit test (`structure.ts fit`) serves the accessory picker, the add-time guard and Review: the host's hooks plus
   the instance's added slots less its removed ones, the size cap, then room (alternatives placed by matching).
 - Where they come from: `python -m tools.cl6check.slotmap <runs>` writes each matched entry's data hooks, usages and

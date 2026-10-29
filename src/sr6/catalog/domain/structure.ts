@@ -187,12 +187,16 @@ export function fit(host: Sr6Entry | undefined, item: Sr6Entry, fitted: SlotItem
   return { ok: true, hooks: [after.occupied.get('\u0000new') ?? sized[0].slot] }
 }
 
-/** The host requirements an item fails, each in words, and the ones the app can't test (`unchecked`). Commlink6 tests
- *  only `apply="DATA_ITEM"` requirements and `<selreq>` groups against the host at embed time (Stage 0 findings); the
- *  owner's own `WEAPON_TYPE` exclusions (the silencer) too. A group (`group` n > 0) holds when any one of its tests holds;
- *  the rest must all hold; `negate` turns a test round. Owner ruling 5: a warning, not an error, for now. */
+/** The host requirements an item fails, each in words, and the ones the app can't test (`unchecked`). As Commlink6 at
+ *  embed time (Stage 0 findings, owner 2026-10-29): only `apply="DATA_ITEM"` tests; a `<selreq>` group (`group` n > 0)
+ *  holds when any one of its tests holds, and a member with no `apply` holds by itself, so such a group never fails.
+ *  One exception, owner ruling 6: a holster's gun-type group is tested whatever its `apply`. `negate` turns a test
+ *  round. Owner ruling 5: a warning, not an error, for now. */
 export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined): { failed: string[]; unchecked: string[] } {
-  const tests = structureOf(item).prerequisites.filter(p => p.apply === 'DATA_ITEM' || (p.group && p.group !== '0') || p.type === 'WEAPON_TYPE')
+  const holster = /holster/i.test(item.name)
+  const all = structureOf(item).prerequisites
+  const grouped = (p: Record<string, string>) => !!p.group && p.group !== '0'
+  const tests = all.filter(p => (grouped(p) ? holster || all.every(q => q.group !== p.group || q.apply === 'DATA_ITEM') : p.apply === 'DATA_ITEM'))
   const failed: string[] = [],
     unchecked: string[] = []
   if (!host || !tests.length) return { failed, unchecked }
@@ -206,13 +210,6 @@ export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined): { fa
     else if (ref === 'ITEMSUBTYPE') r = sub === want
     else if (ref === 'WEAPON_SIZE') r = key(host.attrs.size) === want
     else if (ref === 'AMMUNITION_CLASS') r = key(host.attrs.ammoClass) === want
-    else if (p.type === 'WEAPON_TYPE')
-      r =
-        want === 'REVOLVERS'
-          ? /\(cy\)/i.test(host.attrs.ammo ?? '')
-          : want === 'SHOTGUNS'
-            ? sub === 'SHOTGUNS' || /shotgun/i.test(host.attrs.category ?? '')
-            : undefined
     return r === undefined ? undefined : p.negate === 'true' ? !r : r
   }
   const words = (p: Record<string, string>) =>
