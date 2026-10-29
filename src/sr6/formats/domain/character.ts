@@ -416,8 +416,9 @@ export type Sr6Advance =
   | { op: 'expertise'; target: string; name: string }
   | { op: 'knowledge'; line: Sr6Knowledge }
   /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference;
-   *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it */
-  | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind }
+   *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it;
+   *  single: the quality is not repeatable, so a held line is the same whatever its note (older entries: notes decide) */
+  | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind; single?: true }
   /** part: Stolen Gear's converted karma bought off by this spend, a part of what is left (the line stays); none: all */
   | { op: 'buyoff'; target: string; line?: Sr6Quality; part?: number }
   /** target: as a quality's, the lower level replaced */

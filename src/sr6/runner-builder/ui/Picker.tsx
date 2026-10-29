@@ -3,6 +3,7 @@ import type { Sr6Build } from '../../formats/domain/character'
 import { mountSlots, requirementsOf, slotLabel } from '../../catalog/domain/structure'
 import { modsOf } from '../domain/assets/vehiclemods'
 import { ratingOf } from '../domain/creation/purchases'
+import { sitOf } from '../../catalog/domain/effects'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
 // Availability and Essence at that rating. Also the player's bonuses on a line or pick, a line's accessories and its price.
@@ -335,8 +336,8 @@ export function Situational({ line, name }: { line: Sr6Purchase | Sr6Pick | Sr6Q
   if (!list.length) return null
   return (
     <span className="row bonuses">
-      {list.map(({ i, bonus, scales }) => {
-        const times = line.sit?.[i] ?? 0,
+      {list.map(({ i, key, bonus, scales }) => {
+        const times = sitOf(line.sit, bonus, i),
           label = `${bonusText(bonus, data)}, ${bonus.when}, on ${name}`
         return (
           <label key={i} className="chip">
@@ -347,7 +348,7 @@ export function Situational({ line, name }: { line: Sr6Purchase | Sr6Pick | Sr6Q
                 max={99}
                 value={times}
                 aria-label={`How many: ${label}`}
-                onChange={e => act({ op: 'situational', uid: line.uid, index: i, times: Number(e.target.value) })}
+                onChange={e => act({ op: 'situational', uid: line.uid, key, times: Number(e.target.value) })}
               />
             ) : (
               <input
@@ -355,7 +356,7 @@ export function Situational({ line, name }: { line: Sr6Purchase | Sr6Pick | Sr6Q
                 role="switch"
                 checked={times > 0}
                 aria-label={label}
-                onChange={e => act({ op: 'situational', uid: line.uid, index: i, times: e.target.checked ? 1 : 0 })}
+                onChange={e => act({ op: 'situational', uid: line.uid, key, times: e.target.checked ? 1 : 0 })}
               />
             )}{' '}
             {bonusText(bonus, data)} {bonus.when}

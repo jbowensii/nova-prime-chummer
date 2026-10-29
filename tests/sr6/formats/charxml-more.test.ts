@@ -257,4 +257,6 @@ test('situational switches on a purchase, pick and quality keep their counts thr
   expect(back.purchases[0].sit).toEqual({ '0': 1, '3': 4 })
   expect(back.picks[0].sit).toEqual({ '1': 2 })
   expect(back.qualities[0].sit).toEqual({ '0': 1 })
+  d.build.qualities[0].sit = { 'str||in animal form': 2 }
+  expect(good(sr6ToXml(d)).build.qualities[0].sit).toEqual({ 'str||in animal form': 2 })
 })

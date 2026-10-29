@@ -20,6 +20,8 @@ class RepeatableTest(unittest.TestCase):
         for text in (
             "You may only choose this quality once.",
             "You may not take this quality more than once.",
+            "This quality may only be taken once per character.",
+            "A runner may choose this quality only once per campaign.",
             "If the same tenet is broken multiple times, add a day.",
             "Pick up the other quality again or lose this one.",
             "It costs twice its normal cost.",

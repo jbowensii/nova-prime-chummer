@@ -19,9 +19,10 @@ import type {
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../../formats/domain/types'
 import type { Sr6Compendium, Sr6Situational } from '../../formats/domain/character'
 import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
+import { choiceOf, entryBonuses } from '../../runner-builder/domain/creation/bonuses'
 import { baseMetatype, metatypeName } from '../../runner-builder/domain/creation/infected'
 import { ruleRefsOf } from '../../runner-builder/domain/creation/rule-markers'
-import { bonusValue, linkedViews, ownParts, perCount, type LinkLookup } from '../../catalog/domain/effects'
+import { bonusValue, linkedViews, ownParts, perCount, sitOf, type LinkLookup } from '../../catalog/domain/effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
 import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
@@ -575,7 +576,10 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem => ({
 // every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
 const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1, sit?: Sr6Situational): Sr6ExportBonus[] =>
   (bs ?? [])
-    .map((b, i) => ({ b, on: b.when && (sit?.[i] ?? 0) > 0 ? (perCount(b.when) ? sit![i] : 1) : undefined }))
+    .map((b, i) => {
+      const n = sitOf(sit, b, i)
+      return { b, on: b.when && n > 0 ? (perCount(b.when) ? n : 1) : undefined }
+    })
     .filter(({ b }) => !b.set) // (a set replaces a base value: derived holds it, not these adds)
     .map(({ b, on }) => {
       const value = bonusValue(b, rating) * times
@@ -789,7 +793,8 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         level: q.level,
         free: !!q.free,
         note: q.note,
-        bonuses: e ? bonuses(data, lineBonuses(data, undefined, e), q.level || 1, 1, q.sit) : [],
+        // (as the app counts a quality: rating 1 times its level, with its note's choice)
+        bonuses: e ? bonuses(data, entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level || 1, q.sit) : [],
       })
     }),
     picks: b.picks.map(p => {
@@ -799,7 +804,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         uid: p.uid,
         pick: p.kind,
         level: p.level,
-        bonuses: bonuses(data, lineBonuses(data, p.bonuses, e), p.level ?? 1, 1, p.sit),
+        bonuses: bonuses(data, lineBonuses(data, p.bonuses, e, choiceOf(data, p.note)), p.level ?? 1, 1, p.sit),
       })
     }),
     martialArts: b.martialArts.map(m => {

@@ -6,7 +6,7 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { own } from '../../../../core/shared/effects'
 import { entryLabel } from '../../../catalog/domain/categories'
-import { bonusValue, effectBonuses, perCount, sr6Counts as counts, whenHolds, type WhenFacts } from '../../../catalog/domain/effects'
+import { bonusValue, effectBonuses, perCount, sitKey, sitOf, sr6Counts as counts, whenHolds, type WhenFacts } from '../../../catalog/domain/effects'
 import { MAGIC_KINDS } from '../../../catalog/domain/data'
 import { baseMetatype, metatypeName } from './infected'
 import { entryOf, ratingOf } from './purchases'
@@ -40,13 +40,13 @@ function facts(b: Sr6Build, data: Sr6Data): WhenFacts {
 }
 /** A line's bonuses with their machine conditions decided (owner, 2026-10-29: calculated, not notes): one that holds is
  *  always on (its `when` and a `conditional` switch dropped), one that doesn't is left out; prose stays bracketed unless the
- *  player switched it on (`sit`, by the effect's place in `bs`): then it counts, a `per ...` one `count` times. */
+ *  player switched it on (`sit`, keyed by the effect: sitKey): then it counts, a `per ...` one `count` times. */
 function decided(bs: Bonus[], f: () => WhenFacts, sit?: Sr6Situational): Bonus[] {
   if (!bs.some(x => x.when)) return bs
   return bs.flatMap((x, i) => {
     const h = whenHolds(x.when, f())
     if (h === undefined) {
-      const n = sit?.[i] ?? 0
+      const n = sitOf(sit, x, i)
       if (!x.when || n <= 0) return [x]
       const { when: _w, ...y } = x
       return [{ ...y, switch: y.switch === 'conditional' ? undefined : y.switch, ...(perCount(x.when) && n > 1 ? { count: n } : {}) }]
@@ -65,9 +65,9 @@ export function effectsOf(data: Sr6Data, x: Sr6Purchase | Sr6Pick | Sr6Quality):
 /** The effects of a line (its bonuses as lineBonuses has them) that only the player can decide, a situation in words (`in
  *  animal form`, `per additional barrel`): where in the line's effects each is (the key of its `sit`) and whether it
  *  scales (so it takes a count, not a switch). */
-export function situations(b: Sr6Build, data: Sr6Data, bs: Bonus[]): { i: number; bonus: Bonus; scales: boolean }[] {
+export function situations(b: Sr6Build, data: Sr6Data, bs: Bonus[]): { i: number; key: string; bonus: Bonus; scales: boolean }[] {
   const f = facts(b, data)
-  return bs.flatMap((x, i) => (x.when && whenHolds(x.when, f) === undefined ? [{ i, bonus: x, scales: perCount(x.when) }] : []))
+  return bs.flatMap((x, i) => (x.when && whenHolds(x.when, f) === undefined ? [{ i, key: sitKey(x), bonus: x, scales: perCount(x.when) }] : []))
 }
 /** Each line's bonuses at its rating and count: picks and qualities by level, purchases by rating times quantity; their
  *  machine conditions decided (decide false: as the catalog has them, what facts sums). */
@@ -88,7 +88,7 @@ function eachLine(b: Sr6Build, data: Sr6Data, g: (bs: Bonus[], rating: number, t
   }
 }
 /** The skill and attribute a pick's or quality's note names: its `skill:choice` and `attr:choice` effects' target. */
-const choiceOf = (data: Sr6Data, note?: string) => (note ? { skill: noteSkill(data, note), attr: noteAttr(note) } : {})
+export const choiceOf = (data: Sr6Data, note?: string) => (note ? { skill: noteSkill(data, note), attr: noteAttr(note) } : {})
 /** The bonuses to `target` (for `skill` the one skill's dice pool) that only the bracketed total holds (switchable, some
  *  tests only, or a specialization the runner hasn't), each with its line's name, value at its rating and its note (its
  *  switch, condition or specialization, and `affects the caster`): why the bracket differs (owner decision 2026-10-10:

@@ -14,6 +14,13 @@ import { counts, type EffectState } from '../../../core/shared/effects'
 /** Whether a situation in words scales (`per additional barrel`, `for each cyberlimb`): the player gives a count, not a switch. */
 export const perCount = (when?: string) => /\b(per|each)\b/i.test(when ?? '')
 
+/** The key of a line's situational switch (`sit`): the effect itself (target, skill, condition), not its place in the list,
+ *  so editing the list can't move a switch onto another effect. Old saves keyed by place are read by sitOf's fallback. */
+export const sitKey = (b: { target: string; skill?: string; when?: string }) => `${b.target}|${b.skill ?? ''}|${b.when ?? ''}`
+/** How many times the player switched effect `b` (at place `i`) on: its key, else (a save from before keys) its place. */
+export const sitOf = (sit: Record<string, number> | undefined, b: { target: string; skill?: string; when?: string }, i: number) =>
+  sit?.[sitKey(b)] ?? sit?.[i] ?? 0
+
 export const sr6Counts = (e: EffectState, on = false) => counts(e, on)
 
 /** What a machine condition is decided from: the runner's attribute ratings, metatype (its name and its parent's), every

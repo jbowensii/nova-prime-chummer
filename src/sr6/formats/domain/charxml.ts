@@ -68,18 +68,18 @@ const bonusXml = (x: Bonus) =>
     switch: x.switch,
     affects: x.affects,
   })
-/** A line's situational switches as `index:times` words (1:1 4:3), read back by readSit. */
+/** A line's situational switches as `key:times` words (the key url-encoded; a plain 1:1 4:3 is a save keyed by place), read back by readSit. */
 const sitText = (x?: Sr6Situational) => {
   const w = Object.entries(x ?? {})
     .filter(([, n]) => n > 0)
-    .map(([i, n]) => `${i}:${n}`)
+    .map(([k, n]) => `${encodeURIComponent(k)}:${n}`)
   return w.length ? w.join(' ') : undefined
 }
 function readSit(e: Element): Sr6Situational | undefined {
   const out: Sr6Situational = {}
   for (const w of str(e, 'sit')?.split(/\s+/) ?? []) {
-    const m = /^(\d+):(\d+)$/.exec(w)
-    if (m && +m[2] > 0) out[m[1]] = +m[2]
+    const m = /^(\S+):(\d+)$/.exec(w)
+    if (m && +m[2] > 0) out[decodeURIComponent(m[1])] = +m[2]
   }
   return Object.keys(out).length ? out : undefined
 }
@@ -219,7 +219,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'knowledge':
       return [{}, knowledgeXml(a.line)]
     case 'quality':
-      return [{ target: a.target, magic: a.magic }, qualityXml(a.line)]
+      return [{ target: a.target, magic: a.magic, single: a.single }, qualityXml(a.line)]
     case 'buyoff':
       return [{ target: a.target, part: a.part }, a.line ? qualityXml(a.line) : '']
     case 'pick':
@@ -805,6 +805,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
         op,
         line: line(e, 'quality', readQuality, true),
         target: str(e, 'target'),
+        single: yes(e, 'single'),
         magic: m == null ? undefined : oneOf(m, MAGIC_KINDS, 'magic kind an Infected type gives', undefined, fix),
       })
     }

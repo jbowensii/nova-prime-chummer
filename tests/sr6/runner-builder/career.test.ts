@@ -19,6 +19,7 @@ import {
   validateCareer,
   voidableIds,
   voidEntry,
+  applyAdvance,
 } from '../../../src/sr6/runner-builder/domain/career/career'
 import { xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { draftAgain, finalizeSr6 } from '../../../src/sr6/runner-builder/domain/career/finalize'
@@ -591,4 +592,14 @@ test('the career fixture replays: AGI 4, the spec, the Zap Gun and the spell; th
     allowed = ch.ledger.filter(e => voidEntry(ch, e.id, '').ok).map(e => e.id)
   expect([...voidableIds(ch)]).toEqual(allowed)
   expect(allowed.length).toBeGreaterThan(1)
+})
+
+test('a single (non-repeatable) quality advance joins the held line whatever its note; one without the flag still compares notes', () => {
+  const ch = runner(),
+    line = (note: string) => ({ uid: 'n' + note, id: 'crb.x', level: 1, note })
+  ch.build.qualities.push({ uid: 'q1', id: 'crb.x', level: 1, note: 'a' })
+  applyAdvance(ch.build, { op: 'quality', line: line('b'), single: true })
+  expect(ch.build.qualities.map(q => q.level)).toEqual([2])
+  applyAdvance(ch.build, { op: 'quality', line: line('c') })
+  expect(ch.build.qualities).toHaveLength(2)
 })

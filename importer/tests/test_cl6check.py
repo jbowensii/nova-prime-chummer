@@ -622,6 +622,7 @@ class PerEffectTest(unittest.TestCase):
         self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0})
 
     def pe(self, cl6, mine):
+        """per_effect's reproduced count for CL6 effects `cl6` against ours `mine` (target, value pairs)."""
         c = {"families": {"effects": tuple(("effect", t, v) for t, v in cl6)}}
         o = {"families": {"effects_own": tuple(("effect", t, v) for t, v in mine)}}
         return modifiers.per_effect([(c, o)])["reproduced"]
@@ -646,8 +647,8 @@ class PerEffectTest(unittest.TestCase):
             ("attribute:initiative-dice-physical", "1"),
             ("item-attribute:damage", "2p"),
         ]
-        ours = [("attr:rea", "1"), ("derived:initiative-dice", "1"), ("item:dv", "2p")]
-        self.assertEqual(self.pe(cl6, ours), 3)
+        mine = [("attr:rea", "1"), ("derived:initiative-dice", "1"), ("item:dv", "2p")]
+        self.assertEqual(self.pe(cl6, mine), 3)
         self.assertEqual(self.pe([("skillspecialization:close-combat-unarmed", "1")], [("skill:close-combat", "1")]), 1)
 
 

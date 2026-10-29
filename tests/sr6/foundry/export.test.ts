@@ -5,6 +5,7 @@ import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, test } from 'vitest'
 import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { balances, currentBuild } from '../../../src/sr6/runner-builder/domain/career/career'
+import { bonusSources } from '../../../src/sr6/runner-builder/domain/creation/bonuses'
 import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { entryValues, exportAttrs, exportSr6Books, exportSr6Compendium, exportSr6Runners } from '../../../src/sr6/foundry/domain/export'
 import { xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
@@ -434,6 +435,15 @@ describe('SR6 export: what Eden takes besides the numbers', () => {
     entry.parts.pop() // (w is shared by this describe's tests)
     expect(after.bonuses[sitIdx].on).toBe(1)
     expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
+  test('a leveled quality exports the bonus the app counts: rating 1 times its level', () => {
+    const ch = mara(w),
+      lb = ch.build.qualities.find(q => q.id === 'mus.lucky-break')!
+    lb.level = 3
+    const out = exportSr6Runners(w.c, w.data, w.cr, [ch], SAMPLE_OPTS).runners![0].qualities.find(x => x.uid === lb.uid)!,
+      app = bonusSources(ch.build, w.data, 'agi').find(s => s.id === 'mus.lucky-break')!.value
+    expect(out.bonuses.find(b => b.target === 'agi' && !b.when)!.value).toBe(app)
+    expect(app).toBe(3)
   })
   test('an accessory’s effect on its host, under the host', () => {
     const sight = r().purchases.find(x => x.uid === 'w1')!.accessories[0]

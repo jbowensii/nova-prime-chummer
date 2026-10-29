@@ -1856,7 +1856,8 @@ _REPEAT_NO = re.compile(
 )  # (`may only choose this quality once`, `may not take this quality more than once`: the sentence says no)
 _REPEAT_YES = re.compile(
     r"\b(?:multiple times|more than once|several times|(?:taken|take|purchased|purchase|chosen|choose)\s+"
-    r"(?:this quality\s+)?twice|for multiple \w+|each time you \w+|once per)\b",
+    r"(?:this quality\s+)?twice|for multiple \w+|each time you \w+|"
+    r"once per(?! (?:character|runner|game|campaign|session)\b))\b",
     re.I,
 )
 _REPEAT_VERB = re.compile(r"\b(?:tak|purchas|buy|bought|choos|chos|select)", re.I)

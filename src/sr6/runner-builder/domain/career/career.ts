@@ -120,7 +120,7 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       // (target: the lower level of its family it replaces, levels.ts)
       // (a repeatable one taken for a new choice (another note) is a new line: preview refused the same choice twice)
       const note = (n?: string) => (n ?? '').trim().toLowerCase()
-      const had = b.qualities.find(q => (a.target ? q.uid === a.target : q.id === a.line.id && note(q.note) === note(a.line.note)) && !q.free)
+      const had = b.qualities.find(q => (a.target ? q.uid === a.target : q.id === a.line.id && (a.single || note(q.note) === note(a.line.note))) && !q.free)
       if (had && a.target) Object.assign(had, { id: a.line.id, level: a.line.level, ...(a.line.name ? { name: a.line.name } : {}) })
       else if (had) had.level += a.line.level
       else b.qualities.push(structuredClone(a.line))
@@ -840,6 +840,7 @@ export function record(
         if (lv.target) adv.target = lv.target
       }
       adv.line = named(adv.line, data.qualities[adv.line.id]?.name)
+      if (data.qualities[adv.line.id] && !data.qualities[adv.line.id].multi) adv.single = true
       // (stored on the advance, so replay needs no catalog: applyAdvance)
       const t = infectedOf(data.entry('qualities', adv.line.id)),
         next = t && infectedKind(boughtKind(b), t.awakens)
