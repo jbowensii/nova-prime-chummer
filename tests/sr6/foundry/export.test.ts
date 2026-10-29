@@ -149,6 +149,17 @@ describe('SR6 export: runners', () => {
     expect(f.runners![0].purchases.find(p => p.uid === 's1')!.bonuses.map(b => b.on)).toEqual([1, 3, undefined])
     expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
+  test('a metavariant carries its parent metatype (for `when="Elf"`); a base metatype none; the schema accepts it', () => {
+    const { data, cr } = made(),
+      ch = career()
+    const base = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS).runners![0]
+    expect(base.metatype).not.toHaveProperty('parent')
+    ;(data.metatypes as Record<string, unknown>)['x.dryad'] = { ...data.metatypes[ch.build.metatype], name: 'Dryad' }
+    ch.build.metatype = 'x.dryad'
+    const f = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS)
+    expect(f.runners![0].metatype).toEqual({ id: 'x.dryad', name: 'Dryad', parent: 'Elf' })
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
   test('a custom line: no catalog entry, not canon, the player’s numbers', () => {
     const { data, cr } = made(),
       ch = career()
@@ -406,6 +417,23 @@ describe('SR6 export: what Eden takes besides the numbers', () => {
     ])
     expect(q.tests).toEqual([{ skill: 'skill:perception', attr: 'attr:int', threshold: 3 }])
     expect(r().qualities.find(x => x.id === 'mur.night-eyes')).not.toHaveProperty('effects')
+  })
+  test('a quality carries its bonuses; a situational one the player switched on carries on', () => {
+    const ch = mara(w),
+      lb = ch.build.qualities.find(q => q.id === 'mus.lucky-break')!,
+      entry = w.data.entry('qualities', 'mus.lucky-break')!
+    entry.parts.push({ tag: 'effect', attrs: { target: 'attr:str', op: 'add', value: '1', when: 'in animal form' }, text: '' })
+    const before = exportSr6Runners(w.c, w.data, w.cr, [ch], SAMPLE_OPTS).runners![0].qualities.find(x => x.uid === lb.uid)!
+    const sitIdx = before.bonuses.findIndex(b => b.when)
+    expect(before.bonuses.length).toBeGreaterThan(0)
+    expect(sitIdx).toBeGreaterThanOrEqual(0)
+    expect(before.bonuses[sitIdx].on).toBeUndefined()
+    lb.sit = { [String(sitIdx)]: 1 }
+    const f = exportSr6Runners(w.c, w.data, w.cr, [ch], SAMPLE_OPTS),
+      after = f.runners![0].qualities.find(x => x.uid === lb.uid)!
+    entry.parts.pop() // (w is shared by this describe's tests)
+    expect(after.bonuses[sitIdx].on).toBe(1)
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
   test('an accessory’s effect on its host, under the host', () => {
     const sight = r().purchases.find(x => x.uid === 'w1')!.accessories[0]

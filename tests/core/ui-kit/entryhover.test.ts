@@ -108,6 +108,7 @@ test('forced open and not a tab stop (a picker item: its row has focus); no row:
 
 test('an SR6 entry’s effects: applied, switchable (conditional), on the target, low confidence', () => {
   const e = {
+    attrs: {},
     parts: [
       { tag: 'effect', attrs: { target: 'attr:agi', op: 'add', value: '1' }, text: '' },
       { tag: 'effect', attrs: { target: 'skill:close-combat', op: 'add', value: 'R', switch: 'wireless' }, text: '' },

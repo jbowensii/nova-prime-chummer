@@ -888,7 +888,8 @@
         "uid",
         "positive",
         "level",
-        "free"
+        "free",
+        "bonuses"
       ],
       "properties": {
         "uid": {
@@ -905,6 +906,12 @@
         },
         "note": {
           "type": "string"
+        },
+        "bonuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bonus"
+          }
         }
       }
     },
@@ -1403,6 +1410,9 @@
               "type": "string"
             },
             "name": {
+              "type": "string"
+            },
+            "parent": {
               "type": "string"
             }
           }

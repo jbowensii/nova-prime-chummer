@@ -51,14 +51,14 @@ is closed (no other keys).
 | `streetName`, `realName` | identity |
 | `gender` | optional: the runner's gender as the player wrote it (left out when not set) |
 | `finalized` | true once the runner is finalized (career play) |
-| `metatype` | `{ id, name }`; an NPC may have none (`""`) |
+| `metatype` | `{ id, name, parent? }` (`parent`: a metavariant's parent metatype name, a Dryad's `Elf`, so a `when="Elf"` holds); an NPC may have none (`""`) |
 | `magic` | `{ kind, tradition?, drainAttr?, aspectedSkill?, initiation, submersion }`; `kind` `full`, `aspected`, `mystic-adept`, `adept`, `technomancer` or `mundane` |
 | `portrait`, `token` | a data URL (`data:image/png` or `data:image/jpeg`, base64), or `null`; no token: use the portrait |
 | `attributes` | `{ bod … cha, edg, mag, res }`, each `{ natural, augmented }`: natural is the rating (Magic or Resonance less the Essence loss), augmented adds the always-on bonuses (entered, else the catalog entry's effects); `switched`: with the switchable and conditional effects on (the bracket, `5 (7)`), only when it differs from `augmented` |
 | `essence`, `edge` | Essence left and the augmented Edge |
 | `skills` | `[{ id, name, attr, rank, spec?, expertise? }]`: `id` the catalog's (it carries the source, e.g. `crb.firearms`), so a reader matches by `name` |
 | `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |
-| `qualities` | items (below) plus `{ uid, positive, level, free, note? }`; `free`: a metatype trait |
+| `qualities` | items (below) plus `{ uid, positive, level, free, note?, bonuses }`; `free`: a metatype trait; `bonuses` as a purchase's (below), a situational one the player switched on carrying `on` |
 | `picks` | items plus `{ uid, pick, level?, bonuses }`: spells, rituals, adept powers, complex forms, metamagics, echoes |
 | `martialArts` | martial arts styles: items (kind `martialarts`; `attrs.categories`, `attrs.signature` as printed) plus `{ uid, techniques }`; `techniques`: the ones learned under the style (its signature one included), items (kind `martialtechniques`; `attrs.category`) plus `{ uid, requires? }`; `requires`: the technique's printed prerequisites `[{ kind, name, met? }]`, `kind` `adeptpower`, `technique`, `quality`, `augmentation` or `other`, `met` whether the runner has it (absent when it can't be told: `other`, or an augmentation printed as an amount), absent when it prints none (and in older files). Absent in files written before martial arts were added |
 | `purchases` | purchases (below): weapons, armor, augmentations, electronics, programs (programs and autosofts), gear, vehicles and drones, critters |

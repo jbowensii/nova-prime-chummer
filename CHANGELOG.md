@@ -1,5 +1,35 @@
 # Release notes
 
+## 0.34.0 — 2026-10-29
+
+**Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.
+
+**Look**
+- The page background art now shifts: a fresh picture is picked every time you move to another page.
+
+**Shadowrun 6 rules**
+- **No essence hole:** removing cyberware or bioware gives the Essence back. Contact max-loyalty is no longer enforced.
+- **Polyglot** now works as a rule marker (its language effect is applied).
+- **Repeatable qualities:** a quality you can take more than once (Addiction, Allergy, Prejudiced, Phobia and the
+  like) is one line per choice. Exceptional Attribute and Achilles' Heel count once per attribute / per heel.
+- **Calculated conditions and situational switches:** effects that only apply sometimes ("in the dark",
+  "per additional barrel") get an on/off switch or a count on the sheet; conditions the app can work out itself
+  are calculated for you.
+
+**Commlink6 parity**
+- CL6 owner-confirm clean-up: the open-items list is now 0.
+
+**What fits where (fit engine)**
+- Items fit using Commlink6's hooks, slots and usages. Pickers hide things that can't fit the chosen host.
+- Requirements warn the way Commlink6 does. Holsters match by gun type.
+- 85 accessories that CL6 only gives a category for are handled per the owner's ruling.
+
+**Foundry export**
+- Exported qualities now carry a `bonuses` list like gear does, including the situational `on` switch, so
+  quality switches reach Foundry.
+- The exported runner's metatype now names its parent metatype for a metavariant (a Dryad's `Elf`), so Foundry
+  can decide "Elf"-only conditions for it.
+
 ## 0.33.1 — 2026-10-29
 
 Code-only — no re-import needed.

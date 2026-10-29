@@ -19,6 +19,7 @@ import type {
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../../formats/domain/types'
 import type { Sr6Compendium, Sr6Situational } from '../../formats/domain/character'
 import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
+import { baseMetatype, metatypeName } from '../../runner-builder/domain/creation/infected'
 import { ruleRefsOf } from '../../runner-builder/domain/creation/rule-markers'
 import { bonusValue, linkedViews, ownParts, perCount, type LinkLookup } from '../../catalog/domain/effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
@@ -260,7 +261,8 @@ export interface Sr6ExportRunner {
   realName: string
   gender?: string
   finalized: boolean
-  metatype: { id: string; name: string }
+  /** parent: a metavariant's parent metatype's name (a Sylvan's `Elf`), as the app's `when` conditions read it; absent for a base metatype */
+  metatype: { id: string; name: string; parent?: string }
   magic: { kind: MagicKind; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'; aspectedSkill?: string; initiation: number; submersion: number }
   portrait: string | null
   token: string | null
@@ -271,7 +273,7 @@ export interface Sr6ExportRunner {
   edge: number
   skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string; specs?: string[] }[]
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
-  qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
+  qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string; bonuses: Sr6ExportBonus[] })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
   /** styles, each with the techniques learned under it */
   martialArts: (Sr6ExportItem & { uid: string; techniques: (Sr6ExportItem & { uid: string; requires?: Prerequisite[] })[] })[]
@@ -736,7 +738,11 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     realName: id.name,
     ...(id.gender ? { gender: id.gender } : {}),
     finalized: !!ch.finalizedAt,
-    metatype: { id: b.metatype, name: data.metatypes[b.metatype]?.name ?? '' },
+    metatype: defined({
+      id: b.metatype,
+      name: data.metatypes[b.metatype]?.name ?? '',
+      parent: baseMetatype(data, b.metatype) !== metatypeName(data, b.metatype) ? baseMetatype(data, b.metatype) : undefined,
+    }),
     magic: defined({
       kind: b.magic,
       tradition: b.tradition,
@@ -783,6 +789,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         level: q.level,
         free: !!q.free,
         note: q.note,
+        bonuses: e ? bonuses(data, lineBonuses(data, undefined, e), q.level || 1, 1, q.sit) : [],
       })
     }),
     picks: b.picks.map(p => {
