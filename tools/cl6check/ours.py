@@ -124,12 +124,15 @@ def families(e, kind=None):
     if a.get("social") not in (None, "") or kind == "armor":  # (armor with no social column: Commlink6's 0)
         s = (a.get("social") or "").translate(DASHES)
         out["social"] = (str(0.0 if NONE.match(s) else canon.cl6_value(s.lstrip("+"))),)
-    if a.get("size") or a.get("ammoClass"):
-        out["size/ammo"] = (_norm(a.get("size")), _norm(a.get("ammoClass")))
+    size = (
+        None if a.get("sizeFrom") else a.get("size")
+    )  # (a size a rule set, not the data: Commlink6's code does it too)
+    if size or a.get("ammoClass"):
+        out["size/ammo"] = (_norm(size), _norm(a.get("ammoClass")))
     vs = e.findall("variant")
     if vs:
         out["variants"] = frozenset(_norm(v.get("name") or v.findtext("name") or v.get("id")) for v in vs)
-    slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot")} | {
+    slots = {("slot", _norm(s.get("id"))) for s in e.findall("slot") if s.get("remove") != "true"} | {
         ("fits", _norm(f.get("slot"))) for f in e.findall("fits")
     }
     if slots:

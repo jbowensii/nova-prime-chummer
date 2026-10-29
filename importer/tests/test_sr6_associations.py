@@ -161,8 +161,12 @@ class ClassRuleTest(unittest.TestCase):
             '<name>B</name><slot id="vehicle-chassis" value="-3"/><slot id="vehicle-cf" remove="true"/>',
         )
         got = self.slots(boat, "vehicles")
-        self.assertEqual(got["vehicle-chassis"]["value"], "8")
-        self.assertNotIn("vehicle-cf", got)
+        self.assertEqual((got["vehicle-chassis"]["value"], got["vehicle-chassis"]["rule"]), ("8", "V"))
+        # (a second run changes nothing: the computed slot is marked)
+        doc = f'<?xml version="1.0"?>\n<sr6:data xmlns:sr6="u">\n  {boat}\n</sr6:data>\n'
+        once = classes.associations({"vehicles.xml": doc})
+        self.assertEqual(classes.associations(once), once)
+        self.assertEqual(got["vehicle-cf"].get("remove"), "true")  # (the marker stays, with no value)
         self.assertNotIn("vehicle-tires", got)  # (tyres: wheeled VEHICLES only)
         # a small drone with Body over 3: half a hardpoint, items up to 0.5; no tyres on any drone
         drone = '<vehicle id="a" class="DRONE_SMALL/GROUND" body="4" pilot="3"><name>D</name></vehicle>'

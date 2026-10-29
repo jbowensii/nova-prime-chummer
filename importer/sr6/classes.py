@@ -142,9 +142,10 @@ def _fmt(x):
 
 
 def _host_hooks(e, kind, typ, sub, slots):
-    """{slot id: (capacity, maxSize)} Commlink6's code adds (rules S, V, F), the vehicle bases with the data's HOOK
-    value added to them (the stock-modifications step runs after the vehicle step: a valmod adds, an itemmod with no
-    value adds 1, Stage 1-4 decompile). slots: {id: element} the entry offers already."""
+    """{slot id: (capacity, maxSize, rule)} Commlink6's code adds (rules S, V, F), the vehicle bases with the data's
+    HOOK value added to them (the stock-modifications step runs after the vehicle step: a valmod adds, an itemmod with
+    no value adds 1, Stage 1-4 decompile). slots: {id: element} the entry offers already; one a rule made (`rule`) is
+    done (a second run changes nothing)."""
     out = {}
     if kind == "vehicles" and (e.get("body") or "").strip():
         body = _first(e.get("body"))
@@ -154,16 +155,18 @@ def _host_hooks(e, kind, typ, sub, slots):
             if hook == "SOFTWARE" and sid in slots:
                 continue  # (autosofts by Pilot only where the data gives no SOFTWARE hook)
             have = slots.get(sid)
+            if have is not None and have.get("rule"):
+                continue
             add = 0.0 if have is None else (_num(have.get("value")) if have.get("value") else 1.0)
             if add is None:
                 continue  # (a formula the data gives: left as it is)
-            out[sid] = (cap + add, max_size.get(hook))
-    std = hooks.standard_hooks(typ, sub)
+            out[sid] = (cap + add, max_size.get(hook), "V")
+    std = {h: (c, "S") for h, c in hooks.standard_hooks(typ, sub).items()}
     if kind == "armor":
-        std.update(hooks.fashion_hook(typ, sub, _social(e.get("social"))))
-    for hook, cap in std.items():  # (S and F: only where the entry offers no such hook)
+        std.update({h: (c, "F") for h, c in hooks.fashion_hook(typ, sub, _social(e.get("social"))).items()})
+    for hook, (cap, rule) in std.items():  # (S and F: only where the entry offers no such hook)
         if hooks.slot_id(hook) not in slots and hooks.slot_id(hook) not in out:
-            out[hooks.slot_id(hook)] = (cap, None)
+            out[hooks.slot_id(hook)] = (cap, None, rule)
     return out
 
 
@@ -185,7 +188,7 @@ def _weapon_size(e, typ, sub):
 
 def associations(files, report=None):
     """files with the hooks Commlink6's model gives each entry (importer/sr6/hooks.py), wherever a row has not given
-    them: a host's `<slot id value unit maxSize>` by its class (standard hooks, the vehicle capacities computed from
+    them: a host's `<slot id value unit maxSize rule>` by its class (standard hooks, the vehicle capacities computed from
     Body, Seats and Pilot, fashion on armor), a weapon's size and its synthesized `<fits rule="W|I">` (vehicle mounts,
     implants), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A slot a row marks
     `remove="true"` is taken away, a slot two rows give is kept once (the one with a value). An eyeware/earware/
@@ -220,17 +223,25 @@ def associations(files, report=None):
             for c in [c for c in e if c.tag == "slot"]:
                 sid = c.get("id")
                 if sid in gone:
-                    e.remove(c)
+                    if c.get("remove") != "true" or sid in slots:
+                        e.remove(c)  # (the one marker stays: the app and a second run read the hook as taken away)
+                    else:
+                        slots[sid] = c
                 elif sid in slots and (slots[sid].get("value") or not c.get("value")):
                     e.remove(c)
                 else:
                     if sid in slots:
                         e.remove(slots[sid])
                     slots[sid] = c
-            for sid, (cap, max_size) in _host_hooks(e, kind, typ, sub, slots).items():
+            for sid, (cap, max_size, rule) in _host_hooks(e, kind, typ, sub, slots).items():
                 if sid in gone:
                     continue
-                attrs = {"id": sid, "value": _fmt(cap), **({"maxSize": _fmt(max_size)} if max_size else {})}
+                attrs = {
+                    "id": sid,
+                    "value": _fmt(cap),
+                    **({"maxSize": _fmt(max_size)} if max_size else {}),
+                    "rule": rule,
+                }
                 if sid in slots:
                     slots[sid].attrib.update(attrs)
                 else:

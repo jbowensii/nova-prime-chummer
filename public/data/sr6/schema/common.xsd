@@ -256,6 +256,9 @@
       <xs:enumeration value="capacity"/><xs:enumeration value="one"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="maxSize" type="xs:string"/>
     <xs:attribute name="remove" type="xs:boolean"/>
+    <!-- rule: S, V or F when the importer made or computed the slot the way Commlink6's code does (standard hooks,
+         vehicle capacities, fashion) -->
+    <xs:attribute name="rule" type="xs:string"/>
   </xs:complexType>
   <xs:complexType name="Fits">
     <xs:attribute name="slot" type="xs:string" use="required"/>
