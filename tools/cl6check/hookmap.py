@@ -179,8 +179,7 @@ def capacities(el):
     if any(x.get("ref") == "SOFTWARE" and x.get("remove") != "true" for x in mods):
         out.pop("SOFTWARE", None)
     for h, c in {**standard_hooks(typ, sub), **fashion_hook(typ, sub, social)}.items():
-        if h not in {x.get("ref") for x in mods}:
-            out.setdefault(h, c)
+        out.setdefault(h, c)  # (S runs before the data's mods are applied: a base they add to, as V)
     for x in mods:
         h = x.get("ref")
         if x.get("remove") == "true":

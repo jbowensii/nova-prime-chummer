@@ -119,8 +119,9 @@ def _num(s):
 
 
 def _seats(s):
-    """The seats a vehicle prints, front and back added (`2/6`, `2+2`: docs/sr6-data-format/categories.md)."""
-    return sum(int(n) for n in re.findall(r"\d+", s or ""))
+    """The seats a vehicle has for Cargo Factor, as Commlink6 counts them: `2+2` (front and back) adds up, `2/10` is the
+    larger (Commlink6 gives the GMC Bulldog 10, not 12)."""
+    return max((sum(int(n) for n in re.findall(r"\d+", part)) for part in (s or "").split("/")), default=0)
 
 
 def _first(s):
@@ -148,7 +149,7 @@ def _host_hooks(e, kind, typ, sub, slots):
     done (a second run changes nothing)."""
     out = {}
     if kind == "vehicles" and (e.get("body") or "").strip():
-        body = _first(e.get("body"))
+        body = max(map(int, re.findall(r"\d+", e.get("body"))), default=0)  # (`12(16)`: Commlink6 takes 16)
         vhooks, max_size = hooks.vehicle_hooks(typ, sub, body, _seats(e.get("seats")), _first(e.get("pilot")))
         for hook, cap in vhooks.items():
             sid = hooks.slot_id(hook)
@@ -164,9 +165,13 @@ def _host_hooks(e, kind, typ, sub, slots):
     std = {h: (c, "S") for h, c in hooks.standard_hooks(typ, sub).items()}
     if kind == "armor":
         std.update({h: (c, "F") for h, c in hooks.fashion_hook(typ, sub, _social(e.get("social"))).items()})
-    for hook, (cap, rule) in std.items():  # (S and F: only where the entry offers no such hook)
-        if hooks.slot_id(hook) not in slots and hooks.slot_id(hook) not in out:
-            out[hooks.slot_id(hook)] = (cap, None, rule)
+    for hook, (cap, rule) in std.items():  # (S and F: a base too, the data's HOOK added, as V)
+        sid, have = hooks.slot_id(hook), slots.get(hooks.slot_id(hook))
+        if sid in out or (have is not None and have.get("rule")):
+            continue
+        add = 0.0 if have is None else (_num(have.get("value")) if have.get("value") else 1.0)
+        if add is not None:
+            out[sid] = (cap + add, None, rule)
     return out
 
 
@@ -189,8 +194,8 @@ def _weapon_size(e, typ, sub):
 def associations(files, report=None):
     """files with the hooks Commlink6's model gives each entry (importer/sr6/hooks.py), wherever a row has not given
     them: a host's `<slot id value unit maxSize rule>` by its class (standard hooks, the vehicle capacities
-    computed from Body, Seats and Pilot, fashion on armor), a weapon's size and its synthesized `<fits rule="W|I">` (vehicle mounts,
-    implants), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A slot a row marks
+    computed from Body, Seats and Pilot, fashion on armor), a weapon's size and its synthesized `<fits rule="W|I">`
+    (vehicle mounts, implants), and a weapon accessory's `<fits>` for each mount its MOUNT column names. A slot a row marks
     `remove="true"` is taken away, a slot two rows give is kept once (the one with a value). An eyeware/earware/
     cyberlimb host with no implant slot from Commlink6 gets one from its printed capacity (a book-only item). report: a
     Counter, given the counts (sizes guessed, fallbacks)."""
@@ -217,24 +222,31 @@ def associations(files, report=None):
                 e.insert(list(e).index(t) if t is not None else len(e), k)
                 return k
 
-            # slots: removals, then one per id (the one with a value), then the code's
-            gone = {c.get("id") for c in e if c.tag == "slot" and c.get("remove") == "true"}
-            slots = {}
+            # slots in the data's order, as Commlink6 applies them: a removal takes away what came before it (the code's
+            # hooks too) and stays as the one marker; a slot after it gives the hook back (the quadrotor: remove, then a
+            # valmod 0); otherwise one per id, the one with a value
+            gone, back, slots = set(), set(), {}
             for c in [c for c in e if c.tag == "slot"]:
                 sid = c.get("id")
-                if sid in gone:
-                    if c.get("remove") != "true" or sid in slots:
-                        e.remove(c)  # (the one marker stays: the app and a second run read the hook as taken away)
-                    else:
-                        slots[sid] = c
-                elif sid in slots and (slots[sid].get("value") or not c.get("value")):
+                old = slots.get(sid)
+                if c.get("remove") == "true":
+                    if old is not None:
+                        e.remove(old)
+                    gone.add(sid)
+                    slots[sid] = c
+                elif old is not None and old.get("remove") == "true":
+                    e.remove(old)
+                    gone.discard(sid)
+                    back.add(sid)  # (given back after the code's hook was taken: no code base under it)
+                    slots[sid] = c
+                elif old is not None and (old.get("value") or not c.get("value")):
                     e.remove(c)
                 else:
-                    if sid in slots:
-                        e.remove(slots[sid])
+                    if old is not None:
+                        e.remove(old)
                     slots[sid] = c
             for sid, (cap, max_size, rule) in _host_hooks(e, kind, typ, sub, slots).items():
-                if sid in gone:
+                if sid in gone or sid in back:
                     continue
                 attrs = {
                     "id": sid,
@@ -258,6 +270,8 @@ def associations(files, report=None):
             for c in e:
                 if c.tag == "slot" and not c.get("unit"):
                     c.set("unit", hooks.unit(c.get("id")))
+                    if c.get("unit") == "capacity" and not c.get("value") and c.get("remove") != "true":
+                        c.set("value", "1")  # (a capacity hook the data gives with no value: Commlink6 makes it 1)
             # fits: one per slot (the one with a cost or mode: the latest generator's)
             fits = {}
             for c in [c for c in e if c.tag == "fits"]:

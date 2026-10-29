@@ -47,12 +47,13 @@ def kids_of(rec, entry, rating, report=None):
     report = Counter() if report is None else report
     el = rec["el"]
     by_var = defaultdict(dict)  # {variant: {hook: value}}
-    removes = []
+    removes, pos = {}, {}  # (a removal and a value's first place in the data: applied in that order)
     for var, scope in hookmap._scopes(el):  # pylint: disable=protected-access
         for x in hookmap._walk(scope):  # pylint: disable=protected-access
             if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref"):
+                pos.setdefault((x.get("ref"), x.get("remove") == "true"), len(pos))
                 if x.get("remove") == "true":
-                    removes.append(x.get("ref"))
+                    removes.setdefault(x.get("ref"), None)
                 else:
                     by_var[var].setdefault(x.get("ref"), familymap.slot_value(x, rating))
     hooks = dict(by_var.pop(None, {}))
@@ -65,8 +66,13 @@ def kids_of(rec, entry, rating, report=None):
     for c in by_var.values():
         for h, v in c.items():
             hooks.setdefault(h, v)
-    kids = [{"tag": "slot", "attrs": {"id": hookmap.norm(h), **({"value": v} if v else {})}} for h, v in hooks.items()]
-    kids += [{"tag": "slot", "attrs": {"id": hookmap.norm(h), "remove": "true"}} for h in dict.fromkeys(removes)]
+
+    def rm(h):
+        return {"tag": "slot", "attrs": {"id": hookmap.norm(h), "remove": "true"}}
+
+    kids = [rm(h) for h in removes if pos[h, True] < pos.get((h, False), -1)]  # (taken away, then given back)
+    kids += [{"tag": "slot", "attrs": {"id": hookmap.norm(h), **({"value": v} if v else {})}} for h, v in hooks.items()]
+    kids += [rm(h) for h in removes if rm(h) not in kids]
     seen = set()
     for u in hookmap.usages(el):
         if u["source"] != "data" or not u["hook"] or u["hook"] in seen:
@@ -81,6 +87,11 @@ def kids_of(rec, entry, rating, report=None):
         }
         kids.append({"tag": "fits", "attrs": attrs})
     for r in hookmap.requirements(el):
+        if r["variant"]:
+            report[
+                "req.variant"
+            ] += 1  # (a variant's own: one entry can't hold per-variant tests; cl6check compares the item's)
+            continue
         attrs = {"kind": r["tag"], "type": r["type"], "ref": r["ref"], "value": r["value"], "apply": r["apply"]}
         attrs = {k: v for k, v in attrs.items() if v}
         if r["group"]:
