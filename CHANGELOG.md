@@ -1,5 +1,21 @@
 # Release notes
 
+## 0.33.0 — 2026-10-29
+
+Two Shadowrun 6 usability fixes. **Code-only — no re-import needed.**
+
+**Ledger**
+- Every pick-list in the Ledger spend/earn flows is now sorted A–Z: martial arts, upgrade targets, negative
+  qualities to buy off, critters to teach/bond, hosts and weapon mounts to fit, vehicles to shift/part/derive,
+  weapons to move, fitted items to unfit, items to drop, licensable items and the SIN they're licensed on, and
+  contacts. (The "What" op list, skills, lifestyles and the catalog picker were already sorted.) Game-stat orders
+  — attributes and pet classes — are left in their canonical order on purpose.
+
+**Critters**
+- A critter power that calls for a choice now shows a picker instead of a bare text box: **Innate Spell** gets a
+  spell picker (every catalog spell, A–Z), and attribute-choice powers like **Draconic Power** get their
+  attribute picker. Powers whose choice is free text (and unmodelled selection types) keep the text box.
+
 ## 0.32.1 — 2026-10-29
 
 Locks in the powertrain propulsion types for the 30 vehicles that 0.32.0 had to guess — all owner-verified against

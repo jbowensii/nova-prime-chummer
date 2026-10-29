@@ -40,7 +40,7 @@ export function qualityChoice(name: string | undefined): 'attribute' | 'skill' |
 }
 
 export interface ChoiceSpec {
-  kind: 'attribute' | 'skill' | 'quality' | 'matrix'
+  kind: 'attribute' | 'skill' | 'quality' | 'matrix' | 'spell'
   options: { value: string; label: string }[]
 }
 const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
@@ -54,7 +54,7 @@ const titleCase = (t: string) =>
 // the Matrix attributes (ITEM_ATTRIBUTE choices), in their canonical A/S/D/F order
 const MATRIX_ATTRS: Record<string, string> = { ATTACK: 'Attack', SLEAZE: 'Sleaze', DATA_PROCESSING: 'Data Processing', FIREWALL: 'Firewall' }
 // a <selection> part's type → the choice kind it names
-const SEL_KIND: Record<string, ChoiceSpec['kind']> = { ATTRIBUTE: 'attribute', SKILL: 'skill', QUALITY: 'quality', ITEM_ATTRIBUTE: 'matrix' }
+const SEL_KIND: Record<string, ChoiceSpec['kind']> = { ATTRIBUTE: 'attribute', SKILL: 'skill', QUALITY: 'quality', ITEM_ATTRIBUTE: 'matrix', SPELL: 'spell' }
 /** What an entry's choice is for and the values it may take. The universal marker is a `<selection>` part naming the
  *  choice domain (ATTRIBUTE/SKILL/QUALITY/ITEM_ATTRIBUTE) and its comma-separated `options`; older entries mark it with a
  *  `ref="CHOICE"` modifier, an `attr/skill(-max):choice` effect, or the `(Attribute)`/`(Skill)` name suffix. Options keep the
@@ -64,7 +64,7 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
   const parts = e.parts ?? []
   const typed = parts.find(p => p.attrs.ref === 'CHOICE' && /^(ATTRIBUTE|SKILL)$/.test(p.attrs.type ?? ''))
   const target = parts.find(p => p.tag === 'effect' && /^(attr|attr-max|skill|skill-max):choice$/.test(p.attrs.target ?? ''))
-  const sel = parts.find(p => p.tag === 'selection' && /^(ATTRIBUTE|SKILL|QUALITY|ITEM_ATTRIBUTE)$/.test(p.attrs.type ?? ''))
+  const sel = parts.find(p => p.tag === 'selection' && /^(ATTRIBUTE|SKILL|QUALITY|ITEM_ATTRIBUTE|SPELL)$/.test(p.attrs.type ?? ''))
   const kind: ChoiceSpec['kind'] | undefined = typed
     ? typed.attrs.type === 'ATTRIBUTE'
       ? 'attribute'
@@ -98,6 +98,11 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
   } else if (kind === 'quality') {
     // tokens are quality ids with underscores (`artisans_way`); the catalog uses hyphens
     names = tokens.map(t => data.entry('qualities', t.replace(/_/g, '-'))?.name ?? data.entry('qualities', t)?.name).filter((s): s is string => !!s)
+  } else if (kind === 'spell') {
+    // no listed options → every catalog spell, A to Z; listed options resolve to their spells (an
+    // unresolvable option surfaces as a missing entry rather than silently reopening the whole list)
+    const picked = tokens.map(t => data.entry('spells', t)?.name ?? data.entry('spells', t.replace(/_/g, '-'))?.name).filter((s): s is string => !!s)
+    names = tokens.length ? picked : data.spellNames
   } else {
     names = tokens.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) // matrix attribute labels
   }

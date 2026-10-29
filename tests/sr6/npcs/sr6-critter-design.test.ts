@@ -21,6 +21,7 @@ const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
 const at = 'source="ZZ" page="3"'
 const POWERS = `<sr6:data ${NS} kind="critterpowers" version="1">
   <critterpower id="zz.armor" ${at} type="P"><name>Armor</name><text/></critterpower>
+  <critterpower id="zz.inborn-trick" ${at} type="M"><name>Inborn Trick</name><selection type="SPELL"/><text/></critterpower>
   <critterpower id="zz.soap-allergy" ${at} type="P" weakness="true"><name>Soap Allergy</name><text/></critterpower>
 </sr6:data>`
 const c = fixtureCatalog(undefined, [{ file: 'custom/sr6/imported/zz/critterpowers.xml', xml: POWERS }]),
@@ -154,4 +155,19 @@ test('the Stat block tab: a designed critter’s generated lines are read only; 
   stubFetch([s2.route])
   await rerender(asGm(createElement(Sr6EditorView, { key: 'b', c, data, cr, id: grunt.id, tab: 'design', npc: true })))
   expect([...document.querySelectorAll('nav.tabs a')].map(a => a.textContent)).toEqual(['Concept', 'Stat block', 'Print'])
+})
+
+test('the Design tab: a power with a SPELL selection takes its note from a spell picker, not a text box', async () => {
+  const ch = blankSr6Npc('critter', undefined, '2026-10-16T00:00:00.000Z')
+  designCritter(ch.npc!, data, cr)
+  const store = fakeStore('sr6/npcs', { [ch.id]: sr6ToXml(ch) })
+  stubFetch([store.route])
+  await mount(asGm(createElement(Sr6EditorView, { c, data, cr, id: ch.id, tab: 'design', npc: true })))
+  await click(button('Add power…'))
+  await click(option('Inborn Trick'))
+  const note = field<HTMLSelectElement>('Inborn Trick note')
+  expect(note.tagName).toBe('SELECT')
+  await change(note, data.spellNames[0])
+  await click(button('Save'))
+  expect(read(store.rows.get(ch.id)!.xml).npc?.design?.powers).toEqual([{ id: 'zz.inborn-trick', name: 'Inborn Trick', note: data.spellNames[0] }])
 })

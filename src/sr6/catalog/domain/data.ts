@@ -416,6 +416,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     qualities,
     powers,
     metamagics,
+    spellNames: [...new Set(all('spells').map(e => e.name))].sort((a, b) => a.localeCompare(b)),
     lifemodules,
     grades,
     problems,
