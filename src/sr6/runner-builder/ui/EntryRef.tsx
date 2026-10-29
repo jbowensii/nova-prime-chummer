@@ -15,6 +15,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import { ATTR_NAMES, n, useSr6Editor, type Sr6Ctx } from './editor'
 import { attrMax, bonusSources, bracketNotes, statusesOf } from '../domain/creation/budgets'
 import { br } from './view'
+import { RULE_TEXT, ruleRefsOf } from '../domain/creation/rule-markers'
 
 /** A field's formula and its values over the ratings the entry comes in: "Rating × 200¥ (200–1,200¥)", "(unpriced)"
  *  when it can't be worked out; undefined without a formula. (The picker shows it too.) */
@@ -28,7 +29,11 @@ export function formulaShown(e: Sr6Entry, field: string, find?: Find): string | 
 
 /** What an entry's <effect> and <link> parts do (effects.ts effectText), as the hover card and Game data show them. */
 export function effectsOf(e: Sr6Entry): CardEffect[] {
-  return e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(p => ({ text: effectText(p), state: effectState(p) }))
+  const rules = ruleRefsOf(e).flatMap(r => RULE_TEXT[r] ?? [])
+  return [
+    ...e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(p => ({ text: effectText(p), state: effectState(p) })),
+    ...rules.map(text => ({ text, state: 'applied' as const })),
+  ]
 }
 
 /** "category zappers · dv 3P · cost Rating × 50": an entry's printed values, then its formulas with their values over its
