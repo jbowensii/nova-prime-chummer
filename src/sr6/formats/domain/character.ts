@@ -166,6 +166,8 @@ export interface Sr6Purchase {
   /** a vehicle or drone bought at a GM-adjusted nuyen price instead of the catalog/design price (career Ledger); Review warns until a GM approves it */
   gmPrice?: number
   avail?: number
+  /** a ready-made vehicle/drone's Design Points as set by a GM (otherwise estimated from its price: purchases.ts estimatedDp) */
+  dp?: number
   /** a custom (id-less) mod built into a design: its own mod slots */
   slots?: number
   essence?: number
@@ -229,6 +231,8 @@ export interface Sr6Design {
   /** a based design: the starting vehicle's catalog <part>s (by id) taken off it (plan Stage 4); the bought design lacks them */
   removedParts?: string[]
   chassis?: string
+  /** a custom (GM/house) chassis built in place of a catalog one: the chassis table's own columns (not book data) */
+  customChassis?: { name: string; dp: number; body: number; armor: number; handling: number; seats: number; sizeClass: number }
   powertrain?: string
   console?: string
   /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */

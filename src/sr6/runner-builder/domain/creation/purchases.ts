@@ -238,6 +238,11 @@ export function cargoFactor(x: Sr6Purchase, e?: Sr6Entry): { seats: number; carg
   return { seats: seats - removed, cargo: Math.floor(per * seats + per * removed) + (/truck/i.test(cat) ? 4 : 0) }
 }
 
+/** A ready-made vehicle's Design Points: a GM's override, else its list price / 1,000 rounded to a whole point (Double Clutch
+ *  prices a design at DP x 1,000, run backwards; corporate prices vary, so it is only an estimate). */
+export const estimatedDp = (x: Sr6Purchase, data: Sr6Data, cr: CreationRules) =>
+  x.dp ?? Math.round(priced({ ...x, gmPrice: undefined, accessories: [] }, data, cr).cost / 1000)
+
 /** A drone (by its class, `DRONE_SMALL/AIR`, else its category, `Small drone`): bought on the Drones tab. */
 export const isDrone = (e?: Sr6Entry) => /^DRONE_/i.test(e?.attrs.class ?? '') || /drone/i.test(e?.attrs.category ?? '')
 /** The editor tab a line is bought on: a drone's Drones (its Review path stays `vehicles.<uid>`: GM approvals keep). */

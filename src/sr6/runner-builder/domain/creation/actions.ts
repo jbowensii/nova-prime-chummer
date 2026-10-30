@@ -111,6 +111,8 @@ export type Op =
   | { op: 'diy'; uid: string; diy: boolean }
   /** set (value) or clear (omitted) a vehicle/drone line's GM-adjusted price */
   | { op: 'gmprice'; uid: string; value?: number }
+  /** set (value) or clear (omitted) a vehicle/drone line's GM-set Design Points (else estimated from its price) */
+  | { op: 'vehicledp'; uid: string; value?: number }
   /** a purchased line's choice note: the attribute/skill/quality/matrix an item naming a choice is for ('' clears it) */
   | { op: 'purchaseNote'; uid: string; note: string }
   /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
@@ -672,6 +674,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if ('reason' in line) return line
         host.accessories.push(line)
       }
+      return OK
+    }
+    case 'vehicledp': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      if (op.value === undefined) delete x.dp
+      else if (Number.isFinite(op.value) && op.value >= 0) x.dp = op.value
+      else return no('bad-dp')
       return OK
     }
     case 'gmprice': {
