@@ -8,6 +8,7 @@ import { entryOf, priced, statusesOf, takesMaterial } from '../../domain/creatio
 import { activeRules, deckKarma, DECK_NUYEN_PER_KARMA, isDeckPart } from '../../domain/creation/rule-markers'
 import { ratingEdge } from '../../domain/creation/derive'
 import { n, useSr6Editor } from '../editor'
+import { BuyItemDesign } from '../Builder'
 import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
 import { entryLabel, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
 
@@ -142,6 +143,7 @@ export function GearTab() {
           Custom item…
         </button>
       </div>
+      <BuyItemDesign kind="weapon" />
       <PurchaseSection
         kind="weapons"
         title="Weapons"

@@ -13,6 +13,17 @@
       <xs:sequence>
         <xs:element name="npc" type="c:Npc" minOccurs="0"/>
         <xs:element name="design" type="c:Design" minOccurs="0"/>
+        <!-- a saved weapon or cyberware design (the item builders): the line as built, with its add-ons; approved when a
+             GM made or approved it -->
+        <xs:element name="itemDesign" minOccurs="0">
+          <xs:complexType>
+            <xs:sequence><xs:element name="purchase" type="c:Purchase"/></xs:sequence>
+            <xs:attribute name="kind" use="required">
+              <xs:simpleType><xs:restriction base="xs:string"><xs:enumeration value="weapon"/><xs:enumeration value="cyberware"/></xs:restriction></xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="approved" type="xs:boolean"/>
+          </xs:complexType>
+        </xs:element>
         <xs:element name="portrait" type="xs:string" minOccurs="0"/>
         <xs:element name="token" type="xs:string" minOccurs="0"/>
         <xs:element name="background" type="xs:string" minOccurs="0"/>
@@ -669,6 +680,8 @@
          snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
          when a GM made or approved the design) -->
     <xs:attribute name="design" type="xs:string"/>
+    <!-- a weapon or cyberware line bought from a saved design a GM made or approved (the item builders): Review asks nothing -->
+    <xs:attribute name="approved" type="xs:boolean"/>
     <!-- the identity (SIN) the line is assigned to: its uid -->
     <xs:attribute name="sin" type="xs:string"/>
     <!-- a vehicle's or drone's mod slots shifted between categories (Double Clutch p. 120), in the order made: `from>to`

@@ -99,6 +99,9 @@ export type Op =
   | { op: 'purchase'; remove: string }
   /** a vehicle or drone bought from a design (design.ts boughtDesign); taken away as any line (purchase remove) */
   | { op: 'design'; line: Sr6Purchase }
+  /** a custom line the item builders made (a custom cyberlimb, assets/builders.ts customLimb) or, with `host`, a player's own
+   *  add-on fitted to that line (customAddon; Review asks a GM to approve it, owner ruling 6): its `custom.` id and snapshot */
+  | { op: 'custom'; line: Sr6Purchase; host?: string }
   /** a stacking line's quantity */
   | { op: 'quantity'; uid: string; qty: number }
   /** mount: a weapon's mount (the host's accessory it sits in); diy: a vehicle mod installed by the player (half price) */
@@ -615,8 +618,30 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     }
     case 'design': {
       const x = op.line
-      if (x.kind !== 'vehicles' || !x.design || !x.snapshot) return no('not-a-design')
-      b.purchases.push({ ...structuredClone(x), uid: newId(), qty: 1 })
+      if (!x.design || (x.kind === 'vehicles' ? !x.snapshot : x.kind !== 'weapons' && x.kind !== 'augmentations')) return no('not-a-design')
+      // (an item design's line: fresh uids for it and its add-ons, so two bought copies never share one)
+      const fresh = (y: Sr6Purchase): Sr6Purchase => ({ ...y, uid: newId(), accessories: y.accessories.map(fresh) })
+      const line = { ...fresh(structuredClone(x)), qty: 1 }
+      if (x.kind === 'augmentations' && augmentationRoom(b, data, entryOf(line, data)) < 1) return no('once-per-runner')
+      b.purchases.push(line)
+      return OK
+    }
+    case 'custom': {
+      const x = op.line,
+        e = x.snapshot
+      if (!x.id?.startsWith('custom.') || !e || e.id !== x.id || e.kind !== x.kind) return no('not-custom')
+      if (['cost', 'avail', 'essence'].some(k => Number(e.attrs[k] ?? 0) < 0)) return no('below-zero')
+      const line = { ...structuredClone(x), uid: newId(), qty: Math.max(1, x.qty || 1) }
+      if (op.host === undefined) {
+        if (x.kind === 'augmentations' && augmentationRoom(b, data, e) < 1) return no('once-per-runner')
+        b.purchases.push(line)
+        return OK
+      }
+      const host = allLines(b).find(y => y.uid === op.host)
+      if (!host) return no('unknown-host')
+      const problem = accessoryProblem(host, line, data)
+      if (problem) return no(problem)
+      host.accessories.push(line)
       return OK
     }
     case 'quantity': {
@@ -636,7 +661,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'accessory': {
-      const host = b.purchases.find(x => x.uid === op.host)
+      // (a nested line hosts too: a weapon built into a cyberarm takes its own accessories, owner ruling 5)
+      const host = allLines(b).find(x => x.uid === op.host)
       if (!host) return no('unknown-host')
       if ('remove' in op) {
         if (!host.accessories.some(a => a.uid === op.remove)) return no('not-fitted')
@@ -779,7 +805,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     }
     case 'part': {
       // (a vehicle's factory parts, or a weapon's standard upgrades)
-      const x = b.purchases.find(p => p.uid === op.uid && (p.kind === 'vehicles' || p.kind === 'weapons'))
+      const x = allLines(b).find(p => p.uid === op.uid && (p.kind === 'vehicles' || p.kind === 'weapons'))
       if (!x) return no('unknown-line')
       return setPart(x, 'restore' in op ? op.restore : op.remove, 'restore' in op, data)
     }

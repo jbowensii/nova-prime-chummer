@@ -193,6 +193,9 @@ export interface Sr6ExportPurchase extends Sr6ExportItem {
   /** ammunition of a material (purchases.ts materialOf): the material's id and name, how many times as much the line
    *  costs (values.cost has it) and what its rounds do, in words */
   material?: { id: string; name: string; times: number; effect: string }
+  /** a weapon or cyberware line bought from a saved item design (the item builders): its id, and whether a GM approved it */
+  design?: string
+  approved?: true
   /** a vehicle or drone: what the Foundry module needs past its numbers (values.vehicle) */
   vehicle?: Sr6ExportVehicle
   /** an owned critter: its stat block (exportNpc), how it was priced and trained, and its companion qualities */
@@ -686,6 +689,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     mount: x.mount,
     diy: x.diy,
     material: materialOf(data, x.material),
+    ...(x.design && x.kind !== 'vehicles' ? { design: x.design, approved: x.approved } : {}),
     ...(x.kind === 'vehicles' ? { vehicle: vehicleOf(x, data) } : {}),
     ...(x.kind === 'critters'
       ? {

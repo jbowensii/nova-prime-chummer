@@ -105,3 +105,14 @@ test('a player’s design is saved without approved (either quote, a > in a valu
   expect((await call('eve', 'PUT', '/api/sr6/designs/e2', file('e2', 'GM Approved', tag))).status).toBe(201)
   expect(stored('eve', 'GM-Approved.xml')).toContain(tag)
 })
+
+test('weapon and cyberware designs (the item builders) are shared: every account lists everyone’s; vehicle designs stay their own', async () => {
+  const item = (approved = '') => `<itemDesign kind="weapon"${approved}><purchase uid="u" kind="weapons" id="zz.rifle" qty="1"/></itemDesign>`
+  expect((await call('pat', 'PUT', '/api/sr6/designs/i1', file('i1', 'Pat Gun', item(' approved="true"')))).status).toBe(201)
+  // a player's own save drops approved here too
+  expect(readFileSync(join(designs, 'pat', 'Pat-Gun.xml'), 'utf8')).toContain('<itemDesign kind="weapon">')
+  expect((await call('eve', 'PUT', '/api/sr6/designs/i2', file('i2', 'Eve Gun', item()))).status).toBe(201)
+  const pat = await ids('pat')
+  expect(pat).toContain('eve/i2')
+  expect(pat.some(i => i.startsWith('eve/') && i !== 'eve/i2')).toBe(false)
+})

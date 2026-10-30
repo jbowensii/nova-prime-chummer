@@ -110,6 +110,7 @@ function purchaseXml(p: Sr6Purchase): string {
       diy: p.diy,
       material: p.material,
       design: p.design,
+      approved: p.approved,
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
       addedSlots: p.addedSlots?.length ? p.addedSlots.map(s => (s.value ? `${s.id}:${s.value}` : s.id)).join(' ') : undefined,
       removedBuiltins: p.removedBuiltins?.length ? p.removedBuiltins.join(' ') : undefined,
@@ -376,6 +377,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const body = [
     npcXml(ch.npc),
     designXml(ch.design),
+    ch.itemDesign ? el('itemDesign', { kind: ch.itemDesign.kind, approved: ch.itemDesign.approved }, purchaseXml(ch.itemDesign.line)) : '',
     text('portrait', id.portrait) + text('token', id.token),
     text('background', id.background),
     text('notes', id.notes),
@@ -489,6 +491,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     diy: yes(e, 'diy'),
     material: str(e, 'material'),
     design: str(e, 'design'),
+    approved: yes(e, 'approved'),
     slotShifts: readShifts(e, fix),
     addedSlots: readAddedSlots(e),
     removedBuiltins: (u => (u.length ? u : undefined))(
@@ -1048,6 +1051,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
       fn = num(r, 'finalNuyen'),
       npc = kid(r, 'npc'),
       design = kid(r, 'design'),
+      itemDesign = kid(r, 'itemDesign'),
       ledger = kid(r, 'ledger'),
       house = kid(r, 'house')
     const printed = kid(r, 'printed'),
@@ -1081,6 +1085,14 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
         : [],
       npc: npc ? readNpc(npc, fix) : undefined,
       design: design ? readDesign(design, fix) : undefined,
+      itemDesign: ((p: Element | null) =>
+        itemDesign && p
+          ? def({
+              kind: oneOf(itemDesign.getAttribute('kind'), ['weapon', 'cyberware'] as const, 'item design kind', 'weapon', fix)!,
+              line: readPurchase(p, fix),
+              approved: yes(itemDesign, 'approved'),
+            })
+          : undefined)(itemDesign && kid(itemDesign, 'purchase')),
       sampleKey: str(r, 'sampleKey'),
       house: house?.children.length ? readHouse(house, fix) : undefined,
       printed: printed

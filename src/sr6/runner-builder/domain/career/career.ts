@@ -587,8 +587,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
-      // (a design's line: its snapshot, the vehicle the design worked out to)
-      const e = x.id ? (data.entry(x.kind, x.id) ?? (x.design ? x.snapshot : undefined) ?? no('unknown-entry')) : undefined
+      // (a design's line: its snapshot, the vehicle the design worked out to; a builders' custom limb: its own)
+      const e = x.id ? (data.entry(x.kind, x.id) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       // (a grade the augmentation's type doesn't take is recorded: Review's gear.grade)

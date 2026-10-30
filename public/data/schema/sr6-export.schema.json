@@ -703,6 +703,14 @@
           "description": "A vehicle mod the player installed (half its nuyen price).",
           "const": true
         },
+        "design": {
+          "description": "A weapon or cyberware line bought from a saved item design (the item builders): the design's id.",
+          "type": "string"
+        },
+        "approved": {
+          "description": "That design was made or approved by a GM.",
+          "const": true
+        },
         "material": {
           "description": "Ammunition of a material (Bestial Nature p. 36): the material's catalog id and name, how many times as much the line costs (values.cost has it) and what its rounds do, in words.",
           "type": "object",
