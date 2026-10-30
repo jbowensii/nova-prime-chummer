@@ -332,6 +332,9 @@ test('the other modifications and quality factors by name, an option with no rul
   // a Cargo Hauler: half the seats (2 at least), half the Armor in the speed modifier (7), cargo doubled; half the High
   // Performance bonus, Multi-Engine × 1.5
   expect(of([opt('cargo-hauler')]).stats).toMatchObject({ seats: 2, accel: 11, topSpeed: 180, cargo: 2, cargoText: '2 CF' })
+  // Improved Seating's seats are added after the halving / tripling, whole (owner 2026-10-30)
+  expect(of([opt('cargo-hauler'), opt('improved-seating', 2)]).stats.seats).toBe(4)
+  expect(of([opt('mass-transit'), opt('improved-seating', 2)]).stats.seats).toBe(14)
   expect(of([opt('cargo-hauler'), opt('high-performance')]).stats).toMatchObject({ accel: 12, topSpeed: 205 })
   expect(of([opt('cargo-hauler'), opt('multi-engine')]).stats).toMatchObject({ accel: 16, topSpeed: 270 })
   expect(of([opt('high-performance')]).stats).toMatchObject({ accel: 13, topSpeed: 210 })
