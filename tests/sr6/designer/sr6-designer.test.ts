@@ -154,9 +154,37 @@ test('a design started from a known vehicle shows its chassis and its powertrain
   const store = fakeStore('sr6/designs', { d1: sr6ToXml(d0) })
   stubFetch([store.route])
   await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
-  expect(pageText()).toMatch(/ChassisTruckPowertrainWheeled Powertrain/)
-  await click(button('Remove factory part Wheeled Powertrain'))
-  expect(pageText()).toMatch(/PowertrainWheeled Powertrain \(removed\)/)
+  expect(pageText()).toMatch(/Chassis: Truck/)
+  // its own powertrain (Roller Powertrain → the Roller row) preselected
+  expect(field<HTMLSelectElement>('Powertrain').value).toBe('zz.roller')
+  expect(pageText()).toMatch(/Handling4\/3.*Acceleration7Speed interval20Top speed90/)
+  // a swap: the factory part comes off, speeds scale by Floater over Roller, its -2 handling, its 12 DP
+  await change(field<HTMLSelectElement>('Powertrain'), 'zz.floater')
+  expect(pageText()).toMatch(/Roller Powertrain \(synthesized\) · powertrain 4 \(removed\)/)
+  expect(pageText()).toMatch(/Handling2\/1.*Acceleration7Speed interval45Top speed43/)
+  expect(pageText()).toMatch(/Powertrain swapped: Roller → Floater\./)
+  await click(button('Save'))
+  const saved = read(store.rows.get('d1')!.xml)
+  expect(saved.design).toMatchObject({ powertrain: 'zz.floater', removedParts: ['pp'] })
+  const line = boughtDesign(saved, data, cr)
+  expect(line.snapshot!.parts.map(p => p.attrs.ref ?? p.attrs.name)).toEqual(['zz.powertrain-floater'])
+  // restoring the factory part undoes the swap
+  await click(button('Restore factory part Roller Powertrain'))
+  expect(field<HTMLSelectElement>('Powertrain').value).toBe('zz.roller')
+  expect(pageText()).toMatch(/Top speed90/)
+  // a custom powertrain swaps in the same way
+  await change(field<HTMLSelectElement>('Powertrain'), '__custom')
+  for (const [k, v] of [
+    ['Powertrain name', 'Jet'],
+    ['Powertrain DP', '40'],
+    ['Powertrain Acceleration', '30'],
+    ['Powertrain Speed Interval', '40'],
+    ['Powertrain Top Speed', '500'],
+  ])
+    await change(field(k), v)
+  await click(button('Save powertrain'))
+  expect(pageText()).toMatch(/Acceleration14Speed interval40Top speed180/)
+  expect(pageText()).toMatch(/Roller Powertrain \(synthesized\) · powertrain 4 \(removed\)/)
 })
 
 test('Improved Handling: once taken, on-road and off-road or one of them (3 DP a level), saved on its option (owner Q2)', async () => {

@@ -36,12 +36,13 @@ export const DESIGN_PARTS = `<sr6:data ${NS} kind="vehicledesign" version="1">
 export const DESIGN_GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zap-grip" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="2" avail="4" cost="1000"><name>Zap Grip</name></gear>
   <gear id="zz.zip-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" slots="1" avail="4(I)" cost="1500"><name>Zip Weapon Mount</name></gear>
-  <gear id="zz.powertrain-wheeled" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Wheeled Powertrain</name><fits slot="vehicle-powertrain"/></gear>
+  <gear id="zz.powertrain-roller" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Roller Powertrain</name><fits slot="vehicle-powertrain"/></gear>
+  <gear id="zz.powertrain-floater" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Floater Powertrain</name><fits slot="vehicle-powertrain"/></gear>
   <gear id="zz.glitter-paint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_SKIN" slots="0" avail="6(L)" cost="4000"><name>Glitter Paint</name></gear>
 </sr6:data>`
 // a made-up catalog vehicle, for the "start from a known vehicle" path
 export const DESIGN_VEHICLE = `<sr6:data ${NS} kind="vehicles" version="1">
-  <vehicle id="zz.grizzly" source="ZZ" page="200" category="Truck" body="12" armor="10" handling="4/3" accel="7" interval="20" topSpeed="90" pilot="3" sensor="3" seats="6" avail="6" cost="40000"><name>Custom Grizzly</name><part id="pp" ref="zz.powertrain-wheeled" hook="vehicle-powertrain" cost="4" origin="synth" removable="true"/></vehicle>
+  <vehicle id="zz.grizzly" source="ZZ" page="200" category="Truck" body="12" armor="10" handling="4/3" accel="7" interval="20" topSpeed="90" pilot="3" sensor="3" seats="6" avail="6" cost="40000"><name>Custom Grizzly</name><part id="pp" ref="zz.powertrain-roller" hook="vehicle-powertrain" cost="4" origin="synth" removable="true"/></vehicle>
 </sr6:data>`
 /** The fixture catalog with the made-up design parts and mods. */
 export const designCatalog = () =>

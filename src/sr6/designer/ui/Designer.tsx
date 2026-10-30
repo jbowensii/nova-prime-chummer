@@ -22,7 +22,7 @@ import { entryLabel } from '../../catalog/domain/categories'
 import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
-import { chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
+import { basePowertrain, chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
 import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
 import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
@@ -38,6 +38,7 @@ const partsOf = (c: Sr6Catalog, p: DesignPart) =>
   [...c.entries.vehicledesign.values()].filter(e => designPart(e) === p).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
 /** The custom-chassis form's fields: the chassis table's own columns (DP, Body, Armor, Handling, Seats, Size Class). */
 const CUSTOM = '__custom'
+const OWN = '__own'
 const CHASSIS_FIELDS = [
   ['name', 'Chassis name'],
   ['dp', 'Chassis DP'],
@@ -522,6 +523,126 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
       </select>
     </label>
   )
+  // a based design's powertrain (owner 2026-10-30): its own type's Double Clutch row preselected; another swaps it in
+  // (its factory part taken off, the chosen one built in), None takes it off, its own row puts it back
+  const own = basePowertrain(d, data),
+    ownIds = own.parts.map(p => p.attrs.id),
+    ownOff = ownIds.length > 0 && ownIds.every(i => (d.removedParts ?? []).includes(i))
+  const setOff = (x: Sr6Design, off: boolean) => {
+    const rest = (x.removedParts ?? []).filter(u => !ownIds.includes(u))
+    x.removedParts = off ? [...rest, ...ownIds] : rest
+    if (!x.removedParts.length) delete x.removedParts
+  }
+  const basePick = (
+    <label>
+      Powertrain
+      <select
+        value={d.customPowertrain ? CUSTOM : (d.powertrain ?? (ownOff ? '' : own.row ? own.row.id : ownIds.length ? OWN : ''))}
+        onChange={e => {
+          const v = e.target.value
+          if (v === CUSTOM) return setMakingC({ what: 'powertrain', f: Object.fromEntries(POWERTRAIN_FIELDS.map(([k]) => [k, ''])) })
+          update(x => {
+            delete x.customPowertrain
+            delete x.powertrain
+            if (v === OWN || (own.row && v === own.row.id)) setOff(x, false)
+            else {
+              setOff(x, true)
+              if (v) x.powertrain = v
+            }
+          })
+        }}
+      >
+        <option value="">None</option>
+        {ownIds.length > 0 && !own.row && <option value={OWN}>{own.type ?? 'Its own'} (its own; no Double Clutch powertrain row)</option>}
+        {(cc => <option value={CUSTOM}>{cc ? `${cc.name} (custom, ${cc.dp} DP)` : 'Custom powertrain…'}</option>)(d.customPowertrain)}
+        {partsOf(c, 'powertrain').map(e => (
+          <option key={e.id} value={e.id}>
+            {entryLabel(e)} ({dpText(e)}){own.row?.id === e.id ? ' (its own)' : ''}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+  // the custom chassis/powertrain: Edit and Remove when one is set, its form while making one
+  const customsUi = (whats: CustomPart[]) => (
+    <>
+      {!makingC &&
+        whats.map(what =>
+          (cc =>
+            cc && (
+              <p className="row" key={what}>
+                <button
+                  className="btn small quiet"
+                  type="button"
+                  onClick={() =>
+                    setMakingC({
+                      what,
+                      f: Object.fromEntries(
+                        [...CUSTOM_FIELDS[what].map(([k]) => k), 'cargoFrom', 'cargo'].map(k => [k, String((cc as Record<string, unknown>)[k] ?? '')]),
+                      ),
+                    })
+                  }
+                >
+                  Edit custom {what}
+                </button>
+                <button className="btn small quiet" type="button" onClick={() => update(x => void delete x[customKey[what]])}>
+                  Remove custom {what}
+                </button>
+              </p>
+            ))(d[customKey[what]]),
+        )}
+      {makingC && (
+        <form
+          className="row"
+          aria-label={`Custom ${makingC.what}`}
+          onSubmit={e => {
+            e.preventDefault()
+            const { what, f } = makingC
+            if (!f.name.trim()) return
+            const vals: Record<string, unknown> = Object.fromEntries(CUSTOM_FIELDS[what].map(([k]) => [k, k === 'name' ? f.name.trim() : Number(f[k]) || 0]))
+            if (what === 'chassis') {
+              if (f.cargoFrom === 'size') vals.cargoFrom = 'size'
+              if ((f.cargo ?? '').trim() !== '' && Number.isFinite(Number(f.cargo))) vals.cargo = Number(f.cargo)
+            }
+            update(x => {
+              delete x[what]
+              x[customKey[what]] = vals as never
+              if (x.base && what === 'powertrain') setOff(x, true) // (swapped in: its own taken off)
+            })
+            setMakingC(null)
+          }}
+        >
+          {CUSTOM_FIELDS[makingC.what].map(([k, label]) => (
+            <label key={k}>
+              {label}
+              <input value={makingC.f[k]} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, [k]: e.target.value } })} />
+            </label>
+          ))}
+          {makingC.what === 'chassis' && (
+            <>
+              <label>
+                Chassis Cargo from
+                <select value={makingC.f.cargoFrom ?? ''} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, cargoFrom: e.target.value } })}>
+                  <option value="">Seats (Commlink6)</option>
+                  <option value="size">Size Class table (Double Clutch)</option>
+                </select>
+              </label>
+              <label>
+                Chassis Cargo (CF, over either)
+                <input value={makingC.f.cargo ?? ''} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, cargo: e.target.value } })} />
+              </label>
+            </>
+          )}
+          <button className="btn small" type="submit" disabled={!makingC.f.name.trim()}>
+            Save {makingC.what}
+          </button>
+          <button className="btn small quiet" type="button" onClick={() => setMakingC(null)}>
+            Cancel
+          </button>
+        </form>
+      )}
+    </>
+  )
   const toggles = (p: DesignPart) =>
     partsOf(c, p).map(e => (
       <label key={e.id} className="inline" title={descOf(e)}>
@@ -616,20 +737,17 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                       data.entry('vehicles', d.base),
                     )}
                   </p>
-                  {(fp => {
-                    // its chassis (the vehicle's own type) and powertrain (the factory part in its powertrain hook) by the
-                    // chassis, as a from-scratch design shows them in its Chassis and Powertrain picks
-                    const ve = data.entry('vehicles', d.base!)
-                    const pt = fp.filter(p => p.hook === 'vehicle-powertrain')
-                    return (
-                      <dl className="dsn-base-parts" aria-label="Chassis and powertrain of the starting vehicle">
-                        <dt>Chassis</dt>
-                        <dd>{ve?.attrs.category ?? '—'}</dd>
-                        <dt>Powertrain</dt>
-                        <dd>{pt.length ? pt.map(p => `${p.name}${p.removed ? ' (removed)' : ''}`).join(', ') : '—'}</dd>
-                      </dl>
-                    )
-                  })(factoryParts({ uid: '', kind: 'vehicles', id: d.base, qty: 1, accessories: [], removedParts: d.removedParts }, data))}
+                  {/* its chassis (the vehicle's own type) and its powertrain, swappable, by the chassis */}
+                  <div className="dsn-picks" aria-label="Chassis and powertrain of the starting vehicle">
+                    <p>Chassis: {data.entry('vehicles', d.base)?.attrs.category ?? '—'}</p>
+                    {basePick}
+                  </div>
+                  {ownIds.length > 0 && !own.row && (
+                    <p className="err">
+                      Its powertrain ({own.type ?? ownIds.join(', ')}) is no Double Clutch powertrain row: a swap uses the new one’s starting values.
+                    </p>
+                  )}
+                  {customsUi(['powertrain'])}
                   <p className="muted">
                     Its stats, price and Availability are the baseline; add mods below. Switch to a from-scratch build to pick a chassis instead.
                   </p>
@@ -653,6 +771,10 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                                       const rest = (x.removedParts ?? []).filter(u => u !== fpart.id)
                                       x.removedParts = fpart.removed ? rest : [...rest, fpart.id]
                                       if (!x.removedParts.length) delete x.removedParts
+                                      if (fpart.removed && fpart.hook === 'vehicle-powertrain') {
+                                        delete x.powertrain // (its own powertrain back: no swap)
+                                        delete x.customPowertrain
+                                      }
                                     })
                                   }
                                 >
@@ -675,88 +797,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
                     {pick('console', partsOf(c, 'console'), 'Console')}
                   </div>
-                  {!makingC &&
-                    (['chassis', 'powertrain'] as const).map(what =>
-                      (cc =>
-                        cc && (
-                          <p className="row" key={what}>
-                            <button
-                              className="btn small quiet"
-                              type="button"
-                              onClick={() =>
-                                setMakingC({
-                                  what,
-                                  f: Object.fromEntries(
-                                    [...CUSTOM_FIELDS[what].map(([k]) => k), 'cargoFrom', 'cargo'].map(k => [
-                                      k,
-                                      String((cc as Record<string, unknown>)[k] ?? ''),
-                                    ]),
-                                  ),
-                                })
-                              }
-                            >
-                              Edit custom {what}
-                            </button>
-                            <button className="btn small quiet" type="button" onClick={() => update(x => void delete x[customKey[what]])}>
-                              Remove custom {what}
-                            </button>
-                          </p>
-                        ))(d[customKey[what]]),
-                    )}
-                  {makingC && (
-                    <form
-                      className="row"
-                      aria-label={`Custom ${makingC.what}`}
-                      onSubmit={e => {
-                        e.preventDefault()
-                        const { what, f } = makingC
-                        if (!f.name.trim()) return
-                        const vals: Record<string, unknown> = Object.fromEntries(
-                          CUSTOM_FIELDS[what].map(([k]) => [k, k === 'name' ? f.name.trim() : Number(f[k]) || 0]),
-                        )
-                        if (what === 'chassis') {
-                          if (f.cargoFrom === 'size') vals.cargoFrom = 'size'
-                          if ((f.cargo ?? '').trim() !== '' && Number.isFinite(Number(f.cargo))) vals.cargo = Number(f.cargo)
-                        }
-                        update(x => {
-                          delete x[what]
-                          x[customKey[what]] = vals as never
-                        })
-                        setMakingC(null)
-                      }}
-                    >
-                      {CUSTOM_FIELDS[makingC.what].map(([k, label]) => (
-                        <label key={k}>
-                          {label}
-                          <input value={makingC.f[k]} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, [k]: e.target.value } })} />
-                        </label>
-                      ))}
-                      {makingC.what === 'chassis' && (
-                        <>
-                          <label>
-                            Chassis Cargo from
-                            <select
-                              value={makingC.f.cargoFrom ?? ''}
-                              onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, cargoFrom: e.target.value } })}
-                            >
-                              <option value="">Seats (Commlink6)</option>
-                              <option value="size">Size Class table (Double Clutch)</option>
-                            </select>
-                          </label>
-                          <label>
-                            Chassis Cargo (CF, over either)
-                            <input value={makingC.f.cargo ?? ''} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, cargo: e.target.value } })} />
-                          </label>
-                        </>
-                      )}
-                      <button className="btn small" type="submit" disabled={!makingC.f.name.trim()}>
-                        Save {makingC.what}
-                      </button>
-                      <button className="btn small quiet" type="button" onClick={() => setMakingC(null)}>
-                        Cancel
-                      </button>
-                    </form>
-                  )}
+                  {customsUi(['chassis', 'powertrain'])}
                 </section>
               )}
               <section className="panel dsn-vehicle" aria-label="The vehicle">

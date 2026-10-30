@@ -187,6 +187,35 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     cargo: null,
     cargoText: a.cargo ?? '—',
   }
+  // a powertrain swapped in (owner 2026-10-30): the vehicle's speeds scale by the new powertrain's starting values over
+  // its own type's (its tuning kept in proportion, rounded down as the book's final calculations are; a difference would
+  // take a slow truck below 0), the handling SPECIALs change by their difference; the new one's Design Points count as
+  // a from-scratch design's do. Its own type not a table row: the new starting values, flagged.
+  const swap = d.powertrain || d.customPowertrain ? powertrainOf(d, data) : undefined
+  let swapDp: Sr6Entry | undefined
+  if (swap) {
+    const own = basePowertrain(d, data)
+    const scale = (st: 'accel' | 'interval' | 'topSpeed') => {
+      const was = num(own.row!.attrs[st])
+      stats[st] = was ? Math.floor((stats[st] * num(swap.attrs[st])) / was) : num(swap.attrs[st])
+    }
+    if (own.row) (['accel', 'interval', 'topSpeed'] as const).forEach(scale)
+    else {
+      stats.accel = num(swap.attrs.accel)
+      stats.interval = num(swap.attrs.interval)
+      stats.topSpeed = num(swap.attrs.topSpeed)
+      warnings.push({
+        message: `${entryLabel(veh)}’s own powertrain${own.type ? ` (${own.type})` : ''} is no Double Clutch powertrain row, so ${entryLabel(swap)}’s starting values are used as they are.`,
+        source: 'DC',
+        page: 150,
+      })
+    }
+    const [n, o] = [specialHandling(swap), specialHandling(own.row)]
+    stats.handling += n.handling - o.handling
+    stats.offRoad += n.offRoad - o.offRoad
+    notes.push(`Powertrain swapped: ${own.row ? entryLabel(own.row) : (own.type ?? 'its own')} → ${entryLabel(swap)}.`)
+    swapDp = swap
+  }
   // options, design modifications and quality factors applied to the vehicle's already-final stats as direct deltas
   // (DESIGNER: a based vehicle is final, so the from-scratch speed-modifier recompute is NOT re-run; the GM approves the result)
   const part = (id?: string) => (id ? data.entry('vehicledesign', id) : undefined)
@@ -209,6 +238,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
       })
     dp += v ?? 0
   }
+  if (swapDp) addDp(swapDp)
   for (const { e, level, k, road } of picked) {
     const p = designPart(e)
     if (p === 'quality') {
@@ -297,6 +327,29 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     notes,
     warnings,
   }
+}
+
+/** A starting vehicle's powertrain (owner 2026-10-30): its factory part in the powertrain hook (the importer's
+ *  `<book>.powertrain-<type>`) and the Double Clutch powertrain row of that type (`propeller-water` is “Propeller
+ *  (Water)”); `row` undefined when the type names no row (flagged, never guessed). */
+export function basePowertrain(d: Sr6Design, data: Sr6Data): { parts: Sr6Part[]; type?: string; row?: Sr6Entry } {
+  const veh = d.base ? data.entry('vehicles', d.base) : undefined
+  const parts = (veh?.parts ?? []).filter(p => p.tag === 'part' && p.attrs.hook === 'vehicle-powertrain')
+  const ref = parts.map(p => p.attrs.ref ?? '').find(r => /\.powertrain-[a-z0-9-]+$/.test(r))
+  // (the part's own name less “Powertrain” is the table's row: `Propeller (Water) Powertrain`)
+  const type = ref ? (data.entry('gear', ref)?.name ?? '').replace(/\s*powertrain\s*$/i, '').trim() : undefined
+  const hit = type ? data.named?.(type, 'vehicledesign') : undefined
+  const row = hit && designPart(hit) === 'powertrain' ? hit : undefined
+  return { parts, ...(type ? { type } : {}), ...(row ? { row } : {}) }
+}
+
+/** A powertrain table's SPECIAL handling changes (`–2 handling`, `–2 to off road handling`). */
+function specialHandling(e?: Sr6Entry): { handling: number; offRoad: number } {
+  const sp = (e?.attrs.special ?? '').replace(/[–−]/g, '-').trim()
+  let m: RegExpExecArray | null
+  if ((m = /^([+-]\d+)\s+to\s+off[\s-]?road\s+handling$/i.exec(sp))) return { handling: 0, offRoad: Number(m[1]) }
+  if ((m = /^([+-]\d+)\s+handling$/i.exec(sp))) return { handling: Number(m[1]), offRoad: Number(m[1]) }
+  return { handling: 0, offRoad: 0 }
 }
 
 /** A design's chassis row: the custom one (a GM/house chassis typed into the Designer, shaped like a catalog row) else the catalog's. */
@@ -651,6 +704,17 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
       off = (p: Sr6Part, depth = 0): boolean =>
         gone.has(p.attrs.id) || (depth < 20 && !!p.attrs.parent && (a => !!a && off(a, depth + 1))(all.find(q => q.attrs.id === p.attrs.parent)))
     parts.push(...all.filter(p => !off(p)))
+    // a powertrain swapped in: built in, as the book's powertrain part of its type where there is one
+    const swap = d.powertrain || d.customPowertrain ? powertrainOf(d, data) : undefined
+    if (swap) {
+      const book = (basePowertrain(d, data).parts[0]?.attrs.ref ?? '').split('.')[0]
+      const ref = `${book}.powertrain-${swap.name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')}`
+      const pe = book ? data.entry('gear', ref) : undefined
+      parts.push({ tag: 'builtin', attrs: { name: pe ? entryLabel(pe) : `${swap.name} Powertrain`, ...(pe ? { ref: pe.id } : {}) }, text: '' })
+    }
   }
   const universal = d.options.reduce((t, o) => t + (o.level > 0 && /easily modified/i.test(data.entry('vehicledesign', o.id)?.name ?? '') ? 2 * o.level : 0), 0)
   if (universal) parts.push({ tag: 'builtin', attrs: { name: 'Easily Modified', slots: String(universal), category: 'universal' }, text: '' })
