@@ -616,6 +616,20 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                       data.entry('vehicles', d.base),
                     )}
                   </p>
+                  {(fp => {
+                    // its chassis (the vehicle's own type) and powertrain (the factory part in its powertrain hook) by the
+                    // chassis, as a from-scratch design shows them in its Chassis and Powertrain picks
+                    const ve = data.entry('vehicles', d.base!)
+                    const pt = fp.filter(p => p.hook === 'vehicle-powertrain')
+                    return (
+                      <dl className="dsn-base-parts" aria-label="Chassis and powertrain of the starting vehicle">
+                        <dt>Chassis</dt>
+                        <dd>{ve?.attrs.category ?? '—'}</dd>
+                        <dt>Powertrain</dt>
+                        <dd>{pt.length ? pt.map(p => `${p.name}${p.removed ? ' (removed)' : ''}`).join(', ') : '—'}</dd>
+                      </dl>
+                    )
+                  })(factoryParts({ uid: '', kind: 'vehicles', id: d.base, qty: 1, accessories: [], removedParts: d.removedParts }, data))}
                   <p className="muted">
                     Its stats, price and Availability are the baseline; add mods below. Switch to a from-scratch build to pick a chassis instead.
                   </p>

@@ -148,6 +148,17 @@ test('a custom powertrain: picked from the Powertrain list, its columns feed the
   expect(field<HTMLSelectElement>('Powertrain').value).toBe('')
 })
 
+test('a design started from a known vehicle shows its chassis and its powertrain part by the chassis (removed too)', async () => {
+  const d0 = blankSr6('priority', 'd1', '2026-10-16T00:00:00.000Z')
+  d0.design = { kind: 'vehicle', base: 'zz.grizzly', options: [], mods: [] }
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(d0) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  expect(pageText()).toMatch(/ChassisTruckPowertrainWheeled Powertrain/)
+  await click(button('Remove factory part Wheeled Powertrain'))
+  expect(pageText()).toMatch(/PowertrainWheeled Powertrain \(removed\)/)
+})
+
 test('Improved Handling: once taken, on-road and off-road or one of them (3 DP a level), saved on its option (owner Q2)', async () => {
   const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
   stubFetch([store.route])
