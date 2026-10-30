@@ -4,6 +4,10 @@
 
 **Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.
 
+**Vehicles**
+- Designer: a "Custom chassis…" choice in the Chassis list — type a name, DP, Body, Armor, Handling, Seats and Size Class.
+- Ready-made vehicles and drones show Cargo Factor and an estimated ~DP (price ÷ 1,000); a GM can set the exact DP in Modify.
+
 **Look**
 - The page background art now shifts: a fresh picture is picked every time you move to another page.
 
