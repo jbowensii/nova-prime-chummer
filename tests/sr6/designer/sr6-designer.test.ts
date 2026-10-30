@@ -11,8 +11,8 @@ import { boughtDesign } from '../../../src/sr6/runner-builder/domain/assets/desi
 import { blankSr6, type Sr6Character } from '../../../src/sr6/formats/domain/character'
 import { Sr6DesignEditor, Sr6Designs } from '../../../src/sr6/designer/ui/Designer'
 import { Sr6EditorView } from '../../../src/sr6/shell/ui/EditorView'
-import { designCatalog } from '../runner-builder/design-fixture'
-import { fixtureCreation, GLIM } from '../catalog/fixture'
+import { DESIGN_GEAR, DESIGN_PARTS, designCatalog } from '../runner-builder/design-fixture'
+import { fixtureCatalog, fixtureCreation, GLIM } from '../catalog/fixture'
 import { button, change, click, fakeStore, field, mount, option, pageText, settle, stubFetch } from '../../ui/dom'
 
 const c = designCatalog(),
@@ -185,6 +185,21 @@ test('a design started from a known vehicle shows its chassis and its powertrain
   await click(button('Save powertrain'))
   expect(pageText()).toMatch(/Acceleration14Speed interval40Top speed180/)
   expect(pageText()).toMatch(/Roller Powertrain \(synthesized\) · powertrain 4 \(removed\)/)
+})
+
+test('an option the catalog lists one entry per level is one line with a level stepper, and its levels change the stats', async () => {
+  const lc = fixtureCatalog(undefined, [
+    { file: 'custom/sr6/imported/zz/vehicledesign.xml', xml: DESIGN_PARTS.replace('max="4"><name>Improved Body', 'max="4" maxLevel="4"><name>Improved Body') },
+    { file: 'custom/sr6/imported/zz/gear.xml', xml: DESIGN_GEAR },
+  ])
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c: lc, data: sr6Data(lc), cr, id: 'd1' })))
+  expect(() => field('Improved Body 2')).toThrow() // (no checkbox per level)
+  expect(pageText()).toMatch(/Body9Armor/) // (Red Zip: Improved Body −1)
+  await click(button('Raise Improved Body level'))
+  await click(button('Raise Improved Body level'))
+  expect(pageText()).toMatch(/Body11Armor/)
 })
 
 test('Improved Handling: once taken, on-road and off-road or one of them (3 DP a level), saved on its option (owner Q2)', async () => {

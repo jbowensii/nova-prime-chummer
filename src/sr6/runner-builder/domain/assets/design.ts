@@ -49,6 +49,17 @@ export function partDp(e: Sr6Entry, level = 1): number | null {
   return e.attrs.perLevel === 'true' || m[2] ? v * level : v
 }
 
+/** A design's option line as its part and level: a level entry of an option the catalog lists one per level
+ *  (`Improved Body 2`, the one-item-per-level rule) is its family's option at that level (× the line's), so its stat
+ *  rule (by the option's name) and its Design Points per level apply. */
+function optionPick(data: Sr6Data, id: string, level: number): { e: Sr6Entry; level: number } | undefined {
+  const e = data.entry('vehicledesign', id)
+  if (!e) return undefined
+  const n = Number(e.attrs.level),
+    parent = e.attrs.family ? data.family?.('vehicledesign', id)?.parent : undefined
+  return parent && n >= 1 ? { e: parent, level: level * n } : { e, level }
+}
+
 /** The first number printed (`250`, `1,000`, `-2`), else 0. */
 const num = (s?: string) => Number(/-?\d[\d,]*(?:\.\d+)?/.exec((s ?? '').replace(/[–−]/g, '-'))?.[0].replace(/,/g, '') ?? 0)
 
@@ -218,11 +229,10 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   }
   // options, design modifications and quality factors applied to the vehicle's already-final stats as direct deltas
   // (DESIGNER: a based vehicle is final, so the from-scratch speed-modifier recompute is NOT re-run; the GM approves the result)
-  const part = (id?: string) => (id ? data.entry('vehicledesign', id) : undefined)
   const picked = d.options.flatMap(o => {
-    const pe = part(o.id)
-    if (!pe) warnings.push({ message: `The design part “${o.id}” is no longer in the catalog; left out.`, source: 'DC', page: 151 })
-    return pe && o.level ? [{ e: pe, level: o.level, k: key(pe), road: o.road }] : []
+    const p = optionPick(data, o.id, o.level)
+    if (!p) warnings.push({ message: `The design part “${o.id}” is no longer in the catalog; left out.`, source: 'DC', page: 151 })
+    return p && p.level ? [{ e: p.e, level: p.level, k: key(p.e), road: o.road }] : []
   })
   const has = (k: string) => picked.some(p => p.k === k)
   const drone0 = d.kind === 'drone' || /drone/i.test(a.category ?? veh.name)
@@ -389,9 +399,9 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     powertrain = powertrainOf(d, data),
     console = part(d.console)
   const picked = d.options.flatMap(o => {
-    const e = part(o.id)
-    if (!e) warn(`The design part “${o.id}” is no longer in the catalog; left out.`, 151)
-    return e && o.level ? [{ e, level: o.level, k: key(e), road: o.road }] : []
+    const p = optionPick(data, o.id, o.level)
+    if (!p) warn(`The design part “${o.id}” is no longer in the catalog; left out.`, 151)
+    return p && p.level ? [{ e: p.e, level: p.level, k: key(p.e), road: o.road }] : []
   })
   const has = (k: string) => picked.some(p => p.k === k)
   let dp = 0

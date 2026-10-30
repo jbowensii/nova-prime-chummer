@@ -19,6 +19,7 @@ import { loadTrash } from '../../../features/runner-store/Trash'
 import { ConflictDialog, SaveLine, useAutosave } from '../../../features/runner-store/useAutosave'
 import { newId } from '../../../core/shared/types'
 import { entryLabel } from '../../catalog/domain/categories'
+import { entryKey } from '../../catalog/domain/names'
 import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
@@ -33,9 +34,19 @@ import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../runner-buil
 
 const designName = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed design'
 const href = (id: string) => `#/sr6/designs/${id}`
-/** The design parts of one kind, by name. */
+/** The design parts of one kind, by name. An option the catalog lists one entry per level (`Improved Body 1` … `4`, the
+ *  one-item-per-level rule) is its family's one row again, taken in levels with its stepper. */
 const partsOf = (c: Sr6Catalog, p: DesignPart) =>
-  [...c.entries.vehicledesign.values()].filter(e => designPart(e) === p).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
+  [
+    ...new Map(
+      [...c.entries.vehicledesign.values()].map(e => {
+        const parent = e.attrs.family ? c.levels?.get(entryKey('vehicledesign', e.attrs.family))?.parent : undefined
+        return [(parent ?? e).id, parent ?? e] as const
+      }),
+    ).values(),
+  ]
+    .filter(e => designPart(e) === p)
+    .sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
 /** The custom-chassis form's fields: the chassis table's own columns (DP, Body, Armor, Handling, Seats, Size Class). */
 const CUSTOM = '__custom'
 const OWN = '__own'
