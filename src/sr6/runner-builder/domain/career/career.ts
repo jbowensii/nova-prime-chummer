@@ -169,6 +169,12 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       b.purchases = b.purchases.filter(x => x.uid !== a.target)
       return
     case 'upgrade': {
+      // (an add-on changed in place, e.g. a cyberlimb's Attribute increase to another rating: it keeps its place and uid)
+      const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
+      if (host) {
+        host.accessories = host.accessories.map(y => (y.uid === a.target ? { ...structuredClone(a.line), uid: a.target } : y))
+        return
+      }
       const i = b.purchases.findIndex(x => x.uid === a.target)
       if (i >= 0) b.purchases[i] = { ...structuredClone(a.line), uid: a.target, accessories: b.purchases[i].accessories }
       return
@@ -610,6 +616,17 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return a.refund ? { label: `Sold: ${name} for ${a.refund.toLocaleString('en-US')}¥`, nuyen: -a.refund } : { label: `Dropped: ${name}` }
     }
     case 'upgrade': {
+      // an add-on changed in place (a cyberlimb's Attribute increase to another rating, owner ruling 2026-10-30): one step,
+      // the difference between the new and old price (a lower rating is a credit of the difference)
+      const accHost = b.purchases.find(y => y.accessories.some(z => z.uid === a.target))
+      if (accHost) {
+        const was = accHost.accessories.find(z => z.uid === a.target)!
+        const hostPr = priced({ ...accHost, accessories: [] }, data, cr)
+        const now = priced(a.line, data, cr, hostPr),
+          before = priced(was, data, cr, hostPr)
+        if (!now.ok || !before.ok) no('book-value')
+        return { label: `Changed: ${lineLabel(was)} → ${lineLabel(a.line)} on ${lineLabel(accHost)}`, nuyen: now.cost - before.cost }
+      }
       // upgrade a line in place to a higher level in its family (levels.ts) and/or a different grade, paying the DIFFERENCE
       // in cost (SR Missions FAQ v2.4 p.21: same-type upgrade credits the old piece at full value). The line keeps its
       // accessories (applyAdvance), which is why cyberware/bioware is upgraded here rather than sold and re-bought.

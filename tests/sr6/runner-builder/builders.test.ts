@@ -15,6 +15,7 @@ import {
   customAddon,
   customLimb,
   itemDesignOf,
+  limbIncrease,
   limbOf,
   lineAt,
   removalAdvance,
@@ -133,6 +134,22 @@ test('career: removing a bought add-on refunds what the GM types (default 0); a 
   // a factory part: the part step, which prices nothing
   expect(removalAdvance(host, 'laser', true, '999')).toEqual({ op: 'part', target: 'g1', part: 'laser' })
   expect(preview(fitted.ch, { op: 'unfit', target: uid }, data, cr)).toMatchObject({ ok: true, nuyen: 0 })
+})
+
+test('career: an arm with Strength +2 changed to +3 is one ledger step costing 5,000¥ (owner ruling 2026-10-30)', () => {
+  const { data, cr } = made()
+  const ch = blankSr6('karma', 'c1', '2026-10-30T00:00:00.000Z')
+  ch.build = buildOf('karma', { metatype: GLIM })
+  ch.build.purchases = [customLimb('arm', 'obvious', { str: 2 })]
+  ch.finalizedAt = '2026-10-30T00:00:00.000Z'
+  ch.final = { karma: 0, nuyen: 100000 }
+  ch.ledger = [{ id: 'f1', at: ch.finalizedAt, type: 'finalize', karma: 0, nuyen: 100000 }]
+  const inc = currentBuild(ch).purchases[0].accessories[0]
+  const r = record(ch, { op: 'upgrade', target: inc.uid, line: limbIncrease('str', 3) }, data, cr)
+  if (!r.ok) throw new Error(r.reason)
+  expect(balances(r.ch).nuyen).toBe(100000 - 5000)
+  expect(r.ch.ledger.length).toBe(2)
+  expect(limbOf(currentBuild(r.ch).purchases[0])!.inc.str).toBe(3)
 })
 
 test('a saved design: bought onto any runner, Review asks a GM unless a GM approved it; the file round-trips (ruling 2)', async () => {

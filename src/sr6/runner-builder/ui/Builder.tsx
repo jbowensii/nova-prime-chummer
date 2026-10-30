@@ -58,6 +58,8 @@ function useSteps() {
             ? act({ op: 'custom', host: host.uid, line })
             : act({ op: 'accessory', host: host.uid, kind: line.kind, id: line.id!, rating: line.rating }),
       ),
+    /** an add-on changed in place (career: one 'upgrade' step, the price difference) */
+    change: (old: Sr6Purchase, line: Sr6Purchase) => said(record({ op: 'upgrade', target: old.uid, line })),
     remove: (host: Sr6Purchase, a: Sr6Purchase, name: string) => {
       if (!career) return said(act({ op: 'accessory', host: host.uid, remove: a.uid }))
       // owner ruling 7: the GM types the refund (none: 0)
@@ -197,6 +199,8 @@ function CyberPanel({ x, name }: { x: Sr6Purchase; name: string }) {
   const setInc = (k: LimbStat, v: number) => {
     const old = x.accessories.find(a => a.id?.startsWith(`custom.limb-increase-${k}-`))
     let r: string | null = null
+    // career: a new rating is ONE ledger step, priced as the difference (owner ruling 2026-10-30), no refund prompt
+    if (old && v > 0 && steps.career) return setErr(steps.change(old, limbIncrease(k, v)))
     if (old) r = steps.remove(x, old, old.name ?? 'increase')
     if (!r && v > 0) r = steps.add(x, limbIncrease(k, v))
     setErr(r)
