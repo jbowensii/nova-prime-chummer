@@ -1,5 +1,23 @@
 # Release notes
 
+## 0.36.0 — 2026-10-30
+
+**Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.
+
+**Weapons and add-ons**
+- Mil-spec options and hardpoints are in, and heavy weapons now import their printed Size (the Grade of hardpoint they need).
+- Add-ons now change the weapon's or cyberware's numbers the way the book says (for example a cyberlimb's Attribute increase raises the limb's own Agility or Strength).
+- 88 weapons now carry their factory parts, including Ammo Selection, and the KK Junior Meta Link comes with its tutorsoft Instruction pool.
+
+**Factory parts**
+- Factory parts follow the book everywhere, not just on vehicles and weapons.
+
+**Matrix**
+- Devices now know which kinds of software they run (commlink apps, hacking, autosofts and so on).
+
+**Fixes**
+- A flaky test is fixed; the performance budget is now 12 ms.
+
 ## 0.35.0 — 2026-10-30
 
 **Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.
