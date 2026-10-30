@@ -235,7 +235,8 @@ export const isCustomAddon = (x: Sr6Purchase) => !!x.id?.startsWith(CUSTOM_ADDON
  *  made or approved the design (Review then asks nothing). Later edits to the design never change it. */
 export function boughtItemDesign(doc: Sr6Character): Sr6Purchase {
   const d = doc.itemDesign!
-  return { ...structuredClone(d.line), uid: newId(), qty: 1, design: doc.id, ...(d.approved ? { approved: true as const } : {}) }
+  const { approved: _a, ...line } = structuredClone(d.line) // (the saved line's own mark is never trusted: only the design's)
+  return { ...line, uid: newId(), qty: 1, design: doc.id, ...(d.approved ? { approved: true as const } : {}) }
 }
 /** A line saved as an item design (its own copy, no runner-specific SIN or design mark). */
 export function itemDesignOf(x: Sr6Purchase): Sr6Character['itemDesign'] {

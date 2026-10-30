@@ -368,7 +368,12 @@ export function createServer({
         at = xml.indexOf(r) + r.length
       const m = /^\s*<(?:design|itemDesign)(?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*\/?>/.exec(xml.slice(at))
       if (!m) return null
-      return xml.slice(0, at) + m[0].replace(/\s+approved\s*=\s*(?:"[^"]*"|'[^']*')/g, '') + xml.slice(at + m[0].length)
+      const dropApproved = t => t.replace(/\s+approved\s*=\s*(?:"[^"]*"|'[^']*')/g, '')
+      // (an item design's inner <purchase approved> is the mark a buyer's line would carry: stripped too, every nested one)
+      const rest = xml
+        .slice(at + m[0].length)
+        .replace(/<purchase((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g, (_t, a, sl) => `<purchase${dropApproved(a)}${sl}>`)
+      return xml.slice(0, at) + dropApproved(m[0]) + rest
     }
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot

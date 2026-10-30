@@ -196,3 +196,9 @@ test('the Foundry export carries a bought design line and a custom limb, schema-
   expect(ps.find(p => p.uid === 'w1')).toMatchObject({ design: doc.id, approved: true })
   expect(ps.find(p => p.uid === 'l1')!.values).toMatchObject({ cost: 15000, essence: 1 })
 })
+
+test('a saved design’s own line approved mark is never trusted: only the design’s', () => {
+  const doc = blankSr6('priority')
+  doc.itemDesign = { kind: 'weapon', line: { ...rifle(), approved: true } }
+  expect(boughtItemDesign(doc).approved).toBeUndefined()
+})
