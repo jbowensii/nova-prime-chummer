@@ -194,6 +194,11 @@ function partCost(p: Sr6Part, vehicle: Sr6Entry | undefined): number | undefined
 }
 /** The vehicle's factory parts (the entry's <part>s), each with whether it is removed: its id is in removedParts, or an
  *  ancestor's (`parent`) is, so a mount's weapon goes with the mount and returns with it. */
+/** A weapon's fitted standard upgrades as slot items: they fill their hooks in slot counting (a factory foregrip takes the
+ *  under-barrel slot); a removed one frees it. Other kinds: none (a vehicle's parts are metered by modsOf). */
+export const fittedParts = (x: Sr6Purchase, data: Sr6Data) =>
+  x.kind === 'weapons' ? partsOf(x, data).flatMap(p => (p.removed || !p.entry ? [] : [{ uid: p.uid, entry: p.entry }])) : []
+
 export function partsOf(x: Sr6Purchase, data: Sr6Data): FactoryPart[] {
   const e = entryOf(x, data),
     seen = new Map<string, number>(),

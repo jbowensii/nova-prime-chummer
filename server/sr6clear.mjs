@@ -32,6 +32,9 @@ export async function clearPlan(dir) {
   return { files, users, kept }
 }
 
+/** one RFC 4180 field: quoted (inner quotes doubled) when it holds a comma, quote or line break. */
+export const csvField = s => (/[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s)
+
 const stampNow = (d = new Date()) => d.toISOString().slice(0, 19).replace(/-|:/g, '').replace('T', '-')
 
 /** Backs up then moves the plan's files; returns { moved, kept, users, trash }. */
@@ -52,7 +55,7 @@ export async function clearApply(dir, { base, backups, trash, stamp = stampNow()
     const to = join(gone, relative(base, f))
     await mkdir(dirname(to), { recursive: true })
     await rename(f, to)
-    await appendFile(join(gone, 'moves.csv'), `${f},${to}\n`)
+    await appendFile(join(gone, 'moves.csv'), `${csvField(f)},${csvField(to)}\n`)
   }
   return { moved: plan.files.length, kept: plan.kept, users: plan.users, trash: gone }
 }

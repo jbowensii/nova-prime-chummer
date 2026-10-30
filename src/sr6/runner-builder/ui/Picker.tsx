@@ -1,7 +1,7 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
 import type { Sr6Build } from '../../formats/domain/character'
 import { mountSlots, requirementsOf, slotLabel } from '../../catalog/domain/structure'
-import { modsOf, partsOf } from '../domain/assets/vehiclemods'
+import { fittedParts, modsOf, partsOf } from '../domain/assets/vehiclemods'
 import { ratingOf } from '../domain/creation/purchases'
 import { sitOf } from '../../catalog/domain/effects'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
@@ -486,7 +486,7 @@ export function Accessories({
     rating: ratingOf(a, entryOf(a, data)),
   }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
-  const slots = mountSlots(he, items, ratingOf(host, he), host.addedSlots)
+  const slots = mountSlots(he, [...fittedParts(host, data), ...items], ratingOf(host, he), host.addedSlots)
   for (const [id, left] of slots.remaining) if (left === Infinity) slots.remaining.delete(id) // (a hook with no limit: nothing to count)
   // a vehicle's factory parts take their hooks too (vehiclemods.ts usedByHook: the figure the guard and Review use)
   if (host.kind === 'vehicles')

@@ -68,7 +68,7 @@ import type { Sr6Entry } from '../../../formats/domain/types'
 import { deriveSr6 } from '../creation/derive'
 import { makeProvider, uncovered, type Provider } from '../creation/providers'
 import { ratingRange } from '../../../catalog/domain/values'
-import { modsOf } from '../assets/vehiclemods'
+import { fittedParts, modsOf } from '../assets/vehiclemods'
 import { critterView } from '../assets/critters'
 import { gradeFits, gradeKnown, gradeName } from '../creation/grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from '../../../catalog/domain/categories'
@@ -1639,7 +1639,7 @@ const RULES: Rule[] = [
         // (an accessory's qty is the line's whole: on a line of 2 guns, 2 smartguns are one a gun)
         const items = lines.map(a => ({ uid: a.uid, entry: entryOf(a, c.data), qty: Math.ceil((a.qty ?? 1) / Math.max(1, x.qty ?? 1)) }))
         const roomed = !vehicle && capacityOf(he, rating) === null
-        const unplaced = roomed ? new Set(mountSlots(he, items, rating, extra).unplaced) : new Set<string>()
+        const unplaced = roomed ? new Set(mountSlots(he, [...fittedParts(x, c.data), ...items], rating, extra).unplaced) : new Set<string>()
         return lines.flatMap(a => {
           const e = entryOf(a, c.data)
           if (!e || e.attrs.usage === 'carried' || (vehicle && !structureOf(e).usages.length)) return [] // (carried: catalog.carried)

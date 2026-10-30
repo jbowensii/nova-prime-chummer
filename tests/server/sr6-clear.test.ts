@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
 // @ts-expect-error plain JS module
-import { clearApply, clearPlan } from '../../server/sr6clear.mjs'
+import { clearApply, clearPlan, csvField } from '../../server/sr6clear.mjs'
 
 test('moves only the sampleKey copies of the chosen SR6 store', async () => {
   const root = mkdtempSync(join(tmpdir(), 'ca2-sr6-clear-'))
@@ -58,4 +58,10 @@ test('moves only the sampleKey copies of the chosen SR6 store', async () => {
     join(sys, 'anarchy2', 'npcs', 'admin', 'a.xml'),
   ])
     expect(existsSync(p)).toBe(true)
+})
+
+test('moves.csv fields are RFC 4180 quoted: a comma or quote in a path survives', () => {
+  expect(csvField('C:\\a\\Smith, Jo.xml')).toBe('"C:\\a\\Smith, Jo.xml"')
+  expect(csvField('say "hi".xml')).toBe('"say ""hi"".xml"')
+  expect(csvField('plain.xml')).toBe('plain.xml')
 })

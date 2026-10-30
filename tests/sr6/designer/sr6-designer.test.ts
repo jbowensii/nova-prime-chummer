@@ -185,6 +185,11 @@ test('a design started from a known vehicle shows its chassis and its powertrain
   await click(button('Save powertrain'))
   expect(pageText()).toMatch(/Acceleration14Speed interval40Top speed180/)
   expect(pageText()).toMatch(/Roller Powertrain \(synthesized\) · powertrain 4 \(removed\)/)
+  // removing the custom one puts the factory powertrain back, not none
+  await click(button('Remove custom powertrain'))
+  expect(field<HTMLSelectElement>('Powertrain').value).toBe('zz.roller')
+  expect(pageText()).not.toMatch(/powertrain 4 \(removed\)/)
+  expect(pageText()).toMatch(/Top speed90/)
 })
 
 test('an option the catalog lists one entry per level is one line with a level stepper, and its levels change the stats', async () => {

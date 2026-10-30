@@ -403,6 +403,23 @@ class WeaponParts(unittest.TestCase):
         resolve.weapon_parts([b], entries, set())  # idempotent
         self.assertEqual(len(gun.findall("part")), 1)
 
+    def test_one_part_per_id_and_a_shared_word_is_not_the_same_part(self):
+        mk = lambda x: etree.fromstring(x)  # noqa: E731
+        grip = mk('<weapon id="zz.foregrip" class="ACCESSORY/WEAPON_ACCESSORY"><name>Foregrip</name></weapon>')
+        gun = mk('<weapon id="zz.gun"><name>Gun</name><modifier kind="itemmod" type="GEARMOD" ref="foregrip"/>'
+                 '<modifier kind="itemmod" type="GEARMOD" ref="foregrip"/></weapon>')  # fmt: skip
+
+        class Book:
+            state, dir = "done", "/nonexistent"
+
+        b = Book()
+        resolve.weapon_parts([b], [(b, "zz", "weapons", grip, "w"), (b, "zz", "weapons", gun, "w")], set())
+        self.assertEqual(len(gun.findall("part")), 1)
+        same = getattr(resolve, "_same_part")
+        self.assertFalse(same("Smartgun system", "Gas-Vent System"))
+        self.assertTrue(same("gas-vent system (2)", "Gas Vent"))
+        self.assertTrue(same("Gas-Vent System", "gas vent system"))
+
     def test_standard_upgrades_line_is_read_per_block(self):
         md = (
             '<!-- section {"name": "Gun", "chapter": "C", "section": "Gun", "label": "", "page": 3, "tags": "", '

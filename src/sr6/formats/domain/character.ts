@@ -373,6 +373,8 @@ export const sinKind = (s: Sr6Sin) => (s.placeholder ? 'placeholder' : s.kind ==
 export interface Sr6LifeModule {
   id: string
   choices: Record<number, string>
+  /** a knowledge choice's index to the uid of the Knowledge line that pick created (removed with the module) */
+  lines?: Record<number, string>
 }
 export interface Sr6AttrSpend {
   points: number
