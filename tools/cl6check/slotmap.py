@@ -12,7 +12,8 @@ whose record declares any, with kids
 - `<fits slot cost? mode>` each `<usage>` with a slot (cost: the usage value; mode: embedded, implanted, carried,
   virtual);
 - `<prerequisite kind type ref value? apply? group negate?>` each test of its `<requires>`, grouped (group 0 all must
-  hold; each `<selreq>` its own group 1, 2 …, any one holds).
+  hold; each `<selreq>` its own group 1, 2 …, any one holds);
+and `set.softwareTypes` a matrix device's `SOFTWARE_TYPES` (what its programs' requirements test).
 This generator is the one emitter of those kids for a matched entry: it takes them out of the entry's `gen: "family"`
 rows (familymap's older, flattened copies; a family prerequisite Commlink6 does not give, the owner's, stays). The slots
 gate (fields.py) compares ids only, so the values come from here. Read-only on the runs; no cl6check report."""
@@ -114,6 +115,14 @@ def usage_of(el):
     return None
 
 
+def software_types(el):
+    """A matrix device's `SOFTWARE_TYPES` (`BASIC,COMMLINK_APP`, `RCC,AUTOSOFT`): the record's own attrdef, the program
+    types it runs, which a program's `ITEM_ATTRIBUTE SOFTWARE_TYPES` requirement tests (a requirement's own value is in
+    a `<requires>`, never an attrdef). None when it declares none."""
+    x = next((a for a in el.findall("attrdef") if a.get("id") == "SOFTWARE_TYPES"), None)
+    return x.get("value") if x is not None and x.get("value") else None
+
+
 def rows_of(pairs, report=None):
     """{src: [row]}: one `gen="slot"` row per matched entry whose Commlink6 record gives a hook, a usage with
     a slot or a requirement. `pairs` are (canonical Commlink6 record, our entry), as `compare(...)[2]` gives them; an
@@ -124,7 +133,8 @@ def rows_of(pairs, report=None):
             continue
         kids = kids_of(c, o, familymap.level(o), report)
         use = usage_of(c["el"])
-        if not kids and not use:
+        sw = software_types(c["el"])
+        if not kids and not use and not sw:
             continue
         key = (o["src"], o["kind"], o["id"])
         row = by.get(key)
@@ -134,7 +144,11 @@ def rows_of(pairs, report=None):
                 "cl6id": c["el"].get("id"),
                 "kind": o["kind"],
                 "id": o["id"][len(o["src"]) + 1 :],
-                **({"set": {"usage": use}} if use else {}),
+                **(
+                    {"set": {**({"usage": use} if use else {}), **({"softwareTypes": sw} if sw else {})}}
+                    if use or sw
+                    else {}
+                ),
                 **({"kids": kids} if kids else {}),
                 "gen": "slot",
             }
@@ -155,8 +169,10 @@ def rows_of(pairs, report=None):
                 if k["tag"] == "prerequisite" and not same:
                     k["attrs"]["variant"] = _alt(c["el"].get("id"), k["attrs"].get("variant"))
             row["kids"] = row.get("kids", []) + [k for k in kids if k not in row.get("kids", [])]
-            if use and not row.get("set"):
-                row["set"] = {"usage": use}
+            if use and "usage" not in row.get("set", {}):
+                row.setdefault("set", {})["usage"] = use
+            if sw and "softwareTypes" not in row.get("set", {}):
+                row.setdefault("set", {})["softwareTypes"] = sw
     rows = defaultdict(list)
     for (src, _, _), row in by.items():
         row.pop("_req_of", None)

@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { readFileSync } from 'node:fs'
 import { toEntry } from '../../../src/sr6/formats/domain/entryxml'
-import { fit, fitsOnly, mountSlots, requirementsOf, structureOf } from '../../../src/sr6/catalog/domain/structure'
+import { enhancementFits, fit, fitsOnly, mountSlots, requirementsOf, structureOf } from '../../../src/sr6/catalog/domain/structure'
 import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 import { effectBonuses, maxEffects } from '../../../src/sr6/catalog/domain/effects'
 import type { Sr6Data } from '../../../src/sr6/catalog/domain/data'
@@ -170,4 +170,22 @@ test('requirementsOf: as Commlink6, DATA_ITEM tests only (a selreq with no apply
   expect(requirementsOf(either, pistol).failed).toEqual([])
   expect(requirementsOf(either, rifle).failed).toEqual([])
   expect(requirementsOf(item({}, v('SHOTGUNS', 'long') + v('HOLDOUTS', 'short')), rifle).failed).toEqual(['itemsubtype shotguns or itemsubtype holdouts'])
+  // a program's device type: the device's softwareTypes (a regular version on a commlink/deck, the RCC one on an RCC)
+  const sw = (t: string, varid: string) =>
+    `<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="SOFTWARE_TYPES" value="${t}" apply="DATA_ITEM" variant="${varid}"/>`
+  const browse = item({}, sw('BASIC', 'regular') + sw('RCC', 'rcc'))
+  const deck = item({ class: 'ELECTRONICS/CYBERDECK', softwareTypes: 'BASIC,COMMLINK_APP,HACKING' })
+  const rcc = item({ class: 'ELECTRONICS/RIGGER_CONSOLE', softwareTypes: 'RCC,AUTOSOFT' })
+  expect(requirementsOf(browse, deck)).toEqual({ failed: [], unchecked: [] })
+  expect(requirementsOf(browse, rcc)).toEqual({ failed: [], unchecked: [] })
+  expect(requirementsOf(item({}, sw('HACKING', 'regular')), rcc).failed).toEqual(['software types hacking'])
+  expect(requirementsOf(browse, pistol).unchecked).toEqual(['software types basic', 'software types rcc'])
+})
+
+test('enhancementFits: Metahuman Adaptation (one selreq of ranged and close-combat types) fits a gun and a blade, not armor', () => {
+  const t = (v: string) => `<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="ITEMTYPE" value="${v}" group="1"/>`
+  const adapt = item({ usage: 'enhancement' }, ['WEAPON_RANGED', 'WEAPON_FIREARMS', 'WEAPON_SPECIAL', 'WEAPON_CLOSE_COMBAT'].map(t).join(''), 'weapons')
+  expect(enhancementFits(adapt, item({ class: 'WEAPON_CLOSE_COMBAT/BLADES' }, '', 'weapons'))).toBe(true)
+  expect(enhancementFits(adapt, item({ class: 'WEAPON_FIREARMS/PISTOLS_HEAVY' }, '', 'weapons'))).toBe(true)
+  expect(enhancementFits(adapt, item({ class: 'ARMOR/ARMOR_BODY' }, '', 'armor'))).toBe(false)
 })

@@ -25,7 +25,7 @@ import type { Sr6Derived, Sr6Pool } from '../domain/creation/derive'
 import type { Sr6Ctx } from './editor'
 import { entryLabel } from '../../catalog/domain/categories'
 import { effectState, effectText } from '../../catalog/domain/effects'
-import { builtinText, modsOf, mountsOf } from '../domain/assets/vehiclemods'
+import { builtinText, instructionPools, instructionText, modsOf, mountsOf } from '../domain/assets/vehiclemods'
 
 export const PICKS: [PickKind, string][] = [
   ['spells', 'Spells'],
@@ -122,6 +122,12 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
     critterNotes: (x: Sr6Purchase) => critterNotes(x, data, cr),
     /** a host's own values from its accessories (`STR 5, Armor +2`), for its line on the sheet */
     host: (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text,
+    /** its factory tutorsofts' Instruction pools switched on (CRB p. 273), as the sheet prints them */
+    instruction: (x: Sr6Purchase) =>
+      instructionPools(x, data)
+        .filter(i => i.on)
+        .map(instructionText)
+        .join(', '),
     rated: (x: Sr6Purchase) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', '),
     bands: (x: Sr6Purchase) => d.attackRatings.weapons.find(a => a.uid === x.uid)?.bands ?? [null, null, null, null, null],
     /** what a weapon's fittings change, base → modified (`AR 9/9/7 → 10/10/8`; weaponChanges) */

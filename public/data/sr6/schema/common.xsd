@@ -161,6 +161,8 @@
     <xs:attribute name="included" type="xs:boolean"/>
     <xs:attribute name="removable" type="xs:boolean"/>
     <xs:attribute name="parent" type="xs:string"/>
+    <!-- the pick a factory program comes with (a tutorsoft's skill: `Firearms`) -->
+    <xs:attribute name="choice" type="xs:string"/>
     <xs:attribute name="origin" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="cl6"/>
@@ -215,6 +217,8 @@
     <xs:attribute name="ammoClass" type="xs:string"/>
     <!-- weaponSize: a heavy weapon's printed SIZE (Deadly Arts, 0-8): the Grade of mil-spec hardpoint it needs -->
     <xs:attribute name="weaponSize" type="xs:nonNegativeInteger"/>
+    <!-- a matrix device's Commlink6 SOFTWARE_TYPES (`BASIC,COMMLINK_APP,HACKING`, `RCC,AUTOSOFT`): the programs it runs -->
+    <xs:attribute name="softwareTypes" type="xs:string"/>
   </xs:attributeGroup>
   <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
        its TYPE alone, or the record's tag for a kind with no type (`spell`, `ammotype`). Set from the category (importer/sr6/
@@ -767,6 +771,8 @@
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- a program that runs programs (Hack & Slash's Emulator): Commlink6's SOFTWARE_TYPES, as a device's -->
+      <xs:attribute name="softwareTypes" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -920,6 +926,8 @@
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+      <!-- an echo that is a device (the Living Command Console): Commlink6's SOFTWARE_TYPES, as a device's -->
+      <xs:attribute name="softwareTypes" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

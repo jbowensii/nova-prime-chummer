@@ -277,7 +277,7 @@ test('newEntryId and blankSr6Entry', () => {
     text: '',
   })
   // echoes now carry the leveled attributes (perLevel/maxLevel, owner ruling 2026-10-27)
-  expect(blankSr6Entry(c, 'echoes', kit, 'Hum').attrs).toEqual({ perLevel: '', maxLevel: '' })
+  expect(blankSr6Entry(c, 'echoes', kit, 'Hum').attrs).toEqual({ perLevel: '', maxLevel: '', softwareTypes: '' })
 })
 
 test('sr6EntryXml is unchanged for the edits layer (empty <text/>); the compendium writes the text and leaves out what is unset', () => {

@@ -78,11 +78,12 @@ export function DossierSheet({ art }: { art: SheetArt }) {
   const pos = quals.filter(x => !x.x || x.x.positive),
     neg = quals.filter(x => x.x && !x.x.positive)
   const acc = (x: (typeof b.purchases)[number]) =>
-    x.accessories.length > 0 && (
+    (x.accessories.length > 0 || v.instruction(x)) && (
       <span className="d-small">
         {' '}
-        + {x.accessories.map(nameOf).join(', ')}
+        {x.accessories.length > 0 && `+ ${x.accessories.map(nameOf).join(', ')}`}
         {v.host(x) && ` (${v.host(x)})`}
+        {v.instruction(x) && ` ${v.instruction(x)}`}
       </span>
     )
   const attrRows: [string, ReactNode, ReactNode][] = [...CORE_ATTRS, 'edg' as const, ...(mr ? [mr] : [])].map(a => [
