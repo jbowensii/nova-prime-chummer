@@ -377,3 +377,46 @@ class Powerplants(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class WeaponParts(unittest.TestCase):
+    def test_gearmod_and_book_upgrades_become_removable_parts(self):
+        mk = lambda x: etree.fromstring(x)  # noqa: E731
+        grip = mk('<weapon id="zz.foregrip" class="ACCESSORY/WEAPON_ACCESSORY"><name>Foregrip</name><fits slot="under"/></weapon>')  # fmt: skip
+        sling = mk('<gear id="zz.sling" class="ACCESSORY/WEAPON_ACCESSORY"><name>Sling</name></gear>')
+        gun = mk('<weapon id="zz.gun"><name>Gun</name><modifier kind="itemmod" type="GEARMOD" ref="foregrip"/>'
+                 '<modifier kind="itemmod" type="GEARMOD" ref="no_such_thing"/><text>t</text></weapon>')  # fmt: skip
+
+        class Book:  # (no regrouped.md: the Commlink6 modifiers alone)
+            state, dir = "done", "/nonexistent"
+
+        b = Book()
+        entries = [(b, "zz", "weapons", grip, "w"), (b, "zz", "gear", sling, "g"), (b, "zz", "weapons", gun, "w")]
+        done, missed = resolve.weapon_parts([b], entries, set())
+        self.assertEqual(done, 1)
+        self.assertEqual(missed, ["zz.gun: no_such_thing"])
+        self.assertEqual(
+            [dict(p.attrib) for p in gun.findall("part")],
+            [{"id": "foregrip", "ref": "zz.foregrip", "hook": "under", "cost": "0", "included": "true", "removable": "true", "origin": "cl6", "review": "none"}],  # fmt: skip
+        )
+        self.assertEqual(gun[-1].tag, "text")
+        resolve.weapon_parts([b], entries, set())  # idempotent
+        self.assertEqual(len(gun.findall("part")), 1)
+
+    def test_standard_upgrades_line_is_read_per_block(self):
+        md = (
+            '<!-- section {"name": "Gun", "chapter": "C", "section": "Gun", "label": "", "page": 3, "tags": "", '
+            '"level": 2, "row": false} -->\n\n**Standard Upgrades:** Foregrip, sling\n<!-- end -->\n'
+        )
+        self.assertEqual(resolve.standard_upgrades(md), {"gun": "Foregrip, sling"})
+
+
+class KnowledgeOptions(unittest.TestCase):
+    def test_named_options_without_the_language_level(self):
+        from importer.sr6.lifemodules import knowledge_options
+
+        self.assertEqual(knowledge_options(
+            ": Corporate Personalities, [Entertainment Form or Music Genre] Expert, Shadowrunner "
+            "<!-- page 46 --> Reputations, or one rank in any language skill ##### Next"),  # fmt: skip
+            ["Corporate Personalities", "[Entertainment Form or Music Genre] Expert", "Shadowrunner Reputations"],
+        )

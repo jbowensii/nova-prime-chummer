@@ -10,6 +10,7 @@ import { bonusValue, effectBonuses, perCount, sitKey, sitOf, sr6Counts as counts
 import { MAGIC_KINDS } from '../../../catalog/domain/data'
 import { baseMetatype, metatypeName } from './infected'
 import { entryOf, ratingOf } from './purchases'
+import { partsOf } from '../assets/vehiclemods'
 import { noteAttr, noteSkill } from './choices'
 
 // (owner decision 2026-10-10: the total shown first holds the always-on bonuses, `on` (the bracketed total) the switchable
@@ -203,5 +204,12 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Re
       bs = lineBonuses(data, a.bonuses, e)
     for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, ratingOf(a, e), undefined, on)
   }
+  // a weapon's standard upgrades (its <part>s the player hasn't removed) act as fitted accessories
+  if (x.kind === 'weapons')
+    for (const p of partsOf(x, data))
+      if (!p.removed && p.entry) {
+        const bs = entryBonuses(data, p.entry)
+        for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, Number(p.rating) || 1, undefined, on)
+      }
   return out
 }

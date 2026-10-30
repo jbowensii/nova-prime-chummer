@@ -97,6 +97,7 @@ test('the rule changes of the effects review read as sentences: the drain attrib
   expect(effectText(fx('derived:wound-threshold', 'add', 'R'))).toBe('+rating wound threshold (boxes)')
   expect(effectText(fx('derived:drain-value', 'add', '2'))).toBe('+2 Drain Value')
   expect(effectText(fx('item:damage-type', 'set', 'S'))).toBe('damage type Stun')
+  expect(effectText(fx('item:damage-type', 'set', 'S(e)'))).toBe('damage type Stun (electrical)')
   expect(effectText(fx('derived:unarmed-damage', 'set', 'P'))).toBe('unarmed damage Physical')
 })
 

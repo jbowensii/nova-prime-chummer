@@ -1012,7 +1012,8 @@ class RoundThreeTest(unittest.TestCase):
             out["qualities.xml"],
         )
         self.assertIn(
-            '<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:dv" op="add" value="-1"/>',
+            '<effect target="item:ar" op="add" value="1,1,1,1,1"/><effect target="item:damage-type" op="set" value="S(e)"/>'
+            '<effect target="item:dv" op="add" value="-1"/>',
             out["ammotypes.xml"],
         )
 
