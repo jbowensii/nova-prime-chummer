@@ -9,6 +9,15 @@
 - Add-ons now change the weapon's or cyberware's numbers the way the book says (for example a cyberlimb's Attribute increase raises the limb's own Agility or Strength).
 - 88 weapons now carry their factory parts, including Ammo Selection, and the KK Junior Meta Link comes with its tutorsoft Instruction pool.
 
+**Builders and designs**
+- Weapon and cyberware builders, and custom cyberlimbs.
+- Item designs can be shared, with GM approval.
+- Cyberlimb rulings: +4 per stat; only full limbs add a Physical box; an Armor increase adds to Defense (catalog limbs too); limbs start at STR/AGI 2; a career increase change pays the difference.
+
+**Review flags settled**
+- The 9 add-ons are applied per book, plus the Sideload Processor and the Double Clutch mil-spec plate class.
+- Effects now score 100% per effect of what we model.
+
 **Factory parts**
 - Factory parts follow the book everywhere, not just on vehicles and weapons.
 
