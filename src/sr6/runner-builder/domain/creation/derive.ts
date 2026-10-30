@@ -28,6 +28,7 @@ import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
 import { choiceOptions, noteAttr } from './choices'
 import { categoryOf, entryLabel } from '../../../catalog/domain/categories'
+import { weaponChanges, weaponOf, type WeaponStats } from '../assets/weapons'
 
 export interface Sr6Pool {
   skill: string
@@ -66,6 +67,12 @@ export interface Sr6WeaponValues {
   skill?: string
   pool?: number
   dvBonus?: number
+  /** its stats with its fittings (assets/weapons.ts weaponOf): base, and modified as this total counts them (the
+   *  plain total's `now`, the bracketed one's `on`) */
+  base: WeaponStats
+  stats: WeaponStats
+  /** base -> modified in words, `AR 9/9/7 → 10/10/8 (11/11/9)` (weaponChanges) */
+  changes: string[]
 }
 export interface Sr6Derived {
   attrs: Record<Sr6Attr, { natural: number; augmented: number }>
@@ -342,11 +349,20 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     .filter(x => x.kind === 'weapons')
     .map(x => {
       const e = entryOf(x, data),
-        ar = attackRatings(e?.attrs.ar).bands,
+        skill = weaponSkill(data, e),
+        w = weaponOf(x, data, skill),
+        st = on ? w.on : w.now,
+        ar = st.ar,
         melee = isMelee(e)
       const add = melee && flag(cr, 'meleeArStrength') ? A(/reaction instead of strength/i.test(noteOf(e, 'ar')) ? 'rea' : meleeAttr) : 0
-      const out: Sr6WeaponValues = { uid: x.uid, name: e ? entryLabel(e) : (x.name ?? 'Weapon'), bands: add ? ar.map(v => (v === null ? null : v + add)) : ar }
-      const skill = weaponSkill(data, e)
+      const out: Sr6WeaponValues = {
+        uid: x.uid,
+        name: e ? entryLabel(e) : (x.name ?? 'Weapon'),
+        bands: add ? ar.map(v => (v === null ? null : v + add)) : ar,
+        base: w.base,
+        stats: st,
+        changes: weaponChanges(w),
+      }
       if (skill) {
         out.skill = skill
         const pl = pools.find(q => q.skill === skill),
@@ -358,6 +374,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
               : pl.spec && specFits(pl.spec, cat) && pl.specDp !== undefined
                 ? pl.specDp
                 : (pl.more?.find(m => specFits(m.spec, cat))?.dp ?? pl.dp)
+        if (out.pool !== undefined) out.pool += st.pool
       }
       if (melee && highStrength) out.dvBonus = highStrength
       return out
