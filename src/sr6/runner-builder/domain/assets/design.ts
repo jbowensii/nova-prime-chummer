@@ -197,6 +197,19 @@ function applyModEffects(target: object, d: Sr6Design, data: Sr6Data, notes: str
   }
 }
 
+/** Owner ruling 2026-10-30: Handling (on-road and off-road) never goes below 1; Double Clutch sets no floor. */
+function clampHandling(stats: { handling: number; offRoad: number }, warnings: DesignSheet['warnings']) {
+  const lost = Math.max(1 - stats.handling, 1 - stats.offRoad, 0)
+  if (!lost) return
+  stats.handling = Math.max(1, stats.handling)
+  stats.offRoad = Math.max(1, stats.offRoad)
+  warnings.push({
+    message: `Handling can’t go below 1 (owner ruling 2026-10-30); ${lost} level${lost === 1 ? '' : 's'} of Improved Handling have no effect.`,
+    source: 'DC',
+    page: 151,
+  })
+}
+
 /** A design that starts from a known catalog vehicle (`d.base`): its stats, price and Availability are the vehicle's,
  *  and the built-in mods are added on top (nuyen, slots and Availability). The from-scratch point-buy (chassis/powertrain/
  *  console, options, modifications, quality factors) does not apply here — this is "buy a vehicle and customize it". */
@@ -352,6 +365,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   }
   if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
   applyModEffects(stats, d, data, notes)
+  clampHandling(stats, warnings)
   const ms = milspec(d, picked, stats, num(a.body), data, (message, page, source = 'DC') => warnings.push({ message, source, page }), notes)
   dp += ms.dp
   // the mods built in: their real slots and nuyen (no Design-Point conversion — this is not a point-buy)
@@ -593,6 +607,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   }
   if (has('underpowered')) s.topSpeed = Math.floor(s.topSpeed / 2)
   applyModEffects(s, d, data, notes)
+  clampHandling(s, warnings)
   const ms = milspec(d, picked, s, base.body, data, warn, notes)
   dp += ms.dp
 

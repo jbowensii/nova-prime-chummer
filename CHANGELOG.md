@@ -16,6 +16,7 @@
 
 **Designer**
 - Designer options, design modifications and quality factors show the same hover card as the rest of the app: the book text, page, Design Points, maximum level and effects.
+- Handling (on-road and off-road) never goes below 1 (owner ruling); a warning says when Improved Handling levels are lost to the floor.
 - A vehicle's built-in mods now change its stats, not just its price (three Increased Seating mods raise Seats). A mod whose effect is a percent or conditional is left to the GM, with a note.
 
 **Review flags settled**
