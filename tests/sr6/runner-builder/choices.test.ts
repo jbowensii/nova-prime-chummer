@@ -105,3 +105,11 @@ test('a critter power’s SPELL selection offers the catalog spells A to Z, or j
   expect(data.spellNames.length).toBeGreaterThan(0)
   expect(data.spellNames).toEqual([...data.spellNames].sort((a, b) => a.localeCompare(b)))
 })
+
+test('a skill-specialization choice offers that skill’s specializations (Grease Monkey: Engineering’s)', () => {
+  const { data } = made()
+  const s = Object.values(data.skills).find(k => k.specs.length)!
+  const c = choiceOptions(data, entry('Grease Monkey', [part('selection', { type: 'SKILLSPECIALIZATION', ref: s.id })]))!
+  expect(c.kind).toBe('specialization')
+  expect(c.options.map(o => o.value)).toEqual(s.specs)
+})
