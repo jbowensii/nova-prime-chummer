@@ -1,8 +1,8 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
 import type { Sr6Build } from '../../formats/domain/character'
-import { mountSlots, requirementsOf, slotLabel } from '../../catalog/domain/structure'
-import { fittedParts, instructionPools, instructionText, modsOf, partsOf } from '../domain/assets/vehiclemods'
-import { ratingOf } from '../domain/creation/purchases'
+import { slotLabel } from '../../catalog/domain/structure'
+import { instructionPools, instructionText, partsOf } from '../domain/assets/vehiclemods'
+import { accessoryState, customisable } from '../domain/assets/builders'
 import { sitOf } from '../../catalog/domain/effects'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
 // filter; an item that comes in ratings (or a grade) opens a second step with the rating and grade selects and its cost,
@@ -20,7 +20,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { capacityRemaining, entryLabel, entrySearch, isAmmoType, offeredOn } from '../../catalog/domain/categories'
+import { entryLabel, entrySearch, isAmmoType } from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -477,31 +477,7 @@ export function Accessories({
 }) {
   const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
-  const he = entryOf(host, data)
-  // (an accessory's qty is the line's whole: per host, what one of the line's items carries)
-  const items = host.accessories.map(a => ({
-    ...a,
-    qty: Math.ceil((a.qty ?? 1) / Math.max(1, host.qty ?? 1)),
-    entry: entryOf(a, data),
-    rating: ratingOf(a, entryOf(a, data)),
-  }))
-  const remaining = capacityRemaining(he, items, ratingOf(host, he))
-  const slots = mountSlots(he, [...fittedParts(host, data), ...items], ratingOf(host, he), host.addedSlots)
-  for (const [id, left] of slots.remaining) if (left === Infinity) slots.remaining.delete(id) // (a hook with no limit: nothing to count)
-  // a vehicle's factory parts take their hooks too (vehiclemods.ts usedByHook: the figure the guard and Review use)
-  if (host.kind === 'vehicles')
-    for (const [id, used] of Object.entries(modsOf(host, data).usedByHook))
-      if (slots.remaining.has(id)) slots.remaining.set(id, slots.remaining.get(id)! - used)
-  // a host with a Capacity is full by its Capacity (the add-time guard governs it that way); only a slot-only host is full by its mount slots
-  const full = remaining !== null ? remaining <= 0 : slots.remaining.size > 0 && [...slots.remaining.values()].every(n => n <= 0)
-  // only accessories that fit this host are offered (its category's `fits` names the host, or it carries a matching slot);
-  // a line taking any gear (a vehicle's) takes no accessory; else an entry with no category record (a pre-categories import) by `filter`
-  const fits = (e: Sr6Entry) => (critter || ammo ? !filter || filter(e) : offeredOn(data.categories, e, he, filter, isAccessory, host.addedSlots))
-  // one that fits by hook but fails a host requirement (a holster for a bigger gun): shown greyed with the reason
-  const blocked = (e: Sr6Entry) => {
-    const failed = critter || ammo ? [] : requirementsOf(e, he).failed
-    return failed.length ? `needs ${failed.join('; ')}` : undefined
-  }
+  const { remaining, slots, full, fits, blocked } = accessoryState(host, data, { filter, isAccessory, critter, ammo })
   return (
     <span className="row">
       {remaining !== null && <span className="muted">Capacity remaining: {n(remaining)}</span>}
@@ -836,6 +812,12 @@ export function PurchaseSection({
                   <tr key={x.uid}>
                     <td>
                       <LineName x={x} />
+                      {customisable(x, data) && (
+                        // the weapon or cyberware builder on this line (owner ruling 1)
+                        <a className="btn small quiet" href={sr6EditHref(ch.id, `build/${x.uid}`)} aria-label={`Customise ${name}`}>
+                          Customise
+                        </a>
+                      )}
                       <RatingGrade x={x} name={name} grades={grades} />
                       <ChoiceNote x={x} e={e} name={name} />
                       {detail && <div className="muted">{detail(x)}</div>}

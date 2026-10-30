@@ -218,7 +218,8 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Re
     // for `limb-attr:choice`), never the runner's
     for (const p of ownParts(data, e)) {
       const m = /^limb-attr:(\w+)$/.exec(p.tag === 'effect' && p.attrs.op === 'add' ? (p.attrs.target ?? '') : '')
-      const k = m && (m[1] === 'choice' ? noteAttr(a.note) : (m[1] as Sr6Attr))
+      // (owner ruling 2026-10-30: the choice may be Armor, which is the Defense Rating's, CRB p. 288)
+      const k = m && (m[1] === 'choice' ? (/\barmor\b/i.test(a.note ?? '') ? 'defense' : noteAttr(a.note)) : (m[1] as Sr6Attr))
       const v = m && effectValue(p.attrs.value)
       if (
         k &&

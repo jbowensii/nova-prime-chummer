@@ -119,9 +119,11 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     void refresh()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
+  // (weapon and cyberware designs, the item builders': their own list below, shared with everyone)
+  const items = (list ?? []).filter(s => s.ch.itemDesign)
+  const mine = (list ?? []).filter(s => !s.ch.itemDesign && (!me || !s.owner || s.owner === me.username))
   const others = ownerGroups(
-    (list ?? []).filter(s => !mine.includes(s)),
+    (list ?? []).filter(s => !s.ch.itemDesign && !mine.includes(s)),
     unreadable.filter(u => u.owner && u.owner !== me?.username),
     'az',
     '',
@@ -265,6 +267,50 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
           {rows.map(s => row(s, false))}
         </section>
       ))}
+      <section aria-label="Weapon and cyberware designs">
+        <h2>Weapon and cyberware designs</h2>
+        <p className="muted">
+          Saved from a runner’s weapon or cyberware builder (Customise on a weapon or an implant). Everyone sees them and any runner can buy one on the Gear or
+          Augmentations tab; Review asks a GM to approve one a player made.
+        </p>
+        {items.length === 0 ? (
+          <p className="muted">None yet.</p>
+        ) : (
+          arrange(items, 'az', '').map(({ ch, owner, ownerName }) => {
+            const x = ch.itemDesign!.line,
+              e = entryOf(x, data),
+              mineToo = !me || !owner || owner === me.username
+            return (
+              <div className="dossier" key={ch.id}>
+                <span className="face" aria-hidden>
+                  {designName(ch)[0]}
+                </span>
+                <div>
+                  <span className="title">{designName(ch)}</span>
+                  <div className="meta">
+                    {[
+                      ch.itemDesign!.kind === 'weapon' ? 'Weapon' : 'Cyberware',
+                      e ? entryLabel(e) : x.name,
+                      `${x.accessories.length} add-ons`,
+                      !mineToo && `by ${ownerName ?? owner}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    {ch.itemDesign!.approved && <span className="noncanon"> GM approved</span>}
+                  </div>
+                </div>
+                {mineToo && (
+                  <div className="row">
+                    <button className="btn small quiet" aria-label={`Delete ${designName(ch)}`} onClick={() => setToDelete(ch)}>
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </section>
       <Modal
         open={creating}
         onClose={() => setCreating(false)}

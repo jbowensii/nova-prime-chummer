@@ -111,6 +111,18 @@ test("an Attribute increase raises the limb's chosen attribute, always on", () =
   expect(hostBonus(arm, cyber).agi).toBeUndefined()
 })
 
+test("an Attribute increase set to Armor adds to Defense, not to a limb attribute; Agility still raises the limb's (owner ruling 2026-10-30)", () => {
+  const arm = (note: string): Sr6Purchase => ({
+    uid: 'arm',
+    kind: 'augmentations',
+    id: 'zz.arm',
+    qty: 1,
+    accessories: [{ uid: 'inc', kind: 'augmentations', id: 'zz.inc', qty: 1, rating: 2, note, accessories: [] }],
+  })
+  expect(hostBonus(arm('Armor'), cyber)).toEqual({ defense: 2 })
+  expect(hostBonus(arm('Agility'), cyber)).toEqual({ agi: 2 })
+})
+
 test("the Foundry export carries a weapon's computed stats, the printed ones under printed", () => {
   const c = fixtureCatalog(undefined, [{ file: 'custom/sr6/imported/zz/weapons.xml', xml: WEAPONS }]),
     d = sr6Data(c),

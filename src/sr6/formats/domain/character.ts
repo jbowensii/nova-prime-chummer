@@ -192,6 +192,8 @@ export interface Sr6Purchase {
   /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
    *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
   design?: string
+  /** a weapon or cyberware line bought from a saved item design a GM made or approved (the item builders): Review asks nothing */
+  approved?: true
   /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
   slotShifts?: SlotShift[]
   /** GM override (owner 2026-10-27): the built-in mods removed from this vehicle/drone instance, each by its builtin
@@ -256,6 +258,13 @@ export interface Sr6Design {
    *  Size, how it is mounted) */
   hardpoints?: Sr6Hardpoint[]
   diy?: true
+  approved?: true
+}
+/** A weapon or cyberware design (the item builders): the line as built, its add-ons and factory parts removed; approved
+ *  when a GM made or approved it (a line bought from it then needs no approval). */
+export interface Sr6ItemDesign {
+  kind: 'weapon' | 'cyberware'
+  line: Sr6Purchase
   approved?: true
 }
 export interface Sr6Hardpoint {
@@ -609,6 +618,8 @@ export interface Sr6Character {
   npc?: Sr6Npc
   /** set on a vehicle or drone design (the Designer's store; its build stays blank) */
   design?: Sr6Design
+  /** set on a saved weapon or cyberware design (the item builders, same store as the Designer's; its build stays blank) */
+  itemDesign?: Sr6ItemDesign
   sampleKey?: string
   house?: Sr6Entry[]
   printed?: Sr6Printed

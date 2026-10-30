@@ -6,6 +6,7 @@ import { allBudgets } from '../../../src/sr6/runner-builder/domain/creation/budg
 import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
 import { blankSr6, type MagicKind, type Sr6Attr, type Sr6Character, type Sr6Purchase } from '../../../src/sr6/formats/domain/character'
+import { customLimb } from '../../../src/sr6/runner-builder/domain/assets/builders'
 import { buildOf, GLIM, made } from '../catalog/fixture'
 
 type Over = Parameters<typeof made>[0]
@@ -105,6 +106,29 @@ test('worn armor adds its defense; armor not worn doesn’t', () => {
   expect(derive(ch).d.defenseRating).toBe(4)
   vest.worn = true
   expect(derive(ch).d.defenseRating).toBe(4 + 2)
+})
+
+test('a cyberlimb Armor increase adds to the Defense Rating, a Strength one does not', () => {
+  const ch = runner()
+  buy(ch, 'augmentations', undefined, customLimb('arm', 'obvious', { armor: 2 }))
+  expect(derive(ch).d.defenseRating).toBe(4 + 2)
+  ch.build.purchases = []
+  buy(ch, 'augmentations', undefined, customLimb('arm', 'obvious', { str: 2 }))
+  expect(derive(ch).d.defenseRating).toBe(4)
+})
+
+test("a cyberlimb's own Strength and Agility are 2 plus its increases; the runner's are unchanged (owner ruling 2026-10-30)", () => {
+  const ch = runner(),
+    before = derive(ch).d.attrs.str
+  const arm = buy(ch, 'augmentations', undefined, customLimb('arm', 'obvious', { str: 2 }))
+  const d = derive(ch).d
+  expect(d.hosts.find(h => h.uid === arm.uid)!.values).toEqual(
+    expect.arrayContaining([
+      { target: 'str', value: 4 },
+      { target: 'agi', value: 2 },
+    ]),
+  )
+  expect(d.attrs.str).toEqual(before)
 })
 
 test('a weapon AR of 4/10/8/—/— gives three bands', () => {

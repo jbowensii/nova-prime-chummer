@@ -102,9 +102,23 @@ export function useSr6Designs(): Sr6Character[] {
     sr6DesignRepo()
       .list()
       .then(
-        r => setList(r.filter(s => s.ch.design && (!s.owner || s.owner === me?.username)).map(s => s.ch)),
+        r => setList(r.filter(s => s.ch.design && !s.ch.itemDesign && (!s.owner || s.owner === me?.username)).map(s => s.ch)),
         () => setList([]),
       )
   }, [me?.username])
+  return list
+}
+
+/** Every saved weapon or cyberware design the server lists (shared, owner ruling 2: anyone buys anyone's), of `kind`. */
+export function useItemDesigns(kind: 'weapon' | 'cyberware'): Sr6Character[] {
+  const [list, setList] = useState<Sr6Character[]>([])
+  useEffect(() => {
+    sr6DesignRepo()
+      .list()
+      .then(
+        r => setList(r.filter(s => s.ch.itemDesign?.kind === kind).map(s => s.ch)),
+        () => setList([]),
+      )
+  }, [kind])
   return list
 }

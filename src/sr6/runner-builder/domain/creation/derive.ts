@@ -288,6 +288,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       const e = entryOf(x, data)
       defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0
     }
+  // a cyberlimb's Armor increase (CRB p. 288) raises the Defense Rating at all times (owner ruling 2026-10-30)
+  for (const x of b.purchases) if (x.kind === 'augmentations') defense += hostBonus(x, data, on).defense ?? 0
 
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
   // the Sixth World Companion's option (p. 150, strengthInCloseCombat): Close Combat rolls Strength, and Agility goes
@@ -495,11 +497,16 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     // (a critter's augmentations add to its own stat block: critters.ts, never the runner's attributes)
     hosts: b.purchases.flatMap(x => {
       if (x.kind === 'critters') return []
-      const add = hostBonus(x, data, on),
+      const e = entryOf(x, data),
+        // CRB p. 288 (owner ruling 2026-10-30): a cyberlimb's own Strength and Agility start at 2, its increases add to that
+        limb = /^cyberlimbs?$/i.test(e?.attrs.category ?? ''),
+        add = { ...(limb ? { str: 0, agi: 0 } : {}), ...hostBonus(x, data, on) },
         targets = Object.keys(add) as (keyof typeof add)[]
       if (!targets.length) return []
-      const values = targets.map(t => ({ target: t, value: (t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]! }))
-      const e = entryOf(x, data)
+      const values = targets.map(t => ({
+        target: t,
+        value: (limb && (t === 'str' || t === 'agi') ? 2 : t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]!,
+      }))
       return [{ uid: x.uid, name: e ? entryLabel(e) : (x.name ?? 'Custom item'), values, text: hostText(values) }]
     }),
   }

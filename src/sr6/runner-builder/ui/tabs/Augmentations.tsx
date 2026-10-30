@@ -7,6 +7,7 @@ import { useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
 import { gradesFor } from '../../domain/creation/grades'
 import { ACCESSORY_KINDS, isAccessory, PurchaseSection } from '../Picker'
+import { BuyItemDesign, CustomLimb } from '../Builder'
 
 export function AugmentationsTab() {
   const { ch, cr, data, budgets } = useSr6Editor()
@@ -21,6 +22,10 @@ export function AugmentationsTab() {
         {num(cr, 'essence') === undefined && ' Essence isn’t set: Table setup → Creation rules.'}
         {gradesFor(cr, data).length === 0 && ' No grades are set up yet (Table setup → Creation rules), so ware is bought without one.'}
       </p>
+      <div className="row">
+        <CustomLimb />
+        <BuyItemDesign kind="cyberware" />
+      </div>
       {/* (owner's decision 9: an augmentation the runner has isn't offered again; a limb one a side) */}
       <PurchaseSection
         kind="augmentations"
