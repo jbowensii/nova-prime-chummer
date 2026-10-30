@@ -419,6 +419,8 @@ class WeaponParts(unittest.TestCase):
         self.assertFalse(same("Smartgun system", "Gas-Vent System"))
         self.assertTrue(same("gas-vent system (2)", "Gas Vent"))
         self.assertTrue(same("Gas-Vent System", "gas vent system"))
+        self.assertTrue(same("gas-vent system", "Gas Vent (improved)"))
+        self.assertFalse(same("Smartgun system", "Gas Vent (improved)"))
 
     def test_standard_upgrades_line_is_read_per_block(self):
         md = (

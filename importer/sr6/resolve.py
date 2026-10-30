@@ -964,10 +964,14 @@ def standard_upgrades(regrouped):
     return out
 
 
+_GENERIC_PART_WORDS = catalog.word_stems("system improved standard kit unit module")
+
+
 def _same_part(a, b):
-    """Two names for one part: their word stems equal or one's inside the other's (`Gas Vent` / `gas-vent system`),
-    never a shared word alone (`Smartgun system` is not `Gas-Vent System`)."""
-    x, y = catalog.word_stems(a), catalog.word_stems(b)
+    """Two names for one part: less the generic part words (_GENERIC_PART_WORDS), their word stems equal or one's
+    inside the other's (`gas-vent system` / `Gas Vent (improved)`), never a shared word alone (`Smartgun system` is not
+    `Gas-Vent System`)."""
+    x, y = catalog.word_stems(a) - _GENERIC_PART_WORDS, catalog.word_stems(b) - _GENERIC_PART_WORDS
     return bool(x and y) and (x <= y or y <= x)
 
 
