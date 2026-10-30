@@ -403,6 +403,29 @@ class WeaponParts(unittest.TestCase):
         resolve.weapon_parts([b], entries, set())  # idempotent
         self.assertEqual(len(gun.findall("part")), 1)
 
+    def test_printings_a_regular_part_and_a_models_note(self):
+        mk = lambda x: etree.fromstring(x)  # noqa: E731
+
+        class Book:
+            state, dir = "done", "/nonexistent"
+
+            def __init__(self, date):
+                self.date = date
+
+        old, new = Book("2019-08"), Book("2020-05")
+        a = mk('<gear id="aa.folding-stock" class="ACCESSORY/WEAPON_ACCESSORY"><name>Folding Stock</name></gear>')
+        b = mk('<weapon id="bb.folding-stock" class="ACCESSORY/WEAPON_ACCESSORY"><name>Folding Stock</name></weapon>')
+        reg = mk('<weapon id="bb.regular-sling" class="ACCESSORY/WEAPON_ACCESSORY"><name>Regular Sling</name></weapon>')
+        tac = mk(
+            '<weapon id="bb.tactical-sling" class="ACCESSORY/WEAPON_ACCESSORY"><name>Tactical Sling</name></weapon>'
+        )
+        gun = mk('<weapon id="zz.gun"><name>Gun</name><modifier kind="itemmod" type="GEARMOD" ref="folding_stock"/>'
+                 '<modifier kind="itemmod" type="GEARMOD" ref="sling (all models)"/></weapon>')  # fmt: skip
+        entries = [(old, "aa", "gear", a, "a"), (new, "bb", "weapons", b, "b"), (new, "bb", "weapons", reg, "b")]
+        entries += [(new, "bb", "weapons", tac, "b"), (new, "zz", "weapons", gun, "w")]
+        self.assertEqual(resolve.weapon_parts([old, new], entries, set())[1], [])
+        self.assertEqual([p.get("ref") for p in gun.findall("part")], ["bb.folding-stock", "bb.regular-sling"])
+
     def test_one_part_per_id_and_a_shared_word_is_not_the_same_part(self):
         mk = lambda x: etree.fromstring(x)  # noqa: E731
         grip = mk('<weapon id="zz.foregrip" class="ACCESSORY/WEAPON_ACCESSORY"><name>Foregrip</name></weapon>')
@@ -428,6 +451,33 @@ class WeaponParts(unittest.TestCase):
             '"level": 2, "row": false} -->\n\n**Standard Upgrades:** Foregrip, sling\n<!-- end -->\n'
         )
         self.assertEqual(resolve.standard_upgrades(md), {"gun": "Foregrip, sling"})
+
+    def test_an_integral_device_carries_its_factory_programs_as_child_parts(self):
+        mk = lambda x: etree.fromstring(x)  # noqa: E731
+        link = mk('<electronics id="zz.zap-link" class="ELECTRONICS/COMMLINK"><name>Zap Link</name><slot id="software"/></electronics>')  # fmt: skip
+        soft = mk('<gear id="zz.tutorsoft" class="SOFTWARE/OTHER_PROGRAMS"><name>Tutorsoft</name></gear>')
+        gun = mk('<weapon id="zz.gun"><name>Gun</name></weapon>')
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "regrouped.md"), "w", encoding="utf8") as f:
+                f.write(
+                    '<!-- section {"name": "Gun", "chapter": "C", "section": "Gun", "label": "", "page": 3, "tags": "", '
+                    '"level": 2, "row": false} -->\n\n**Standard Upgrades:** Integral commlink (Zap Link, DR 1), '
+                    "Longarms tutorsoft (1)\n<!-- end -->\n"
+                )
+
+            class Book:
+                state, dir = "done", d
+
+            b = Book()
+            entries = [
+                (b, "zz", "electronics", link, "e"),
+                (b, "zz", "gear", soft, "g"),
+                (b, "zz", "weapons", gun, "w"),
+            ]
+            self.assertEqual(resolve.weapon_parts([b], entries, set())[1], [])
+        got = [dict(p.attrib) for p in gun.findall("part")]
+        self.assertEqual([(p["ref"], p["hook"], p.get("parent")) for p in got], [("zz.zap-link", "internal", None), ("zz.tutorsoft", "software", "zap-link")])  # fmt: skip
+        self.assertEqual((got[1]["rating"], got[1]["choice"], got[1]["included"], got[1]["removable"]), ("1", "Firearms", "true", "true"))  # fmt: skip
 
 
 class KnowledgeOptions(unittest.TestCase):

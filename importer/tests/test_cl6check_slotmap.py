@@ -48,6 +48,13 @@ class SlotMapTest(unittest.TestCase):
             [{"tag": "fits", "attrs": {"slot": "cyberlimb-implant", "cost": "2", "mode": "implanted"}}],
         )
 
+    def test_a_matrix_devices_software_types_are_set(self):
+        c, o = pair(hooks=[("SOFTWARE", "4")], kind="gear", oid="zz.rcc")
+        ET.SubElement(c["el"], "attrdef", {"id": "SOFTWARE_TYPES", "value": "RCC,AUTOSOFT"})
+        self.assertEqual(
+            slotmap.rows_of([(c, o)])["zz"][0]["set"], {"usage": "carried", "softwareTypes": "RCC,AUTOSOFT"}
+        )
+
     def test_any_hook_and_kind_and_a_removal(self):
         c, o = pair(hooks=[("CYBEREYE_IMPLANT", "4")], kind="augmentations", oid="zz.eye")
         ET.SubElement(c["el"].find("modifications"), "itemmod", {"type": "HOOK", "ref": "VEHICLE_CF", "remove": "true"})

@@ -211,6 +211,8 @@ export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined, every
     else if (ref === 'ITEMSUBTYPE') r = sub === want
     else if (ref === 'WEAPON_SIZE') r = key(host.attrs.size) === want
     else if (ref === 'AMMUNITION_CLASS') r = key(host.attrs.ammoClass) === want
+    // a program's device type (`SOFTWARE_TYPES` BASIC / RCC …): the device's list, from Commlink6 (slotmap.py softwareTypes)
+    else if (ref === 'SOFTWARE_TYPES' && host.attrs.softwareTypes !== undefined) r = host.attrs.softwareTypes.split(',').map(key).includes(want)
     return r === undefined ? undefined : p.negate === 'true' ? !r : r
   }
   const words = (p: Record<string, string>) =>

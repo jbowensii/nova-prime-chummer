@@ -150,9 +150,6 @@ CONNECT = (
 )
 
 
-_CACHE = {}  # per book: its pages' lines, its errata statements
-
-
 @dataclass
 class Obs:
     """One observation of a field's value in a book."""
@@ -239,7 +236,7 @@ def from_block(book, i, names):
 def _card_lines(book, i):
     """The lines of the card whose title is heading i: its page, when that heading is the page's only title."""
     ls = book.md()
-    pages = _CACHE.setdefault(("pages", id(book)), {})
+    pages = book._cache.setdefault("pages", {})
     if not pages:
         for ln in ls:
             pages.setdefault(ln.page, []).append(ln)
@@ -312,10 +309,9 @@ def from_bracket(book, ln, names):
 
 def statements(book):
     """An errata book's statements: (label, text, Line), a heading's body split at its bullets and 'p. N:' markers."""
-    key = ("statements", id(book))
-    if key not in _CACHE:
-        _CACHE[key] = _statements(book)
-    return _CACHE[key]
+    if "statements" not in book._cache:  # on the book, not keyed by id(): a freed book's id is reused
+        book._cache["statements"] = _statements(book)
+    return book._cache["statements"]
 
 
 def _statements(book):
@@ -390,9 +386,9 @@ FOOTNOTE = re.compile(r"^\s*\|?\s*[*†](?!\*)\s*\S")
 def section_text(book, i):
     """[(heading, Line, text)]: the general statements over line i: for each heading above it, one level up at a time,
     its intro (the paragraph up to the next heading) and the footnotes ('*', '†') of its first 400 lines."""
-    key = ("section", id(book), i)
-    if key in _CACHE:
-        return _CACHE[key]
+    key = ("section", i)
+    if key in book._cache:
+        return book._cache[key]
     ls, out = book.md(), []
     lv = ls[i].level or 7
     for k in range(i - 1, -1, -1):
@@ -413,7 +409,7 @@ def section_text(book, i):
                 out.append((ls[k], x, x.text.strip("| ")))
         if lv <= 1:
             break
-    _CACHE[key] = out
+    book._cache[key] = out
     return out
 
 

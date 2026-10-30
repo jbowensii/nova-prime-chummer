@@ -69,6 +69,7 @@ VALUE_ATTRS = {
     "usage",  # (Commlink6's enhancement/carried, tools/cl6check/slotmap.py)
     "size",
     "ammoClass",
+    "softwareTypes",  # (a matrix device's Commlink6 SOFTWARE_TYPES: what programs it runs, slotmap.py)
     "accel",
     "speed",
     "body",
