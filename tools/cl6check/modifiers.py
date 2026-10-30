@@ -686,8 +686,8 @@ def _cl6_value(m):
 
 @functools.cache
 def _bookwins():
-    """{(CommLink6 id, signature, CommLink6 value): kind} the book rules on: the gate's bookruled.json and the page-checked
-    rows of effects_bookwins.json (owner rule: the latest printing, the book, wins)."""
+    """{(CommLink6 id, signature, CommLink6 value): kind} the book rules on: the gate's bookruled.json and the
+    page-checked rows of effects_bookwins.json (owner rule: the latest printing, the book, wins)."""
     rows = evaluate._load("bookruled.json")  # pylint: disable=protected-access
     with open(os.path.join(os.path.dirname(__file__), "effects_bookwins.json"), encoding="utf-8") as f:
         rows += json.load(f)
