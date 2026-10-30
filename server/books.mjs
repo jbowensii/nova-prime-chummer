@@ -46,6 +46,7 @@
 //                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS and samplefixes, existing entries only);
 //                                     no AI book import, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
+//   GET|POST /api/sr6/books/clear/(npcs|samples)  admin: what would go / move imported NPCs+critters or example characters to trash (backup first) (server/sr6clear.mjs)
 //   PUT    /api/sr6/creation          admin: { settings: [{ key, value, source?, page? }] } -> 204; replaces
 //                                     custom/sr6/creation.xml (creation.xsd: what the admin changed from the shipped standard,
 //                                     public/data/sr6/creation-defaults.xml; the client overlays it), the server's default (a campaign's own: PUT /api/sr6/campaigns/:id { creation }, campaigns.mjs);
@@ -93,6 +94,7 @@ import { SR6_KINDS } from './games.mjs'
 import { jobsApi } from './jobs.mjs'
 import { libraryApi } from './library.mjs'
 import { resumeApi } from './resume.mjs'
+import { clearApply, clearPlan } from './sr6clear.mjs'
 
 // ours in library/.backups (a download's folder holds its zip), and a killed restore's safety-backup temp
 const TEMP_ZIP = /^(download|pack)-[0-9a-f]+$|^(upload|pack)-[0-9a-f]+\.zip$|^\.backup\..*\.tmp$/
@@ -234,6 +236,14 @@ export function booksApi({
     if (p === '/api/edits' || p.startsWith('/api/edits/')) return edits(req, res, url, send, who, 'sr6')
     if (p === '/api/creation') return creation(req, res, send)
     if (p === '/api/books/reimport-all') return reimportAll(req, res, send, 'sr6')
+    const cl = p.match(/^\/api\/books\/clear\/(npcs|samples)$/)
+    if (cl && req.method === 'GET') return send(res, 200, { targets: await clearPlan(S.custom, cl[1]) })
+    if (cl && req.method === 'POST') {
+      if (ctx.running || ctx.queue.length) return send(res, 409, { error: 'a book is being imported; try again when it’s done' })
+      const trash = join(layout.root ?? layout.libraryDir, '_to_delete')
+      return send(res, 200, await clearApply(S.custom, cl[1], { backups, trash }))
+    }
+    if (cl) return send(res, 405, { error: 'method not allowed' })
     const m = p.match(/^\/api\/(books)\/([^/]+)(?:\/(report|reimport))?$/)
     return m ? bookRoute(req, res, url, send, m, 'sr6') : false
   }

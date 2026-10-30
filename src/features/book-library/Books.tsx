@@ -297,6 +297,8 @@ export function BooksScreen({
   // Re-import all: the confirm, then the books it queued (the progress line follows them) and those it left out
   const [allAsk, setAllAsk] = useState(false)
   const [batch, setBatch] = useState<{ ids: string[]; skipped: { id: string; why: string }[] } | null>(null)
+  // SR6 admin clears: what the server would move (GET /api/sr6/books/clear/:kind), shown in the confirm
+  const [clearing, setClearing] = useState<{ kind: 'npcs' | 'samples'; targets: { book: string; name: string }[] } | null>(null)
   const admin = isAdmin(useMe())
   const states = useRef(new Map<string, string>())
 
@@ -379,6 +381,17 @@ export function BooksScreen({
     void refresh()
   }
 
+  const askClear = (kind: 'npcs' | 'samples') =>
+    void act('list what would be moved', async () =>
+      setClearing({ kind, ...(await api<{ targets: { book: string; name: string }[] }>(`sr6/books/clear/${kind}`)) }),
+    )
+  const doClear = (kind: 'npcs' | 'samples') => {
+    setClearing(null)
+    void act('move them to the trash', async () => {
+      const r = await api<{ moved: unknown[]; trash: string }>(`sr6/books/clear/${kind}`, { method: 'POST' })
+      setMsg(`Moved ${r.moved.length} to ${r.trash} (a copy is in Backups). Reload the page to see the change.`)
+    })
+  }
   const act = async (what: string, run: () => Promise<unknown>) => {
     try {
       await run()
@@ -522,6 +535,16 @@ export function BooksScreen({
           <button className="btn small" disabled={!!progress && progress.done < progress.n} onClick={() => setAllAsk(true)}>
             Re-import all books
           </button>
+        )}
+        {admin && sr6 && (
+          <>
+            <button className="btn small" disabled={!!running} onClick={() => askClear('npcs')}>
+              Move imported NPCs &amp; Critters to trash
+            </button>
+            <button className="btn small" disabled={!!running} onClick={() => askClear('samples')}>
+              Move example characters to trash
+            </button>
+          </>
         )}
       </div>
       {progress && (
@@ -686,6 +709,43 @@ export function BooksScreen({
           Re-import all {reimportable.length} books? Each book’s catalog, rules and samples are rebuilt from its PDF. Your edits, runners and NPCs are kept.
           This can take a while.
         </p>
+      </Modal>
+
+      <Modal
+        open={!!clearing}
+        onClose={() => setClearing(null)}
+        title={clearing?.kind === 'npcs' ? 'Move imported NPCs & Critters to trash' : 'Move example characters to trash'}
+        actions={
+          <>
+            <button className="btn" onClick={() => setClearing(null)}>
+              Cancel
+            </button>
+            <button className="btn primary" disabled={!clearing?.targets.length} onClick={() => clearing && doClear(clearing.kind)}>
+              {clearing?.targets.length ? `Move ${clearing.targets.length} to trash` : 'Nothing to move'}
+            </button>
+          </>
+        }
+      >
+        {clearing && (
+          <>
+            <p>
+              These will disappear from your {clearing.kind === 'npcs' ? 'NPC and Critter' : 'Example'} lists and go to the trash folder (
+              {clearing.targets.length} {clearing.kind === 'npcs' ? 'list file(s)' : 'folder(s)'} from {new Set(clearing.targets.map(t => t.book)).size}{' '}
+              book(s)):
+            </p>
+            <ul>
+              {clearing.targets.map(t => (
+                <li key={`${t.book}/${t.name}`}>
+                  {t.book}/{t.name}
+                </li>
+              ))}
+            </ul>
+            <p>
+              Your books, your own characters and your custom items are not touched{clearing.kind === 'npcs' ? ', nor the critter powers list' : ''}. A copy is
+              kept in Backups/sr6-pre-clear-… and the files go to _to_delete/sr6-cleared-…; nothing is deleted. Re-importing brings them back.
+            </p>
+          </>
+        )}
       </Modal>
 
       <Modal
