@@ -5,6 +5,7 @@
 // campaign (Anarchy's dialog; no campaign filter or duplicates finder, R); Load example characters copies the imported
 // books' sample runners (custom/sr6/imported/samples.xml) not loaded yet.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { MoveImportedToTrash } from '../../../features/book-library/MoveImportedToTrash'
 import { because, isAdmin, savesSettled, send, useMe } from '../../../core/ui-kit/auth'
 import { joined, loadCampaigns, type Campaign } from '../../../features/campaigns/campaignsStore'
 import { Modal, StateBadge } from '../../../core/ui-kit/bits'
@@ -360,6 +361,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} disabled={banner === LEGACY} />
         <IconButton icon="examples" label="Load example characters" onClick={() => void loadExamples()} disabled={banner === LEGACY} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
+        <MoveImportedToTrash kind="samples" />
         <input
           ref={file}
           type="file"
