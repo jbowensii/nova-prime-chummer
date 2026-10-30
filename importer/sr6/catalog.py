@@ -124,6 +124,7 @@ HEADERS = {
         "AMMO": "ammo",
         "TYPE": "type",
         "MOUNT": "mount",
+        "SIZE": "weaponSize",  # (Deadly Arts' heavy weapons: the Size a mil-spec hardpoint's Grade reads, 0-8)
         "BLAST": "blast",
         "DV GZ": "dv+",
         "DV CLOSE": "dv+",
@@ -902,6 +903,8 @@ class Catalog:
             a = cols.get(k.upper())
             if a and v and a not in out:
                 out[a] = printed_value(a, v)
+        if kind == "weapons" and "weaponSize" in out and not re.fullmatch(r"\d+", out["weaponSize"]):
+            out.setdefault("prose", []).append(f"**Size:** {out.pop('weaponSize')}")  # (a word: not a hardpoint Size)
         if kind == "weapons" and (
             m := re.fullmatch(r"(.+?)\s*\(\s*(\d[\d.,]*\s*m)\s+blast\s*\)", out.get("dv", ""), re.I)
         ):

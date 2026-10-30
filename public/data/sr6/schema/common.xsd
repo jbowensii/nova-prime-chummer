@@ -213,6 +213,8 @@
          from the printed category, needs owner review); absent: the data gave it -->
     <xs:attribute name="sizeFrom" type="xs:string"/>
     <xs:attribute name="ammoClass" type="xs:string"/>
+    <!-- weaponSize: a heavy weapon's printed SIZE (Deadly Arts, 0-8): the Grade of mil-spec hardpoint it needs -->
+    <xs:attribute name="weaponSize" type="xs:nonNegativeInteger"/>
   </xs:attributeGroup>
   <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
        its TYPE alone, or the record's tag for a kind with no type (`spell`, `ammotype`). Set from the category (importer/sr6/
