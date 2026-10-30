@@ -427,3 +427,35 @@ test('Handling never goes below 1, on-road or off-road (owner ruling 2026-10-30)
   expect([scratch.stats.handling, scratch.stats.offRoad]).toEqual([1, 1])
   expect(scratch.warnings.some(w => /can’t go below 1/.test(w.message))).toBe(true)
 })
+
+test('a weapon in a design’s mount (owner 2026-10-30): priced and Availability-raised with the mods, kept in the file, bought mounted with its accessories', () => {
+  const { data, cr } = world()
+  const rifle = {
+    uid: 'w1',
+    kind: 'weapons' as const,
+    id: 'crb.fizz-rifle-70',
+    qty: 1,
+    mount: 'm1',
+    accessories: [{ uid: 's1', kind: 'gear' as const, id: 'crb.zap-scope', qty: 1, accessories: [] }],
+  }
+  const bare = design({ mods: [mod('zip-mount', 'm1')] }),
+    armed = design({ mods: [mod('zip-mount', 'm1'), rifle] })
+  expect(designOf(armed, data, cr).modsNuyen - designOf(bare, data, cr).modsNuyen).toBe(1150 + 350)
+  expect(designOf(armed, data, cr).dp).toBe(designOf(bare, data, cr).dp) // (the weapon takes no mod slots)
+  expect(designOf({ ...armed, diy: true }, data, cr).price).toBe(Math.floor(designOf(armed, data, cr).price / 2))
+  expect(designOf(armed, data, cr).warnings).toEqual(designOf(bare, data, cr).warnings)
+  expect(designOf(design({ mods: [{ ...rifle, mount: 'nope' }] }), data, cr).warnings.map(w => w.message)).toContain(
+    'Fizz Rifle 70 isn’t in a weapon mount of the design.',
+  )
+  const doc = blankSr6('priority', 'des-w', '2026-10-30T00:00:00.000Z')
+  doc.design = armed
+  const back = xmlToSr6(sr6ToXml(doc))
+  if (!back.ok) throw new Error(back.reason)
+  expect(back.character.design!.mods[1]).toMatchObject({ kind: 'weapons', id: 'crb.fizz-rifle-70', mount: 'm1', accessories: [{ id: 'crb.zap-scope' }] })
+  const line = boughtDesign(doc, data, cr, 'v1')
+  expect(line.snapshot!.parts.map(p => p.attrs.name)).toEqual(['Zip Weapon Mount'])
+  const w = line.accessories[0]
+  expect(w).toMatchObject({ kind: 'weapons', id: 'crb.fizz-rifle-70', accessories: [{ id: 'crb.zap-scope' }] })
+  expect(mountsOf(line, data).map(m => m.uid)).toEqual([w.mount])
+  expect(w.uid).not.toBe('w1')
+})

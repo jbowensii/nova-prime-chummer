@@ -342,3 +342,19 @@ test('mil-spec hardpoints (DA pp. 151-153): add one, set the weapon Size and mou
   expect(pageText()).toMatch(/Open mount: the weapon gets no protection/)
   expect(pageText()).toMatch(/Body 10\+ fits/)
 })
+
+test('a mount built into a design takes a weapon and its accessories, which save with the design', async () => {
+  const d = redZip()
+  d.design!.mods = [{ uid: 'm1', kind: 'gear', id: 'zz.zip-mount', qty: 1, accessories: [] }]
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(d) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  await click(button('Put a weapon in Zip Weapon Mount'))
+  await click(option('Fizz Rifle 70'))
+  await click(button('Add an accessory to Fizz Rifle 70'))
+  await click(option('Zap Scope'))
+  expect(pageText()).toMatch(/holds Fizz Rifle 70.*Zap Scope/)
+  await click(button('Save'))
+  const w = read(store.rows.get('d1')!.xml).design!.mods.find(x => x.kind === 'weapons')
+  expect(w).toMatchObject({ id: 'crb.fizz-rifle-70', mount: 'm1', accessories: [{ id: 'crb.zap-scope' }] })
+})

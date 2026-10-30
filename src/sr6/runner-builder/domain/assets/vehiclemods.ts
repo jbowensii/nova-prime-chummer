@@ -145,7 +145,7 @@ export function weaponSize(e?: Sr6Entry): 0 | 1 | 2 | undefined {
         : undefined
 }
 /** The biggest weapon a mount holds: a small one an SMG, a standard one an assault rifle, a large (heavy) one any. */
-const mountHolds = (e: Sr6Entry) => {
+export const mountHolds = (e: Sr6Entry) => {
   // by the weapon hook it offers (Commlink6's VEHICLE_WEAPON_SMALL/-/LARGE/MILITARY); by its name only when it offers none
   const ids = structureOf(e).slots.map(s => s.id)
   if (ids.some(i => /^vehicle-weapon-(large|military)$/.test(i))) return 2
@@ -153,7 +153,7 @@ const mountHolds = (e: Sr6Entry) => {
   if (ids.includes('vehicle-weapon-small')) return 0
   return /\bsmall\b/i.test(e.name) ? 0 : /\b(heavy|large|huge)\b/i.test(e.name) ? 2 : 1
 }
-const HOLDS = ['an SMG or smaller', 'an assault rifle or smaller', 'any weapon']
+export const HOLDS = ['an SMG or smaller', 'an assault rifle or smaller', 'any weapon']
 
 /** The mods built into a vehicle: its entry's (or design snapshot's) <builtin>s, each with its uid; those the GM removed
  *  from the instance (`removed`, by builtin uid) are left out (owner 2026-10-27). On an entry that has factory <part>s the
