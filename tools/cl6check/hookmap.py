@@ -170,7 +170,7 @@ def capacities(el):
     (F) hooks first, then the record's own HOOK modifications (not its variants'): a valmod adds to a hook that exists
     and makes one that doesn't, an itemmod adds 1 to a capacity hook (makes it at 1; a one-item hook at None), a remove
     takes it away (Stage 1-4 decompile). `itemhookmod` is ignored, as Commlink6 1.14.0 ignores it."""
-    from importer.sr6.hooks import CAPACITY_HOOKS  # pylint: disable=import-outside-toplevel
+    from importer.sr6.hooks import CAPACITY_HOOKS, software_capacity  # pylint: disable=import-outside-toplevel
 
     typ, sub = el.get("type") or "", el.get("subtype") or ""
     body, seats, pilot, social = _stats(el)
@@ -184,6 +184,10 @@ def capacities(el):
         h = x.get("ref")
         if x.get("remove") == "true":
             out.pop(h, None)
+        elif x.tag == "valmod" and h == "SOFTWARE" and "$" in (x.get("value") or ""):
+            m = el.find("matrix")  # ($CONCURRENT_PROGRAMS: the device's programs; unresolved stays None)
+            n = software_capacity(x.get("value"), None if m is None else m.get("programs"))
+            out[h] = None if n is None else (out.get(h) or 0.0) + n
         elif x.tag == "valmod" and isinstance(_num(x.get("value")), float):
             out[h] = (out.get(h) or 0.0) + _num(x.get("value"))
         elif h in CAPACITY_HOOKS and x.tag == "itemmod":

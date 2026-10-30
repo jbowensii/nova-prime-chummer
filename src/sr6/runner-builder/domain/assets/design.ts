@@ -14,7 +14,7 @@ import { entryLabel } from '../../../catalog/domain/categories'
 import type { CreationRules } from '../../../table-setup/domain/creation'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
-import { entryOf, priced, ratingOf } from '../creation/purchases'
+import { cargoFactor, entryOf, priced, ratingOf } from '../creation/purchases'
 import { availability, bookValue, dataFind, legality } from '../../../catalog/domain/values'
 
 export type DesignPart = 'chassis' | 'powertrain' | 'console' | 'size' | 'option' | 'modification' | 'quality'
@@ -301,18 +301,26 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
 
 /** A design's chassis row: the custom one (a GM/house chassis typed into the Designer, shaped like a catalog row) else the catalog's. */
 export function chassisOf(d: Sr6Design, data: Sr6Data): Sr6Entry | undefined {
-  const c = d.customChassis
-  if (!c) return d.chassis ? data.entry('vehicledesign', d.chassis) : undefined
+  return customOr(d.customChassis, d.chassis, 'chassis', 'Chassis type', data)
+}
+
+/** A design's powertrain row: the custom one, else the catalog's (as chassisOf). */
+export function powertrainOf(d: Sr6Design, data: Sr6Data): Sr6Entry | undefined {
+  return customOr(d.customPowertrain, d.powertrain, 'powertrain', 'Powertrain', data)
+}
+
+function customOr(c: { name: string } | undefined, id: string | undefined, what: string, category: string, data: Sr6Data): Sr6Entry | undefined {
+  if (!c) return id ? data.entry('vehicledesign', id) : undefined
   const { name, ...a } = c
   return {
-    id: 'custom-chassis',
+    id: `custom-${what}`,
     kind: 'vehicledesign',
     name,
     source: 'Custom',
     page: 0,
     parts: [],
     text: '',
-    attrs: { category: 'Chassis type', ...Object.fromEntries(Object.entries(a).map(([k, v]) => [k, String(v)])) },
+    attrs: { category, ...Object.fromEntries(Object.entries(a).map(([k, v]) => [k, String(v)])) },
   }
 }
 
@@ -325,7 +333,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const warn = (message: string, page: number, source = 'DC') => warnings.push({ message, source, page })
   const part = (id?: string) => (id ? data.entry('vehicledesign', id) : undefined)
   const chassis = chassisOf(d, data),
-    powertrain = part(d.powertrain),
+    powertrain = powertrainOf(d, data),
     console = part(d.console)
   const picked = d.options.flatMap(o => {
     const e = part(o.id)
@@ -363,7 +371,17 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   }
   // the size class table's row (`Size Class 6`): its cargo
   const sizeCargo = (size: number) => data.named?.(`Size Class ${size}`, 'vehicledesign')
-  const baseCargo = cargoCf(sizeCargo(base.size)?.attrs.cargo)
+  // a custom chassis's Cargo Factors (owner 2026-10-30): typed in, else by its seats as Commlink6 and the bought vehicles
+  // work it (cargoFactor; bike and truck by its name), else on request the size class table's (Double Clutch)
+  const cc = d.customChassis
+  const customCf =
+    !cc || cc.cargoFrom === 'size'
+      ? null
+      : (cc.cargo ??
+        (chassis && cargoFactor({ seatsRemoved: 0 } as Sr6Purchase, { ...chassis, attrs: { ...chassis.attrs, category: chassis.name } })?.cargo) ??
+        0)
+  const rowCfOf = (size: number) => (cc?.cargo !== undefined ? cc.cargo : (customCf ?? cargoCf(sizeCargo(size)?.attrs.cargo)))
+  const baseCargo = rowCfOf(base.size)
   const s = { ...base, offRoad: base.handling, cargo: 0 }
   const drone = d.kind === 'drone' || /drone/i.test(chassis?.name ?? '')
   // each table's SPECIAL column: a handling change, an off-road one, extra cargo and the walker's "No Top Speed loss" are
@@ -456,7 +474,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
 
   // cargo: the size class's, plus the options' and the truck's Cargo Factors, doubled for a Cargo Hauler
   const cargoRow = sizeCargo(s.size)
-  const rowCf = cargoCf(cargoRow?.attrs.cargo)
+  const rowCf = rowCfOf(s.size)
   const cargo = rowCf === null ? null : (rowCf + s.cargo) * (hauler ? 2 : 1)
   const extra = s.cargo * (hauler ? 2 : 1)
   const cargoText =

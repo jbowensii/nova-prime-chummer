@@ -1636,7 +1636,8 @@ const RULES: Rule[] = [
           rating = ratingOf(x, he),
           extra = x.addedSlots ?? []
         const lines = x.accessories.filter(a => !a.derived && !(vehicle && a.kind === 'weapons'))
-        const items = lines.map(a => ({ uid: a.uid, entry: entryOf(a, c.data), qty: a.qty }))
+        // (an accessory's qty is the line's whole: on a line of 2 guns, 2 smartguns are one a gun)
+        const items = lines.map(a => ({ uid: a.uid, entry: entryOf(a, c.data), qty: Math.ceil((a.qty ?? 1) / Math.max(1, x.qty ?? 1)) }))
         const roomed = !vehicle && capacityOf(he, rating) === null
         const unplaced = roomed ? new Set(mountSlots(he, items, rating, extra).unplaced) : new Set<string>()
         return lines.flatMap(a => {
@@ -1661,7 +1662,8 @@ const RULES: Rule[] = [
       c.b.purchases.flatMap(x =>
         x.accessories.flatMap(a => {
           const e = entryOf(a, c.data)
-          return e?.attrs.usage === 'carried'
+          // (an ammunition type under its ammunition line is that line's kind of round, the Ledger's per-type ammo: not fitted)
+          return e?.attrs.usage === 'carried' && a.kind !== 'ammotypes'
             ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, a)} is carried on its own, not fitted to ${nameOf(c, x)}.`, ...entryCite(e) }]
             : []
         }),

@@ -33,6 +33,7 @@ KID_TAGS = {
 }  # (an owner row's: an Infected type's gained power, corrected)
 VALUE_ATTRS = {
     "multi",
+    "programs",  # (a device's Concurrent Programs: SOFTWARE capacity, `$CONCURRENT_PROGRAMS`)
     "cost",
     "avail",
     "karma",

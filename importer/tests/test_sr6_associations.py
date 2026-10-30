@@ -134,9 +134,14 @@ class ClassRuleTest(unittest.TestCase):
             ("WEAPON_RANGED/BOWS", "ranged-external"),
         ):
             self.assertIn(slot, self.slots(gun.replace("WEAPON_FIREARMS/PISTOLS_LIGHT", cls), "weapons"))
-        # matrix devices only: a commlink gets software and electronic-accessory, other electronics neither
+        # matrix devices only: a commlink gets electronic-accessory, other electronics none; software is the data's
+        # $CONCURRENT_PROGRAMS, resolved to the device's programs
         com = '<electronic id="a" class="ELECTRONICS/COMMLINK"><name>C</name></electronic>'
-        self.assertEqual(set(self.slots(com, "electronics")), {"software", "electronic-accessory"})
+        self.assertEqual(set(self.slots(com, "electronics")), {"electronic-accessory"})
+        deck = com.replace("class=", 'programs="4" class=').replace(
+            "</name>", '</name><slot id="software" value="$CONCURRENT_PROGRAMS"/>'
+        )
+        self.assertEqual(self.slots(deck, "electronics")["software"]["value"], "4")
         self.assertEqual(self.slots(com.replace("COMMLINK", "SENSOR"), "electronics"), {})
 
     def test_vehicle_capacities_are_computed_the_commlink6_way(self):
@@ -199,6 +204,21 @@ class ClassRuleTest(unittest.TestCase):
         el = ET.fromstring(out.split("?>", 1)[1])[0]
         self.assertEqual((el.get("size"), el.get("sizeFrom")), ("Large", "category"))
         self.assertEqual(report["size.category"], 1)
+        # owner 2026-10-30: a grenade launcher by its ammo, one round rifle-sized (and an underbarrel accessory too),
+        # more a size up; a shotgun rifle-sized
+        for cat, ammo, size, under in (
+            ("Rifle", "1(m)", "Large", True),
+            ("Rifle", "4(c)", "Big", False),
+            ("Shotgun", "2(b)", "Large", False),
+        ):
+            w = f'<weapon id="a" category="{cat}" ammo="{ammo}"><name>X Grenade Launcher</name></weapon>'
+            if cat == "Shotgun":
+                w = w.replace("X Grenade Launcher", "Shotgun")
+            got = self.run_rule(w, "weapons")
+            doc = f'<?xml version="1.0"?>\n<sr6:data xmlns:sr6="u">\n  {w}\n</sr6:data>\n'
+            el = ET.fromstring(classes.associations({"weapons.xml": doc})["weapons.xml"].split("?>", 1)[1])[0]
+            self.assertEqual(el.get("size"), size, cat + ammo)
+            self.assertEqual(("fits", {"slot": "under", "mode": "embedded"}) in got, under, cat + ammo)
 
     def test_a_weapon_accessory_fits_each_mount_it_prints_and_nothing_else(self):
         w = '<weapon id="a" class="ACCESSORY/WEAPON_ACCESSORY" mount="%s"><name>A</name></weapon>'

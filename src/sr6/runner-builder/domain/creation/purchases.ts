@@ -34,9 +34,10 @@ export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => 
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1
 
 /** An accessory as its host carries it: on an augmentation it has the host's grade, whatever the file says ("All
- *  accessories and add-ons must be of the same grade as the implant to which they are added", CRB p. 282). */
+ *  accessories and add-ons must be of the same grade as the implant to which they are added", CRB p. 282). Only an
+ *  implant's own add-on (an augmentation) takes it: a device put in it (a commlink in a cyber-commlink) is no implant. */
 export function fitted(host: Sr6Purchase, a: Sr6Purchase): Sr6Purchase {
-  if (host.kind !== 'augmentations' || a.grade === host.grade) return a
+  if (host.kind !== 'augmentations' || a.kind !== 'augmentations' || a.grade === host.grade) return a
   const { grade: _, ...rest } = a
   return host.grade ? { ...rest, grade: host.grade } : rest
 }

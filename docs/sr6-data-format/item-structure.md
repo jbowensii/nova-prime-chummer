@@ -32,7 +32,9 @@ requirements are now applied:
   size and subtype). An item with an embedded usage of its own (no rule) is fitted only, never bought on its own.
 - A weapon with no WEAPON_SIZE gets one: `sizeFrom="class"` by Commlink6's own subtype rule, `sizeFrom="category"` a
   guess from its printed category for one with no class (owner ruling 3: listed for review).
-- `<prerequisite … group negate apply>`: group 0 all must hold, each other group (a Commlink6 `<selreq>`) any one.
+- `<prerequisite … group negate apply variant>`: group 0 all must hold, each other group (a Commlink6 `<selreq>`) any one.
+  `variant` (a Commlink6 variant's own test, or one of several Commlink6 records the entry matches: Personalized Grip's
+  ranged and melee): the tests of one variant hold together, and any one variant holding is enough.
   The app tests against the host what Commlink6 tests at embed time (`structure.ts requirementsOf`): `apply="DATA_ITEM"`
   tests, and a selreq group whose members all carry that `apply` (a member with none holds by itself). A holster's
   gun-type group is the one exception, always tested (owner ruling 6). A failure is Review's `catalog.requirement`

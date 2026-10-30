@@ -180,7 +180,7 @@ def families(e, kind=None):
             for r in rq.iter()
             if r is not rq and r.tag not in ("any",)
         ]
-        + [(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite")]
+        + [(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite") if not p.get("variant")]
     )
     if req:
         out["requires"] = tuple(req)

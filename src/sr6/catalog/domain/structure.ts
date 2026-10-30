@@ -215,14 +215,24 @@ export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined, every
   }
   const words = (p: Record<string, string>) =>
     `${p.negate === 'true' ? 'not ' : ''}${(p.type === 'ITEM_ATTRIBUTE' ? `${p.ref} ${p.value}` : `${p.type} ${p.ref}`).toLowerCase().replaceAll('_', ' ')}`
-  const groups = new Map<string, Record<string, string>[]>()
-  for (const p of tests) groups.set(p.group ?? '0', [...(groups.get(p.group ?? '0') ?? []), p])
-  for (const [g, ps] of groups) {
-    const got = ps.map(holds)
-    for (const [i, r] of got.entries()) if (r === undefined) unchecked.push(words(ps[i]))
-    if (g === '0') ps.forEach((p, i) => got[i] === false && failed.push(words(p)))
-    else if (got.every(r => r === false)) failed.push(ps.map(words).join(' or '))
+  const check = (set: Record<string, string>[]) => {
+    const out: string[] = []
+    const groups = new Map<string, Record<string, string>[]>()
+    for (const p of set) groups.set(p.group ?? '0', [...(groups.get(p.group ?? '0') ?? []), p])
+    for (const [g, ps] of groups) {
+      const got = ps.map(holds)
+      for (const [i, r] of got.entries()) if (r === undefined) unchecked.push(words(ps[i]))
+      if (g === '0') ps.forEach((p, i) => got[i] === false && out.push(words(p)))
+      else if (got.every(r => r === false)) out.push(ps.map(words).join(' or '))
+    }
+    return out
   }
+  failed.push(...check(tests.filter(p => !p.variant)))
+  // a test of one variant (`variant="rcc"`): that variant's tests all hold, or another variant's do (Commlink6's choice)
+  const byVariant = new Map<string, Record<string, string>[]>()
+  for (const p of tests) if (p.variant) byVariant.set(p.variant, [...(byVariant.get(p.variant) ?? []), p])
+  const perVariant = [...byVariant.values()].map(check)
+  if (perVariant.length && perVariant.every(f => f.length)) failed.push(perVariant.map(f => f.join(' and ')).join(' or '))
   return { failed, unchecked }
 }
 

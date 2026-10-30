@@ -349,7 +349,10 @@ const designXml = (d?: Sr6Design) =>
           diy: d.diy,
           approved: d.approved,
         },
-        (d.customChassis ? el('customChassis', d.customChassis) : '') + d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
+        (d.customChassis ? el('customChassis', d.customChassis) : '') +
+          (d.customPowertrain ? el('customPowertrain', d.customPowertrain) : '') +
+          d.options.map(o => el('option', o)).join('') +
+          d.mods.map(purchaseXml).join(''),
       )
     : ''
 
@@ -971,9 +974,21 @@ function readDesign(d: Element, fix?: string[]): Sr6Design {
             handling: num(k, 'handling', 0),
             seats: num(k, 'seats', 0),
             sizeClass: num(k, 'sizeClass', 0),
+            cargoFrom: k.getAttribute('cargoFrom') === 'size' ? ('size' as const) : undefined,
+            cargo: num(k, 'cargo'),
           }
         : undefined)(kid(d, 'customChassis')),
     powertrain: str(d, 'powertrain'),
+    customPowertrain: ((k: Element | null) =>
+      k
+        ? {
+            name: k.getAttribute('name') ?? '',
+            dp: num(k, 'dp', 0),
+            accel: num(k, 'accel', 0),
+            interval: num(k, 'interval', 0),
+            topSpeed: num(k, 'topSpeed', 0),
+          }
+        : undefined)(kid(d, 'customPowertrain')),
     console: str(d, 'console'),
     options: each(
       kids(d, 'option'),

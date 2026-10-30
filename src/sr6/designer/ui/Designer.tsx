@@ -22,7 +22,7 @@ import { entryLabel } from '../../catalog/domain/categories'
 import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
-import { chassisOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
+import { chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
 import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
 import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
@@ -47,6 +47,17 @@ const CHASSIS_FIELDS = [
   ['seats', 'Chassis Seats'],
   ['sizeClass', 'Chassis Size Class'],
 ] as const
+/** The custom-powertrain form's fields: the powertrain table's own columns (DP, Acceleration, Speed Interval, Top Speed). */
+const POWERTRAIN_FIELDS = [
+  ['name', 'Powertrain name'],
+  ['dp', 'Powertrain DP'],
+  ['accel', 'Powertrain Acceleration'],
+  ['interval', 'Powertrain Speed Interval'],
+  ['topSpeed', 'Powertrain Top Speed'],
+] as const
+const CUSTOM_FIELDS = { chassis: CHASSIS_FIELDS, powertrain: POWERTRAIN_FIELDS }
+type CustomPart = keyof typeof CUSTOM_FIELDS
+const customKey = { chassis: 'customChassis', powertrain: 'customPowertrain' } as const
 /** A drone chassis (`Drone, Small`). */
 const droneChassis = (e: Sr6Entry) => /drone/i.test(e.name)
 
@@ -366,7 +377,7 @@ const FACING: Record<'ground' | 'air' | 'water' | 'space', FacingSet> = {
 }
 /** Where the vehicle moves, from the chassis and powertrain names: air, water, space, else ground. */
 function vehicleDomain(d: Sr6Design, data: Sr6Data): keyof typeof FACING {
-  const t = `${chassisOf(d, data)?.name ?? ''} ${d.powertrain ? (data.entry('vehicledesign', d.powertrain)?.name ?? '') : ''}`.toLowerCase()
+  const t = `${chassisOf(d, data)?.name ?? ''} ${powertrainOf(d, data)?.name ?? ''}`.toLowerCase()
   if (/space|orbital|rocket|spacecraft/.test(t)) return 'space'
   if (/fixed[-\s]?wing|rotor|vtol|vstol|\blta\b|aircraft|flight|\bwing\b|glide|vectored|\bair\b/.test(t)) return 'air'
   if (/boat|\bship\b|\bsub\b|submarine|watercraft|naval|\bhull\b|hover|amphib|aquatic/.test(t)) return 'water'
@@ -443,7 +454,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const { doc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe())
   const [adding, setAdding] = useState(false)
-  const [makingC, setMakingC] = useState<Record<(typeof CHASSIS_FIELDS)[number][0], string> | null>(null)
+  const [makingC, setMakingC] = useState<{ what: CustomPart; f: Record<string, string> } | null>(null)
   const [making, setMaking] = useState<Record<'name' | 'cost' | 'slots' | 'rating' | 'avail', string> | null>(null)
   const back = <a href="#/sr6/designs">Back to the Designer</a>
   if (!loaded)
@@ -491,20 +502,18 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
     <label>
       {label}
       <select
-        value={what === 'chassis' && d.customChassis ? CUSTOM : (d[what] ?? '')}
+        value={what !== 'console' && d[customKey[what]] ? CUSTOM : (d[what] ?? '')}
         onChange={e => {
-          if (what === 'chassis' && e.target.value === CUSTOM) return setMakingC(Object.fromEntries(CHASSIS_FIELDS.map(([k]) => [k, ''])) as never)
+          if (what !== 'console' && e.target.value === CUSTOM) return setMakingC({ what, f: Object.fromEntries(CUSTOM_FIELDS[what].map(([k]) => [k, ''])) })
           update(x => {
-            if (what === 'chassis') delete x.customChassis
+            if (what !== 'console') delete x[customKey[what]]
             if (e.target.value) x[what] = e.target.value
             else delete x[what]
           })
         }}
       >
         <option value="">None yet</option>
-        {what === 'chassis' && (
-          <option value={CUSTOM}>{d.customChassis ? `${d.customChassis.name} (custom, ${d.customChassis.dp} DP)` : 'Custom chassis…'}</option>
-        )}
+        {what !== 'console' && (cc => <option value={CUSTOM}>{cc ? `${cc.name} (custom, ${cc.dp} DP)` : `Custom ${what}…`}</option>)(d[customKey[what]])}
         {list.map(e => (
           <option key={e.id} value={e.id}>
             {entryLabel(e)} ({dpText(e)})
@@ -652,38 +661,82 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
                     {pick('console', partsOf(c, 'console'), 'Console')}
                   </div>
+                  {!makingC &&
+                    (['chassis', 'powertrain'] as const).map(what =>
+                      (cc =>
+                        cc && (
+                          <p className="row" key={what}>
+                            <button
+                              className="btn small quiet"
+                              type="button"
+                              onClick={() =>
+                                setMakingC({
+                                  what,
+                                  f: Object.fromEntries(
+                                    [...CUSTOM_FIELDS[what].map(([k]) => k), 'cargoFrom', 'cargo'].map(k => [
+                                      k,
+                                      String((cc as Record<string, unknown>)[k] ?? ''),
+                                    ]),
+                                  ),
+                                })
+                              }
+                            >
+                              Edit custom {what}
+                            </button>
+                            <button className="btn small quiet" type="button" onClick={() => update(x => void delete x[customKey[what]])}>
+                              Remove custom {what}
+                            </button>
+                          </p>
+                        ))(d[customKey[what]]),
+                    )}
                   {makingC && (
                     <form
                       className="row"
-                      aria-label="Custom chassis"
+                      aria-label={`Custom ${makingC.what}`}
                       onSubmit={e => {
                         e.preventDefault()
-                        const f = makingC,
-                          n = (k: keyof typeof f) => Number(f[k]) || 0
+                        const { what, f } = makingC
                         if (!f.name.trim()) return
+                        const vals: Record<string, unknown> = Object.fromEntries(
+                          CUSTOM_FIELDS[what].map(([k]) => [k, k === 'name' ? f.name.trim() : Number(f[k]) || 0]),
+                        )
+                        if (what === 'chassis') {
+                          if (f.cargoFrom === 'size') vals.cargoFrom = 'size'
+                          if ((f.cargo ?? '').trim() !== '' && Number.isFinite(Number(f.cargo))) vals.cargo = Number(f.cargo)
+                        }
                         update(x => {
-                          delete x.chassis
-                          x.customChassis = {
-                            name: f.name.trim(),
-                            dp: n('dp'),
-                            body: n('body'),
-                            armor: n('armor'),
-                            handling: n('handling'),
-                            seats: n('seats'),
-                            sizeClass: n('sizeClass'),
-                          }
+                          delete x[what]
+                          x[customKey[what]] = vals as never
                         })
                         setMakingC(null)
                       }}
                     >
-                      {CHASSIS_FIELDS.map(([k, label]) => (
+                      {CUSTOM_FIELDS[makingC.what].map(([k, label]) => (
                         <label key={k}>
                           {label}
-                          <input value={makingC[k]} onChange={e => setMakingC({ ...makingC, [k]: e.target.value })} />
+                          <input value={makingC.f[k]} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, [k]: e.target.value } })} />
                         </label>
                       ))}
-                      <button className="btn small" type="submit" disabled={!makingC.name.trim()}>
-                        Save chassis
+                      {makingC.what === 'chassis' && (
+                        <>
+                          <label>
+                            Chassis Cargo from
+                            <select
+                              value={makingC.f.cargoFrom ?? ''}
+                              onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, cargoFrom: e.target.value } })}
+                            >
+                              <option value="">Seats (Commlink6)</option>
+                              <option value="size">Size Class table (Double Clutch)</option>
+                            </select>
+                          </label>
+                          <label>
+                            Chassis Cargo (CF, over either)
+                            <input value={makingC.f.cargo ?? ''} onChange={e => setMakingC({ ...makingC, f: { ...makingC.f, cargo: e.target.value } })} />
+                          </label>
+                        </>
+                      )}
+                      <button className="btn small" type="submit" disabled={!makingC.f.name.trim()}>
+                        Save {makingC.what}
                       </button>
                       <button className="btn small quiet" type="button" onClick={() => setMakingC(null)}>
                         Cancel

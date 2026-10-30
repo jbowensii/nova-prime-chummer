@@ -164,4 +164,10 @@ test('requirementsOf: as Commlink6, DATA_ITEM tests only (a selreq with no apply
     failed: [],
     unchecked: ['pilot 3'],
   })
+  // a variant's own tests (`variant`): one variant's set holding is enough (Commlink6's variant choice)
+  const v = (s: string, varid: string) => `<prerequisite kind="datareq" type="ITEMSUBTYPE" ref="${s}" apply="DATA_ITEM" variant="${varid}"/>`
+  const either = item({}, v('RIFLE_ASSAULT', 'long') + v('PISTOLS_HEAVY', 'short'))
+  expect(requirementsOf(either, pistol).failed).toEqual([])
+  expect(requirementsOf(either, rifle).failed).toEqual([])
+  expect(requirementsOf(item({}, v('SHOTGUNS', 'long') + v('HOLDOUTS', 'short')), rifle).failed).toEqual(['itemsubtype shotguns or itemsubtype holdouts'])
 })

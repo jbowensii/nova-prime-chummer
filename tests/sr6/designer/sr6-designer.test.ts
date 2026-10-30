@@ -94,6 +94,60 @@ test('a player designs a vehicle: the parts, options by level, a modification, a
   expect(d.mods.map(m => m.id)).toEqual(['zz.glitter-paint'])
 })
 
+test("a design's custom chassis can be edited (the form reopens filled in) and removed (back to None yet)", async () => {
+  const d0 = redZip()
+  delete d0.design!.chassis
+  d0.design!.customChassis = { name: 'Box', dp: 7, body: 5, armor: 2, handling: 3, seats: 2, sizeClass: 4 }
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(d0) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  // Cargo: by its seats (2 x 1.5) by default
+  expect(pageText()).toMatch(/Cargo3 CF/)
+  await click(button('Edit custom chassis'))
+  expect(field<HTMLInputElement>('Chassis DP').value).toBe('7')
+  await change(field('Chassis name'), 'Crate')
+  await change(field<HTMLSelectElement>('Chassis Cargo from'), 'size')
+  await click(button('Save chassis'))
+  expect(pageText()).not.toMatch(/Cargo3 CF/) // (the size class table's row now)
+  await click(button('Edit custom chassis'))
+  expect(field<HTMLSelectElement>('Chassis Cargo from').value).toBe('size')
+  await change(field('Chassis Cargo (CF, over either)'), '9')
+  await click(button('Save chassis'))
+  expect(pageText()).toMatch(/Cargo9 CF/)
+  await click(button('Save'))
+  expect(read(store.rows.get('d1')!.xml).design!.customChassis).toMatchObject({ name: 'Crate', dp: 7, sizeClass: 4, cargoFrom: 'size', cargo: 9 })
+  await click(button('Remove custom chassis'))
+  expect(field<HTMLSelectElement>('Chassis').value).toBe('')
+  await click(button('Save'))
+  expect(read(store.rows.get('d1')!.xml).design!.customChassis).toBeUndefined()
+})
+
+test('a custom powertrain: picked from the Powertrain list, its columns feed the stats and DP, saved, edited and removed', async () => {
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  await change(field<HTMLSelectElement>('Powertrain'), '__custom')
+  for (const [k, v] of [
+    ['Powertrain name', 'Jet'],
+    ['Powertrain DP', '40'],
+    ['Powertrain Acceleration', '9'],
+    ['Powertrain Speed Interval', '11'],
+    ['Powertrain Top Speed', '333'],
+  ])
+    await change(field(k), v)
+  await click(button('Save powertrain'))
+  expect(field<HTMLSelectElement>('Powertrain').selectedOptions[0].textContent).toBe('Jet (custom, 40 DP)')
+  expect(pageText()).toMatch(/Top speed\d*333|Top speed3\d\d/)
+  await click(button('Save'))
+  expect(read(store.rows.get('d1')!.xml).design!).toMatchObject({ customPowertrain: { name: 'Jet', dp: 40, accel: 9, interval: 11, topSpeed: 333 } })
+  expect(read(store.rows.get('d1')!.xml).design!.powertrain).toBeUndefined()
+  await click(button('Edit custom powertrain'))
+  expect(field<HTMLInputElement>('Powertrain Top Speed').value).toBe('333')
+  await click(button('Cancel'))
+  await click(button('Remove custom powertrain'))
+  expect(field<HTMLSelectElement>('Powertrain').value).toBe('')
+})
+
 test('Improved Handling: once taken, on-road and off-road or one of them (3 DP a level), saved on its option (owner Q2)', async () => {
   const store = fakeStore('sr6/designs', { d1: sr6ToXml(redZip()) })
   stubFetch([store.route])
