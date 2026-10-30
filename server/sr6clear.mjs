@@ -21,8 +21,11 @@ export async function clearPlan(dir) {
     for (const f of await readdir(join(dir, u.name), { withFileTypes: true })) {
       if (!f.isFile() || !f.name.endsWith('.xml')) continue
       const p = join(dir, u.name, f.name)
-      if (isCopy(await readFile(p, 'utf8'))) (files.push(p), count++)
-      else kept++
+      if (!isCopy(await readFile(p, 'utf8'))) kept++
+      else {
+        files.push(p)
+        count++
+      }
     }
     if (count) users.push({ user: u.name, count })
   }
