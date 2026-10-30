@@ -1,7 +1,8 @@
 // GM price-adjust at creation: priced() honors gmPrice for a vehicle/drone line, the gmprice op sets/clears it, and Review warns.
 import { expect, test } from 'vitest'
 import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
-import { priced } from '../../../src/sr6/runner-builder/domain/creation/purchases'
+import { estimatedDp, priced } from '../../../src/sr6/runner-builder/domain/creation/purchases'
+import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { boughtDesign } from '../../../src/sr6/runner-builder/domain/assets/design'
 import { validateSr6, PRICE_APPROVAL } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { blankBuild, blankSr6 } from '../../../src/sr6/formats/domain/character'
@@ -29,4 +30,21 @@ test.each([
   expect(apply(b, { op: 'gmprice', uid }, data, cr)).toEqual({ ok: true })
   expect(b.purchases[0].gmPrice).toBeUndefined()
   expect(priced(b.purchases[0], data, cr).cost).toBe(base)
+})
+
+test('a ready-made vehicle’s Design Points: price ÷ 1,000 rounded; a GM override wins, clears and round-trips through charxml', () => {
+  const { data, cr } = designWorld()
+  const d = blankSr6('priority', 'des-1', NOW)
+  d.design = { kind: 'vehicle', chassis: 'zz.zip-frame', powertrain: 'zz.roller', console: 'zz.brainbox', options: [], mods: [] }
+  const b = blankBuild('priority')
+  apply(b, { op: 'design', line: boughtDesign(d, data, cr, 'v1') }, data, cr)
+  const x = b.purchases[0]
+  expect(estimatedDp(x, data, cr)).toBe(Math.round(priced({ ...x, accessories: [] }, data, cr).cost / 1000))
+  expect(apply(b, { op: 'vehicledp', uid: x.uid, value: 42 }, data, cr)).toEqual({ ok: true })
+  expect(estimatedDp(x, data, cr)).toBe(42)
+  expect(apply(b, { op: 'vehicledp', uid: x.uid, value: -1 }, data, cr).ok).toBe(false)
+  const back = xmlToSr6(sr6ToXml({ ...blankSr6('priority', 'c1', NOW), build: b }))
+  expect(back.ok && back.character.build.purchases[0].dp).toBe(42)
+  expect(apply(b, { op: 'vehicledp', uid: x.uid }, data, cr)).toEqual({ ok: true })
+  expect(x.dp).toBeUndefined()
 })

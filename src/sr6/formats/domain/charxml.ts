@@ -97,6 +97,7 @@ function purchaseXml(p: Sr6Purchase): string {
       gmPrice: p.gmPrice,
       avail: p.avail,
       slots: p.slots,
+      dp: p.dp,
       essence: p.essence,
       rating: p.rating,
       qty: p.qty,
@@ -348,7 +349,7 @@ const designXml = (d?: Sr6Design) =>
           diy: d.diy,
           approved: d.approved,
         },
-        d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
+        (d.customChassis ? el('customChassis', d.customChassis) : '') + d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
       )
     : ''
 
@@ -470,6 +471,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     gmPrice: num(e, 'gmPrice'),
     avail: num(e, 'avail'),
     slots: num(e, 'slots'),
+    dp: num(e, 'dp'),
     essence: num(e, 'essence'),
     rating: num(e, 'rating'),
     qty: num(e, 'qty', 1),
@@ -959,6 +961,18 @@ function readDesign(d: Element, fix?: string[]): Sr6Design {
     base: str(d, 'base'),
     removedParts: (u => (u.length ? u : undefined))(str(d, 'removedParts')?.split(/\s+/).filter(Boolean) ?? []),
     chassis: str(d, 'chassis'),
+    customChassis: ((k: Element | null) =>
+      k
+        ? {
+            name: k.getAttribute('name') ?? '',
+            dp: num(k, 'dp', 0),
+            body: num(k, 'body', 0),
+            armor: num(k, 'armor', 0),
+            handling: num(k, 'handling', 0),
+            seats: num(k, 'seats', 0),
+            sizeClass: num(k, 'sizeClass', 0),
+          }
+        : undefined)(kid(d, 'customChassis')),
     powertrain: str(d, 'powertrain'),
     console: str(d, 'console'),
     options: each(

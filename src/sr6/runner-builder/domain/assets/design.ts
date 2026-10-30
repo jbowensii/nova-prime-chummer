@@ -299,6 +299,23 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   }
 }
 
+/** A design's chassis row: the custom one (a GM/house chassis typed into the Designer, shaped like a catalog row) else the catalog's. */
+export function chassisOf(d: Sr6Design, data: Sr6Data): Sr6Entry | undefined {
+  const c = d.customChassis
+  if (!c) return d.chassis ? data.entry('vehicledesign', d.chassis) : undefined
+  const { name, ...a } = c
+  return {
+    id: 'custom-chassis',
+    kind: 'vehicledesign',
+    name,
+    source: 'Custom',
+    page: 0,
+    parts: [],
+    text: '',
+    attrs: { category: 'Chassis type', ...Object.fromEntries(Object.entries(a).map(([k, v]) => [k, String(v)])) },
+  }
+}
+
 /** The design worked out: its stats (DC p. 154's final calculations, rounded down), Design Points, price (owner Q1, Q2,
  *  Q6) and Availability (p. 155), notes and warnings. */
 export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignSheet {
@@ -307,7 +324,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     notes: string[] = []
   const warn = (message: string, page: number, source = 'DC') => warnings.push({ message, source, page })
   const part = (id?: string) => (id ? data.entry('vehicledesign', id) : undefined)
-  const chassis = part(d.chassis),
+  const chassis = chassisOf(d, data),
     powertrain = part(d.powertrain),
     console = part(d.console)
   const picked = d.options.flatMap(o => {
@@ -599,7 +616,7 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
   const name = doc.identity.streetName || doc.identity.name || 'Custom design'
   // a based design keeps the starting vehicle's own category/name; a from-scratch one reads its chassis
   const baseVeh = d.base ? data.entry('vehicles', d.base) : undefined
-  const chassis = d.chassis ? data.entry('vehicledesign', d.chassis) : undefined
+  const chassis = chassisOf(d, data)
   const size = /\b(micro|mini|small|medium|large)\b/i.exec(`${baseVeh?.attrs.category ?? ''} ${chassis?.name ?? ''}`)?.[1]
   const parts: Sr6Part[] = d.mods.map(x => {
     const e = entryOf(x, data)

@@ -343,3 +343,17 @@ test('a custom (id-less) mod counts its own slots (2 DP each), nuyen and Availab
   expect(Number.parseInt(s.avail)).toBeGreaterThanOrEqual(4)
   expect(s.warnings.filter(w => /counted 0/.test(w.message))).toEqual([])
 })
+
+test('a custom chassis drives the stats, Design Points and cargo like a catalog one, and round-trips through charxml', () => {
+  const { data, cr } = world()
+  const customChassis = { name: 'Tractor Trailer', dp: 30, body: 20, armor: 8, handling: -1, seats: 2, sizeClass: 6 }
+  const d = design({ chassis: undefined, customChassis })
+  const s = designOf(d, data, cr)
+  const cat = designOf(design(), data, cr) // (the Zip Frame: 7 DP, size class 6)
+  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: -1, seats: 2, size: 6, cargoText: cat.stats.cargoText })
+  expect(s.dp).toBe(cat.dp - 7 + 30)
+  expect(s.warnings.filter(w => /chassis/i.test(w.message))).toEqual([])
+  const doc = { ...blankSr6('priority', 'x', '2026-10-16T00:00:00.000Z'), design: d }
+  const back = xmlToSr6(sr6ToXml(doc))
+  expect(back.ok && back.character.design?.customChassis).toEqual(customChassis)
+})
