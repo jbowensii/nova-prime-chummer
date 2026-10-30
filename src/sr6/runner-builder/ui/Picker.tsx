@@ -1,7 +1,7 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
 import type { Sr6Build } from '../../formats/domain/character'
 import { mountSlots, requirementsOf, slotLabel } from '../../catalog/domain/structure'
-import { modsOf } from '../domain/assets/vehiclemods'
+import { modsOf, partsOf } from '../domain/assets/vehiclemods'
 import { ratingOf } from '../domain/creation/purchases'
 import { sitOf } from '../../catalog/domain/effects'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
@@ -504,6 +504,23 @@ export function Accessories({
           {slotLabel(id)} slots remaining: {n(left)}
         </span>
       ))}
+      {host.kind === 'weapons' &&
+        partsOf(host, data).map(p => (
+          // a weapon's standard upgrades (the catalog's <part>s): in its price, removable and restorable (as a vehicle's parts)
+          <span key={`part:${p.id}`} className={p.removed ? 'chip muted' : 'chip'}>
+            <Sr6Ref kind={p.entry?.kind ?? 'weapons'} id={p.entry?.id}>
+              {p.name}
+            </Sr6Ref>
+            {p.removed ? ' (removed)' : ' (standard)'}{' '}
+            <button
+              className="btn small quiet"
+              aria-label={`${p.removed ? 'Restore' : 'Remove'} standard upgrade ${p.name} ${p.removed ? 'on' : 'from'} ${name}`}
+              onClick={() => act({ op: 'part', uid: host.uid, ...(p.removed ? { restore: p.id } : { remove: p.id }) })}
+            >
+              {p.removed ? 'restore' : '×'}
+            </button>
+          </span>
+        ))}
       {host.accessories.map(a => {
         const e = entryOf(a, data),
           own = e ? entryLabel(e) : (a.name ?? 'Accessory'),

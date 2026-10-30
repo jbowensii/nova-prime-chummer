@@ -72,6 +72,9 @@ def table(header, row, kind):
             cond, v = cm.group(1).strip().casefold(), (v or "").replace(
                 cm.group(0), ""
             )  # (`+2 (BF/FA Modes Only)`: the modes it is for)
+        if t == "item:dv" and (dt := re.fullmatch(r"\s*(?:[+-]\d+\s*)?([PS])(\(e\))?\s*", _norm(v or ""))):
+            # (an ammo type's damage type, `S` or `–1S(e)`: Gel's Stun, Stick-n-Shock's Stun electrical, CRB p. 262)
+            out.append(_fx("item:damage-type", "set", dt.group(1) + (dt.group(2) or "")))
         v = _stat_mod(v or "") if t in ("item:ar", "item:dv") else _norm(v or "")
         if c == "body" and "unarmed dv" in h and re.fullmatch(r"\+\d+", v):
             # (a table of unarmed values, the bone lacing table, CRB Hong Kong p. 286: its BODY is extra Body when

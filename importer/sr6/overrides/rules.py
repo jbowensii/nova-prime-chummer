@@ -98,10 +98,10 @@ def check(rows):
             if bad := [
                 k
                 for k in r.get("kids", [])
-                if k.get("tag") not in KID_TAGS | ({"link"} if r.get("gen") == "book" else set())
+                if k.get("tag") not in KID_TAGS | ({"link"} if r.get("gen") in ("book", "owner") else set())
             ]:
                 raise ValueError(
-                    f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only (a book row's also a link)"
+                    f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only (a book or owner row's also a link)"
                 )
         elif "id" in r and not any(k in r for k in OPS):
             if (

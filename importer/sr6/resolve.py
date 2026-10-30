@@ -25,6 +25,7 @@ Nothing here names an item: the readers are the books' column headers and value 
 import json
 import os
 import re
+import sys
 from pathlib import Path
 
 from importer.sr6 import catalog, lifemodules
@@ -670,6 +671,9 @@ def corpus(books, sources=None, apply_errata=True):
     n["run-ins"] = _run_in_names(entries, changed)
     n["builtin"] = _builtin_mods(bs, entries, changed)
     n["parts"] = vehicle_parts(entries, changed)
+    n["weapon-parts"], missed = weapon_parts(bs, entries, changed)
+    for m in missed:
+        print(f"weapon standard upgrade: no accessory for {m}", file=sys.stderr)
     for b, src, kind, path, tree in files:
         if path in changed:
             body = etree.tostring(tree, encoding="unicode")
@@ -941,6 +945,113 @@ def vehicle_parts(entries, changed, data=None):
         changed.add(epath)
         done += 1
     return done
+
+
+_UPGRADES = re.compile(r"\*{0,2}Standard Upgrades:\*{0,2}\s*(.+)", re.I)
+
+
+def standard_upgrades(regrouped):
+    """A book's weapons' `Standard Upgrades:` lines (Krime Katalog p. 7: `Foregrip, gas-vent system, metahuman
+    adaptation`) as {norm(block name): the list as printed}, the first line of each block (a block printing a second
+    edition's stat line too repeats it)."""
+    from importer.sr6.regroup import blocks
+
+    out = {}
+    for b in blocks(regrouped):
+        lines = [f"{k}: {v}" for k, v in b.labels.items()] + (b.text or "").splitlines()
+        if m := next((m for ln in lines if (m := _UPGRADES.match(ln.strip(" |>"))) and m.group(1).strip()), None):
+            out.setdefault(norm(b.name or ""), m.group(1).strip(" |"))
+    return out
+
+
+def weapon_parts(bs, entries, changed):
+    """Owner ruling 2026-10-30: a weapon's built-in standard upgrades are removable `part`s (the vehicle parts' pattern,
+    vehicle_parts), in its price (included), their effects the weapon's while fitted. Two sources: Commlink6's GEARMOD
+    modifiers on the weapon (a family row's, the accessory found by the override tables' cl6id) and the book's
+    `Standard Upgrades:` line (standard_upgrades; each name the library's weapon accessory of that name, _mod_ref). A
+    name matched only loosely, or a Commlink6 ref found by its words alone, is review="needs-owner". Returns (weapons
+    given parts, the names no accessory was found for)."""
+    from importer.sr6 import overrides
+
+    acc = {
+        el.get("id"): el
+        for _ob, _src, _kind, el, _p in entries
+        if (el.get("class") or "").startswith("ACCESSORY/WEAPON_ACCESSORY")
+    }
+    by_cl6 = {}
+    for src in sorted({s for _ob, s, _k, _el, _p in entries}):
+        for r in overrides.table(src):
+            if r.get("cl6id") and r.get("id") and f"{src}.{r['id']}" in acc:
+                by_cl6.setdefault(r["cl6id"], f"{src}.{r['id']}")
+    mods = [(i, [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")]) for i, el in acc.items()]
+
+    def find(name):
+        exact = [i for i, ns in mods if any(catalog.word_stems(n) == catalog.word_stems(name) for n in ns)]
+        if len(exact) == 1:
+            return exact[0], "none"
+        ref = _mod_ref(name, None, mods)
+        return (ref, "needs-owner") if ref else (None, None)
+
+    books = {}
+    for b in bs:
+        path = os.path.join(b.dir, "regrouped.md")
+        if b.state == "done" and os.path.exists(path):
+            with open(path, encoding="utf8") as f:
+                books[id(b)] = standard_upgrades(f.read())
+    done, missed = 0, []
+    for ob, _src, kind, el, epath in entries:
+        if kind != "weapons" or el.get("id") in acc:
+            continue
+        want = []  # (ref, origin, review)
+        for m in kids(el, "modifier"):
+            if m.get("type") == "GEARMOD" and m.get("kind") == "itemmod" and m.get("ref"):
+                ref, review = (
+                    (by_cl6[m.get("ref")], "none") if m.get("ref") in by_cl6 else find(m.get("ref").replace("_", " "))
+                )
+                if ref:
+                    want.append((ref, "cl6", review))
+                else:
+                    missed.append(f"{el.get('id')}: {m.get('ref')}")
+        line = books.get(id(ob), {}).get(norm(el.findtext("name") or ""))
+        for tag, attrs, _t in builtin_parts(line) if line else ():
+            if tag != "builtin" or attrs.get("slots"):
+                continue
+            ref, review = find(attrs["name"])
+            if not ref:
+                missed.append(f"{el.get('id')}: {attrs['name']}")
+            # (the book's name for a part Commlink6 already gives, by another printing: `gas-vent system (2)` beside its
+            # `Gas Vent (improved)`, is that part, not a second one)
+            elif all(
+                w[0] != ref
+                and not catalog.word_stems(attrs["name"]) & catalog.word_stems(acc[w[0]].findtext("name") or "")
+                for w in want
+            ):
+                want.append((ref, "book", review))
+        old = kids(el, "part")
+        if not want and not old:
+            continue
+        for k in old:
+            el.remove(k)
+        for ref, origin, review in want:
+            a = acc[ref]
+            hook = next((k.get("slot") for k in kids(a, "fits") if k.get("slot")), None) or "weapon"
+            add_kid(
+                el,
+                "part",
+                {
+                    "id": ref.split(".", 1)[1],
+                    "ref": ref,
+                    "hook": hook,
+                    "cost": "0",
+                    "included": "true",
+                    "removable": "true",
+                    "origin": origin,
+                    "review": review,
+                },
+            )
+        changed.add(epath)
+        done += bool(want)
+    return done, missed
 
 
 def library(library_dir, custom_dir):
