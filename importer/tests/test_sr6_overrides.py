@@ -1755,6 +1755,15 @@ class LeftoversRowsTest(unittest.TestCase):
         )
         self.assertIn("krime_matrix_scanner", r["why"])
 
+    def test_ammo_selection_is_a_cost_0_part_flagged_as_having_no_rules(self):
+        (r,) = [r for r in overrides.table("ed") if r.get("cl6") == "Ammo Selection"]
+        self.assertEqual((r["kind"], r["add"]["page"]), ("weapons", 86))
+        self.assertEqual(
+            r["add"]["attrs"], {"category": "Weapon accessory", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}
+        )
+        self.assertEqual([k["tag"] for k in r["add"]["kids"]], ["note"])  # (no effects)
+        self.assertTrue(r["add"]["kids"][0]["text"].startswith("No rules data"))
+
     def test_the_sideload_processor_runs_programs_by_the_book(self):
         (r,) = [r for r in overrides.table("hs") if r.get("id") == "sideload-processor" and r.get("gen") == "owner"]
         self.assertEqual(r["set"], {"softwareTypes": "BASIC,COMMLINK_APP,HACKING"})
