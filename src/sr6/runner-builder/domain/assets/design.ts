@@ -17,6 +17,7 @@ import { normName } from '../../../catalog/domain/names'
 import { cargoFactor, entryOf, priced, ratingOf } from '../creation/purchases'
 import { availability, bookValue, dataFind, legality } from '../../../catalog/domain/values'
 import { milspec, type MilspecSheet } from './milspec'
+import { bonusValue, effectValue } from '../../../catalog/domain/effects'
 
 export type DesignPart = 'chassis' | 'powertrain' | 'console' | 'size' | 'option' | 'modification' | 'quality'
 /** A vehicledesign entry's part of a design: its table (by its category, the table's first header: `chassis type`), else
@@ -156,6 +157,44 @@ function cargoCf(s?: string): number | null {
   return m ? Number(m[1].replace(/,/g, '')) / (m[2] ? Number(m[2]) : 1) : s?.trim() === '0' ? 0 : null
 }
 const LEGAL_ORDER = ['', 'L', 'I', 'F']
+
+/** The always-on stat effects of the mods built in (`item:seats` +R on Increased Seating, `item:armor`, `item:body`, ...),
+ *  read from the catalog entry's own <effect>s at its rating and quantity: the Designer charged a mod's price but never
+ *  applied what it does. A percent, a switched or conditional one, or one that only affects others is left to the GM
+ *  (a note). Handling and the speeds are read as on/off-road where printed `a/b` (handling only). */
+const MOD_STAT: Record<string, 'body' | 'armor' | 'handling' | 'seats' | 'accel' | 'interval' | 'topSpeed' | 'pilot' | 'sensor'> = {
+  'item:body': 'body',
+  'item:armor': 'armor',
+  'item:handling': 'handling',
+  'item:seats': 'seats',
+  'item:acceleration': 'accel',
+  'item:speed-interval': 'interval',
+  'item:top-speed': 'topSpeed',
+  'item:pilot': 'pilot',
+  'item:sensor': 'sensor',
+}
+function applyModEffects(stats: DesignStats, d: Sr6Design, data: Sr6Data, notes: string[]) {
+  for (const x of d.mods) {
+    const e = entryOf(x, data)
+    for (const f of e?.parts ?? []) {
+      const a = f.attrs,
+        st = MOD_STAT[a.target ?? '']
+      if (f.tag !== 'effect' || !st || a.switch || a.when || a.affects === 'others' || a.confidence === 'low' || (a.op !== 'add' && a.op !== 'set')) continue
+      const parts = (a.value ?? '').split('/')
+      const vs = parts.map(effectValue)
+      if (!vs.length || vs.length > 2 || vs.some(v => !v) || (vs.length === 2 && st !== 'handling')) {
+        notes.push(`${entryLabel(e!)}: its ${a.target} “${a.value}” isn’t a number the app can read; left to the GM.`)
+        continue
+      }
+      const [on, off = on] = vs.map(v => bonusValue(v!, ratingOf(x, e)) * (x.qty || 1))
+      if (a.op === 'set') (stats as unknown as Record<string, number>)[st] = on
+      else {
+        stats[st] += on
+        if (st === 'handling') stats.offRoad += off
+      }
+    }
+  }
+}
 
 /** A design that starts from a known catalog vehicle (`d.base`): its stats, price and Availability are the vehicle's,
  *  and the built-in mods are added on top (nuyen, slots and Availability). The from-scratch point-buy (chassis/powertrain/
@@ -311,6 +350,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     stats.topSpeed *= 2
   }
   if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
+  applyModEffects(stats, d, data, notes)
   const ms = milspec(d, picked, stats, num(a.body), data, (message, page, source = 'DC') => warnings.push({ message, source, page }), notes)
   dp += ms.dp
   // the mods built in: their real slots and nuyen (no Design-Point conversion — this is not a point-buy)
@@ -551,6 +591,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     s.topSpeed = Math.floor(s.topSpeed * f)
   }
   if (has('underpowered')) s.topSpeed = Math.floor(s.topSpeed / 2)
+  applyModEffects(s, d, data, notes)
   const ms = milspec(d, picked, s, base.body, data, warn, notes)
   dp += ms.dp
 

@@ -405,3 +405,12 @@ test('a custom chassis drives the stats, Design Points and cargo like a catalog 
   const back = xmlToSr6(sr6ToXml(doc))
   expect(back.ok && back.character.design?.customChassis).toEqual(customChassis)
 })
+
+test('a built-in mod applies its catalog stat effects to the stats (3 seating mods raise Seats); one with no stat effect changes none', () => {
+  const { data, cr } = world()
+  const base = { kind: 'vehicle' as const, base: 'zz.grizzly', options: [] }
+  const seats = designOf({ ...base, mods: [{ ...mod('more-seats'), qty: 3 }] }, data, cr)
+  expect(seats.stats.seats).toBe(9) // 6 + 3 × (+R at rating 1)
+  const paint = designOf({ ...base, mods: [mod('glitter-paint')] }, data, cr)
+  expect(paint.stats).toEqual(designOf({ ...base, mods: [] }, data, cr).stats)
+})

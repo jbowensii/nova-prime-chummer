@@ -14,6 +14,9 @@
 - Item designs can be shared, with GM approval.
 - Cyberlimb rulings: +4 per stat; only full limbs add a Physical box; an Armor increase adds to Defense (catalog limbs too); limbs start at STR/AGI 2; a career increase change pays the difference.
 
+**Designer**
+- A vehicle's built-in mods now change its stats, not just its price (three Increased Seating mods raise Seats). A mod whose effect is a percent or conditional is left to the GM, with a note.
+
 **Review flags settled**
 - The 9 add-ons are applied per book, plus the Sideload Processor and the Double Clutch mil-spec plate class.
 - Effects now score 100% per effect of what we model.
