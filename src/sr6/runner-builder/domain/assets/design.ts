@@ -14,7 +14,8 @@ import { entryLabel } from '../../../catalog/domain/categories'
 import type { CreationRules } from '../../../table-setup/domain/creation'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
-import { cargoFactor, entryOf, priced, ratingOf } from '../creation/purchases'
+import { cargoFactor, entryOf, isMount, priced, ratingOf } from '../creation/purchases'
+import { HOLDS, mountHolds, weaponSize } from './vehiclemods'
 import { availability, bookValue, dataFind, legality } from '../../../catalog/domain/values'
 import { milspec, type MilspecSheet } from './milspec'
 import { bonusValue, effectValue } from '../../../catalog/domain/effects'
@@ -178,6 +179,7 @@ const MOD_STAT: Record<string, 'body' | 'armor' | 'handling' | 'seats' | 'accel'
 function applyModEffects(target: object, d: Sr6Design, data: Sr6Data, notes: string[]) {
   const stats = target as Record<string, number>
   for (const x of d.mods) {
+    if (x.kind === 'weapons') continue // (a weapon in a mount changes the weapon, not the vehicle)
     const e = entryOf(x, data)
     for (const f of e?.parts ?? []) {
       const a = f.attrs,
@@ -377,7 +379,8 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   const find = dataFind(data)
   const mods = d.mods.map(x => {
     const e = entryOf(x, data),
-      v = e ? bookValue(e, 'slots', ratingOf(x, e), find) : { ok: true, n: x.slots ?? 0 } // (no entry: a custom mod's own slots)
+      // (no entry: a custom mod's own slots; a weapon in a mount takes none, its mount took them)
+      v = x.kind === 'weapons' ? { ok: true, n: 0 } : e ? bookValue(e, 'slots', ratingOf(x, e), find) : { ok: true, n: x.slots ?? 0 }
     if (!v.ok)
       warnings.push({
         message: `${e ? entryLabel(e) : 'A mod'}: its mod slots “${e?.attrs.slots ?? ''}” aren’t a number the app can read; counted 0.`,
@@ -392,13 +395,14 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   // Availability: the vehicle's, raised by any mod's
   let base = availability(a.avail, undefined).n ?? 0,
     legal = legality(a.avail) ?? ''
-  for (const x of d.mods) {
+  for (const x of withWeaponParts(d)) {
     const e = entryOf(x, data),
       av = e ? availability(e.attrs.avail, ratingOf(x, e)) : { ok: true, n: x.avail ?? 0 }
     if (av.ok && (av.n ?? 0) > base) base = av.n!
     const l = legality(e?.attrs.avail) ?? ''
     if (LEGAL_ORDER.indexOf(l) > LEGAL_ORDER.indexOf(legal)) legal = l
   }
+  for (const m of designWeaponProblems(d, data)) warnings.push({ message: m, source: 'CRB', page: 295 })
   notes.push(`Based on ${entryLabel(veh)} (${veh.source} p. ${veh.page}); its stats, price and Availability, plus the options, modifications and mods below.`)
   return {
     stats,
@@ -632,7 +636,8 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const find = dataFind(data)
   const mods = d.mods.map(x => {
     const e = entryOf(x, data),
-      v = e ? bookValue(e, 'slots', ratingOf(x, e), find) : { ok: true, n: x.slots ?? 0 } // (no entry: a custom mod's own slots)
+      // (no entry: a custom mod's own slots; a weapon in a mount takes none, its mount took them)
+      v = x.kind === 'weapons' ? { ok: true, n: 0 } : e ? bookValue(e, 'slots', ratingOf(x, e), find) : { ok: true, n: x.slots ?? 0 }
     if (!v.ok) warn(`${e ? entryLabel(e) : 'A mod'}: its mod slots “${e?.attrs.slots ?? ''}” aren’t a number the app can read; counted 0.`, 151)
     const slots = v.ok ? (v.n ?? 0) : 0
     return { uid: x.uid, slots, dp: 2 * slots, nuyen: priced({ ...x, diy: undefined }, data, cr).cost }
@@ -659,7 +664,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     a += 2
     legal = raise('I')
   }
-  for (const x of d.mods) {
+  for (const x of withWeaponParts(d)) {
     const e = entryOf(x, data),
       v = e ? availability(e.attrs.avail, ratingOf(x, e)) : { ok: true, n: x.avail ?? 0 }
     if (v.ok && (v.n ?? 0) > a) a = v.n!
@@ -690,6 +695,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   ] as const)
     if (s[st] < 0) warn(`${label} works out below 0 (${s[st]}).`, 154)
   if (universal) notes.push(`Easily Modified: ${universal} universal mod slots.`)
+  for (const m of designWeaponProblems(d, data)) warn(m, 295, 'CRB')
 
   return {
     stats: {
@@ -719,6 +725,27 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     warnings,
     milspec: ms.sheet,
   }
+}
+/** A design's mods with its weapons' accessories: what its Availability is the highest of. */
+const withWeaponParts = (d: Sr6Design) => [...d.mods, ...d.mods.filter(x => x.kind === 'weapons').flatMap(x => x.accessories)]
+/** A design's weapons (a `weapons` line among its mods, `mount` naming the mount mod it sits in) that break a mount rule:
+ *  in no mount the design has, two in one mount, too big for its mount (CRB p. 295; vehiclemods.ts weaponSize). */
+export function designWeaponProblems(d: Sr6Design, data: Sr6Data): string[] {
+  const out: string[] = []
+  const name = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'A weapon')))(entryOf(x, data))
+  const weapons = d.mods.filter(x => x.kind === 'weapons')
+  for (const w of weapons) {
+    const m = d.mods.find(x => x.uid === w.mount && x.kind !== 'weapons'),
+      me = m && entryOf(m, data)
+    if (!me || !isMount(me)) out.push(`${name(w)} isn’t in a weapon mount of the design.`)
+    else if (weapons.some(o => o !== w && o.mount === w.mount && weapons.indexOf(o) < weapons.indexOf(w)))
+      out.push(`${name(w)}: its ${name(m!)} already holds a weapon.`)
+    else {
+      const size = weaponSize(entryOf(w, data))
+      if (size !== undefined && size > mountHolds(me)) out.push(`${name(w)} is too big for its ${name(m!)} (it holds ${HOLDS[mountHolds(me)]}).`)
+    }
+  }
+  return out
 }
 const round2 = (x: number) => Math.round(x * 100) / 100
 
@@ -785,7 +812,8 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
   const baseVeh = d.base ? data.entry('vehicles', d.base) : undefined
   const chassis = chassisOf(d, data)
   const size = /\b(micro|mini|small|medium|large)\b/i.exec(`${baseVeh?.attrs.category ?? ''} ${chassis?.name ?? ''}`)?.[1]
-  const parts: Sr6Part[] = d.mods.map(x => {
+  const builtIn = d.mods.filter(x => x.kind !== 'weapons')
+  const parts: Sr6Part[] = builtIn.map(x => {
     const e = entryOf(x, data)
     return {
       tag: 'builtin',
@@ -821,6 +849,18 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
   }
   const universal = d.options.reduce((t, o) => t + (o.level > 0 && /easily modified/i.test(data.entry('vehicledesign', o.id)?.name ?? '') ? 2 * o.level : 0), 0)
   if (universal) parts.push({ tag: 'builtin', attrs: { name: 'Easily Modified', slots: String(universal), category: 'universal' }, text: '' })
+  // the weapons in its mounts arrive mounted (as the Vehicles tab mounts one: a line in a built-in mount, its accessories
+  // with it), so the runner fits accessories to them there; a builtin's uid is its place among the snapshot's <builtin>s
+  const pre = parts.some(p => p.tag === 'part') ? 'slot-builtin' : 'builtin'
+  const fresh = (y: Sr6Purchase): Sr6Purchase => ({ ...y, uid: newId(), accessories: y.accessories.map(fresh) })
+  const weapons = d.mods
+    .filter(x => x.kind === 'weapons')
+    .map(w => {
+      const i = builtIn.findIndex(m => m.uid === w.mount),
+        line = fresh(structuredClone(w))
+      delete line.mount
+      return i >= 0 ? { ...line, mount: `${pre}:${i}` } : line
+    })
   const id = `design.${doc.id}`
   return {
     uid,
@@ -828,7 +868,7 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
     id,
     name,
     qty: 1,
-    accessories: [],
+    accessories: weapons,
     design: doc.id,
     snapshot: {
       id,

@@ -23,16 +23,16 @@ import { entryKey } from '../../catalog/domain/names'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { basePowertrain, chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
-import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
+import { entryOf, isMount, modKind } from '../../runner-builder/domain/creation/purchases'
 import { HARDPOINT_PARTS, hardpointCheck } from '../../runner-builder/domain/assets/milspec'
 import { normName } from '../../catalog/domain/names'
 import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
-import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
+import { blankSr6, type PurchaseKind, type Sr6Character, type Sr6Design, type Sr6Purchase } from '../../formats/domain/character'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
 import { n } from '../../runner-builder/ui/editor'
 import { sr6Row } from '../../runner-builder/ui/EntryRef'
 import { EntryHover } from '../../../core/ui-kit/EntryHover'
-import { CatalogPicker } from '../../runner-builder/ui/Picker'
+import { ACCESSORY_KINDS, CatalogPicker, isAccessory } from '../../runner-builder/ui/Picker'
 import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../runner-builder/ui/repo'
 
 const designName = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed design'
@@ -529,6 +529,8 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const { doc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe())
   const [adding, setAdding] = useState(false)
+  // a weapon picked for a mount mod (`mount`: its uid), or an accessory for a weapon in one (`weapon`: its uid)
+  const [arming, setArming] = useState<{ mount: string } | { weapon: string } | null>(null)
   const [makingC, setMakingC] = useState<{ what: CustomPart; f: Record<string, string> } | null>(null)
   const [making, setMaking] = useState<Record<'name' | 'cost' | 'slots' | 'rating' | 'avail', string> | null>(null)
   const back = <a href="#/sr6/designs">Back to the Designer</a>
@@ -1074,6 +1076,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
           <section className="panel" aria-label="Mods built in">
             <h3>Mods built in</h3>
             {d.mods
+              .filter(x => x.kind !== 'weapons') // (a weapon is shown under the mount it is in)
               .map(x => ({ x, label: entryOf(x, data) ? entryLabel(entryOf(x, data)!) : (x.name ?? 'Custom mod') }))
               .sort((a, z) => a.label.localeCompare(z.label))
               .map(({ x, label }) => {
@@ -1089,6 +1092,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     >
                       ×
                     </button>
+                    {(e => e && isMount(e))(entryOf(x, data)) && <MountWeapon mount={x} />}
                   </span>
                 )
               })}
@@ -1189,7 +1193,65 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
           }}
         />
       )}
+      {arming && (
+        <CatalogPicker
+          title={'mount' in arming ? `Put a weapon in the mount` : `Fit an accessory to the weapon`}
+          open
+          onClose={() => setArming(null)}
+          kinds={'mount' in arming ? ['weapons'] : ACCESSORY_KINDS}
+          filter={'mount' in arming ? e => !isAccessory(e) : isAccessory}
+          from={{ c, cr, data }}
+          onAdd={p => {
+            const line = { uid: newId(), kind: p.e.kind as PurchaseKind, id: p.e.id, qty: 1, accessories: [], ...(p.rating ? { rating: p.rating } : {}) }
+            update(y => {
+              if ('mount' in arming) y.mods.push({ ...line, mount: arming.mount })
+              else y.mods.find(z => z.uid === arming.weapon)?.accessories.push(line)
+            })
+            setArming(null)
+            return null
+          }}
+        />
+      )}
       <ConflictDialog s={save} name={name} />
     </>
   )
+
+  /** A mount mod's weapon (part of the design: its price and Availability count) and the weapon's accessories, each removable. */
+  function MountWeapon({ mount }: { mount: Sr6Purchase }) {
+    const w = d.mods.find(z => z.kind === 'weapons' && z.mount === mount.uid)
+    const label = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Weapon')))(entryOf(x, data))
+    if (!w)
+      return (
+        <button className="btn small quiet" aria-label={`Put a weapon in ${label(mount)}`} onClick={() => setArming({ mount: mount.uid })}>
+          Weapon…
+        </button>
+      )
+    return (
+      <span className="row" aria-label={`Weapon in ${label(mount)}`}>
+        holds {label(w)}
+        <button
+          className="btn small quiet"
+          aria-label={`Take ${label(w)} out of ${label(mount)}`}
+          onClick={() => update(y => void (y.mods = y.mods.filter(z => z.uid !== w.uid)))}
+        >
+          ×
+        </button>
+        {w.accessories.map(a => (
+          <span key={a.uid} className="chip">
+            {label(a)}{' '}
+            <button
+              className="btn small quiet"
+              aria-label={`Remove ${label(a)} from ${label(w)}`}
+              onClick={() => update(y => void (y.mods.find(z => z.uid === w.uid)!.accessories = w.accessories.filter(z => z.uid !== a.uid)))}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <button className="btn small quiet" aria-label={`Add an accessory to ${label(w)}`} onClick={() => setArming({ weapon: w.uid })}>
+          Accessory…
+        </button>
+      </span>
+    )
+  }
 }
