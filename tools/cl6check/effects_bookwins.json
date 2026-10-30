@@ -1,1 +1,57 @@
-[]
+[
+  {
+    "pair": [
+      "crb",
+      "cyberjack",
+      "item"
+    ],
+    "sig": "valmod ATTRIBUTE INITIATIVE_DICE_MATRIX_VR_COLD",
+    "cl6": "$RATING",
+    "ours": [
+      "derived:matrix-initiative-dice add 1"
+    ],
+    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Core Rulebook (current printing) PDF p. 285 cyberjack table, Matrix Init bonus +1/+1/+2/+2/+3/+3 by rating, not the rating"
+  },
+  {
+    "pair": [
+      "crb",
+      "cyberjack",
+      "item"
+    ],
+    "sig": "valmod ATTRIBUTE INITIATIVE_DICE_MATRIX_VR_HOT",
+    "cl6": "$RATING",
+    "ours": [
+      "derived:matrix-initiative-dice add 1"
+    ],
+    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Core Rulebook (current printing) PDF p. 285 cyberjack table, Matrix Init bonus +1/+1/+2/+2/+3/+3 by rating, not the rating"
+  },
+  {
+    "pair": [
+      "swc",
+      "satyr_legs",
+      "quality"
+    ],
+    "sig": "valmod ATTRIBUTE MOVEMENT set=NATURAL",
+    "cl6": "3/6/1",
+    "ours": [
+      "derived:movement add 1/2/1"
+    ],
+    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Companion PDF p. 127 Satyr Legs, an additional +1/+2/+1 to the movement rate"
+  },
+  {
+    "pair": [
+      "dc",
+      "driving_style_combat_ace",
+      "quality"
+    ],
+    "sig": "checkmod ACTION aimbot what=EDGE_BOOST",
+    "cl6": "3",
+    "ours": [
+      "action:attack-run edge-cost 2",
+      "action:dead-to-rights edge-cost 3",
+      "action:crossfire edge-cost 3",
+      "action:double-down edge-cost 1"
+    ],
+    "why": "page-checked (owner rule: latest printing, the book wins): Double Clutch p. 168 (PDF p. 169) Combat Ace halves the Edge cost of Attack Run (2), Dead to Rights (3), Crossfire (3) and Double Down; no Aimbot"
+  }
+]
