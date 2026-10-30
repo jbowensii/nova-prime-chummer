@@ -4,14 +4,14 @@
     "sig": "valmod ATTRIBUTE INITIATIVE_DICE_MATRIX_VR_COLD",
     "cl6": "$RATING",
     "ours": ["derived:matrix-initiative-dice add 1"],
-    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Core Rulebook (current printing) PDF p. 285 cyberjack table, Matrix Init bonus +1/+1/+2/+2/+3/+3 by rating, not the rating"
+    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Core Rulebook (current printing) PDF p. 285 cyberjack table, Matrix Init bonus +1/+1/+2/+2/+3/+3 by rating. CL6 table is 1,1,1,2,2,3; Matrix chapter p.178, older printings and Feb-2020 errata say 1,1,1,2,2,2. Owner ruled 2026-10-30: follow the current printing p.285 table"
   },
   {
     "pair": ["crb", "cyberjack", "item"],
     "sig": "valmod ATTRIBUTE INITIATIVE_DICE_MATRIX_VR_HOT",
     "cl6": "$RATING",
     "ours": ["derived:matrix-initiative-dice add 1"],
-    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Core Rulebook (current printing) PDF p. 285 cyberjack table, Matrix Init bonus +1/+1/+2/+2/+3/+3 by rating, not the rating"
+    "why": "page-checked (owner rule: latest printing, the book wins): Sixth World Core Rulebook (current printing) PDF p. 285 cyberjack table, Matrix Init bonus +1/+1/+2/+2/+3/+3 by rating. CL6 table is 1,1,1,2,2,3; Matrix chapter p.178, older printings and Feb-2020 errata say 1,1,1,2,2,2. Owner ruled 2026-10-30: follow the current printing p.285 table"
   },
   {
     "pair": ["swc", "satyr_legs", "quality"],
