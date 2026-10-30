@@ -10,7 +10,7 @@ import { resolveEntry } from './load'
 import { categoryIndex, isMaterial } from './categories'
 import { gradeKey, normName } from './names'
 import { atLevel, familyOf, levelOf, sameFamily, siblings } from './levels'
-import type { RangeAttr, Grant, Sr6PriorityRow, Sr6MetatypeView, Sr6Data } from './types'
+import type { RangeAttr, Grant, Sr6PriorityRow, Sr6MetatypeView, Sr6LifeModuleView, Sr6Data } from './types'
 
 export type {
   RangeAttr,
@@ -317,11 +317,27 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         ...(e.attrs.requires ? { requires: e.attrs.requires } : {}),
         ...(e.attrs.contactTypes ? { contactTypes: e.attrs.contactTypes.split(' ').filter(Boolean) } : {}),
         grants: Object.fromEntries(GRANTS.filter(g => e.attrs[g] != null).map(g => [g, count(e, e.attrs[g], g)])),
-        choices: parts(e, 'choice').map(p => ({
-          kind: 'mixed' as const,
-          points: count(e, p.attrs.points, 'choice points', 1),
-          options: (p.attrs.options ?? '').split(/\s+/).filter(Boolean),
-        })),
+        choices: parts(e, 'choice')
+          .map((p): Sr6LifeModuleView['choices'][number] => ({
+            kind: 'mixed',
+            points: count(e, p.attrs.points, 'choice points', 1),
+            options: (p.attrs.options ?? '').split(/\s+/).filter(Boolean),
+          }))
+          .concat(
+            // a Knowledge skill named from a list (<selection type="KNOWLEDGE" count>, comma-separated: names hold spaces), count times
+            parts(e, 'selection')
+              .filter(p => p.attrs.type === 'KNOWLEDGE')
+              .flatMap(p =>
+                Array.from({ length: Math.max(1, Number(p.attrs.count) || 1) }, () => ({
+                  kind: 'knowledge' as const,
+                  points: 1,
+                  options: (p.attrs.options ?? '')
+                    .split(',')
+                    .map(s => s.trim())
+                    .filter(Boolean),
+                })),
+              ),
+          ),
         page: e.page,
       },
     ]),

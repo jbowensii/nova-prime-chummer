@@ -14,6 +14,7 @@
 // Export for Foundry: the header's dialog and each row's button (Foundry.tsx). Left out (R): the duplicates finder.
 // Load book NPCs and Tidy book copies save a few at a time (inBatches), counting in the status line, then sum up.
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { MoveImportedToTrash } from '../../../features/book-library/MoveImportedToTrash'
 import { because, savesSettled, send, useMe } from '../../../core/ui-kit/auth'
 import { inBatches, Modal, Working, type Busy } from '../../../core/ui-kit/bits'
 import { loadCampaigns, type Campaign } from '../../../features/campaigns/campaignsStore'
@@ -489,6 +490,7 @@ export function Sr6Npcs({
           aria-busy={busy?.what === 'Loading book NPCs'}
         />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
+        <MoveImportedToTrash kind="npcs" onDone={refresh} />
         <input
           ref={file}
           type="file"

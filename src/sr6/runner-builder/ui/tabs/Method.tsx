@@ -569,7 +569,7 @@ function LifeModules() {
             </span>
             {m?.choices.map((c, i) => (
               <label key={i} className="inline">
-                Choice {i + 1} ({c.points})
+                {c.kind === 'knowledge' ? 'Knowledge skill' : `Choice ${i + 1} (${c.points})`}
                 <select value={t.choices[i] ?? ''} onChange={e => act({ op: 'lifemodule', id: t.id, choice: i, pick: e.target.value, at })}>
                   <option value="" disabled>
                     Pick one

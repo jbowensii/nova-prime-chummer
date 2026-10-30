@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { Catalog } from '../../ca2/formats/domain/types'
 import { SR6_KINDS, type Sr6Kind } from '../../sr6/formats/domain/types'
 import { Modal, NonCanon } from '../../core/ui-kit/bits'
+import { MoveImportedToTrash } from './MoveImportedToTrash'
 import { useRepo } from '../../core/ui-kit/repoContext'
 import { because, isAdmin, useMe } from '../../core/ui-kit/auth'
 import { api, sendFile } from '../../core/ui-kit/api'
@@ -522,6 +523,12 @@ export function BooksScreen({
           <button className="btn small" disabled={!!progress && progress.done < progress.n} onClick={() => setAllAsk(true)}>
             Re-import all books
           </button>
+        )}
+        {sr6 && (
+          <>
+            <MoveImportedToTrash kind="npcs" disabled={!!running} />
+            <MoveImportedToTrash kind="samples" disabled={!!running} />
+          </>
         )}
       </div>
       {progress && (

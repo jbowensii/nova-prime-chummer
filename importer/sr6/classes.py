@@ -101,11 +101,15 @@ MOUNTS = {
 }
 # a weapon with no class subtype and no size: its size guessed from its printed category (fit plan Stage 2.5, owner
 # ruling 3: every guess is flagged `sizeFrom="category"` for review, never silent). Same bands as rule Z.
+# Owner ruling 2026-10-30: shotguns are rifle-sized (LARGE, the assault rifle's band); a grenade launcher that holds one
+# round is rifle-sized too (and can also go under a gun as an accessory), one that holds more is a size up (BIG).
+SINGLE_SHOT = re.compile(r"\s*1\b")
 SIZE_GUESS = (
     (r"hold-?out|taser|light pistol", "TINY"),
     (r"heavy pistol|machine pistol|dart", "SMALL"),
     (r"submachine|\bsmg", "MEDIUM"),
     (r"shotgun|assault rifle", "LARGE"),
+    (r"grenade launcher", "launcher"),  # (by its ammo: launcher_size)
     (r"sniper|hunting|rifle|\b[lmh]mg\b|machine gun|cannon|launcher|thrower|ballista", "BIG"),
 )
 
@@ -187,6 +191,8 @@ def _weapon_size(e, typ, sub):
         cat = f"{e.get('category') or ''} {e.findtext('name') or ''}".casefold()
         for pat, s in SIZE_GUESS:
             if re.search(pat, cat):
+                if s == "launcher":
+                    s = "LARGE" if SINGLE_SHOT.match(e.get("ammo") or "") else "BIG"
                 return s, "category"
     return None, None
 
@@ -268,6 +274,10 @@ def associations(files, report=None):
                     add("slot", {"id": sid, "value": cap})
                     report["fallback.implant-slot"] += 1
             for c in e:
+                if c.tag == "slot" and c.get("id") == "software" and "$" in (c.get("value") or ""):
+                    n = hooks.software_capacity(c.get("value"), e.get("programs"))
+                    if n is not None:
+                        c.set("value", _fmt(n))
                 if c.tag == "slot" and not c.get("unit"):
                     c.set("unit", hooks.unit(c.get("id")))
                     if c.get("unit") == "capacity" and not c.get("value") and c.get("remove") != "true":
@@ -288,6 +298,12 @@ def associations(files, report=None):
                     e.set("size", size.capitalize())
                     e.set("sizeFrom", how)
                     report[f"size.{how}"] += 1
+                    if how == "category" and "under" not in fits and SINGLE_SHOT.match(e.get("ammo") or ""):
+                        if re.search(
+                            r"grenade launcher", f"{e.get('category') or ''} {e.findtext('name') or ''}", re.I
+                        ):
+                            # (a single-shot launcher: also an underbarrel accessory)
+                            fits["under"] = add("fits", {"slot": "under", "mode": "embedded"})
                 embedded = {hooks.hook_of(s) for s, c in fits.items() if c.get("mode", "embedded") == "embedded"}
                 for hook, rule in hooks.synth_usages(typ or "WEAPON_FIREARMS", sub, size, embedded):
                     if hooks.slot_id(hook) not in fits:

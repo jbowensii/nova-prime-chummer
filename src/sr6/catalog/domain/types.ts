@@ -100,7 +100,9 @@ export interface Sr6LifeModuleView {
   grants: Partial<Record<Grant, number>>
   /** the contact types its contact points buy or raise (absent: any) */
   contactTypes?: string[]
-  choices: { kind: 'mixed'; points: number; options: string[] }[]
+  /** mixed: points into the attribute, skill or nuyen picked; knowledge: the Knowledge skill picked (a name, SWC
+   *  life modules' `Knowledge skill (choose one)`), counted in grants.knowledgeSkills */
+  choices: { kind: 'mixed' | 'knowledge'; points: number; options: string[] }[]
   page: number
 }
 /** A catalog grade (kind grades) by its key (src/sr6/runner-builder/domain/creation/grades.ts): factors null when the book prints none. */

@@ -232,8 +232,22 @@ export interface Sr6Design {
   removedParts?: string[]
   chassis?: string
   /** a custom (GM/house) chassis built in place of a catalog one: the chassis table's own columns (not book data) */
-  customChassis?: { name: string; dp: number; body: number; armor: number; handling: number; seats: number; sizeClass: number }
+  customChassis?: {
+    name: string
+    dp: number
+    body: number
+    armor: number
+    handling: number
+    seats: number
+    sizeClass: number
+    /** its Cargo Factors: absent, by its seats (Commlink6's formula); `size`, the size class table's (Double Clutch) */
+    cargoFrom?: 'size'
+    /** Cargo Factors typed in: over either */
+    cargo?: number
+  }
   powertrain?: string
+  /** a custom (GM/house) powertrain in place of a catalog one: the powertrain table's own columns (not book data) */
+  customPowertrain?: { name: string; dp: number; accel: number; interval: number; topSpeed: number }
   console?: string
   /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */
   options: { id: string; level: number; road?: 'on' | 'off' }[]
@@ -359,6 +373,8 @@ export const sinKind = (s: Sr6Sin) => (s.placeholder ? 'placeholder' : s.kind ==
 export interface Sr6LifeModule {
   id: string
   choices: Record<number, string>
+  /** a knowledge choice's index to the uid of the Knowledge line that pick created (removed with the module) */
+  lines?: Record<number, string>
 }
 export interface Sr6AttrSpend {
   points: number

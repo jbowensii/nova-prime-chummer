@@ -507,6 +507,32 @@ test('life modules: one taken twice keeps a choice per copy; remove takes the on
   ])
 })
 
+test('a knowledge pick owns its own line: renames only it, never a bought line, and goes with its module', () => {
+  const opts = ['Bars', 'Gangs', 'Mail']
+  const { b, act } = runner({
+    method: 'lifepath',
+    over: {
+      data: d => {
+        d.lifemodules['crb.wage-drone'].choices = [
+          { kind: 'knowledge', points: 1, options: opts },
+          { kind: 'knowledge', points: 1, options: opts },
+        ]
+      },
+    },
+  })
+  b.knowledge.push({ uid: 'mine', name: 'Gangs', kind: 'knowledge', points: 1, karma: 0 })
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone' })).toEqual(ok)
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone', choice: 0, pick: 'Gangs' })).toEqual(no('already-known'))
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone', choice: 0, pick: 'Bars' })).toEqual(ok)
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone', choice: 1, pick: 'Bars' })).toEqual(no('already-known'))
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone', choice: 1, pick: 'Mail' })).toEqual(ok)
+  b.knowledge.find(k => k.uid === 'mine')!.name = 'Bars2'
+  expect(act({ op: 'lifemodule', id: 'crb.wage-drone', choice: 0, pick: 'Gangs' })).toEqual(ok)
+  expect(b.knowledge.map(k => k.name)).toEqual(['Bars2', 'Gangs', 'Mail'])
+  expect(act({ op: 'lifemodule', remove: 'crb.wage-drone' })).toEqual(ok)
+  expect(b.knowledge.map(k => k.uid)).toEqual(['mine'])
+})
+
 test('the best attribute: a core attribute, lifepath only; none clears the extra', () => {
   const { b, act } = runner({ method: 'lifepath' })
   expect(act({ op: 'bestAttr', attr: 'str', extra: 'log' })).toEqual(ok)

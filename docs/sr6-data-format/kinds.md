@@ -322,7 +322,7 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   (`attack`, `sleaze`, `data-processing`, `firewall`, `choice`) or `matrix:overwatch`; `item:<field>` the item's own
   stat, or on an add-on (accessory, ammunition, vehicle mod) the stat of the item it fits (`ar`, a value a range band
   `0,1,1,0,0`; `dv`, `concealability`, `handling`, `acceleration`, `speed-interval`, `top-speed`, `body`, `armor`,
-  `pilot`, `sensor`, `seats`, `size`, `ammo` an ammunition belt's or magazine's capacity, `damage-type` `set` `S` or `P`:
+  `pilot`, `sensor`, `seats`, `size`, `ammo` an ammunition belt's or magazine's capacity, `damage-type` `set` `S` or `P` (`S(e)`: Stun, electrical; read from an ammo table's DV cell, `–1S(e)`):
   ammunition that makes the damage Stun or Physical; the Foundry module is to map `S` to the weapon's `system.stun` (planned, not done yet)); `action:<name>` an Edge or
   Matrix action (`the Snoop action`, `Called Shot—Disarm`, a list after `action:`); `complex-form:<name>` a complex
   form named as what the bonus is on; `lifestyle:<name>` lifestyle points; `resource:<name>` a creation resource (`maxed-out-attributes` and `maxed-out-skills`, `set` the number that may start at their maximum, 0 for `may not start with any`; `adjust-drake`, `add` a drake's Adjustment Attributes);

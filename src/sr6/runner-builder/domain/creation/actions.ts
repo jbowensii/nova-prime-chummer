@@ -56,7 +56,7 @@ import {
   toNuyenMax,
 } from './budgets'
 import { deriveMod } from '../assets/derive'
-import { modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
+import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -778,7 +778,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'part': {
-      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      // (a vehicle's factory parts, or a weapon's standard upgrades)
+      const x = b.purchases.find(p => p.uid === op.uid && (p.kind === 'vehicles' || p.kind === 'weapons'))
       if (!x) return no('unknown-line')
       return setPart(x, 'restore' in op ? op.restore : op.remove, 'restore' in op, data)
     }
@@ -1027,6 +1028,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if ('remove' in op) {
         const i = op.at ?? b.lifepath.map(m => m.id).lastIndexOf(op.remove)
         if (b.lifepath[i]?.id !== op.remove) return no('not-taken')
+        const owned = Object.values(b.lifepath[i].lines ?? {})
+        b.knowledge = b.knowledge.filter(k => !owned.includes(k.uid)) // undo: the lines its picks created go with it
         b.lifepath.splice(i, 1)
         return OK
       }
@@ -1036,6 +1039,19 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (!pk) return no('not-taken')
         if (!c) return no('unknown-choice')
         if (!c.options.includes(op.pick)) return no('unknown-option')
+        if (c.kind === 'knowledge') {
+          // the pick owns one Knowledge line (by uid), paid from the module's knowledge points as any other; it renames
+          // only that line. A skill the runner already knows (bought, or another pick's) is refused, never taken over
+          const mine = pk.lines?.[op.choice]
+          const line = b.knowledge.find(k => k.uid === mine)
+          if (b.knowledge.some(k => k !== line && k.name === op.pick)) return no('already-known')
+          if (line) line.name = op.pick
+          else {
+            const uid = newId()
+            b.knowledge.push({ uid, name: op.pick, kind: 'knowledge', points: 1, karma: 0 })
+            pk.lines = { ...pk.lines, [op.choice]: uid }
+          }
+        }
         pk.choices[op.choice] = op.pick
         return OK
       }
@@ -1302,7 +1318,7 @@ export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6
   // vehicle is governed by modsOf below (its declared-or-Body mod-slot budget), not the generic mount-slot placement.
   if (remaining === null && host.kind !== 'vehicles') {
     // (the one fit engine, as Review's catalog.accessoryHost and the picker)
-    const f = e ? fit(he, e, items, ratingOf(host, he), host.addedSlots) : undefined
+    const f = e ? fit(he, e, [...fittedParts(host, data), ...items], ratingOf(host, he), host.addedSlots) : undefined
     if (f?.ok === false) return f.reason === 'size' ? 'Too big for this mount.' : 'No compatible mount slot remaining.'
   }
   if (host.kind !== 'vehicles') return
@@ -1343,7 +1359,9 @@ export function setPart(x: Sr6Purchase, id: string, restore: boolean, data: Sr6D
     if (!gone.includes(id)) return no(p.removed ? 'parent-removed' : 'not-removed')
     const next = gone.filter(u => u !== id),
       back = { ...x, removedParts: next.length ? next : undefined }
-    if (budgetProblem(modsOf(x, data), modsOf(back, data), modsOf({ ...x, removedParts: undefined, accessories: [] }, data))) return no('no-room')
+    // (a weapon's standard upgrade takes no vehicle hook: it always goes back)
+    if (x.kind === 'vehicles' && budgetProblem(modsOf(x, data), modsOf(back, data), modsOf({ ...x, removedParts: undefined, accessories: [] }, data)))
+      return no('no-room')
     if (next.length) x.removedParts = next
     else delete x.removedParts
     return OK

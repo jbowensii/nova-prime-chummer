@@ -18,7 +18,16 @@ class HookRules(unittest.TestCase):
         self.assertEqual(h.standard_hooks("WEAPON_SPECIAL", "OTHER_SPECIAL"), {"FIREARMS_EXTERNAL": 99.0})
         self.assertEqual(h.standard_hooks("VEHICLES", "BOATS"), {})
         self.assertEqual(h.standard_hooks("VEHICLES", "VANS"), {"VEHICLE_TIRES": 1.0})
-        self.assertEqual(h.standard_hooks("ELECTRONICS", "COMMLINK"), {"SOFTWARE": 99.0, "ELECTRONIC_ACCESSORY": 99.0})
+        self.assertEqual(h.standard_hooks("ELECTRONICS", "COMMLINK"), {"ELECTRONIC_ACCESSORY": 99.0})
+
+    def test_software_is_concurrent_programs(self):  # SOFTWARE: the data's $CONCURRENT_PROGRAMS, the device's programs
+        deck = el(
+            '<item id="d" type="ELECTRONICS" subtype="CYBERDECK"><modifications>'
+            '<valmod type="HOOK" ref="SOFTWARE" value="$CONCURRENT_PROGRAMS"/></modifications>'
+            '<matrix programs="6"/></item>'
+        )
+        self.assertEqual(h.capacities(deck)["SOFTWARE"], 6.0)
+        self.assertNotIn("SOFTWARE", h.capacities(el('<item id="c" type="ELECTRONICS" subtype="COMMLINK"/>')))
 
     def test_vehicle_hooks(self):  # Rule V
         caps, size = h.vehicle_hooks("VEHICLES", "TRUCKS", body=10, seats=3, pilot=3)

@@ -49,7 +49,7 @@ import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, ty
 import { entryLabel } from '../../catalog/domain/categories'
 import { prerequisites, type Prerequisite } from '../../runner-builder/domain/creation/martial'
 import { critterClass, isTaught, trainedName, type CritterClass } from '../../runner-builder/domain/assets/critters'
-import { builtinText, modsOf } from '../../runner-builder/domain/assets/vehiclemods'
+import { builtinText, modsOf, partsOf } from '../../runner-builder/domain/assets/vehiclemods'
 import { levelOf } from '../../catalog/domain/levels'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
@@ -623,7 +623,24 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     worn: !!x.worn,
     note: x.note,
     bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1, x.sit),
-    accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
+    accessories: [
+      ...x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
+      // a weapon's standard upgrades not removed: fitted accessories already in its price (owner ruling 2026-10-30)
+      ...(x.kind === 'weapons'
+        ? partsOf(x, data).flatMap(p => {
+            if (p.removed || !p.entry) return []
+            const a = purchase(
+              c,
+              data,
+              cr,
+              { uid: `part:${p.id}`, kind: p.entry.kind as Sr6Purchase['kind'], id: p.entry.id, qty: 1, accessories: [] },
+              false,
+              x,
+            )
+            return [{ ...a, values: { ...a.values, cost: 0 } }]
+          })
+        : []),
+    ],
     mount: x.mount,
     diy: x.diy,
     material: materialOf(data, x.material),
