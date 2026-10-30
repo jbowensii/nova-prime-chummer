@@ -610,7 +610,16 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                 >
                   Edit custom {what}
                 </button>
-                <button className="btn small quiet" type="button" onClick={() => update(x => void delete x[customKey[what]])}>
+                <button
+                  className="btn small quiet"
+                  type="button"
+                  onClick={() =>
+                    update(x => {
+                      delete x[customKey[what]]
+                      if (x.base && what === 'powertrain') setOff(x, false) // (its factory powertrain back, not none)
+                    })
+                  }
+                >
                   Remove custom {what}
                 </button>
               </p>

@@ -140,11 +140,11 @@
              resolves, its rating, or extra mod slots of a category; source and page: the box's. A part of the box that is
              a sentence is a <note field="builtin"> -->
         <xs:element name="builtin" type="sr6:Builtin"/>
-        <!-- a removable factory part of a vehicle/drone (docs/analysis/sr6-vehicle-decomposition.md 3.2): the catalog entry
+        <!-- a removable factory part of a vehicle/drone or a weapon (docs/analysis/sr6-vehicle-decomposition.md 3.2): the catalog entry
              it is (ref), the hook it occupies (hook: a slot vocabulary id, now including `vehicle-body`) and its cost in
              that hook's unit, the part it sits in (parent: another part's id). origin says where the part came from (cl6:
              Commlink6's embed, book, synth: the importer made it) and review whether the owner must look at it. Format
-             only: <builtin> stays for book-only vehicles and nothing reads <part> yet -->
+             only: <builtin> stays for book-only vehicles. Parts apply to weapons too (a weapon's factory accessories) -->
         <xs:element name="part" type="sr6:Part"/>
       </xs:choice>
       <xs:element name="text" type="xs:string" minOccurs="0"/>

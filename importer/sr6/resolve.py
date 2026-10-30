@@ -971,6 +971,17 @@ ACCEPTED_GEARMODS = frozenset(
 )
 
 
+_GENERIC_PART_WORDS = catalog.word_stems("system improved standard kit unit module")
+
+
+def _same_part(a, b):
+    """Two names for one part: less the generic part words (_GENERIC_PART_WORDS), their word stems equal or one's
+    inside the other's (`gas-vent system` / `Gas Vent (improved)`), never a shared word alone (`Smartgun system` is not
+    `Gas-Vent System`)."""
+    x, y = catalog.word_stems(a) - _GENERIC_PART_WORDS, catalog.word_stems(b) - _GENERIC_PART_WORDS
+    return bool(x and y) and (x <= y or y <= x)
+
+
 def weapon_parts(bs, entries, changed):
     """Owner ruling 2026-10-30: a weapon's built-in standard upgrades are removable `part`s (the vehicle parts' pattern,
     vehicle_parts), in its price (included), their effects the weapon's while fitted. Two sources: Commlink6's GEARMOD
@@ -1028,12 +1039,9 @@ def weapon_parts(bs, entries, changed):
                 missed.append(f"{el.get('id')}: {attrs['name']}")
             # (the book's name for a part Commlink6 already gives, by another printing: `gas-vent system (2)` beside its
             # `Gas Vent (improved)`, is that part, not a second one)
-            elif all(
-                w[0] != ref
-                and not catalog.word_stems(attrs["name"]) & catalog.word_stems(acc[w[0]].findtext("name") or "")
-                for w in want
-            ):
+            elif all(w[0] != ref and not _same_part(attrs["name"], acc[w[0]].findtext("name") or "") for w in want):
                 want.append((ref, "book", review))
+        want = list({w[0]: w for w in reversed(want)}.values())[::-1]  # one <part> per id (the first kept)
         old = kids(el, "part")
         if not want and not old:
             continue

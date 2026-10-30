@@ -56,7 +56,7 @@ import {
   toNuyenMax,
 } from './budgets'
 import { deriveMod } from '../assets/derive'
-import { modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
+import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
@@ -1028,6 +1028,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if ('remove' in op) {
         const i = op.at ?? b.lifepath.map(m => m.id).lastIndexOf(op.remove)
         if (b.lifepath[i]?.id !== op.remove) return no('not-taken')
+        const owned = Object.values(b.lifepath[i].lines ?? {})
+        b.knowledge = b.knowledge.filter(k => !owned.includes(k.uid)) // undo: the lines its picks created go with it
         b.lifepath.splice(i, 1)
         return OK
       }
@@ -1038,11 +1040,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if (!c) return no('unknown-choice')
         if (!c.options.includes(op.pick)) return no('unknown-option')
         if (c.kind === 'knowledge') {
-          // the picked Knowledge skill joins the runner's (renaming the line an earlier pick added), paid from the
-          // module's knowledge points as any other
-          const had = b.knowledge.find(k => k.kind === 'knowledge' && k.name === pk.choices[op.choice])
-          if (had) had.name = op.pick
-          else if (!b.knowledge.some(k => k.name === op.pick)) b.knowledge.push({ uid: newId(), name: op.pick, kind: 'knowledge', points: 1, karma: 0 })
+          // the pick owns one Knowledge line (by uid), paid from the module's knowledge points as any other; it renames
+          // only that line. A skill the runner already knows (bought, or another pick's) is refused, never taken over
+          const mine = pk.lines?.[op.choice]
+          const line = b.knowledge.find(k => k.uid === mine)
+          if (b.knowledge.some(k => k !== line && k.name === op.pick)) return no('already-known')
+          if (line) line.name = op.pick
+          else {
+            const uid = newId()
+            b.knowledge.push({ uid, name: op.pick, kind: 'knowledge', points: 1, karma: 0 })
+            pk.lines = { ...pk.lines, [op.choice]: uid }
+          }
         }
         pk.choices[op.choice] = op.pick
         return OK
@@ -1310,7 +1318,7 @@ export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6
   // vehicle is governed by modsOf below (its declared-or-Body mod-slot budget), not the generic mount-slot placement.
   if (remaining === null && host.kind !== 'vehicles') {
     // (the one fit engine, as Review's catalog.accessoryHost and the picker)
-    const f = e ? fit(he, e, items, ratingOf(host, he), host.addedSlots) : undefined
+    const f = e ? fit(he, e, [...fittedParts(host, data), ...items], ratingOf(host, he), host.addedSlots) : undefined
     if (f?.ok === false) return f.reason === 'size' ? 'Too big for this mount.' : 'No compatible mount slot remaining.'
   }
   if (host.kind !== 'vehicles') return

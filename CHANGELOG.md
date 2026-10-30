@@ -1,5 +1,30 @@
 # Release notes
 
+## 0.35.0 — 2026-10-30
+
+**Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.
+
+**Vehicles and drones**
+- Designer: custom chassis and custom powertrain, both editable and removable, with a cargo choice.
+- A DP estimate for designs; design options are wired in and levelled options get +/- steppers.
+- Powertrain swap: changing the powertrain scales the vehicle's speeds in proportion.
+- Software, fashion and cargo now work the way Commlink6 does; cargo rounds half up.
+
+**What fits where**
+- Requirements are checked per variant, not per item family.
+- Several review warnings that were false alarms are gone.
+- Weapons now carry their factory parts (built-in accessories), like vehicles do.
+
+**Shadowrun 6 rules**
+- Innate Talent works; life modules let you pick their knowledge skills.
+- Getaway Driver's Double Down is applied; Stick-n-Shock does stun (e) damage.
+
+**Library**
+- New "Move to trash" buttons clear imported books, runners and NPCs (moved, not deleted).
+
+**Commlink6 parity**
+- The effects checker now scores 93% per effect.
+
 ## 0.34.0 — 2026-10-29
 
 **Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.
