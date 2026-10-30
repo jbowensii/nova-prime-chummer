@@ -64,6 +64,8 @@ export interface FactoryPart {
   cost: number
   rating?: string
   parent?: string
+  /** the pick a factory program comes with (a tutorsoft's skill), shown with its name */
+  choice?: string
   /** removed by the player (or with a removed ancestor): takes nothing of its hook, grants and holds nothing */
   removed: boolean
   review?: string
@@ -215,11 +217,12 @@ export function partsOf(x: Sr6Purchase, data: Sr6Data): FactoryPart[] {
         id,
         uid: `part:${id}`,
         ref: p.attrs.ref,
-        name: entry ? entryLabel(entry) : p.attrs.ref,
+        name: (entry ? entryLabel(entry) : p.attrs.ref) + (p.attrs.choice ? ` (${p.attrs.choice})` : ''),
         hook: p.attrs.hook ?? '',
         cost: partCost(p, e) ?? 1,
         ...(p.attrs.rating ? { rating: p.attrs.rating } : {}),
         ...(p.attrs.parent ? { parent: p.attrs.parent } : {}),
+        ...(p.attrs.choice ? { choice: p.attrs.choice } : {}),
         removed: gone.has(id),
         ...(p.attrs.review === 'needs-owner' ? { review: 'needs-owner' } : {}),
         ...(p.attrs.origin ? { origin: p.attrs.origin } : {}),

@@ -452,6 +452,33 @@ class WeaponParts(unittest.TestCase):
         )
         self.assertEqual(resolve.standard_upgrades(md), {"gun": "Foregrip, sling"})
 
+    def test_an_integral_device_carries_its_factory_programs_as_child_parts(self):
+        mk = lambda x: etree.fromstring(x)  # noqa: E731
+        link = mk('<electronics id="zz.zap-link" class="ELECTRONICS/COMMLINK"><name>Zap Link</name><slot id="software"/></electronics>')  # fmt: skip
+        soft = mk('<gear id="zz.tutorsoft" class="SOFTWARE/OTHER_PROGRAMS"><name>Tutorsoft</name></gear>')
+        gun = mk('<weapon id="zz.gun"><name>Gun</name></weapon>')
+        with tempfile.TemporaryDirectory() as d:
+            with open(os.path.join(d, "regrouped.md"), "w", encoding="utf8") as f:
+                f.write(
+                    '<!-- section {"name": "Gun", "chapter": "C", "section": "Gun", "label": "", "page": 3, "tags": "", '
+                    '"level": 2, "row": false} -->\n\n**Standard Upgrades:** Integral commlink (Zap Link, DR 1), '
+                    "Longarms tutorsoft (1)\n<!-- end -->\n"
+                )
+
+            class Book:
+                state, dir = "done", d
+
+            b = Book()
+            entries = [
+                (b, "zz", "electronics", link, "e"),
+                (b, "zz", "gear", soft, "g"),
+                (b, "zz", "weapons", gun, "w"),
+            ]
+            self.assertEqual(resolve.weapon_parts([b], entries, set())[1], [])
+        got = [dict(p.attrib) for p in gun.findall("part")]
+        self.assertEqual([(p["ref"], p["hook"], p.get("parent")) for p in got], [("zz.zap-link", "internal", None), ("zz.tutorsoft", "software", "zap-link")])  # fmt: skip
+        self.assertEqual((got[1]["rating"], got[1]["choice"], got[1]["included"], got[1]["removable"]), ("1", "Firearms", "true", "true"))  # fmt: skip
+
 
 class KnowledgeOptions(unittest.TestCase):
     def test_named_options_without_the_language_level(self):

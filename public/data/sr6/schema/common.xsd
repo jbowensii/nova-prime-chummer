@@ -161,6 +161,8 @@
     <xs:attribute name="included" type="xs:boolean"/>
     <xs:attribute name="removable" type="xs:boolean"/>
     <xs:attribute name="parent" type="xs:string"/>
+    <!-- the pick a factory program comes with (a tutorsoft's skill: `Firearms`) -->
+    <xs:attribute name="choice" type="xs:string"/>
     <xs:attribute name="origin" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="cl6"/>
