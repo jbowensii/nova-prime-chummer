@@ -76,6 +76,8 @@ class AliasTest(unittest.TestCase):
         self.assertEqual((w["ZX-24"].get("ammo"), w["ZX-24"].get("cost")), ("24(d)", "20000"))
         self.assertEqual([a.text for a in w["ZX-24"].findall("alias")], ["Zorp ZX-24 Bigger Thumper"])
         self.assertIn("ZX-12", w)
+        # the SIZE column: the Grade of mil-spec hardpoint the weapon needs (DA p. 151)
+        self.assertEqual((w["ZX-24"].get("weaponSize"), w["Scorcher"].get("weaponSize")), ("1", "3"))
         self.assertEqual([a.text for a in w["Scorcher"].findall("alias")], ["Bloop Scorcher Vehicle Sprayer"])
         g = weapons(da.extract(text), "gear")
         self.assertEqual(

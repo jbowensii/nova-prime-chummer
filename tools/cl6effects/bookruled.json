@@ -268,6 +268,13 @@
     "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
   },
   {
+    "pair": ["dc", "driving_style_getaway_driver", "quality"],
+    "sig": "checkmod ACTION double_down what=EDGE_BOOST",
+    "cl6": "1",
+    "ours": ["action:double-down edge-cost-set 1/1/2"],
+    "why": "owner ruling 2026-10-30: Double Down at half its 1, 2 or 3 Edge cost, rounded up: 1, 1, 2 (Double Clutch p. 168)"
+  },
+  {
     "pair": ["dc", "driving_style_interceptor", "quality"],
     "sig": "checkmod ACTION redline what=EDGE_BOOST",
     "cl6": "2",

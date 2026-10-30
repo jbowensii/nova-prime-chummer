@@ -492,6 +492,27 @@
           </xs:attribute>
         </xs:complexType>
       </xs:element>
+      <!-- a mil-spec hardpoint (Deadly Arts pp. 151-153): its Grade, the weapon assigned (a weapons id), the weapon's Size
+           as typed, its mount (absent: turreted), pop-out, twin/quad linked, a dedicated primary weapon -->
+      <xs:element name="hardpoint" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:attribute name="grade" type="xs:integer" use="required"/>
+          <xs:attribute name="weapon" type="xs:string"/>
+          <xs:attribute name="size" type="xs:integer"/>
+          <xs:attribute name="mount">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="inline"/><xs:enumeration value="open"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="popOut" type="xs:boolean"/>
+          <xs:attribute name="link">
+            <xs:simpleType><xs:restriction base="xs:string">
+              <xs:enumeration value="twin"/><xs:enumeration value="quad"/>
+            </xs:restriction></xs:simpleType>
+          </xs:attribute>
+          <xs:attribute name="dedicated" type="xs:boolean"/>
+        </xs:complexType>
+      </xs:element>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
     </xs:sequence>
     <xs:attribute name="kind" use="required">

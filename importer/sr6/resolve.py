@@ -964,6 +964,13 @@ def standard_upgrades(regrouped):
     return out
 
 
+# Commlink6 GEARMOD refs found by their words alone that the owner accepted (ruling 2026-10-30): the 13 Personalized
+# Grips (the Zoe Heritage melee weapons, Deadly Arts' chakram) and the Ruger Lawbringer's Weapon Security System
+ACCEPTED_GEARMODS = frozenset(
+    {"personalized_grip_melee", "weapon_security_system", "weapon_security_system_add_option"}
+)
+
+
 _GENERIC_PART_WORDS = catalog.word_stems("system improved standard kit unit module")
 _INTEGRAL = re.compile(r"(?i)integral\s+\w+\s*\(\s*([^,)]+)")  # (`Integral commlink (Meta Link, DR 1)`: its model)
 # (a skill a program names by an earlier edition's name: SR6 folded Longarms into Firearms, CRB p. 98)
@@ -1068,7 +1075,7 @@ def weapon_parts(bs, entries, changed):
                     (by_cl6[m.get("ref")], "none") if m.get("ref") in by_cl6 else find(m.get("ref").replace("_", " "))
                 )
                 if ref:
-                    want.append((ref, "cl6", review, {}))
+                    want.append((ref, "cl6", "none" if m.get("ref") in ACCEPTED_GEARMODS else review, {}))
                 else:
                     missed.append(f"{el.get('id')}: {m.get('ref')}")
         line = books.get(id(ob), {}).get(norm(el.findtext("name") or ""))

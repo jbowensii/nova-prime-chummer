@@ -217,6 +217,8 @@
     <xs:attribute name="ammoClass" type="xs:string"/>
     <!-- a matrix device's Commlink6 SOFTWARE_TYPES (`BASIC,COMMLINK_APP,HACKING`, `RCC,AUTOSOFT`): the programs it runs -->
     <xs:attribute name="softwareTypes" type="xs:string"/>
+    <!-- weaponSize: a heavy weapon's printed SIZE (Deadly Arts, 0-8): the Grade of mil-spec hardpoint it needs -->
+    <xs:attribute name="weaponSize" type="xs:nonNegativeInteger"/>
   </xs:attributeGroup>
   <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
        its TYPE alone, or the record's tag for a kind with no type (`spell`, `ammotype`). Set from the category (importer/sr6/

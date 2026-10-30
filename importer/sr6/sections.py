@@ -664,13 +664,8 @@ class Reader:
                 name, attrs["rating"] = name[: m.start()], m.group(1).replace(" ", "")
             # its Design Point cost as printed (`Cost: 2 Design Points x Armor Rating`): a cost, not an effect (owner
             # decision 2026-10-10; a vehicle designer reads it later)
-            if m := re.search(
-                r"Cost:\**\s*(\+?\s*\d+(?:\.\d+)?)\s*Design Points?((?:\s*(?:x|×|per)\s*[A-Za-z][\w ]*?)?)"
-                r"\s*(?:\.|$|\n|\()",
-                _body(b),
-                re.I,
-            ):
-                attrs["dp"] = (m.group(1).replace(" ", "") + m.group(2).rstrip()).strip()
+            if dp := design_cost(name, _body(b)):
+                attrs["dp"] = dp
             attrs = {**design_terms(name, _body(b)), **attrs}
         if kind == "critterpowers" and chain and WEAKNESSES.search(chain[-1]):
             attrs = {"weakness": "true"}
@@ -873,6 +868,38 @@ _MAX_REVERSE = re.compile(r"maximum decrease is (\d+) levels?\b", re.I)
 
 def _num(v):
     return re.sub(r"^[–−]", "-", v.replace(" ", ""))
+
+
+_DP_COST = re.compile(
+    r"(?:\*\*)?([A-Za-z][\w -]*?)?\s*Cost:\**\s*"
+    r"(\+?\s*\d+(?:\.\d+)?(?:\s*/\s*\d+)*)\s*Design Points?"
+    r"(?:\s*\+\s*(\d+)\s*Design Points?)?((?:\s*(?:x|×|per)\s*[A-Za-z][\w ]*?)?)\s*(?:\.|$|\n|\()",
+    re.I,
+)
+_ROMAN = {"I": 0, "II": 1, "III": 2, "IV": 3, "V": 4}
+
+
+def design_cost(name, text):
+    """A design part's Design Point cost as printed (Deadly Arts pp. 151-153), a cost, not an effect: `2 Design Points
+    x Armor Rating` -> `2 x Armor Rating`; `10 Design Points + 5 Design Points x Rating` -> `10+5 x Rating`; a heading
+    over several, the cost its label names (`Quad-Linked Cost: +5`) or its numeral's place (`Comms III`: `5 / 20 / 30`
+    -> `30`); else None."""
+    found = list(_DP_COST.finditer(text))
+    mine = norm(name).replace("-", " ")
+    m = next((f for f in found if f.group(1) and norm(f.group(1)).replace("-", " ") == mine), None)
+    m = m or next((f for f in found if not (f.group(1) or "").strip()), found[0] if found else None)
+    if not m:
+        return None
+    v = m.group(2).replace(" ", "")
+    if "/" in v:
+        nth = _ROMAN.get(name.split()[-1], -1)
+        vals = v.split("/")
+        if not 0 <= nth < len(vals):
+            return None
+        v = vals[nth]
+    if m.group(3):  # (`10 + 5 x Rating`: the flat part, then the per-rating part)
+        return f"{v}+{m.group(3)}{m.group(4).rstrip()}"
+    return (v + m.group(4).rstrip()).strip()
 
 
 def design_terms(name, text):
