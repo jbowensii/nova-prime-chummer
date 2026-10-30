@@ -173,7 +173,7 @@ const MOD_STAT: Record<string, 'body' | 'armor' | 'handling' | 'seats' | 'accel'
   'item:pilot': 'pilot',
   'item:sensor': 'sensor',
 }
-function applyModEffects(stats: DesignStats, d: Sr6Design, data: Sr6Data, notes: string[]) {
+function applyModEffects(stats: Record<string, number>, d: Sr6Design, data: Sr6Data, notes: string[]) {
   for (const x of d.mods) {
     const e = entryOf(x, data)
     for (const f of e?.parts ?? []) {
@@ -187,7 +187,7 @@ function applyModEffects(stats: DesignStats, d: Sr6Design, data: Sr6Data, notes:
         continue
       }
       const [on, off = on] = vs.map(v => bonusValue(v!, ratingOf(x, e)) * (x.qty || 1))
-      if (a.op === 'set') (stats as unknown as Record<string, number>)[st] = on
+      if (a.op === 'set') stats[st] = on
       else {
         stats[st] += on
         if (st === 'handling') stats.offRoad += off
