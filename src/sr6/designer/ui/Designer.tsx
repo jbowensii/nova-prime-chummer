@@ -928,7 +928,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     ))}
                   </select>
                   <label className="inline">
-                    Size
+                    Size{r.size !== undefined && !r.sizeTyped ? ` ${r.size} (catalog)` : ''}, override
                     <input
                       aria-label={`Hardpoint ${i + 1} weapon Size`}
                       type="number"

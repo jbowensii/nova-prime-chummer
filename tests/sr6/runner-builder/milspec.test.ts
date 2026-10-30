@@ -24,14 +24,16 @@ const MILSPEC = DESIGN_PARTS.replace(
 )
 const GEAR = DESIGN_GEAR.replace(
   '</sr6:data>',
-  `<gear id="zz.isi" source="DC" page="125" category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="1" avail="4" cost="5000"><name>Increased Structural Integrity</name></gear></sr6:data>`,
+  `<gear id="zz.isi" source="DC" page="125" category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="1" avail="4" cost="5000"><name>Increased Structural Integrity</name></gear><gear id="zz.msp-2" source="DC" page="133" category="Skin mod" class="MOD_SKIN/MOD_ARMOR" slots="4" avail="10(I)" cost="40000" rating="2"><name>Milspec Plate Rating 2</name></gear></sr6:data>`,
 )
+const WEAPONS = `<sr6:data ${NS} kind="weapons" version="1"><weapon id="zz.cannon" source="DA" page="140" category="Vehicle weapon" class="WEAPON_VEHICLE/VEHICLE_MILITARY" dv="20P" weaponSize="4"><name>Zap Cannon</name></weapon></sr6:data>`
 const ELEC = `<sr6:data ${NS} kind="electronics" version="1"><device id="zz.ranger" source="DA" page="69" category="Mil-spec commlink" cost="1"><name>Microdeck Ranger</name></device></sr6:data>`
 const data = sr6Data(
   fixtureCatalog(undefined, [
     { file: 'custom/sr6/imported/zz/vehicledesign.xml', xml: MILSPEC },
     { file: 'custom/sr6/imported/zz/gear.xml', xml: GEAR },
     { file: 'custom/sr6/imported/zz/electronics.xml', xml: ELEC },
+    { file: 'custom/sr6/imported/zz/weapons.xml', xml: WEAPONS },
   ]),
 )
 const cr = fixtureCreation()
@@ -120,4 +122,19 @@ test("Mil-spec Comms: the in-console commlink, the catalog's where it has one, b
   ])
   const bought = boughtDesign({ ...blankSr6('priority'), design: d }, data, cr)
   expect(bought.snapshot!.parts.filter(p => p.tag === 'builtin').map(p => p.attrs.ref ?? p.attrs.name)).toEqual(['zz.ranger', 'M-TOC Fob (part)'])
+})
+
+test("Double Clutch's standard mil-spec plate (a skin mod, Ratings 1-3, p. 133) works as the design option does", () => {
+  const plain = designOf(big(), data, cr).stats.interval
+  const m = designOf(big({ mods: [{ uid: 'p', kind: 'gear', id: 'zz.msp-2', qty: 1, accessories: [] }] }), data, cr)
+  expect(m.milspec.damageReduction).toBe(2)
+  expect(m.stats.interval).toBe(plain - 10)
+  expect(warns(big({ options: [o('heavy', 4)], mods: [{ uid: 'p', kind: 'gear', id: 'zz.msp-2', qty: 1, accessories: [] }] }))).toMatch(/Only one layer/)
+})
+
+test("a hardpoint reads the weapon's Size from the catalog (weaponSize); a typed Size overrides it", () => {
+  const hp = (size?: number) =>
+    designOf(big({ hardpoints: [{ grade: 3, weapon: 'zz.cannon', ...(size === undefined ? {} : { size }) }] }), data, cr).milspec.hardpoints[0]
+  expect(hp()).toMatchObject({ size: 4, sizeTyped: false, need: 4, ok: false })
+  expect(hp(3)).toMatchObject({ size: 3, sizeTyped: true, need: 3, ok: true })
 })

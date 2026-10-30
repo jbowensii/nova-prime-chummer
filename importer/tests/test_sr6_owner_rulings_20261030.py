@@ -1,6 +1,5 @@
-"""Owner rulings 2026-10-30 that clear needs-review flags: Getaway Driver's Double Down at half cost rounds up, Teen Diva's
-2 Knowledge skills, the name-matched weapon
-factory parts accepted."""
+"""Owner rulings 2026-10-30 that clear needs-review flags: Getaway Driver's Double Down at half cost rounds up,
+Teen Diva's 2 Knowledge skills, the name-matched weapon factory parts accepted."""
 
 import json
 import math
@@ -13,6 +12,7 @@ OV = os.path.join(os.path.dirname(__file__), "..", "sr6", "overrides")
 
 
 def rows(book):
+    """The override rows of one book file (`dc`, `dc.book`)."""
     with open(os.path.join(OV, f"{book}.json"), encoding="utf8") as f:
         return json.load(f)
 

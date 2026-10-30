@@ -964,8 +964,8 @@ def standard_upgrades(regrouped):
     return out
 
 
-# Commlink6 GEARMOD refs found by their words alone that the owner accepted (ruling 2026-10-30): the 13 Personalized Grips
-# (the Zoe Heritage melee weapons, Deadly Arts' chakram) and the Ruger Lawbringer's Weapon Security System
+# Commlink6 GEARMOD refs found by their words alone that the owner accepted (ruling 2026-10-30): the 13 Personalized
+# Grips (the Zoe Heritage melee weapons, Deadly Arts' chakram) and the Ruger Lawbringer's Weapon Security System
 ACCEPTED_GEARMODS = frozenset(
     {"personalized_grip_melee", "weapon_security_system", "weapon_security_system_add_option"}
 )
