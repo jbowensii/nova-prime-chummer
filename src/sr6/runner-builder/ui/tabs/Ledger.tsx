@@ -58,7 +58,9 @@ import {
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { ACCESSORY_KINDS, CatalogPicker, isAccessory, type PickedItem } from '../Picker'
-import { capacityOf, offeredOn } from '../../../catalog/domain/categories'
+import { capacityOf, isAmmoGear, isAmmoType, offeredOn } from '../../../catalog/domain/categories'
+import { deep } from '../../domain/creation/actions'
+import { newId } from '../../../../core/shared/types'
 import { structureOf } from '../../../catalog/domain/structure'
 import { Sr6AdvanceRef, Sr6Ref } from '../EntryRef'
 import { entryLabel } from '../../../catalog/domain/categories'
@@ -116,7 +118,8 @@ type OpKey = (typeof OPS)[number][0]
 /** What a buy op offers in the picker: vehicles and drones have their own ops; Buy gear holds the rest. */
 export function buyKinds(op: OpKey): Sr6Kind[] {
   if (op === 'vehicle' || op === 'drone') return ['vehicles'] // a drone is a vehicles entry of drone class (isDrone)
-  return PURCHASE_KINDS.filter(k => k !== 'critters' && k !== 'vehicles') as Sr6Kind[]
+  // (an ammunition type is picked on the ammunition line it is for, not bought alone: on its own it has no price to multiply)
+  return PURCHASE_KINDS.filter(k => k !== 'critters' && k !== 'vehicles' && k !== 'ammotypes') as Sr6Kind[]
 }
 // the four learn ops: each a 'pick' advance of one kind
 const LEARN: Record<string, PickKind> = { learnSpell: 'spells', learnRitual: 'rituals', learnComplexForm: 'complexforms', learnAdeptPower: 'adeptpowers' }
@@ -164,6 +167,7 @@ export function LedgerTab() {
     refund: '',
     grade: '',
     price: '', // a vehicle/drone's GM-adjusted nuyen price (blank: the catalog/design price)
+    ammo: '', // an ammunition line's ammunition type (blank: Regular)
     note: '', // the attribute/skill a chosen power or spell names (Attribute Boost, Improved Ability)
   })
   // (a critter bought: the commands and special training it comes with, catalog ids)
@@ -194,7 +198,8 @@ export function LedgerTab() {
     const e = entryOf(x, data)
     return !!e && (structureOf(e).slots.length > 0 || capacityOf(e, x.rating ?? 1) !== null)
   }
-  const hosts = ch.build.purchases.filter(x => x.kind === 'vehicles' || x.kind === 'critters' || canHost(x)),
+  // (nested lines too: a weapon in a vehicle's mount, or built into a cyberarm, takes its own accessories)
+  const hosts = deep(ch.build.purchases).filter(x => x.kind === 'vehicles' || x.kind === 'critters' || canHost(x)),
     host = hosts.find(x => x.uid === f.target)
   // (bond: the critter companion qualities in the catalog)
   const companion = [...c.entries.qualities.values()].filter(isCritterQuality).sort((x, y) => x.name.localeCompare(y.name))
@@ -219,6 +224,7 @@ export function LedgerTab() {
       refund: '',
       grade: '',
       price: '',
+      ammo: '',
       note: '',
     }))
   }
@@ -317,7 +323,7 @@ export function LedgerTab() {
                 kind: e.kind as PurchaseKind,
                 id: e.id,
                 qty: 1,
-                accessories: [],
+                accessories: f.ammo && isAmmoGear(e) ? [{ uid: newId(), kind: 'ammotypes', id: f.ammo, qty: 1, accessories: [] }] : [],
                 ...(picked!.rating ? { rating: picked!.rating } : {}),
                 ...(picked!.grade ? { grade: picked!.grade } : {}),
               },
@@ -1041,6 +1047,22 @@ export function LedgerTab() {
                   <option key={m.uid} value={m.uid}>
                     {m.name}
                     {m.builtin ? ' (built in)' : ''}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
+        {op === 'purchase' && picked && isAmmoGear(picked.e) && (
+          <label>
+            Ammunition type
+            <select aria-label="Ammunition type" value={f.ammo} onChange={e => set({ ammo: e.target.value })}>
+              <option value="">Regular</option>
+              {[...c.entries.ammotypes.values()]
+                .filter(t => isAmmoType(t) && t.id !== 'crb.ammo-regular')
+                .sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
+                .map(t => (
+                  <option key={t.id} value={t.id}>
+                    {entryLabel(t)}
                   </option>
                 ))}
             </select>

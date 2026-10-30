@@ -47,3 +47,7 @@ test('a vehicle bought at a GM-adjusted price records that nuyen and warns until
   const approved = warn({ ...cheap, overrides: [{ code: PRICE_APPROVAL, path: w[0].path, note: 'used' }] })
   expect(approved[0].approved).toBe(true)
 })
+
+test('Buy gear offers no loose ammunition type: a type is chosen on the ammunition line it is for', () => {
+  expect(buyKinds('purchase')).not.toContain('ammotypes')
+})

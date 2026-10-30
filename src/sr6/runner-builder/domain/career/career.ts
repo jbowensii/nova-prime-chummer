@@ -63,7 +63,7 @@ import {
   powerRefusal,
   runnerInfected,
 } from '../creation/infected'
-import { accessoryProblem, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
+import { accessoryProblem, deep, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
 import { limbSnapshot } from '../assets/limbs'
 import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
@@ -196,10 +196,12 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       return
     }
     case 'fit':
-      b.purchases.find(x => x.uid === a.target)?.accessories.push(structuredClone(a.line))
+      deep(b.purchases)
+        .find(x => x.uid === a.target)
+        ?.accessories.push(structuredClone(a.line)) // (a nested host too: a weapon in a vehicle's mount)
       return
     case 'unfit': {
-      const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
+      const host = deep(b.purchases).find(x => x.accessories.some(y => y.uid === a.target))
       if (host) unfit(host, a.target)
       return
     }
@@ -676,7 +678,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'fit': {
       // an accessory (a vehicle mod, a weapon in one of its mounts, an autosoft) on an owned line, at its price (do it
       // yourself: half, a mod only, Double Clutch p. 120); what goes past the vehicle's limits is recorded (Review warns)
-      const host = b.purchases.find(y => y.uid === a.target) ?? no('unknown-host')
+      const host = deep(b.purchases).find(y => y.uid === a.target) ?? no('unknown-host')
       const x = a.line,
         e = x.id ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? x.snapshot ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
@@ -700,7 +702,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'unfit': {
       // take an accessory off; selling it back credits an adjustable nuyen sellback (SR Missions: 30% of value by
       // default, the owner sets it), else it is just removed with no refund
-      const host = b.purchases.find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
+      const host = deep(b.purchases).find(y => y.accessories.some(z => z.uid === a.target)) ?? no('not-fitted')
       const acc = host.accessories.find(z => z.uid === a.target)!
       return a.refund
         ? { label: `Sold: ${lineLabel(acc)} off ${lineLabel(host)} for ${a.refund.toLocaleString('en-US')}¥`, nuyen: -a.refund }
@@ -933,7 +935,7 @@ export function record(
       adv.line = named(adv.line, adv.line.id ? data.entry(adv.line.kind, adv.line.id)?.name : undefined)
       break
     case 'unfit':
-      adv.line = b.purchases.flatMap(x => x.accessories).find(x => x.uid === adv.target)
+      adv.line = deep(b.purchases).find(x => x.uid === adv.target)
       break
     case 'part': {
       // (a part coming off takes its mounts, and its children's, with it: note which weapons' mounts, for a replay)
