@@ -490,7 +490,7 @@ export function Sr6Npcs({
           aria-busy={busy?.what === 'Loading book NPCs'}
         />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
-        <MoveImportedToTrash kind="npcs" onDone={reload} />
+        <MoveImportedToTrash kind="npcs" onDone={refresh} />
         <input
           ref={file}
           type="file"

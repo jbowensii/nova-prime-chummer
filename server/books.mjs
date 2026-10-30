@@ -46,7 +46,7 @@
 //                                     (library/sr6/, custom/sr6/, `importer sr6 …`; edit kinds: SR6_KINDS and samplefixes, existing entries only);
 //                                     no AI book import, review, data pack or house sources there (404). One job queue for both games
 //   GET    /api/sr6/creation          anyone signed in: the SR6 creation rules as [{ key, value, source?, page? }] ([] when none)
-//   GET|POST /api/sr6/books/clear/(npcs|samples)  admin: what would go / move imported NPCs+critters or example characters to trash (backup first) (server/sr6clear.mjs)
+//   GET|POST /api/sr6/books/clear/(npcs|samples)  admin: the loaded book copies (sampleKey) in npcs/ or characters/ -> trash (server/sr6clear.mjs)
 //   PUT    /api/sr6/creation          admin: { settings: [{ key, value, source?, page? }] } -> 204; replaces
 //                                     custom/sr6/creation.xml (creation.xsd: what the admin changed from the shipped standard,
 //                                     public/data/sr6/creation-defaults.xml; the client overlays it), the server's default (a campaign's own: PUT /api/sr6/campaigns/:id { creation }, campaigns.mjs);
@@ -237,11 +237,11 @@ export function booksApi({
     if (p === '/api/creation') return creation(req, res, send)
     if (p === '/api/books/reimport-all') return reimportAll(req, res, send, 'sr6')
     const cl = p.match(/^\/api\/books\/clear\/(npcs|samples)$/)
-    if (cl && req.method === 'GET') return send(res, 200, { targets: await clearPlan(S.custom, cl[1]) })
+    const store = cl && (cl[1] === 'npcs' ? S.npcs : S.chars)
+    if (cl && req.method === 'GET') return send(res, 200, await clearPlan(store))
     if (cl && req.method === 'POST') {
-      if (ctx.running || ctx.queue.length) return send(res, 409, { error: 'a book is being imported; try again when it’s done' })
-      const trash = join(layout.root ?? layout.libraryDir, '_to_delete')
-      return send(res, 200, await clearApply(S.custom, cl[1], { backups, trash }))
+      const base = layout.root ?? layout.charDir
+      return send(res, 200, await clearApply(store, { base, backups, trash: join(base, '_to_delete') }))
     }
     if (cl) return send(res, 405, { error: 'method not allowed' })
     const m = p.match(/^\/api\/(books)\/([^/]+)(?:\/(report|reimport))?$/)

@@ -1,5 +1,5 @@
-// SR6 admin "Move imported NPCs & Critters to trash" / "Move example characters to trash": the button, its confirm (what
-// GET /api/sr6/books/clear/:kind would move, book by book) and the move (POST, server/sr6clear.mjs). Admins only: renders
+// SR6 admin "Move imported NPCs & Critters to trash" / "Move example characters to trash": the button, its confirm (how
+// many loaded book copies GET /api/sr6/books/clear/:kind would move, per user) and the move (POST, server/sr6clear.mjs). Admins only: renders
 // nothing for anyone else. Used on the SR6 Books, NPCs & Critters and runners pages; `onDone` refreshes that page's list.
 import { useState } from 'react'
 import { api } from '../../core/ui-kit/api'
@@ -7,17 +7,18 @@ import { because, isAdmin, useMe } from '../../core/ui-kit/auth'
 import { Modal } from '../../core/ui-kit/bits'
 
 type Kind = 'npcs' | 'samples'
+type Plan = { users: { user: string; count: number }[]; kept: number }
 const TITLE: Record<Kind, string> = { npcs: 'Move imported NPCs & Critters to trash', samples: 'Move example characters to trash' }
 
 export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; disabled?: boolean; onDone?: () => void }) {
   const admin = isAdmin(useMe())
-  const [targets, setTargets] = useState<{ book: string; name: string }[] | null>(null)
+  const [targets, setTargets] = useState<Plan | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
   if (!admin) return null
   const url = `sr6/books/clear/${kind}`
   const open = async () => {
     try {
-      setTargets((await api<{ targets: { book: string; name: string }[] }>(url)).targets)
+      setTargets(await api<Plan>(url))
     } catch (e) {
       setMsg(because('Couldn’t list what would be moved', (e as Error).message))
     }
@@ -25,14 +26,14 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
   const move = async () => {
     setTargets(null)
     try {
-      const r = await api<{ moved: unknown[]; trash: string }>(url, { method: 'POST' })
-      setMsg(`Moved ${r.moved.length} to ${r.trash} (a copy is in Backups).`)
+      const r = await api<{ moved: number; trash: string }>(url, { method: 'POST' })
+      setMsg(`Moved ${r.moved} to ${r.trash} (a copy is in Backups; moves.csv there undoes it).`)
       onDone?.()
     } catch (e) {
       setMsg(because('Couldn’t move them to the trash', (e as Error).message))
     }
   }
-  const books = new Set(targets?.map(t => t.book)).size
+  const total = targets?.users.reduce((n, u) => n + u.count, 0) ?? 0
   return (
     <>
       <button className="btn small" disabled={disabled} onClick={() => void open()}>
@@ -52,8 +53,8 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
             <button className="btn" onClick={() => setTargets(null)}>
               Cancel
             </button>
-            <button className="btn primary" disabled={!targets?.length} onClick={() => void move()}>
-              {targets?.length ? `Move ${targets.length} to trash` : 'Nothing to move'}
+            <button className="btn primary" disabled={!total} onClick={() => void move()}>
+              {total ? `Move ${total} to trash` : 'Nothing to move'}
             </button>
           </>
         }
@@ -61,19 +62,20 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
         {targets && (
           <>
             <p>
-              These will disappear from your {kind === 'npcs' ? 'NPC and Critter' : 'Example'} lists and go to the trash folder ({targets.length}{' '}
-              {kind === 'npcs' ? 'list file(s)' : 'folder(s)'} from {books} book(s)):
+              These {total} loaded book {kind === 'npcs' ? 'NPCs and critters' : 'example characters'} will disappear from your{' '}
+              {kind === 'npcs' ? 'NPC and Critter' : 'Example'} lists and go to the trash folder:
             </p>
             <ul>
-              {targets.map(t => (
-                <li key={`${t.book}/${t.name}`}>
-                  {t.book}/{t.name}
+              {targets.users.map(u => (
+                <li key={u.user}>
+                  {u.user}: {u.count}
                 </li>
               ))}
             </ul>
             <p>
-              Your books, your own characters and your custom items are not touched{kind === 'npcs' ? ', nor the critter powers list' : ''}. A copy is kept in
-              Backups/sr6-pre-clear-… and the files go to _to_delete/sr6-cleared-…; nothing is deleted. Re-importing brings them back.
+              Kept: {targets.kept} {kind === 'npcs' ? 'hand-made NPCs' : 'player characters'} (anything not loaded from a book). Your books and your custom
+              items are not touched. A copy is kept in Backups/sr6-pre-clear-… and the files go to _to_delete/cleared-samples-… with a moves.csv; nothing is
+              deleted. Loading them again from the books brings them back.
             </p>
           </>
         )}

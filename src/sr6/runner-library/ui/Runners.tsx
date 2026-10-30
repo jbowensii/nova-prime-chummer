@@ -361,7 +361,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         <IconButton icon="upload" label="Import file" onClick={() => file.current?.click()} disabled={banner === LEGACY} />
         <IconButton icon="examples" label="Load example characters" onClick={() => void loadExamples()} disabled={banner === LEGACY} />
         <IconButton icon="foundry" label="Export for Foundry…" onClick={() => setFoundry(true)} disabled={!list?.length} />
-        <MoveImportedToTrash kind="samples" />
+        <MoveImportedToTrash kind="samples" onDone={refresh} />
         <input
           ref={file}
           type="file"

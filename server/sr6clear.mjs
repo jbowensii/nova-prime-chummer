@@ -1,65 +1,55 @@
-// SR6 admin "move to trash" (POST/GET /api/sr6/books/clear/:kind, server/books.mjs): takes the imported NPCs/critters
-// (kind "npcs": imported/<book>/npcs.xml and critters.xml; critterpowers.xml stays, it's a rules table) or their example
-// characters (kind "samples": imported/<book>/samples/) off the app's lists; the books themselves are not touched. GET: the plan; POST: does it. Nothing is
-// deleted: the targets are copied to <backups>/sr6-pre-clear-<stamp>/, then moved to <trash>/sr6-cleared-<stamp>/, both
-// keeping their path under imported/. Then imported/index.xml (the client's file list, importer/xmlio.py update_index)
-// and imported/samples.xml are rewritten so the running app stops asking for what's gone. characters/, edits/ and every
-// other file are never touched. SR6 only: `custom` is always the sr6 system folder.
-import { cp, mkdir, readdir, rename, stat } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
-import { esc, readOr, writeAtomic } from './common.mjs'
+// SR6 admin "move to trash" (GET|POST /api/sr6/books/clear/:kind, server/books.mjs): the loaded book copies the app shows,
+// i.e. runner files whose root element carries sampleKey="…" (src/sr6/npcs/domain/bookNpcs.ts, Runners.tsx loadExamples).
+// kind "npcs": <sr6>/npcs/<user>/*.xml; kind "samples": <sr6>/characters/<user>/*.xml. Files without a sampleKey (real PCs,
+// hand-made NPCs) stay, as do .trash/ and .compendiums/. imported/ is never touched. GET: the plan; POST: copies each file
+// to <backups>/sr6-pre-clear-<stamp>/, then MOVES it to <trash>/cleared-samples-<stamp>/ (paths relative to `base` kept)
+// and writes moves.csv (from,to) there to reverse it. Nothing is deleted. Mirrors the tower04 clear-chummer-samples script.
+import { appendFile, copyFile, mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { dirname, join, relative } from 'node:path'
 
-const TARGETS = { npcs: ['npcs.xml', 'critters.xml'], samples: ['samples'] }
-const HEAD = '<?xml version="1.0" encoding="UTF-8"?>\n'
+/** true when the file's root element has a sampleKey attribute (the first tag that isn't <?…?> or <!…>). */
+const isCopy = text => /\bsampleKey="/.test(text.match(/<[^?!][^>]*>/)?.[0] ?? '')
 
-/** [{ book, name, rel }] of what `kind` would take, book by book (core/ included: a book's folder like any other). */
-export async function clearPlan(custom, kind) {
-  const names = TARGETS[kind]
-  if (!names) return null
-  const root = join(custom, 'imported'),
-    out = []
-  for (const d of (await readdir(root, { withFileTypes: true }).catch(() => [])).filter(d => d.isDirectory()).sort((a, b) => a.name.localeCompare(b.name)))
-    for (const name of names) if (await stat(join(root, d.name, name)).catch(() => null)) out.push({ book: d.name, name, rel: `${d.name}/${name}` })
-  return out
+/** { files: [path], users: [{ user, count }], kept } for the store `dir` (one folder per user). */
+export async function clearPlan(dir) {
+  const files = [],
+    users = []
+  let kept = 0
+  for (const u of await readdir(dir, { withFileTypes: true }).catch(() => [])) {
+    if (!u.isDirectory() || u.name.startsWith('.')) continue
+    let count = 0
+    for (const f of await readdir(join(dir, u.name), { withFileTypes: true })) {
+      if (!f.isFile() || !f.name.endsWith('.xml')) continue
+      const p = join(dir, u.name, f.name)
+      if (isCopy(await readFile(p, 'utf8'))) (files.push(p), count++)
+      else kept++
+    }
+    if (count) users.push({ user: u.name, count })
+  }
+  return { files, users, kept }
 }
 
-const stampNow = (d = new Date()) => `${d.toISOString().slice(0, 10).replace(/-/g, '')}-${d.toISOString().slice(11, 16).replace(':', '')}`
+const stampNow = (d = new Date()) => d.toISOString().slice(0, 19).replace(/-|:/g, '').replace('T', '-')
 
-/** Backs up then moves the plan's targets; returns { moved, backup, trash }. */
-export async function clearApply(custom, kind, { backups, trash, stamp = stampNow() }) {
-  const plan = await clearPlan(custom, kind)
-  if (!plan) return null
-  const root = join(custom, 'imported'),
-    backup = join(backups, `sr6-pre-clear-${stamp}`),
-    gone = join(trash, `sr6-cleared-${stamp}`)
-  for (const t of plan) await cp(join(root, t.rel), join(backup, 'imported', t.rel), { recursive: true }) // all copied first
-  for (const t of plan) {
-    await mkdir(dirname(join(gone, 'imported', t.rel)), { recursive: true })
-    await rename(join(root, t.rel), join(gone, 'imported', t.rel))
+/** Backs up then moves the plan's files; returns { moved, kept, users, trash }. */
+export async function clearApply(dir, { base, backups, trash, stamp = stampNow() }) {
+  const plan = await clearPlan(dir)
+  const backup = join(backups, `sr6-pre-clear-${stamp}`),
+    gone = join(trash, `cleared-samples-${stamp}`)
+  for (const f of plan.files) {
+    const b = join(backup, relative(base, f))
+    await mkdir(dirname(b), { recursive: true })
+    await copyFile(f, b) // all backed up before anything moves
   }
-  if (plan.length) await reindex(root)
-  return { moved: plan, backup, trash: gone }
-}
-
-/** imported/index.xml and samples.xml again, without what's no longer there (the importer's update_index, in JS). */
-async function reindex(root) {
-  const hrefs = []
-  for (const d of await readdir(root, { withFileTypes: true }))
-    if (d.isDirectory() && d.name !== 'core') for (const f of await readdir(join(root, d.name))) if (f.endsWith('.xml')) hrefs.push(`${d.name}/${f}`)
-  hrefs.sort()
-  await writeAtomic(
-    join(root, 'index.xml'),
-    `${HEAD}<!-- Generated by the importer. Do not edit. -->\n<overlays>\n${hrefs.map(h => `  <file href="${esc(h)}"/>\n`).join('')}</overlays>\n`,
-  )
-  const samples = await readOr(join(root, 'samples.xml'))
-  if (samples == null) return
-  const keep = []
-  for (const row of samples.match(/<sample\b[^>]*\/>/g) ?? []) {
-    const href = row.match(/\bhref="([^"]*)"/)?.[1]
-    if (href && (await stat(join(root, href)).catch(() => null))) keep.push(row)
+  if (plan.files.length) {
+    await mkdir(gone, { recursive: true })
+    await writeFile(join(gone, 'moves.csv'), 'from,to\n')
   }
-  await writeAtomic(
-    join(root, 'samples.xml'),
-    `${HEAD}<!-- Generated by the importer. Do not edit. -->\n<samples>\n${keep.map(r => `  ${r}\n`).join('')}</samples>\n`,
-  )
+  for (const f of plan.files) {
+    const to = join(gone, relative(base, f))
+    await mkdir(dirname(to), { recursive: true })
+    await rename(f, to)
+    await appendFile(join(gone, 'moves.csv'), `${f},${to}\n`)
+  }
+  return { moved: plan.files.length, kept: plan.kept, users: plan.users, trash: gone }
 }
