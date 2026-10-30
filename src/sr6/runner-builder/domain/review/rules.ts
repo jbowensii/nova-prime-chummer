@@ -1661,9 +1661,12 @@ const RULES: Rule[] = [
     check: c =>
       c.b.purchases.flatMap(x =>
         x.accessories.flatMap(a => {
-          const e = entryOf(a, c.data)
-          // (an ammunition type under its ammunition line is that line's kind of round, the Ledger's per-type ammo: not fitted)
-          return e?.attrs.usage === 'carried' && a.kind !== 'ammotypes'
+          const e = entryOf(a, c.data),
+            he = entryOf(x, c.data)
+          // not fitted: an ammunition type under its ammunition line (the Ledger's per-type ammo), and a refill of its host
+          // (a carried consumable of the host's own class under it: Medkit supplies under a Medkit, a nanotech refill)
+          const refill = !!e?.attrs.class && e.attrs.class === he?.attrs.class && !structureOf(e).usages.length
+          return e?.attrs.usage === 'carried' && a.kind !== 'ammotypes' && !refill
             ? [{ path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `${nameOf(c, a)} is carried on its own, not fitted to ${nameOf(c, x)}.`, ...entryCite(e) }]
             : []
         }),
