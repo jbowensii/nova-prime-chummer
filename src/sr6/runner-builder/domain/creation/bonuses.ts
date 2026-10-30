@@ -4,9 +4,20 @@ import type { Bonus, Sr6Attr, Sr6Build, Sr6Pick, Sr6Purchase, Sr6Quality, Sr6Sit
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
-import { own } from '../../../../core/shared/effects'
+import { own, readEffectState } from '../../../../core/shared/effects'
 import { entryLabel } from '../../../catalog/domain/categories'
-import { bonusValue, effectBonuses, perCount, sitKey, sitOf, sr6Counts as counts, whenHolds, type WhenFacts } from '../../../catalog/domain/effects'
+import {
+  bonusValue,
+  effectBonuses,
+  effectValue,
+  ownParts,
+  perCount,
+  sitKey,
+  sitOf,
+  sr6Counts as counts,
+  whenHolds,
+  type WhenFacts,
+} from '../../../catalog/domain/effects'
 import { MAGIC_KINDS } from '../../../catalog/domain/data'
 import { baseMetatype, metatypeName } from './infected'
 import { entryOf, ratingOf } from './purchases'
@@ -203,6 +214,22 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Re
     const e = entryOf(a, data),
       bs = lineBonuses(data, a.bonuses, e)
     for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, ratingOf(a, e), undefined, on)
+    // the limb's own attribute (`limb-attr:<abbr>`, CRB p. 288's Attribute increase: the one the accessory's note names
+    // for `limb-attr:choice`), never the runner's
+    for (const p of ownParts(data, e)) {
+      const m = /^limb-attr:(\w+)$/.exec(p.tag === 'effect' && p.attrs.op === 'add' ? (p.attrs.target ?? '') : '')
+      const k = m && (m[1] === 'choice' ? noteAttr(a.note) : (m[1] as Sr6Attr))
+      const v = m && effectValue(p.attrs.value)
+      if (
+        k &&
+        v &&
+        counts(
+          readEffectState(n => p.attrs[n]),
+          on,
+        )
+      )
+        out[k] = (out[k] ?? 0) + bonusValue(v, ratingOf(a, e))
+    }
   }
   // a weapon's standard upgrades (its <part>s the player hasn't removed) act as fitted accessories
   if (x.kind === 'weapons')

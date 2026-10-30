@@ -370,6 +370,15 @@ only, never an item's name. Each effect is `<effect target op value [switch] [co
   `edg/2`: a drake's Armor by its Edge); `a/b` a vehicle stat on the road and off it, on-road first (`R/-R` Handling; a
   tire's `5/-5` Acceleration and `10/-10` Speed Interval, Double Clutch pp. 122-123); `bod`, `bod/2 RU` on a vehicle
   accessory's `item:ar`: the vehicle's own Body (Shredders, p. 123). `hits`, percents and formulas are shown, never applied.
+- **A weapon's own stats** (`src/sr6/runner-builder/domain/assets/weapons.ts` weaponOf; owner ruling weapon-cyber-builders,
+  2026-10-30): a fitted add-on's `item:ar` (one value or five bands, never below 0, FS p. 59), `item:dv`, `item:ammo`
+  (`set x2`: doubled, a drum magazine), `item:modes` (`add`/`set` `SA/BF`), `item:concealability`, and the firing-mode
+  adjustments `item:recoil-sa|bf|fa` (CRB p. 110's -2/-4/-6; `set` the new adjustment, `add` what reduces it, never
+  above 0); an `item:ar` whose `when` names firing modes only moves those modes' adjustments. `test:combat` and the
+  weapon's own skill add to its attack pool. A standard part (`<part>`) is already in the printed stats (CRB p. 261): it adds
+  only its switched effects, and a removed one takes its always-on effects back off. `review="needs-owner"` on an
+  effect: a book rule (`gen="book"`) written for a stat no reader rule or Commlink6 value gives, applied and listed for the
+  owner. `limb-attr:<abbr>` (`limb-attr:choice`: the attribute the accessory's note names) adds to a cyberlimb's own attribute.
 - **How it is turned on** (`switch`): none (always on: in the total shown first), `wireless`, `activated` (at will,
   an action, overdrive, a drug while it acts, a data structure for the action after its Minor Action), `sustained`
   (a spell, ritual or complex form while it lasts),

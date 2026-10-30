@@ -111,8 +111,8 @@ test('a weapon AR of 4/10/8/—/— gives three bands', () => {
   const ch = runner(),
     rifle = buy(ch, 'weapons', 'crb.fizz-rifle-70')
   const custom = buy(ch, 'weapons', undefined, { name: 'Pipe' })
-  expect(derive(ch).d.attackRatings.weapons).toEqual([
-    { uid: rifle.uid, name: 'Fizz Rifle 70', bands: [4, 10, 8, null, null] },
+  expect(derive(ch).d.attackRatings.weapons).toMatchObject([
+    { uid: rifle.uid, name: 'Fizz Rifle 70', bands: [4, 10, 8, null, null], changes: [] },
     { uid: custom.uid, name: 'Pipe', bands: [null, null, null, null, null] },
   ])
 })
