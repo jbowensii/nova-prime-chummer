@@ -478,7 +478,13 @@ export function Accessories({
   const { act, data, cr } = useSr6Editor()
   const [open, setOpen] = useState(false)
   const he = entryOf(host, data)
-  const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
+  // (an accessory's qty is the line's whole: per host, what one of the line's items carries)
+  const items = host.accessories.map(a => ({
+    ...a,
+    qty: Math.ceil((a.qty ?? 1) / Math.max(1, host.qty ?? 1)),
+    entry: entryOf(a, data),
+    rating: ratingOf(a, entryOf(a, data)),
+  }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   const slots = mountSlots(he, items, ratingOf(host, he), host.addedSlots)
   for (const [id, left] of slots.remaining) if (left === Infinity) slots.remaining.delete(id) // (a hook with no limit: nothing to count)

@@ -6,6 +6,8 @@ tools/cl6check/hookmap.py measures Commlink6 with these same rules; classes.asso
 - S, standard hooks by class; V, vehicle capacities from Body/Seats/Pilot; F, fashion on armor with a Social rating;
 - Z, a weapon's size by subtype; W, the vehicle-mount usages a weapon gets by size; I, the implant usage by subtype."""
 
+import re
+
 UNBOUNDED = 99.0  # (Commlink6's "no limit": a capacity of 99 or more is never checked)
 # the hooks that count capacity (Commlink6's ItemHook hasCapacity); every other hook takes one item
 CAPACITY_HOOKS = frozenset(
@@ -27,7 +29,7 @@ STANDARD_BY_TYPE = {
     "WEAPON_RANGED": "RANGED_EXTERNAL",
 }
 TIRE_SUBTYPES = {"BIKES", "ATVS", "CARS", "TRUCKS", "VANS", "BUS"}  # (type VEHICLES only: one tyre set)
-# matrix devices: SOFTWARE (any type) and ELECTRONIC_ACCESSORY (type ELECTRONICS), both unbounded
+# matrix devices of type ELECTRONICS: ELECTRONIC_ACCESSORY, unbounded
 MATRIX_SUBTYPES = {"CYBERDECK", "COMMLINK", "DATATERM", "CYBERTERM", "COMMNODE", "RIGGER_CONSOLE", "TAC_NET"}
 VEHICLE_TYPES = {"VEHICLES", "DRONE_MICRO", "DRONE_MINI", "DRONE_SMALL", "DRONE_MEDIUM", "DRONE_LARGE"}
 FASHION_SUBTYPES = {"ARMOR_BODY", "ARMOR_CLOTHES", "ARMOR_SOCIAL"}
@@ -119,11 +121,24 @@ def standard_hooks(typ, sub):
         out[STANDARD_BY_TYPE[typ]] = UNBOUNDED
     if typ == "VEHICLES" and sub in TIRE_SUBTYPES:
         out["VEHICLE_TIRES"] = 1.0
-    if sub in MATRIX_SUBTYPES:
-        out["SOFTWARE"] = UNBOUNDED
-        if typ == "ELECTRONICS":
-            out["ELECTRONIC_ACCESSORY"] = UNBOUNDED
+    if sub in MATRIX_SUBTYPES and typ == "ELECTRONICS":
+        out["ELECTRONIC_ACCESSORY"] = UNBOUNDED
+    # (no SOFTWARE here: Commlink6's CalculateProgramSlots, SOFTWARE 99 on matrix devices, is never registered as a
+    # step; a device's SOFTWARE comes from its data, `$CONCURRENT_PROGRAMS`: see software_capacity)
     return out
+
+
+def software_capacity(value, programs):
+    """A SOFTWARE hook's capacity: the data's `$CONCURRENT_PROGRAMS` is the device's Concurrent Programs (one program
+    per slot, Commlink6 resolves the variable from the item's `programs`); a number stays; else None (left as given)."""
+    v = (value or "").strip()
+    if v.upper() == "$CONCURRENT_PROGRAMS":
+        m = re.match(r"\s*(\d+)", programs or "")
+        return float(m.group(1)) if m else None
+    try:
+        return float(v)
+    except ValueError:
+        return None
 
 
 def vehicle_hooks(typ, sub, body, seats, pilot, cf_without_seats=False):

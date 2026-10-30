@@ -133,11 +133,11 @@ test('a vehicle’s accessories go through the same fit engine: an autosoft in t
   const extra = [
     {
       file: 'zz-drone',
-      xml: `<sr6:data ${NS} kind="vehicles" version="1"><vehicle id="t.drone" source="CRB" page="1" category="Small drone" body="3" pilot="2" avail="2" cost="2000"><name>Test Drone</name><slot id="software" value="1" unit="capacity"/><slot id="vehicle-chassis" value="3" unit="capacity"/></vehicle></sr6:data>`,
+      xml: `<sr6:data ${NS} kind="vehicles" version="1"><vehicle id="t.drone" source="CRB" page="1" category="Small drone" body="3" pilot="2" avail="2" cost="2000" class="DRONE_SMALL/GROUND"><name>Test Drone</name><slot id="software" value="1" unit="capacity"/><slot id="vehicle-chassis" value="3" unit="capacity"/></vehicle></sr6:data>`,
     },
     {
       file: 'zz-autosoft',
-      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="software" mode="embedded"/></gear><gear id="t.tripod" source="CRB" page="1" category="Tripod" usage="carried" avail="2" cost="100"><name>Test Tripod</name></gear><gear id="t.tyres" source="CRB" page="1" category="Tyres" avail="4" cost="500"><name>Test Tyres</name><fits slot="vehicle-tires" mode="embedded"/></gear></sr6:data>`,
+      xml: `<sr6:data ${NS} kind="gear" version="1"><gear id="t.autosoft" source="CRB" page="1" category="Autosoft" avail="4" cost="500"><name>Test Autosoft</name><fits slot="software" mode="embedded"/></gear><gear id="t.tripod" source="CRB" page="1" category="Tripod" usage="carried" avail="2" cost="100"><name>Test Tripod</name></gear><gear id="t.refill" source="CRB" page="1" category="Drone" usage="carried" avail="2" cost="10" class="DRONE_SMALL/GROUND"><name>Test Refill</name></gear><gear id="t.tyres" source="CRB" page="1" category="Tyres" avail="4" cost="500"><name>Test Tyres</name><fits slot="vehicle-tires" mode="embedded"/></gear></sr6:data>`,
     },
   ]
   const data = sr6Data(fixtureCatalog((_, x) => x, extra))
@@ -155,6 +155,10 @@ test('a vehicle’s accessories go through the same fit engine: an autosoft in t
   b.purchases[0].accessories.push({ uid: 'a2', kind: 'gear', id: 't.tyres', name: 'Test Tyres', accessories: [] })
   expect(validateSr6(data, cr, ch).find(v => v.code === 'catalog.accessoryHost')?.message).toBe('Test Tyres goes into vehicle-tires, not Test Drone.')
   // a stand-alone item an older file has fitted: kept, a warning, not the fit error
+  // (a refill of its host, a carried item of the host's own class, is no warning)
+  b.purchases[0].accessories.push({ uid: 'a9', kind: 'gear', id: 't.refill', name: 'Test Refill', accessories: [] })
+  expect(validateSr6(data, cr, ch).map(v => v.code)).not.toContain('catalog.carried')
+  b.purchases[0].accessories.pop()
   b.purchases[0].accessories.push({ uid: 'a3', kind: 'gear', id: 't.tripod', name: 'Test Tripod', accessories: [] })
   const v = validateSr6(data, cr, ch)
   expect(v.find(x => x.code === 'catalog.carried')).toMatchObject({

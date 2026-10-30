@@ -27,6 +27,51 @@ const design = (over: Partial<Sr6Design> = {}): Sr6Design => ({
 const opt = (id: string, level = 1) => ({ id: `zz.${id}`, level })
 const mod = (id: string, uid = id) => ({ uid, kind: 'gear' as const, id: `zz.${id}`, qty: 1, accessories: [] })
 
+test('every option and modification changes the stats (DC pp. 151-154), also when the catalog lists an option one entry per level', () => {
+  // the one-item-per-level rule: options with a maxLevel are expanded (`Improved Body 2`); the owner's bug was a ticked
+  // level entry changing only Design Points
+  const leveled = DESIGN_PARTS.replace('max="4"><name>Improved Body', 'max="4" maxLevel="4"><name>Improved Body')
+    .replace('max="3"><name>Improved Handling', 'max="3" maxLevel="3"><name>Improved Handling')
+    .replace(
+      '</sr6:data>',
+      `<design id="zz.improved-top-speed" source="ZZ" page="151" category="Options" dp="5" perLevel="true" max="3" maxLevel="3"><name>Improved Top Speed</name></design>
+       <design id="zz.improved-acceleration" source="ZZ" page="151" category="Options" dp="5" perLevel="true" max="2"><name>Improved Acceleration</name></design>
+       ${['Cargo Hauler|20', 'Heavy Duty|+10', 'Lightweight|-10', 'High Performance|+15', 'Economy Engines|-15', 'Mass Transit|10', 'Off Road Chassis|5']
+         .map(s => s.split('|'))
+         .map(
+           ([n, dp]) =>
+             `<design id="zz.${n.toLowerCase().replace(/ /g, '-')}" source="ZZ" page="153" category="Modifications" dp="${dp}"><name>${n}</name></design>`,
+         )
+         .join('')}</sr6:data>`,
+    )
+  const data = sr6Data(
+    fixtureCatalog(undefined, [
+      { file: 'custom/sr6/imported/zz/vehicledesign.xml', xml: leveled },
+      { file: 'custom/sr6/imported/zz/gear.xml', xml: DESIGN_GEAR },
+    ]),
+  )
+  const { cr } = world()
+  expect(data.entry('vehicledesign', 'zz.improved-body.2')?.name).toBe('Improved Body 2') // (expanded)
+  const base = designOf(design(), data, cr)
+  const with_ = (o: { id: string; level: number }) => designOf(design({ options: [o] }), data, cr)
+  // a level entry ticked once is its option at that level: its stats and its Design Points
+  expect(with_(opt('improved-body.2')).stats.body).toBe(base.stats.body + 2)
+  expect(with_(opt('improved-body.2')).dp).toBe(base.dp + 8)
+  expect(with_(opt('improved-body', 2)).stats.body).toBe(base.stats.body + 2)
+  expect(with_(opt('improved-handling.2')).stats.handling).toBe(base.stats.handling - 2)
+  expect(with_(opt('improved-top-speed.3')).stats.topSpeed).toBe(base.stats.topSpeed + 75)
+  expect(with_(opt('improved-acceleration', 2)).stats.accel).toBe(base.stats.accel + 10)
+  // each design modification changes what DC says it does
+  const st = (id: string) => with_(opt(id)).stats
+  expect(st('heavy-duty').body).toBe(Math.floor(base.stats.body * 1.5))
+  expect(st('lightweight').body).toBe(Math.floor(base.stats.body * 0.5))
+  expect(st('mass-transit').seats).toBe(base.stats.seats * 3)
+  expect(st('cargo-hauler')).toMatchObject({ seats: Math.max(2, Math.floor(base.stats.seats / 2)), cargo: base.stats.cargo! * 2 })
+  expect(st('high-performance')).toMatchObject({ accel: base.stats.accel + 3, topSpeed: base.stats.topSpeed + 50 })
+  expect(st('economy-engines')).toMatchObject({ accel: base.stats.accel - 3, topSpeed: base.stats.topSpeed - 50 })
+  expect(st('off-road-chassis')).toMatchObject({ handling: base.stats.handling + 1, offRoad: base.stats.offRoad - 1, topSpeed: base.stats.topSpeed - 10 })
+})
+
 test('the Design Points summed, the final calculations (Top Speed from the powertrain’s base Top Speed), a mod built in at 0 slots adds its nuyen', () => {
   const { data, cr } = world()
   const s = designOf(design({ options: [opt('improved-body', -1), opt('improved-speed-interval', 2), opt('racing')], mods: [mod('glitter-paint')] }), data, cr)
@@ -350,7 +395,10 @@ test('a custom chassis drives the stats, Design Points and cargo like a catalog 
   const d = design({ chassis: undefined, customChassis })
   const s = designOf(d, data, cr)
   const cat = designOf(design(), data, cr) // (the Zip Frame: 7 DP, size class 6)
-  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: -1, seats: 2, size: 6, cargoText: cat.stats.cargoText })
+  // its cargo by its seats, Commlink6's way (2 x 1.5), the size class table's on request, a typed-in figure over both
+  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: -1, seats: 2, size: 6, cargoText: '3 CF' })
+  expect(designOf(design({ chassis: undefined, customChassis: { ...customChassis, cargoFrom: 'size' } }), data, cr).stats.cargoText).toBe(cat.stats.cargoText)
+  expect(designOf(design({ chassis: undefined, customChassis: { ...customChassis, cargo: 12 } }), data, cr).stats.cargoText).toBe('12 CF')
   expect(s.dp).toBe(cat.dp - 7 + 30)
   expect(s.warnings.filter(w => /chassis/i.test(w.message))).toEqual([])
   const doc = { ...blankSr6('priority', 'x', '2026-10-16T00:00:00.000Z'), design: d }

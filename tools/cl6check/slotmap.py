@@ -87,13 +87,11 @@ def kids_of(rec, entry, rating, report=None):
         }
         kids.append({"tag": "fits", "attrs": attrs})
     for r in hookmap.requirements(el):
-        if r["variant"]:
-            report[
-                "req.variant"
-            ] += 1  # (a variant's own: one entry can't hold per-variant tests; cl6check compares the item's)
-            continue
         attrs = {"kind": r["tag"], "type": r["type"], "ref": r["ref"], "value": r["value"], "apply": r["apply"]}
         attrs = {k: v for k, v in attrs.items() if v}
+        if r["variant"]:
+            report["req.variant"] += 1  # (a variant's own: `variant`, one variant's tests holding is enough)
+            attrs["variant"] = r["variant"]
         if r["group"]:
             attrs["group"] = str(r["group"])
         if r["negate"]:
@@ -141,13 +139,36 @@ def rows_of(pairs, report=None):
                 "gen": "slot",
             }
         else:
+            # several records for one entry (Personalized Grip: a ranged and a melee record): each record's tests are
+            # an alternative, as a variant's are (`variant` = its record), never one flattened set no host meets
+            def reqs(ks):
+                return sorted(json.dumps(k["attrs"], sort_keys=True) for k in ks if k["tag"] == "prerequisite")
+
+            same = reqs(kids) == reqs(row.get("kids", [])) or not reqs(kids) or not reqs(row.get("kids", []))
+            first = None if same else row.pop("_req_of", row["cl6id"])
+            if first is not None:
+                for k in row.get("kids", []):
+                    if k["tag"] == "prerequisite":
+                        k["attrs"]["variant"] = _alt(first, k["attrs"].get("variant"))
+                row["_req_of"] = None
+            for k in kids:
+                if k["tag"] == "prerequisite" and not same:
+                    k["attrs"]["variant"] = _alt(c["el"].get("id"), k["attrs"].get("variant"))
             row["kids"] = row.get("kids", []) + [k for k in kids if k not in row.get("kids", [])]
             if use and not row.get("set"):
                 row["set"] = {"usage": use}
     rows = defaultdict(list)
     for (src, _, _), row in by.items():
+        row.pop("_req_of", None)
         rows[src].append(row)
     return rows
+
+
+def _alt(record, variant):
+    """The `variant` a merged record's test carries: its record, and its own variant when it has one.
+    ponytail: a record's plain tests and its variants' become separate alternatives (not plain AND each variant);
+    exact enough while no merged record has both."""
+    return f"{record}:{variant}" if variant else record
 
 
 def _strip_family(old, new):
