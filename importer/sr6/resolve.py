@@ -965,6 +965,8 @@ def standard_upgrades(regrouped):
 
 
 _GENERIC_PART_WORDS = catalog.word_stems("system improved standard kit unit module")
+_PLAIN = catalog.word_stems("regular")  # (a `Sling` is the Regular Sling, not the Tactical one: Firing Squad p. 74)
+_QUALIFIER = re.compile(r"\s*\((?![^)]*\d)[^)]*\)\s*$")  # (a trailing note with no number: `(all models)`, not `(2)`)
 
 
 def _same_part(a, b):
@@ -989,15 +991,27 @@ def weapon_parts(bs, entries, changed):
         for _ob, _src, _kind, el, _p in entries
         if (el.get("class") or "").startswith("ACCESSORY/WEAPON_ACCESSORY")
     }
-    by_cl6 = {}
+    by_cl6, cl6_names = {}, {}
     for src in sorted({s for _ob, s, _k, _el, _p in entries}):
         for r in overrides.table(src):
             if r.get("cl6id") and r.get("id") and f"{src}.{r['id']}" in acc:
                 by_cl6.setdefault(r["cl6id"], f"{src}.{r['id']}")
-    mods = [(i, [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")]) for i, el in acc.items()]
+                cl6_names.setdefault(f"{src}.{r['id']}", set()).add(r.get("cl6") or "")
+    # (an accessory's names: its own, its aliases and Commlink6's: `Smartgun System` is Commlink6's smartgun_system, our
+    # Smartgun system, internal)
+    mods = [
+        (i, [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")] + sorted(cl6_names.get(i, ())))
+        for i, el in acc.items()
+    ]
+    dates = {el.get("id"): getattr(ob, "date", None) or "" for ob, _s, _k, el, _p in entries if el.get("id") in acc}
 
     def find(name):
-        exact = [i for i, ns in mods if any(catalog.word_stems(n) == catalog.word_stems(name) for n in ns)]
+        name = _QUALIFIER.sub("", name)  # (`folding stock (shopkeeper only)`: the model it comes on, not the part)
+        want = catalog.word_stems(name) - _PLAIN
+
+        exact = [i for i, ns in mods if any(catalog.word_stems(n) - _PLAIN == want for n in ns if n)]
+        if len(exact) > 1:  # (printings of one part, CRB's and Firing Squad's Folding Stock: the latest published wins)
+            exact = [i for i in exact if dates[i] == max(dates[j] for j in exact)]
         if len(exact) == 1:
             return exact[0], "none"
         ref = _mod_ref(name, None, mods)

@@ -170,4 +170,14 @@ test('requirementsOf: as Commlink6, DATA_ITEM tests only (a selreq with no apply
   expect(requirementsOf(either, pistol).failed).toEqual([])
   expect(requirementsOf(either, rifle).failed).toEqual([])
   expect(requirementsOf(item({}, v('SHOTGUNS', 'long') + v('HOLDOUTS', 'short')), rifle).failed).toEqual(['itemsubtype shotguns or itemsubtype holdouts'])
+  // a program's device type: the device's softwareTypes (a regular version on a commlink/deck, the RCC one on an RCC)
+  const sw = (t: string, varid: string) =>
+    `<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="SOFTWARE_TYPES" value="${t}" apply="DATA_ITEM" variant="${varid}"/>`
+  const browse = item({}, sw('BASIC', 'regular') + sw('RCC', 'rcc'))
+  const deck = item({ class: 'ELECTRONICS/CYBERDECK', softwareTypes: 'BASIC,COMMLINK_APP,HACKING' })
+  const rcc = item({ class: 'ELECTRONICS/RIGGER_CONSOLE', softwareTypes: 'RCC,AUTOSOFT' })
+  expect(requirementsOf(browse, deck)).toEqual({ failed: [], unchecked: [] })
+  expect(requirementsOf(browse, rcc)).toEqual({ failed: [], unchecked: [] })
+  expect(requirementsOf(item({}, sw('HACKING', 'regular')), rcc).failed).toEqual(['software types hacking'])
+  expect(requirementsOf(browse, pistol).unchecked).toEqual(['software types basic', 'software types rcc'])
 })
