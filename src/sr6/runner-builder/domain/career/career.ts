@@ -64,7 +64,7 @@ import {
   runnerInfected,
 } from '../creation/infected'
 import { accessoryProblem, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
-import { limbSnapshot } from '../assets/builders'
+import { limbSnapshot } from '../assets/limbs'
 import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
 

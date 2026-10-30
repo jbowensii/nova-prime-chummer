@@ -4,7 +4,7 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 // A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
-import { limbSnapshot } from '../assets/builders'
+import { limbSnapshot } from '../assets/limbs'
 import { canFinalize } from '../../../../core/shared/rules'
 import type { Severity, Violation } from '../../../../core/shared/types'
 import {

@@ -1,6 +1,6 @@
 // A purchase line: its catalog entry, rating, fitted accessories and price (cost, Availability, Essence), and the limits on
 // what a runner may install or carry (augmentation families, vehicle seats and cargo, foci).
-import { limbSnapshot } from '../assets/builders'
+import { limbSnapshot } from '../assets/limbs'
 import type { PurchaseKind, Sr6Build, Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { flag, type CreationRules } from '../../../table-setup/domain/creation'
