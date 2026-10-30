@@ -121,7 +121,7 @@ test('cargo: a vehicle’s seats, a motorcycle’s smaller share, a truck’s fo
   expect(cargoFactor(line('v', 'vehicles'), bike)).toEqual({ seats: 4, cargo: 5 })
   expect(cargoFactor(line('v', 'vehicles', { seatsRemoved: 9 }), bike)).toEqual({ seats: 0, cargo: 10 })
   const truck = { ...putt, attrs: { ...putt.attrs, seats: '2', category: 'trucks' } }
-  expect(cargoFactor(line('v', 'vehicles', { seatsRemoved: 1 }), truck)).toEqual({ seats: 1, cargo: 3 + 1 + 4 })
+  expect(cargoFactor(line('v', 'vehicles', { seatsRemoved: 1 }), truck)).toEqual({ seats: 1, cargo: 5 + 4 }) // (4.5 rounded half up, as Commlink6)
 })
 
 test('Sensitive System doubles the Essence of cyberware, bioware and nanoware only; without the setting or the quality it is 1', () => {

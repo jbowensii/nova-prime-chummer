@@ -236,7 +236,8 @@ export function cargoFactor(x: Sr6Purchase, e?: Sr6Entry): { seats: number; carg
   const cat = e?.attrs.category ?? '',
     per = /bike|motorcycle/i.test(cat) ? 1.25 : 1.5,
     removed = Math.min(seats, x.seatsRemoved ?? 0)
-  return { seats: seats - removed, cargo: Math.floor(per * seats + per * removed) + (/truck/i.test(cat) ? 4 : 0) }
+  // (rounded half up, as Commlink6: owner ruling 2026-10-30)
+  return { seats: seats - removed, cargo: Math.floor(per * seats + per * removed + 0.5) + (/truck/i.test(cat) ? 4 : 0) }
 }
 
 /** A ready-made vehicle's Design Points: a GM's override, else its list price / 1,000 rounded to a whole point (Double Clutch
