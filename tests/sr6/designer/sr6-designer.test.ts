@@ -64,7 +64,7 @@ test('a player designs a vehicle: the parts, options by level, a modification, a
   await click(option('Glitter Paint'))
   expect(pageText()).toMatch(/Glitter Paint · 0 slots, 0 DP · 4,000¥/)
   // the worked-out vehicle, as the stat-cell grid (label then value, no separators)
-  expect(pageText()).toMatch(/Body9Armor4Handling3Seats4Size Class6Acceleration17Speed interval30Top speed270Pilot2Sensor2Cargo1 CF/)
+  expect(pageText()).toMatch(/Body9Armor4Handling3Seats4Size Class6Accel17Speed interval30Top speed270Pilot2Sensor2Cargo1 CF/)
   expect(pageText()).toMatch(/Design Points 53 · Price 53 × 1,000¥ \+ 4,000¥ of mods = 57,000¥ · Availability 6\(L\)/)
   expect(pageText()).toMatch(/Brainbox: special 12 \(as printed; no rule here reads it\)\./)
   // a quality factor multiplies the Design Points, not the mods' nuyen; do it yourself halves the price
@@ -157,11 +157,11 @@ test('a design started from a known vehicle shows its chassis and its powertrain
   expect(pageText()).toMatch(/Chassis: Truck/)
   // its own powertrain (Roller Powertrain → the Roller row) preselected
   expect(field<HTMLSelectElement>('Powertrain').value).toBe('zz.roller')
-  expect(pageText()).toMatch(/Handling4\/3.*Acceleration7Speed interval20Top speed90/)
+  expect(pageText()).toMatch(/Handling4\/3.*Accel7Speed interval20Top speed90/)
   // a swap: the factory part comes off, speeds scale by Floater over Roller, its -2 handling, its 12 DP
   await change(field<HTMLSelectElement>('Powertrain'), 'zz.floater')
   expect(pageText()).toMatch(/Roller Powertrain \(synthesized\) · powertrain 4 \(removed\)/)
-  expect(pageText()).toMatch(/Handling2\/1.*Acceleration7Speed interval45Top speed43/)
+  expect(pageText()).toMatch(/Handling2\/1.*Accel7Speed interval45Top speed43/)
   expect(pageText()).toMatch(/Powertrain swapped: Roller → Floater\./)
   await click(button('Save'))
   const saved = read(store.rows.get('d1')!.xml)
@@ -183,7 +183,7 @@ test('a design started from a known vehicle shows its chassis and its powertrain
   ])
     await change(field(k), v)
   await click(button('Save powertrain'))
-  expect(pageText()).toMatch(/Acceleration14Speed interval40Top speed180/)
+  expect(pageText()).toMatch(/Accel14Speed interval40Top speed180/)
   expect(pageText()).toMatch(/Roller Powertrain \(synthesized\) · powertrain 4 \(removed\)/)
   // removing the custom one puts the factory powertrain back, not none
   await click(button('Remove custom powertrain'))

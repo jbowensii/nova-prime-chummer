@@ -417,7 +417,7 @@ const STATS: [keyof ReturnType<typeof designOf>['stats'], string][] = [
   ['handling', 'Handling'],
   ['seats', 'Seats'],
   ['size', 'Size Class'],
-  ['accel', 'Acceleration'],
+  ['accel', 'Accel'],
   ['interval', 'Speed interval'],
   ['topSpeed', 'Top speed'],
   ['pilot', 'Pilot'],
@@ -555,9 +555,15 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
     fn(next.design!, next)
     save.commit(next, true)
   }
-  const levelOf = (pid: string) => d.options.find(o => o.id === pid)?.level ?? 0
+  // an older design may hold a level entry (`improved-body.4`): it counts toward its option's stepper, and folds into it on change
+  const stepOf = (o: { id: string; level: number }, pid: string) => {
+    const e = data.entry('vehicledesign', o.id)
+    return e?.attrs.level && data.family?.('vehicledesign', o.id)?.parent?.id === pid ? o.level * Number(e.attrs.level) : 0
+  }
+  const levelOf = (pid: string) => d.options.reduce((n, o) => n + (o.id === pid ? o.level : stepOf(o, pid)), 0)
   const setLevel = (pid: string, level: number) =>
     update(x => {
+      x.options = x.options.filter(y => !stepOf(y, pid))
       const o = x.options.find(y => y.id === pid)
       if (o && level) o.level = level
       else if (level) x.options.push({ id: pid, level })

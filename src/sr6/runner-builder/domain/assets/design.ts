@@ -103,6 +103,8 @@ const WORD: Record<string, Stat> = {
 /** Improved Handling for on-road or off-road only (DC p. 151, DESIGNER Q2): Design Points a level, the most levels. */
 const ROAD_DP = 3,
   ROAD_MAX = 3
+/** The seats Improved Seating bought: Mass Transit and Cargo Hauler leave them whole (owner ruling 2026-10-30). */
+const seatsBought = (picked: { k: string; level: number }[]) => picked.reduce((n, p) => n + (p.k === 'improved seating' ? p.level : 0), 0)
 const key = (e: Sr6Entry) =>
   normName(e.name)
     .replace(/[^a-z]+/g, ' ')
@@ -343,8 +345,11 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
   }
   if (has('heavy duty')) stats.body = Math.floor(stats.body * 1.5)
   if (has('lightweight')) stats.body = Math.floor(stats.body * 0.5)
+  const bought = seatsBought(picked)
+  stats.seats -= bought
   if (has('mass transit')) stats.seats *= 3
   if (has('cargo hauler')) stats.seats = Math.max(2, Math.floor(stats.seats / 2))
+  stats.seats += bought
   if (has('off road chassis')) {
     stats.handling += 1
     stats.offRoad -= 1
@@ -571,8 +576,12 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   const hauler = has('cargo hauler')
   if (has('heavy duty')) s.body = Math.floor(s.body * 1.5)
   if (has('lightweight')) s.body = Math.floor(s.body * 0.5)
+  // Mass Transit / Cargo Hauler scale the vehicle's own seats; Improved Seating's bought seats are added after (owner 2026-10-30)
+  const bought = seatsBought(picked)
+  s.seats -= bought
   if (has('mass transit')) s.seats *= 3
   if (hauler) s.seats = Math.max(2, Math.floor(s.seats / 2))
+  s.seats += bought
   if (has('off road chassis')) {
     s.handling += 1
     s.offRoad -= 1
