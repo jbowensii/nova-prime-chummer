@@ -1730,3 +1730,38 @@ class SlotStructureRowsTest(unittest.TestCase):
         from tools.cl6check import optional
 
         self.assertIn(("so", "armor", "so.scavenged-rags", "avail"), optional.load_keep())
+
+
+class LeftoversRowsTest(unittest.TestCase):
+    """The hand rows of the weapon-parts and device-type follow-ups (PR #208): each says where it comes from."""
+
+    def test_metahuman_adaptation_takes_commlink6s_close_combat_record_and_fits_melee(self):
+        (r,) = [r for r in overrides.table("fs") if r.get("cl6id") == "metahuman_adaption_close"]
+        self.assertEqual((r["id"], r["gen"]), ("metahuman-adaptation", "owner"))
+        self.assertIn("p. 62", r["note"])
+        groups = {
+            k["attrs"]["value"]: k["attrs"]["group"]
+            for row in overrides.table("fs")
+            if row.get("id") == "metahuman-adaptation"
+            for k in row.get("kids", [])
+            if k["tag"] == "prerequisite"
+        }  # (the close-combat test is one more member of the ranged ones' selreq: any one holds)
+        self.assertEqual(groups.get("WEAPON_CLOSE_COMBAT"), groups.get("WEAPON_RANGED"))
+
+    def test_the_matrix_signal_scanner_is_added_with_no_invented_stats(self):
+        (r,) = [r for r in overrides.table("kk") if r.get("cl6") == "Matrix signal scanner"]
+        self.assertEqual(
+            r["add"]["attrs"], {"category": "Weapon-accessories", "cost": "0", "class": "ACCESSORY/WEAPON_ACCESSORY"}
+        )
+        self.assertIn("krime_matrix_scanner", r["why"])
+
+    def test_the_sideload_processor_runs_programs_by_the_book(self):
+        (r,) = [r for r in overrides.table("hs") if r.get("id") == "sideload-processor" and r.get("gen") == "owner"]
+        self.assertEqual(r["set"], {"softwareTypes": "BASIC,COMMLINK_APP,HACKING"})
+        self.assertIn("p. 128", r["note"])
+
+    def test_every_device_kind_may_carry_software_types(self):
+        from importer.sr6.overrides import schema
+
+        for kind in ("gear", "electronics", "programs", "echoes"):
+            self.assertIn("softwareTypes", schema.allowed(kind), kind)

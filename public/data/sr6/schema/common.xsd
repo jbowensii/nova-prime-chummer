@@ -763,6 +763,8 @@
       <xs:attribute name="rating" type="xs:string"/>
       <xs:attribute name="avail" type="xs:string"/>
       <xs:attribute name="cost" type="xs:string"/>
+      <!-- a program that runs programs (Hack & Slash's Emulator): Commlink6's SOFTWARE_TYPES, as a device's -->
+      <xs:attribute name="softwareTypes" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -916,6 +918,8 @@
     <xs:complexContent><xs:extension base="sr6:Entry">
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+      <!-- an echo that is a device (the Living Command Console): Commlink6's SOFTWARE_TYPES, as a device's -->
+      <xs:attribute name="softwareTypes" type="xs:string"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

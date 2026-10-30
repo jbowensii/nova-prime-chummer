@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { readFileSync } from 'node:fs'
 import { toEntry } from '../../../src/sr6/formats/domain/entryxml'
-import { fit, fitsOnly, mountSlots, requirementsOf, structureOf } from '../../../src/sr6/catalog/domain/structure'
+import { enhancementFits, fit, fitsOnly, mountSlots, requirementsOf, structureOf } from '../../../src/sr6/catalog/domain/structure'
 import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 import { effectBonuses, maxEffects } from '../../../src/sr6/catalog/domain/effects'
 import type { Sr6Data } from '../../../src/sr6/catalog/domain/data'
@@ -180,4 +180,12 @@ test('requirementsOf: as Commlink6, DATA_ITEM tests only (a selreq with no apply
   expect(requirementsOf(browse, rcc)).toEqual({ failed: [], unchecked: [] })
   expect(requirementsOf(item({}, sw('HACKING', 'regular')), rcc).failed).toEqual(['software types hacking'])
   expect(requirementsOf(browse, pistol).unchecked).toEqual(['software types basic', 'software types rcc'])
+})
+
+test('enhancementFits: Metahuman Adaptation (one selreq of ranged and close-combat types) fits a gun and a blade, not armor', () => {
+  const t = (v: string) => `<prerequisite kind="valuereq" type="ITEM_ATTRIBUTE" ref="ITEMTYPE" value="${v}" group="1"/>`
+  const adapt = item({ usage: 'enhancement' }, ['WEAPON_RANGED', 'WEAPON_FIREARMS', 'WEAPON_SPECIAL', 'WEAPON_CLOSE_COMBAT'].map(t).join(''), 'weapons')
+  expect(enhancementFits(adapt, item({ class: 'WEAPON_CLOSE_COMBAT/BLADES' }, '', 'weapons'))).toBe(true)
+  expect(enhancementFits(adapt, item({ class: 'WEAPON_FIREARMS/PISTOLS_HEAVY' }, '', 'weapons'))).toBe(true)
+  expect(enhancementFits(adapt, item({ class: 'ARMOR/ARMOR_BODY' }, '', 'armor'))).toBe(false)
 })

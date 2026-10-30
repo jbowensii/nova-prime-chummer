@@ -294,5 +294,6 @@
   {"cl6": "Paragon", "cl6id": "paragon", "kind": "qualities", "id": "paragon", "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "RESONANCE", "value": "1", "apply": "CHARACTER"}}], "gen": "slot"},
   {"cl6": "Resonance Burn", "cl6id": "resonance_burn", "kind": "qualities", "id": "resonance-burn-emerged-only", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "MAGIC_RESO", "ref": "technomancer", "apply": "CHARACTER"}}], "gen": "slot"},
   {"cl6": "Out of Memory Exception", "cl6id": "out_of_memory_exception", "kind": "qualities", "id": "out-of-memory-exception", "kids": [{"tag": "slot", "attrs": {"id": "software", "value": "-1"}}], "gen": "slot"},
-  {"cl6": "Cyberadept", "cl6id": "cyberadept_path", "kind": "qualitypaths", "id": "cyberadept", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "cyberadept", "apply": "CHARACTER"}}], "gen": "slot"}
+  {"cl6": "Cyberadept", "cl6id": "cyberadept_path", "kind": "qualitypaths", "id": "cyberadept", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "cyberadept", "apply": "CHARACTER"}}], "gen": "slot"},
+  {"cl6": "Sideload Processor", "kind": "gear", "id": "sideload-processor", "set": {"softwareTypes": "BASIC,COMMLINK_APP,HACKING"}, "gen": "owner", "note": "Commlink6 gives it no SOFTWARE_TYPES; Hack & Slash p. 128: one virtual program slot per rating, a program run without a device (any program: a commlink's and a deck's types)"}
 ]
