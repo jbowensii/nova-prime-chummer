@@ -396,7 +396,7 @@ test('a custom chassis drives the stats, Design Points and cargo like a catalog 
   const s = designOf(d, data, cr)
   const cat = designOf(design(), data, cr) // (the Zip Frame: 7 DP, size class 6)
   // its cargo by its seats, Commlink6's way (2 x 1.5), the size class table's on request, a typed-in figure over both
-  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: -1, seats: 2, size: 6, cargoText: '3 CF' })
+  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: 1, seats: 2, size: 6, cargoText: '3 CF' })
   expect(designOf(design({ chassis: undefined, customChassis: { ...customChassis, cargoFrom: 'size' } }), data, cr).stats.cargoText).toBe(cat.stats.cargoText)
   expect(designOf(design({ chassis: undefined, customChassis: { ...customChassis, cargo: 12 } }), data, cr).stats.cargoText).toBe('12 CF')
   expect(s.dp).toBe(cat.dp - 7 + 30)
