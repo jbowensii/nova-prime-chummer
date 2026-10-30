@@ -16,6 +16,7 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { cargoFactor, entryOf, priced, ratingOf } from '../creation/purchases'
 import { availability, bookValue, dataFind, legality } from '../../../catalog/domain/values'
+import { milspec, type MilspecSheet } from './milspec'
 
 export type DesignPart = 'chassis' | 'powertrain' | 'console' | 'size' | 'option' | 'modification' | 'quality'
 /** A vehicledesign entry's part of a design: its table (by its category, the table's first header: `chassis type`), else
@@ -43,6 +44,9 @@ export function multiplierOf(e: Sr6Entry): number | null {
 export function partDp(e: Sr6Entry, level = 1): number | null {
   const raw = e.attrs.dp ?? e.attrs.bp ?? '0'
   if (multiplierOf(e) !== null) return 0
+  // a flat part and a per-rating part (Mil-Spec Frame, DA p. 151: `10+5 x Rating`)
+  const fp = /^\s*(\d+)\s*\+\s*(\d+)\s*x\s*[a-z][\w ]*$/i.exec(raw)
+  if (fp) return Number(fp[1]) + Number(fp[2]) * level
   const m = /^\s*([+-]?\d[\d,]*(?:\.\d+)?)\s*(x\s*[a-z][\w ]*)?\s*$/i.exec(raw.replace(/[–−]/g, '-'))
   if (!m) return null
   const v = Number(m[1].replace(/,/g, ''))
@@ -76,6 +80,12 @@ const PER_LEVEL: Record<string, Partial<Record<Stat, number>>> = {
   'improved top speed': { topSpeed: 25 },
   'improved cargo space': { cargo: 2 },
   'easily modified': {},
+  // Deadly Arts' mil-spec options: their rules are milspec.ts's
+  'mil spec frame': {},
+  'heavy mil spec plate': {},
+  'airframe ceramic plate': {},
+  'mil spec hardpoints': {},
+  'pop out weapon mount': {},
 }
 /** The stat a book word in a maximum names (`2 x Body`, `50% x Seat`, `min(3, 2 x CF)`, `Size Class 20`). */
 const WORD: Record<string, Stat> = {
@@ -134,7 +144,10 @@ export interface DesignSheet {
   /** printed specials no rule reads (the console's 10/12, the Bike's 0: owner Q4), and other notes */
   notes: string[]
   warnings: { message: string; source: string; page: number }[]
+  /** Deadly Arts' mil-spec options worked out: damage reduction, Body resisting damage, armor dice, hardpoints, comms */
+  milspec: MilspecSheet
 }
+const NO_MILSPEC: MilspecSheet = { damageReduction: 0, resistBody: 0, armorPool: 0, hardpoints: [], comms: [] }
 
 const handlingText = (s: Pick<DesignStats, 'handling' | 'offRoad'>) => (s.handling === s.offRoad ? `${s.handling}` : `${s.handling}/${s.offRoad}`)
 /** A size class table cargo cell in Cargo Factors (`4 CF`, `1/4 CF`, `10,000+ CF`), else null (`20 kg`). */
@@ -179,6 +192,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
       mods: [],
       notes,
       warnings,
+      milspec: NO_MILSPEC,
     }
   }
   const a = veh.attrs
@@ -297,6 +311,8 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     stats.topSpeed *= 2
   }
   if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
+  const ms = milspec(d, picked, stats, num(a.body), data, (message, page, source = 'DC') => warnings.push({ message, source, page }), notes)
+  dp += ms.dp
   // the mods built in: their real slots and nuyen (no Design-Point conversion — this is not a point-buy)
   const find = dataFind(data)
   const mods = d.mods.map(x => {
@@ -336,6 +352,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     mods,
     notes,
     warnings,
+    milspec: ms.sheet,
   }
 }
 
@@ -534,6 +551,8 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     s.topSpeed = Math.floor(s.topSpeed * f)
   }
   if (has('underpowered')) s.topSpeed = Math.floor(s.topSpeed / 2)
+  const ms = milspec(d, picked, s, base.body, data, warn, notes)
+  dp += ms.dp
 
   // cargo: the size class's, plus the options' and the truck's Cargo Factors, doubled for a Cargo Hauler
   const cargoRow = sizeCargo(s.size)
@@ -632,6 +651,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     mods,
     notes,
     warnings,
+    milspec: ms.sheet,
   }
 }
 const round2 = (x: number) => Math.round(x * 100) / 100
@@ -725,6 +745,13 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
       const pe = book ? data.entry('gear', ref) : undefined
       parts.push({ tag: 'builtin', attrs: { name: pe ? entryLabel(pe) : `${swap.name} Powertrain`, ...(pe ? { ref: pe.id } : {}) }, text: '' })
     }
+  }
+  // Mil-spec Comms' in-console commlink and the hardpoints' weapons, built in
+  for (const c of sheet.milspec.comms)
+    parts.push({ tag: 'builtin', attrs: { name: c.entry ? entryLabel(c.entry) : c.name, ...(c.entry ? { ref: c.entry.id } : {}) }, text: '' })
+  for (const h of d.hardpoints ?? []) {
+    const w = h.weapon ? data.entry('weapons', h.weapon) : undefined
+    if (w) parts.push({ tag: 'builtin', attrs: { name: entryLabel(w), ref: w.id }, text: '' })
   }
   const universal = d.options.reduce((t, o) => t + (o.level > 0 && /easily modified/i.test(data.entry('vehicledesign', o.id)?.name ?? '') ? 2 * o.level : 0), 0)
   if (universal) parts.push({ tag: 'builtin', attrs: { name: 'Easily Modified', slots: String(universal), category: 'universal' }, text: '' })
