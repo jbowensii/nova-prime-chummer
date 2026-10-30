@@ -115,8 +115,8 @@ const snap = (id: string, kind: Sr6Entry['kind'], name: string, attrs: Record<st
   parts,
 })
 
-/** A custom cyberlimb line (owner ruling 4): its part and look priced from the table, one Physical box (CRB p. 288: "Each
- *  cyberlimb adds one box"), and the attribute increases bought with it as its add-ons. */
+/** A custom cyberlimb line (owner ruling 4): its part and look priced from the table, one Physical box for a full limb (CRB p. 288:
+ *  "Each cyberlimb adds one box"; FULL_LIMBS), and the attribute increases bought with it as its add-ons. */
 export function customLimb(part: LimbPart, look: LimbLook, inc: Partial<Record<LimbStat, number>> = {}): Sr6Purchase {
   const t = CYBERLIMBS[part],
     [cost, capacity] = t[look],
@@ -141,10 +141,12 @@ export function customLimb(part: LimbPart, look: LimbLook, inc: Partial<Record<L
         cost: String(cost),
         capacity: String(capacity),
       },
-      [effect('derived:physical-monitor', '1')],
+      FULL_LIMBS.has(part) ? [effect('derived:physical-monitor', '1')] : [],
     ),
   }
 }
+/** Owner ruling 2026-10-30: only a full limb (arm, leg, skull, torso) adds the Physical box; hands, feet, forearms, lower legs don't. */
+const FULL_LIMBS = new Set<LimbPart>(['skull', 'torso', 'arm', 'leg'])
 /** One attribute increase on a custom limb at `rating` (1 to LIMB_MAX). */
 export function limbIncrease(stat: LimbStat, rating: number): Sr6Purchase {
   const r = Math.min(LIMB_MAX, Math.max(1, Math.trunc(rating))),

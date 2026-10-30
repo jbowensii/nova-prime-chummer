@@ -80,6 +80,9 @@ test('a custom cyberlimb: cost, Essence, Availability and Capacity from the core
   // obvious arm 15,000¥ (15), Essence 1, Avail 4; Strength 2 and Agility 1: [2] and [1], 15,000¥, Avail 2
   expect(priced(arm, data, cr)).toMatchObject({ cost: 30000, essence: 1, avail: 4 })
   expect(priced(customLimb('lowerleg', 'synthetic'), data, cr)).toMatchObject({ cost: 12000, essence: 0.45, avail: 4 })
+  // owner ruling 2026-10-30: only a full limb adds the Physical box
+  const box = (x: ReturnType<typeof customLimb>) => x.snapshot!.parts.some(p => p.attrs?.target === 'derived:physical-monitor')
+  expect([box(arm), box(customLimb('torso', 'synthetic')), box(customLimb('hand', 'obvious'))]).toEqual([true, true, false])
   expect(limbOf(arm)).toEqual({ part: 'arm', look: 'obvious', inc: { str: 2, agi: 1 } })
   // the increases are the limb's own Strength and Agility (hostBonus), not the runner's
   expect(hostBonus(arm, data)).toMatchObject({ str: 2, agi: 1 })
