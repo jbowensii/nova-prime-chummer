@@ -352,6 +352,7 @@ const designXml = (d?: Sr6Design) =>
         (d.customChassis ? el('customChassis', d.customChassis) : '') +
           (d.customPowertrain ? el('customPowertrain', d.customPowertrain) : '') +
           d.options.map(o => el('option', o)).join('') +
+          (d.hardpoints ?? []).map(h => el('hardpoint', { ...h })).join('') +
           d.mods.map(purchaseXml).join(''),
       )
     : ''
@@ -1002,6 +1003,19 @@ function readDesign(d: Element, fix?: string[]): Sr6Design {
       fix,
     ),
     mods: each(kids(d, 'purchase'), x => readPurchase(x, fix), label, fix),
+    hardpoints: (h => (h.length ? h : undefined))(
+      kids(d, 'hardpoint').map(h =>
+        def({
+          grade: num(h, 'grade', 0),
+          weapon: str(h, 'weapon'),
+          size: num(h, 'size'),
+          mount: h.hasAttribute('mount') ? oneOf(h.getAttribute('mount'), ['inline', 'open'] as const, 'weapon mount', undefined, fix) : undefined,
+          popOut: yes(h, 'popOut'),
+          link: h.hasAttribute('link') ? oneOf(h.getAttribute('link'), ['twin', 'quad'] as const, 'linked weapons', undefined, fix) : undefined,
+          dedicated: yes(h, 'dedicated'),
+        }),
+      ),
+    ),
     diy: yes(d, 'diy'),
     approved: yes(d, 'approved'),
   })

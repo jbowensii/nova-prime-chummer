@@ -321,3 +321,19 @@ test('Create a mod… adds a named custom mod with its own price and slots', asy
   await click(button('Save mod'))
   expect(pageText()).toMatch(/Home Brew · 2 slots, 4 DP · 1,500¥/)
 })
+
+test('mil-spec hardpoints (DA pp. 151-153): add one, set the weapon Size and mount, see whether it fits and why', async () => {
+  const blank = blankSr6('priority', 'd1', '2026-10-16T00:00:00.000Z')
+  blank.identity.streetName = 'Tank'
+  blank.design = { kind: 'vehicle', chassis: 'zz.zip-frame', powertrain: 'zz.roller', console: 'zz.brainbox', options: [], mods: [] }
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(blank) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  await click(button('Add a hardpoint'))
+  await change(field('Hardpoint 1 weapon Size'), '2')
+  expect(pageText()).toMatch(/the weapon needs a Grade 2 hardpoint \(this one is Grade 1\)/)
+  await change(field<HTMLSelectElement>('Hardpoint 1 mount'), 'open')
+  expect(pageText()).not.toMatch(/needs a Grade/)
+  expect(pageText()).toMatch(/Open mount: the weapon gets no protection/)
+  expect(pageText()).toMatch(/Body 10\+ fits/)
+})

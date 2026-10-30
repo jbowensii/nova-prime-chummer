@@ -252,8 +252,23 @@ export interface Sr6Design {
   /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */
   options: { id: string; level: number; road?: 'on' | 'off' }[]
   mods: Sr6Purchase[]
+  /** mil-spec hardpoints (Deadly Arts pp. 151-153): each its Grade and the weapon assigned (catalog `weapons` id, its
+   *  Size, how it is mounted) */
+  hardpoints?: Sr6Hardpoint[]
   diy?: true
   approved?: true
+}
+export interface Sr6Hardpoint {
+  grade: number
+  weapon?: string
+  /** the weapon's Size (DA's SIZE column, 0-8), typed in: the catalog does not carry it */
+  size?: number
+  /** absent: turreted (the default) */
+  mount?: 'inline' | 'open'
+  popOut?: true
+  link?: 'twin' | 'quad'
+  /** a dedicated primary weapon: built in, permanent, the Body minimum of a hardpoint one Grade smaller */
+  dedicated?: true
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
