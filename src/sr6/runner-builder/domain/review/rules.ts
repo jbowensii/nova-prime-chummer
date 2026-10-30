@@ -4,7 +4,7 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 // A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
-import { isCustomAddon } from '../assets/builders'
+import { limbSnapshot } from '../assets/builders'
 import { canFinalize } from '../../../../core/shared/rules'
 import type { Severity, Violation } from '../../../../core/shared/types'
 import {
@@ -1740,17 +1740,19 @@ const RULES: Rule[] = [
             : { path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `Saved design: needs GM approval (${nameOf(c, x)}).` },
         ),
   },
-  // a player's own add-on (the item builders' custom add-on, owner ruling 6): a warning until a GM approves it
+  // a player's own add-on (the item builders' custom add-on, owner ruling 6) or any other `custom.` line the app can't re-derive
+  // (only the builders' limbs and their increases are, from the CYBERLIMBS table): a warning until a GM approves it
   {
     code: CUSTOM_APPROVAL,
     severity: 'warning',
     tab: 'gear',
     check: c =>
       [...lines(c.b)]
-        .filter(({ own }) => own && isCustomAddon(own))
+        .map(l => ({ ...l, line: l.own ?? l.x }))
+        .filter(({ line }) => line.id?.startsWith('custom.') && !limbSnapshot(line))
         .map(({ x, host }) => ({
-          path: `${PURCHASE_TAB[host!.kind]}.${x.uid}`,
-          message: `Custom add-on: needs GM approval (${nameOf(c, x)} on ${nameOf(c, host!)}).`,
+          path: `${PURCHASE_TAB[(host ?? x).kind]}.${x.uid}`,
+          message: `Custom ${host ? 'add-on' : 'item'}: needs GM approval (${nameOf(c, x)}${host ? ` on ${nameOf(c, host)}` : ''}).`,
         })),
   },
   // a vehicle or drone bought at a price other than its catalog/design price (career Ledger gmPrice): needs a GM's approval

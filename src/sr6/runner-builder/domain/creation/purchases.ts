@@ -1,5 +1,6 @@
 // A purchase line: its catalog entry, rating, fitted accessories and price (cost, Availability, Essence), and the limits on
 // what a runner may install or carry (augmentation families, vehicle seats and cargo, foci).
+import { limbSnapshot } from '../assets/builders'
 import type { PurchaseKind, Sr6Build, Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { flag, type CreationRules } from '../../../table-setup/domain/creation'
@@ -27,8 +28,8 @@ export const PURCHASE_TAB: Record<PurchaseKind, string> = {
 }
 export const round2 = (x: number) => Math.round(x * 100) / 100
 
-/** The catalog entry a purchase is priced from: the live one, else the snapshot it was exported with. */
-export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => (x.id ? (data.entry(x.kind, x.id) ?? x.snapshot) : undefined)
+/** The catalog entry a purchase is priced from: the live one, else a builders' custom limb re-derived from its table, else the snapshot it was exported with. */
+export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => (x.id ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? x.snapshot) : undefined)
 /** The rating a purchase is priced at and its per-rating effects count at: its own, else the lowest its entry comes in
  *  (one row of a book's per-rating split, `Wired Reflexes 3`, or a level's entry, levels.ts, comes in that rating only), else 1. */
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1

@@ -64,6 +64,7 @@ import {
   runnerInfected,
 } from '../creation/infected'
 import { accessoryProblem, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
+import { limbSnapshot } from '../assets/builders'
 import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
 
@@ -91,6 +92,19 @@ export const voidedIds = (ch: Sr6Character) => new Set(ch.ledger.flatMap(e => (e
 export function liveAdvances(ch: Sr6Character): Extract<Sr6LedgerEntry, { type: 'advance' }>[] {
   const voided = voidedIds(ch)
   return sinceFinalize(ch).filter((e): e is Extract<Sr6LedgerEntry, { type: 'advance' }> => e.type === 'advance' && !voided.has(e.id))
+}
+
+/** Whether an add-on changed in place by `upgrade` stays the same add-on: the same kind, and the same stat family (a custom
+ *  limb's increase to another rating of the same stat; a catalog add-on the same entry at a rating it comes in, with the
+ *  same choice note). `data` absent (replaying a saved step): only what needs no catalog. */
+export function addonUpgradeProblem(was: Sr6Purchase, line: Sr6Purchase, data?: Sr6Data): 'not-same-addon' | 'rating-range' | null {
+  if (line.kind !== was.kind) return 'not-same-addon'
+  const inc = /^(custom\.limb-increase-(?:str|agi|armor)-)\d$/.exec(was.id ?? '')
+  if (inc) return line.id?.startsWith(inc[1]) && limbSnapshot(line) ? null : 'not-same-addon'
+  if (!was.id || line.id !== was.id || (line.note ?? '') !== (was.note ?? '')) return 'not-same-addon'
+  const e = data?.entry(line.kind, line.id)
+  const range = ratingRange(e?.attrs.rating)
+  return data && line.rating !== undefined && range.length && !range.includes(line.rating) ? 'rating-range' : null
 }
 
 /** One advance onto the build, in place. Structural only (no catalog lookups), so it replays whatever the catalog holds. */
@@ -172,7 +186,9 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       // (an add-on changed in place, e.g. a cyberlimb's Attribute increase to another rating: it keeps its place and uid)
       const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
       if (host) {
-        host.accessories = host.accessories.map(y => (y.uid === a.target ? { ...structuredClone(a.line), uid: a.target } : y))
+        host.accessories = host.accessories.map(y =>
+          y.uid === a.target && !addonUpgradeProblem(y, a.line) ? { ...structuredClone(a.line), uid: a.target } : y,
+        )
         return
       }
       const i = b.purchases.findIndex(x => x.uid === a.target)
@@ -594,7 +610,9 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
       // (a design's line: its snapshot, the vehicle the design worked out to; a builders' custom limb: its own)
-      const e = x.id ? (data.entry(x.kind, x.id) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry')) : undefined
+      const e = x.id
+        ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry'))
+        : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       // (a grade the augmentation's type doesn't take is recorded: Review's gear.grade)
@@ -621,6 +639,8 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       const accHost = b.purchases.find(y => y.accessories.some(z => z.uid === a.target))
       if (accHost) {
         const was = accHost.accessories.find(z => z.uid === a.target)!
+        const problem = addonUpgradeProblem(was, a.line, data)
+        if (problem) no(problem)
         const hostPr = priced({ ...accHost, accessories: [] }, data, cr)
         const now = priced(a.line, data, cr, hostPr),
           before = priced(was, data, cr, hostPr)
@@ -658,7 +678,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // yourself: half, a mod only, Double Clutch p. 120); what goes past the vehicle's limits is recorded (Review warns)
       const host = b.purchases.find(y => y.uid === a.target) ?? no('unknown-host')
       const x = a.line,
-        e = x.id ? (data.entry(x.kind, x.id) ?? x.snapshot ?? no('unknown-entry')) : undefined
+        e = x.id ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? x.snapshot ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       if (x.mount !== undefined) {

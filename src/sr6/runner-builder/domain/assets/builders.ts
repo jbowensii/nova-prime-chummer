@@ -169,6 +169,14 @@ export function limbIncrease(stat: LimbStat, rating: number): Sr6Purchase {
     accessories: [],
   }
 }
+/** The entry a builders' custom limb (or its attribute increase) is priced from, re-derived from the CYBERLIMBS table: a line's
+ *  own snapshot is the client's word, never trusted for these. undefined: not a limb the builder makes. */
+export function limbSnapshot(x: Sr6Purchase): Sr6Entry | undefined {
+  const l = limbOf(x)
+  if (l) return customLimb(l.part, l.look).snapshot
+  const k = /^custom\.limb-increase-(str|agi|armor)-([1-9])$/.exec(x.id ?? '')
+  return k && Number(k[2]) <= LIMB_MAX ? limbIncrease(k[1] as LimbStat, Number(k[2])).snapshot : undefined
+}
 /** A custom limb's part, look and increases back from its line (undefined: not one the builder made). */
 export function limbOf(x: Sr6Purchase): { part: LimbPart; look: LimbLook; inc: Partial<Record<LimbStat, number>> } | undefined {
   const m = /^custom\.limb-(\w+)-(synthetic|obvious)$/.exec(x.id ?? '')

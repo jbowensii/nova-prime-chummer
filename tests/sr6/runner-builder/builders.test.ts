@@ -202,3 +202,35 @@ test('a saved design’s own line approved mark is never trusted: only the desig
   doc.itemDesign = { kind: 'weapon', line: { ...rifle(), approved: true } }
   expect(boughtItemDesign(doc).approved).toBeUndefined()
 })
+
+test('career: an add-on upgrade must stay the same add-on (same kind and stat family), else it is refused', () => {
+  const { data, cr } = made()
+  const ch = blankSr6('karma', 'c1', '2026-10-30T00:00:00.000Z')
+  ch.build = buildOf('karma', { metatype: GLIM })
+  ch.build.purchases = [customLimb('arm', 'obvious', { str: 2 })]
+  ch.finalizedAt = '2026-10-30T00:00:00.000Z'
+  ch.final = { karma: 0, nuyen: 100000 }
+  ch.ledger = [{ id: 'f1', at: ch.finalizedAt, type: 'finalize', karma: 0, nuyen: 100000 }]
+  const inc = currentBuild(ch).purchases[0].accessories[0]
+  const why = (line: Sr6Purchase) => {
+    const r = preview(ch, { op: 'upgrade', target: inc.uid, line }, data, cr)
+    return r.ok ? 'ok' : r.reason
+  }
+  expect(why(limbIncrease('agi', 2))).toBe('not-same-addon') // another stat
+  expect(why({ ...limbIncrease('str', 2), kind: 'weapons' })).toBe('not-same-addon') // another kind
+  expect(why({ ...limbIncrease('str', 2), id: 'custom.limb-increase-str-9' })).toBe('not-same-addon')
+  expect(why(limbIncrease('str', 3))).toBe('ok')
+})
+
+test('a custom limb is priced from the CYBERLIMBS table, not its snapshot; any other custom. line waits for a GM', () => {
+  const { data, cr } = world()
+  const limb = customLimb('arm', 'obvious', { str: 2 })
+  const honest = priced(limb, data, cr)
+  const forged = { ...limb, snapshot: { ...limb.snapshot!, attrs: { ...limb.snapshot!.attrs, cost: '1', essence: '0' } } }
+  forged.accessories = forged.accessories.map(a => ({ ...a, snapshot: { ...a.snapshot!, attrs: { ...a.snapshot!.attrs, cost: '0' } } }))
+  expect(priced(forged, data, cr)).toEqual(honest)
+  const ch = { ...blankSr6('priority'), build: build([limb]) }
+  expect(validateSr6(data, cr, ch).some(v => v.code === 'gear.custom')).toBe(false)
+  const odd = { ...limb, uid: 'x', id: 'custom.freebie', snapshot: { ...limb.snapshot!, id: 'custom.freebie' }, accessories: [] }
+  expect(validateSr6(data, cr, { ...ch, build: build([odd]) }).some(v => v.code === 'gear.custom')).toBe(true)
+})
