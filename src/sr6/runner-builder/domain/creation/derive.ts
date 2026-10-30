@@ -288,6 +288,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       const e = entryOf(x, data)
       defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0
     }
+  // a cyberlimb's Armor increase (CRB p. 288) raises the Defense Rating at all times (owner ruling 2026-10-30)
+  for (const x of b.purchases) if (x.kind === 'augmentations') defense += hostBonus(x, data, on).defense ?? 0
 
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
   // the Sixth World Companion's option (p. 150, strengthInCloseCombat): Close Combat rolls Strength, and Agility goes

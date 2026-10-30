@@ -85,7 +85,7 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
     .filter(Boolean)
   let names: string[]
   if (kind === 'attribute') {
-    const picked = tokens.map(t => t.toLowerCase()).filter(t => ATTR_WORDS[t])
+    const picked = tokens.map(t => t.toLowerCase()).filter(t => ATTR_WORDS[t] || t === 'armor') // (Armor: a cyberlimb's Attribute increase, CRB p. 288)
     names = (picked.length ? picked : CORE_ATTRS).map(cap) // fall back to every core attribute when nothing resolves
   } else if (kind === 'skill') {
     // tokens are skill ids (`biotech`) or names; resolve to the catalog skill name
