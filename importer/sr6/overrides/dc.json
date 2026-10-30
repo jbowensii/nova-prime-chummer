@@ -35,6 +35,8 @@
   {"cl6": "Life Safety System", "kind": "gear", "id": "life-safety-system-level-1", "set": {"class": "MOD_CHASSIS/MOD_INTERIOR"}, "gen": "class"},
   {"cl6": "Living Space", "kind": "gear", "id": "living-space-cf-mod", "set": {"class": "MOD_CHASSIS/MOD_CARGO"}, "gen": "class"},
   {"cl6": "Metahuman adjustments", "kind": "gear", "id": "metahuman-adjustments", "set": {"class": "MOD_CHASSIS/MOD_CARGO"}, "gen": "class"},
+  {"cl6": "Milspec Plate", "kind": "gear", "id": "milspec-plate-rating-1", "set": {"class": "MOD_SKIN/MOD_ARMOR"}, "gen": "class"},
+  {"cl6": "Milspec Plate", "kind": "gear", "id": "milspec-plate-rating-2", "set": {"class": "MOD_SKIN/MOD_ARMOR"}, "gen": "class"},
   {"cl6": "Milspec Plate", "kind": "gear", "id": "milspec-plate-rating-3", "set": {"class": "MOD_SKIN/MOD_ARMOR"}, "gen": "class"},
   {"cl6": "Multi-Terrain Suspension (Active)", "kind": "gear", "id": "multi-terrain-suspension-active", "set": {"class": "MOD_CHASSIS/MOD_HANDLING"}, "gen": "class"},
   {"cl6": "Multi-Terrain Suspension (Static)", "kind": "gear", "id": "multi-terrain-suspension-static", "set": {"class": "MOD_CHASSIS/MOD_HANDLING"}, "gen": "class"},

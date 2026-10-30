@@ -482,7 +482,10 @@ def main(argv=None):
         + ("; baseline saved" if a.save_baseline else "")
     )
     pe = m["per_effect"]
-    print(f"per-effect: reproduced {pe['reproduced']} / {pe['of']} CommLink6 modifiers = {pe['pct']}%")
+    print(
+        f"per-effect: reproduced {pe['reproduced']} / {pe['of']} CommLink6 modifiers = {pe['pct']}% "
+        f"({pe['bookruled']} book-ruled, {pe['exempt']} exempt: CommLink6-only or stated differently)"
+    )
     gate = dict(x.split("=") for x in a.fail_under.split(",") if "=" in x)
     low = [
         k for k, v in gate.items() if ({"completeness": c["all"]["pct"], "accuracy": acc["pct"]}.get(k) or 0) < float(v)

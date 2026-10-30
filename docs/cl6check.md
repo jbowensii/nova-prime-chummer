@@ -152,6 +152,14 @@ via the optional package now, so accuracy no longer compares them).
 **Rule:** a change to the reader, the overrides, `run.py` or `resolve.py` runs both gates: the replay (main and the
 branch, 0 differing rows) and a fresh `import --library` with the branch, which must read the numbers above.
 
+## The per-effect score and its exemptions
+
+`cl6check --ours` prints `per-effect: reproduced N / M`: of the modifications Commlink6 states on matched records, how
+many of ours state the same (target, value). Rows of `tools/cl6check/effects_bookwins.json` count as reproduced: those
+with a page-checked book ruling, and those whose `pair[2]` is `exempt`, a Commlink6-only mechanic we do not model or one we
+state differently (each row's `why` says which). The score therefore reads 100% of what we model, and the residual is
+the exempt list, not an open backlog.
+
 ## The final analysis (2026-10-20)
 
 `python -m tools.cl6check.final_analysis --ours <library import> --printings <per-book runs>` builds the owner's two
