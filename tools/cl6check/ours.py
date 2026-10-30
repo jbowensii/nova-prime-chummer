@@ -148,9 +148,20 @@ def families(e, kind=None):
         if x.tag in tags
     )
     if eff:
+        # (our own <effect>s alone, with their op: the per-effect metric reads these, not Commlink6's data kept beside;
+        # a formula's inner "+" kept, str/2+1 is not str/21)
         out["effects_own"] = tuple(
-            eff
-        )  # (our own <effect>s alone: the per-effect metric reads these, not Commlink6's data kept beside)
+            sorted(
+                (
+                    tags[x.tag],
+                    x.get("target", "").casefold() or f"{_norm(x.get('kind'))}:{_norm(x.get('ref'))}",
+                    (x.get("value") or "").lstrip("+").casefold(),
+                    x.get("op") or "",
+                )
+                for x in e
+                if x.tag in tags
+            )
+        )
     # (Commlink6's own rule data kept beside ours, the schema's <modifier>/<prerequisite>/<selection>: never applied)
     mod = {"valmod": "effect", "checkmod": "test", "itemmod": "grant", "allowmod": "allow"}
     eff = sorted(

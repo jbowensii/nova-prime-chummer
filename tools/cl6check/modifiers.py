@@ -9,10 +9,15 @@ matched item when the sentence names its target (the game's own words for it) an
 is a template; each template is scored by how often it fires on our descriptions and finds a real modifier (precision)
 and how many of its family's modifiers it reproduces (recall). Vocabulary only, never item names."""
 
+import functools
+import json
+import os
 import re
 from collections import Counter, defaultdict
 
 from importer.sr6.effects.words import ATTRIBUTES, SKILLS, TEST_TYPES
+from tools.cl6check.canon import _mods as canon_mods, effect_key as canon_effect_key
+from tools.cl6effects import evaluate, xlate
 
 PRIMARY = {
     "BODY",
@@ -527,21 +532,210 @@ def _expand(effects):
     return out
 
 
-def per_effect(pairs):
-    """Informational: of the effects CommLink6 states on matched records, how many of ours reproduce (target, value)
-    (element ignored, so an EDGE_ONLY_TEST checkmod and our op=edge compare alike), counted as a multiset per record,
-    after the normalisation above (group targets expanded, attribute/derived names unified) and with CommLink6's "1 per
-    level" read as our R. The whole-entry 'effects' family stays all-or-nothing."""
-    got = total = 0
+def _num(x):
+    return f"{float(x):g}"
+
+
+_ATTR_VAR = {k.casefold(): a for k, a in xlate.ABBR.items()} | {"drake_edge": "edg"}
+
+
+def _v(s):
+    """One spelling per value: $RATING/$LEVEL as r, r*n either way round, numbers without trailing zeros."""
+    s = re.sub(r"\$(rating|level|force)", "r", (s or "").casefold()).replace(" ", "").lstrip("+")
+    s = re.sub(r"\([a-z]+\)$|/(ground|air|water)$|(?<=/\d)r[du]$", "", s)  # (… and edg/2 rd: our rounding)
+    s = re.sub(
+        r"\$([a-z_]+)", lambda x: _ATTR_VAR.get(x.group(1), x.group(0)), s
+    )  # ($DRAKE_EDGE: our edg)  # (1000(belt): the ammo; 3/6/1/ground: the movement)
+    s = re.sub(r"^r-\$\$[a-z-_]+$", "r", s)  # ($RATING-$$PILOT: set to the rating)
+    m = re.fullmatch(r"\$\$[a-z_]+\*(\d*\.?\d+)\*r", s)  # ($$TOPSPEED*0.2*$RATING: our r*20%)
+    if m:
+        return f"r*{_num(float(m.group(1)) * 100)}%"
+    parts = [p.lstrip("+") or "0" for p in re.split("[,/]", s)]
+    if len(parts) > 1 and all(re.fullmatch(r"-?\d+(?:\.\d+)?", p) for p in parts):
+        # (an AR list or a handling on/off-road pair stating one number: 2,2,2,2,2 / 2,0,0,0,0 / +3/+3 / 0/-1)
+        nz = {_num(p) for p in parts} - {"0"}
+        if len(nz) == 1 and (len(set(parts)) == 1 or parts.count("0") == len(parts) - 1 or "/" in s):
+            return nz.pop()
+        if "," in s:
+            return ",".join(_num(p) for p in parts)
+    m = re.fullmatch(r"(-?)(?:r\*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\*r)", s)
+    if m:
+        n = _num(m.group(2) or m.group(3))
+        s = m.group(1) + ("r" if n == "1" else "r*" + n)
+    return _num(s) if re.fullmatch(r"-?\d+(?:\.\d+)?", s) else s
+
+
+def _per_level(v):
+    """A number printed once read as our per-level R times it (1 → r, -1 → -r, 5 → r*5)."""
+    if not re.fullmatch(r"-?\d+(?:\.\d+)?", v):
+        return set()
+    sign, n = ("-", v[1:]) if v.startswith("-") else ("", v)
+    return {sign + ("r" if n == "1" else "r*" + n)}
+
+
+# Commlink6 rule names and the effect we write for them (the gate's pairs, tools/cl6effects/evaluate.py)
+_RULE_ALIAS = {
+    "rule:unarmed-damage-is-physical": {"derived:unarmed-damage"},
+    "rule:pain-tolerance-ignore-box": {"derived:wound-threshold"},
+    "action:take-aim": {"action-max:take-aim"},  # (raises the maximum dice pool bonus of Take Aim)
+}
+
+
+def _cl6_keys(m):
+    """(targets, values, mode) one CommLink6 modification may be written as in ours; mode 'any' ignores the value,
+    'abs' compares its size (an Edge-cost malus +1 is our cut -1)."""
+    _, t, _ = canon_effect_key(_Elem(m))
+    targets = {_canon_target(t)}
+    kind, _, ref = t.partition(":")
+    atoms = xlate.cl6_atoms(m)[0]
+    if atoms and (m.get("set") == "MAX" or m["_tag"] == "checkmod" or kind == "item-attribute"):
+        targets |= atoms
+    if t == "item-attribute:max-sensor-rating":
+        targets.add("item:sensor")
+    natural = m.get("apply") in ("UNARMED", "ANIMAL", "DRAKE") or m.get("set") == "NATURAL"
+    if natural and t in ("item-attribute:attack-rating", "item-attribute:damage"):  # (a natural weapon: our unarmed)
+        targets.add("derived:unarmed-ar" if ref == "attack-rating" else "derived:unarmed-dv")
+    v = _v(m.get("value"))
+    what = m.get("what") or ""
+    values = {v}
+    targets.add({"attribute": "derived:", "creation-points": "resource:"}.get(kind, kind + ":") + ref)
+    if ref in ("essence", "essence-hole") and re.fullmatch(r"-?\d+", v):  # (Commlink6 counts Essence in thousandths)
+        values.add(_num(float(v) / 1000))
+    if t == "pricemod:lifestyle-necessities" and re.fullmatch(r"-?\d+", v):  # (points, or percent as a fraction)
+        targets |= {"lifestyle:necessities", "pricemod:lifestyle"}
+        values.add(_num(float(v) / 100))
+    if ref == "choice":
+        targets |= {"attr:choice", "test:attr-choice", "attr-max:*"} if kind == "attribute" else {"matrix:choice"}
+    if what == "EDGE_CHASE":
+        targets.add("pool:chase")
+    sense = re.sub("termographic", "thermographic", ref)  # (Commlink6 spells it both ways)
+    if kind == "quality" and sense.endswith("-vision") or t == "critter-power:enhanced-sense":
+        targets.add("sense:" + sense if kind == "quality" else "sense:*")
+    if t == "skill:astral" and m["_tag"] in ("itemmod", "allowmod"):
+        targets.add("sense:astral-perception")
+    targets |= _RULE_ALIAS.get(t, set()) | ({"derived:adept-drain-attribute"} if kind == "drain-adept" else set())
+    if kind == "critter-power":
+        targets.add("derived:" + ref)  # (hardened armor)
+    if m["_tag"] in ("itemmod", "allowmod") and not v:  # (a grant states no number)
+        return targets, values, "any"
+    if what in ("NOT_SPEND_EDGE", "NOT_EARN_EDGE"):  # (a rule, no number: ours op=no-edge / no-edge-gain)
+        return targets, set(), "op:" + xlate.CHECK_KIND[what]
+    mode = "abs" if what in ("EDGE_BOOST", "EDGE_COST_MALUS", "REDUCE_THRESHOLD") else "value"
+    return targets, values | set().union(*map(_per_level, values)), mode
+
+
+def _our_keys(x):
+    """(targets, values, op) of one of our effects."""
+    _, t, v, *our_op = x
+    targets = {_canon_target(t)} | {_canon_target(a) for a, _ in _expand([(t, v)])}
+    if t.startswith(("attr-max:", "skill-max:", "test:")):
+        targets |= xlate.our_atoms({"target": t})[0]
+    plus = re.fullmatch(r"str/2\+(\d+)", v) if t == "derived:unarmed-dv" else None  # (Strength/2 + the bonus)
+    values = {_v(v)} | ({plus.group(1)} if plus else set())
+    if t.startswith("skill-max:") and v.isdigit() and int(v) > 9:  # (Aptitude: our new maximum 10, Commlink6's +1)
+        values.add(str(int(v) - 9))
+    return targets, values, (our_op or [""])[0]
+
+
+def _take(cl, mine, used, slot=""):
+    """Use the first of our effects (and target, in `slot`) still free that states CommLink6's modification `cl`."""
+    targets, values, mode = cl
+    for j, (ts, vs, our_op) in enumerate(mine):
+        wild = tuple(p[:-1] for p in targets if p.endswith("*"))
+        for a in sorted(t for t in ts if t in targets or wild and t.startswith(wild)):
+            if (j, a, slot) in used:
+                continue
+            if (
+                mode == "any"
+                or mode == "op:" + our_op
+                or values & vs
+                or mode == "abs"
+                and {x.lstrip("-") for x in values} & {x.lstrip("-") for x in vs}
+            ):
+                used.add((j, a, slot))
+                return True
+    return False
+
+
+class _Elem(dict):
+    """An attribute dict read like an element (canon.effect_key takes one)."""
+
+    @property
+    def tag(self):
+        """The element name."""
+        return self["_tag"]
+
+
+def _sig(m):
+    return evaluate.X_sig(m)
+
+
+def _cl6_value(m):
+    return m.get("value") or ""
+
+
+@functools.cache
+def _bookwins():
+    """{(CommLink6 id, signature, CommLink6 value)} the book rules on: the gate's bookruled.json and the page-checked
+    rows of effects_bookwins.json (owner rule: the latest printing, the book, wins)."""
+    rows = evaluate._load("bookruled.json")  # pylint: disable=protected-access
+    with open(os.path.join(os.path.dirname(__file__), "effects_bookwins.json"), encoding="utf-8") as f:
+        rows += json.load(f)
+    return {(r["pair"][1], r["sig"], r["cl6"]) for r in rows}
+
+
+_ELEM_TAG = {"effect": "valmod", "test": "checkmod", "grant": "itemmod", "allow": "allowmod"}
+
+
+def _cl6_rows(c):
+    """CommLink6's modifications of a record as attribute dicts (`_tag` the element): from its element when the pair
+    carries it, else rebuilt from its 'effects' family (type and ref upper-cased as Commlink6 writes them)."""
+    if c.get("el") is not None:
+        return [
+            dict(m.attrib, _tag=m.tag)
+            for m in canon_mods(c["el"])
+            if m.tag in _ELEM_TAG.values() and m.get("type") not in ("HOOK", "GEAR")
+        ]
+    out = []
+    for e, t, v in c["families"].get("effects", ()):
+        kind, _, ref = t.partition(":")
+        big = kind in ("attribute", "item-attribute", "resistance")
+        out.append(
+            {
+                "_tag": _ELEM_TAG[e],
+                "type": kind.upper().replace("-", "_"),
+                "ref": ref.upper().replace("-", "_") if big else ref,
+                "value": v,
+            }
+        )
+    return out
+
+
+def per_effect(pairs, misses=False):
+    """Informational: of the effects CommLink6 states on matched records, how many of ours reproduce (target, value),
+    counted one for one per record. Both sides are read into the release gate's vocabulary (tools/cl6effects/xlate:
+    maximums, Edge flags, group targets expanded to skills, derived names) plus the notation aliases below; a number
+    printed per level reads as our R times it; a modification the book rules on (bookruled.json, effects_bookwins.json)
+    counts as reproduced. The whole-entry 'effects' family stays all-or-nothing."""
+    got = total = ruled = 0
+    rows = []  # (misses=True: the modifications not reproduced, for working through them)
     for c, o in pairs:
-        cl = Counter((_canon_target(t), v) for _, t, v in c["families"].get("effects", ()))
         own = o["families"].get("effects_own", o["families"].get("effects", ()))
-        mine = Counter((_canon_target(t), v) for t, v in _expand([(t, v) for _, t, v in own]))
-        total += sum(cl.values())
-        hit = cl & mine
-        got += sum(hit.values())
-        spare = mine - hit
-        for (t, v), n in (cl - hit).items():  # "1" per level (or "-1") printed, ours R
-            r = {"1": "r", "-1": "-r"}.get(v)
-            got += min(n, spare[(t, r)]) if r else 0
-    return {"reproduced": got, "of": total, "pct": _pct(got, total)}
+        mine = [_our_keys(x) for x in own]
+        used = set()
+        for m in _cl6_rows(c):
+            total += 1
+            # (VR cold and hot initiative are one effect of ours: the hot one may take it again)
+            hit = _take(_cl6_keys(m), mine, used, "hot" if "VR_HOT" in m.get("ref", "") else "")
+            if not hit and (c.get("id"), _sig(m), _cl6_value(m)) in _bookwins():
+                ruled += 1
+                hit = True
+            got += bool(hit)
+            if not hit:
+                rows.append(
+                    {"id": c.get("id"), "name": c.get("name"), "sig": _sig(m), "cl6": _cl6_value(m)}
+                    | {"ours": "; ".join(f"{x[1]}={x[2]}" for x in own)[:300]}
+                )
+    if misses:
+        return rows
+    return {"reproduced": got, "of": total, "pct": _pct(got, total), "bookruled": ruled}
