@@ -231,12 +231,18 @@ export function hostBonus(x: Sr6Purchase, data: Sr6Data, on = false): Partial<Re
         out[k] = (out[k] ?? 0) + bonusValue(v, ratingOf(a, e))
     }
   }
-  // a weapon's standard upgrades (its <part>s the player hasn't removed) act as fitted accessories
-  if (x.kind === 'weapons')
-    for (const p of partsOf(x, data))
-      if (!p.removed && p.entry) {
-        const bs = entryBonuses(data, p.entry)
-        for (const t of new Set(bs.map(y => y.target))) if (t !== 'skill') out[t] = (out[t] ?? 0) + bonusOf(bs, t, Number(p.rating) || 1, undefined, on)
-      }
+  // a line's factory parts (its <part>s): the printed stats already hold their always-on effects (owner ruling on PR #207,
+  // CRB p. 261), so a fitted one adds only its switched ones (in the bracketed total) and a removed one takes its
+  // always-on ones back off
+  for (const p of partsOf(x, data))
+    if (p.entry) {
+      const bs = entryBonuses(data, p.entry),
+        r = Number(p.rating) || 1
+      for (const t of new Set(bs.map(y => y.target)))
+        if (t !== 'skill') {
+          const v = p.removed ? -bonusOf(bs, t, r) : bonusOf(bs, t, r, undefined, on) - bonusOf(bs, t, r)
+          if (v) out[t] = (out[t] ?? 0) + v
+        }
+    }
   return out
 }

@@ -657,7 +657,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1, x.sit),
     accessories: [
       ...x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
-      // a weapon's standard upgrades not removed: fitted accessories already in its price (owner ruling 2026-10-30)
+      // a weapon's standard upgrades not removed: fitted accessories already in its price and printed stats (owner rulings 2026-10-30)
       ...(x.kind === 'weapons'
         ? partsOf(x, data).flatMap(p => {
             if (p.removed || !p.entry) return []
@@ -669,7 +669,8 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
               false,
               x,
             )
-            return [{ ...a, values: { ...a.values, cost: 0 } }]
+            // (the printed stats already hold its always-on effects, owner ruling on PR #207: only its switched ones go)
+            return [{ ...a, values: { ...a.values, cost: 0 }, bonuses: a.bonuses?.filter(b => b.switch || b.when) }]
           })
         : []),
     ],
