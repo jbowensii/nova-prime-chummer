@@ -34,7 +34,7 @@ export function hardpointCheck(h: Sr6Hardpoint, body: number, catalogSize?: numb
   if (h.popOut) notes.push('Pop-out: deploying the weapon is a Major Action.')
   if (h.dedicated) notes.push('Dedicated primary weapon: permanent; changing it takes a full factory redesign.')
   // (twin/quad are mount options of the one hardpoint, charged once per hardpoint on top of its larger Grade, p. 153; the book
-  //  prices a dedicated primary weapon nowhere, so it is the hardpoint's 5 × Grade, as Commlink6 has no such option either)
+  //  prices a dedicated primary weapon nowhere, so it is the hardpoint's 5 × Grade, as Commlink6 has no such option either; owner ruling 2026-10-30: keep 5 × Grade)
   const dp = 5 * h.grade + (h.popOut ? 5 * h.grade : 0) + (h.link === 'twin' ? 3 : h.link === 'quad' ? 5 : 0)
   return { size, sizeTyped: h.size !== undefined, need, minBody, dp, ok: reasons.length === 0, reasons, notes }
 }
