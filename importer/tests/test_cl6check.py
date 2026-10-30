@@ -621,6 +621,36 @@ class PerEffectTest(unittest.TestCase):
         o = {"families": {"effects": (("effect", "attribute:strength", "1"),)}}
         self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0})
 
+    def pe(self, cl6, mine):
+        """per_effect's reproduced count for CL6 effects `cl6` against ours `mine` (target, value pairs)."""
+        c = {"families": {"effects": tuple(("effect", t, v) for t, v in cl6)}}
+        o = {"families": {"effects_own": tuple(("effect", t, v) for t, v in mine)}}
+        return modifiers.per_effect([(c, o)])["reproduced"]
+
+    def test_a_test_group_expands_into_its_skills(self):
+        self.assertEqual(self.pe([("skill:con", "1"), ("skill:influence", "1")], [("test:social", "1")]), 2)
+
+    def test_edge_only_test_checkmod_matches_our_edge_effect(self):
+        c = {"families": {"effects": (("test", "skill:stealth", "1"),)}}  # checkmod ... what=EDGE_ONLY_TEST
+        o = {"families": {"effects_own": (("effect", "skill:stealth", "1"),)}}  # <effect op="edge" ...>
+        self.assertEqual(modifiers.per_effect([(c, o)])["reproduced"], 1)
+
+    def test_one_per_level_reads_as_our_r(self):
+        self.assertEqual(
+            self.pe([("skill:con", "1"), ("skill:con", "-1")], [("skill:con", "r"), ("skill:con", "-r")]), 2
+        )
+        self.assertEqual(self.pe([("skill:con", "2")], [("skill:con", "r")]), 0)
+
+    def test_cl6_attribute_and_derived_names_read_as_our_ids(self):
+        cl6 = [
+            ("attribute:reaction", "1"),
+            ("attribute:initiative-dice-physical", "1"),
+            ("item-attribute:damage", "2p"),
+        ]
+        mine = [("attr:rea", "1"), ("derived:initiative-dice", "1"), ("item:dv", "2p")]
+        self.assertEqual(self.pe(cl6, mine), 3)
+        self.assertEqual(self.pe([("skillspecialization:close-combat-unarmed", "1")], [("skill:close-combat", "1")]), 1)
+
 
 class OptionalPackageTest(unittest.TestCase):
     def test_optional_and_relocated_records_count_as_matches_in_the_analysis_only(self):

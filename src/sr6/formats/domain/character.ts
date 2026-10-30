@@ -79,7 +79,13 @@ export interface Bonus {
   /** a `set` effect (Hardening's unarmed Attack Rating 6, a centaur body's 10/20/4 movement): a replacement value, never added
    *  (augmentBonus leaves it out; setBonus reads it) */
   set?: true
+  /** the times a situational effect (a prose `when`) is switched on, set by the engine from the line's `sit`, never stored:
+   *  its value is counted that many times (a `per barrel` one is counted as many times as the player says) */
+  count?: number
 }
+/** The player's situational switches on a line (owner, 2026-10-29): effect index (in the line's bonuses) -> times on. 1 is
+ *  an on switch, a bigger number the count of a `per ...` effect; absent or 0 is off (the bracketed total only). */
+export type Sr6Situational = Record<string, number>
 /** the switch both games' effects share (src/core/shared/effects.ts) */
 export type BonusSwitch = EffectSwitch
 export const BONUS_SWITCHES: BonusSwitch[] = EFFECT_SWITCHES
@@ -160,6 +166,8 @@ export interface Sr6Purchase {
   /** a vehicle or drone bought at a GM-adjusted nuyen price instead of the catalog/design price (career Ledger); Review warns until a GM approves it */
   gmPrice?: number
   avail?: number
+  /** a ready-made vehicle/drone's Design Points as set by a GM (otherwise estimated from its price: purchases.ts estimatedDp) */
+  dp?: number
   /** a custom (id-less) mod built into a design: its own mod slots */
   slots?: number
   essence?: number
@@ -168,6 +176,7 @@ export interface Sr6Purchase {
   grade?: string
   worn?: true
   bonuses?: Bonus[]
+  sit?: Sr6Situational
   note?: string
   accessories: Sr6Purchase[]
   snapshot?: Sr6Entry
@@ -222,6 +231,8 @@ export interface Sr6Design {
   /** a based design: the starting vehicle's catalog <part>s (by id) taken off it (plan Stage 4); the bought design lacks them */
   removedParts?: string[]
   chassis?: string
+  /** a custom (GM/house) chassis built in place of a catalog one: the chassis table's own columns (not book data) */
+  customChassis?: { name: string; dp: number; body: number; armor: number; handling: number; seats: number; sizeClass: number }
   powertrain?: string
   console?: string
   /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */
@@ -257,6 +268,7 @@ export interface Sr6Quality {
   id: string
   level: number
   free?: true
+  sit?: Sr6Situational
   note?: string
   name?: string
   karma?: number
@@ -270,6 +282,7 @@ export interface Sr6Pick {
   id: string
   level?: number
   bonuses?: Bonus[]
+  sit?: Sr6Situational
   name?: string
   note?: string
 }
@@ -407,8 +420,9 @@ export type Sr6Advance =
   | { op: 'expertise'; target: string; name: string }
   | { op: 'knowledge'; line: Sr6Knowledge }
   /** target: the uid of the lower level of the same family the line replaces (levels.ts), priced at the difference;
-   *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it */
-  | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind }
+   *  magic: the kind an Infected type leaves the runner (infected.ts infectedKind), set when it changes it;
+   *  single: the quality is not repeatable, so a held line is the same whatever its note (older entries: notes decide) */
+  | { op: 'quality'; line: Sr6Quality; target?: string; magic?: MagicKind; single?: true }
   /** part: Stolen Gear's converted karma bought off by this spend, a part of what is left (the line stays); none: all */
   | { op: 'buyoff'; target: string; line?: Sr6Quality; part?: number }
   /** target: as a quality's, the lower level replaced */

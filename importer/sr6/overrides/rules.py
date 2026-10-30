@@ -32,6 +32,7 @@ KID_TAGS = {
     "power",
 }  # (an owner row's: an Infected type's gained power, corrected)
 VALUE_ATTRS = {
+    "multi",
     "cost",
     "avail",
     "karma",
@@ -64,6 +65,7 @@ VALUE_ATTRS = {
     "spec",
     "social",
     "modonly",
+    "usage",  # (Commlink6's enhancement/carried, tools/cl6check/slotmap.py)
     "size",
     "ammoClass",
     "accel",

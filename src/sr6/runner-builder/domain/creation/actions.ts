@@ -1,5 +1,5 @@
 import { capacityRemaining, capacityUsed, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
-import { mountSlots } from '../../../catalog/domain/structure'
+import { fit } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
 import { activeRules } from './rule-markers'
 // Build actions, the editor's mutators (a port of SR6 Forge's ChargenEngine setters and spend). Each one changes the
@@ -111,6 +111,8 @@ export type Op =
   | { op: 'diy'; uid: string; diy: boolean }
   /** set (value) or clear (omitted) a vehicle/drone line's GM-adjusted price */
   | { op: 'gmprice'; uid: string; value?: number }
+  /** set (value) or clear (omitted) a vehicle/drone line's GM-set Design Points (else estimated from its price) */
+  | { op: 'vehicledp'; uid: string; value?: number }
   /** a purchased line's choice note: the attribute/skill/quality/matrix an item naming a choice is for ('' clears it) */
   | { op: 'purchaseNote'; uid: string; note: string }
   /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
@@ -143,6 +145,8 @@ export type Op =
   | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
   /** the bonuses on a purchase, accessory or pick */
   | { op: 'bonus'; uid: string; bonuses: Bonus[] }
+  /** switch a situational effect of a purchase, pick or quality on (times 1, or a count for a `per ...` one) or off (0); key: the effect's sitKey */
+  | { op: 'situational'; uid: string; key: string; times: number }
   /** add a contact, or change one (uid) */
   | { op: 'contact'; uid?: string; name?: string; archetype?: string; connection?: number; loyalty?: number; types?: ContactType[] }
   | { op: 'contact'; remove: string }
@@ -412,7 +416,16 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // a family of levels (levels.ts): the level's own entry, its line at level 1; a level the family lacks is refused
       const fam = data.family('qualities', op.id)
       if (fam) {
-        const cur = b.qualities.find(x => !x.free && data.family('qualities', x.id) === fam)
+        // (a repeatable one, Matrix Attribute Advancement: one line per choice, each with its own level; the line is named by uid)
+        const multi = !!data.qualities[op.id]?.multi
+        const cur = multi
+          ? op.uid
+            ? b.qualities.find(x => x.uid === op.uid)
+            : undefined
+          : b.qualities.find(x => !x.free && data.family('qualities', x.id) === fam)
+        if (multi && !op.uid && sameChoice(b, data, op.id, op.note)) return no('duplicate-choice')
+        if (multi && op.uid && !cur) return no('not-taken')
+        if (multi && cur && op.note !== undefined && sameChoice(b, data, op.id, op.note, cur.uid)) return no('duplicate-choice')
         if (op.level !== undefined && op.level < 1) return no('below-one')
         const e = data.atLevel('qualities', op.id, op.level ?? data.levelOf(data.entry('qualities', op.id)) ?? Math.min(...fam.levels.keys()))
         if (!e) return no('max-level')
@@ -431,7 +444,15 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
           cur.level = 1
           cur.name = v.name
           if (op.karma !== undefined) cur.karma = op.karma
-        } else b.qualities.push({ uid: newId(), id: e.id, level: 1, name: v.name, ...(op.karma !== undefined ? { karma: op.karma } : {}) })
+        } else
+          b.qualities.push({
+            uid: newId(),
+            id: e.id,
+            level: 1,
+            name: v.name,
+            ...(op.karma !== undefined ? { karma: op.karma } : {}),
+            ...(multi && op.note?.trim() ? { note: op.note.trim().slice(0, 200) } : {}),
+          })
         return OK
       }
       const v = data.qualities[op.id]
@@ -443,12 +464,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       // owner's decision 2: Aptitude and Incompetent never on the same skill (exact opposites)
       if (op.note !== undefined && opposite(b, data, cr, op.id, op.note, taken?.uid)) return no('aptitude-incompetent')
       if (op.note !== undefined && taken) {
+        if (sameChoice(b, data, op.id, op.note, taken.uid)) return no('duplicate-choice')
         const t = op.note.trim().slice(0, 200)
         if (t) taken.note = t
         else delete taken.note
       }
       // (a quality naming its choice is taken again for another: CRB Hong Kong p. 71, "once per attribute")
-      const again = !op.uid && !!qualityChoice(v.name) && op.level === undefined && op.karma === undefined && op.note === undefined
+      const again = !op.uid && (!!v.multi || !!qualityChoice(v.name)) && op.level === undefined && op.karma === undefined && op.note === undefined
+      if (taken && again && sameChoice(b, data, op.id, undefined)) return no('duplicate-choice')
       if (taken && !again && op.level === undefined && op.karma === undefined) return op.note !== undefined ? OK : no('already-taken')
       const level = op.level ?? taken?.level ?? 1
       if (level !== 1 && !v.perLevel) return no('no-levels')
@@ -651,6 +674,14 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         if ('reason' in line) return line
         host.accessories.push(line)
       }
+      return OK
+    }
+    case 'vehicledp': {
+      const x = b.purchases.find(p => p.uid === op.uid && p.kind === 'vehicles')
+      if (!x) return no('unknown-line')
+      if (op.value === undefined) delete x.dp
+      else if (Number.isFinite(op.value) && op.value >= 0) x.dp = op.value
+      else return no('bad-dp')
       return OK
     }
     case 'gmprice': {
@@ -888,6 +919,18 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.bonuses.some(y => y.target === 'skill' && !y.skill)) return no('no-skill') // (a skill bonus names its skill)
       if (op.bonuses.length) x.bonuses = op.bonuses
       else delete x.bonuses
+      delete (x as { sit?: unknown }).sit // (the switches belonged to the old list)
+      return OK
+    }
+    case 'situational': {
+      const x: { sit?: Record<string, number> } | undefined =
+        allLines(b).find(p => p.uid === op.uid) ?? b.picks.find(p => p.uid === op.uid) ?? b.qualities.find(q => q.uid === op.uid)
+      if (!x) return no('unknown-line')
+      const n = Math.min(99, Math.max(0, Math.trunc(op.times) || 0))
+      const sit: Record<string, number> = { ...x.sit, [op.key]: n }
+      if (!n) delete sit[op.key]
+      if (Object.keys(sit).length) x.sit = sit
+      else delete x.sit
       return OK
     }
     case 'contact': {
@@ -1183,6 +1226,16 @@ export const adeptBars = (b: Sr6Build, data: Sr6Data, id: string) =>
 
 /** Whether quality `id` with note `note` would name the skill an opposite quality names (Aptitude against Incompetent,
  *  aptitudeQuality and incompetentQuality; owner's decision 2, 2026-10-11). self: the line being changed. */
+/** Whether the runner already holds quality `id` (or a level of its family) for the same choice (`note`, none: an unnamed
+ *  copy), another line than `self`: a repeatable quality is taken again only for a different choice. */
+export function sameChoice(b: Sr6Build, data: Sr6Data, id: string, note: string | undefined, self?: string): boolean {
+  const fam = data.family('qualities', id),
+    key = (note ?? '').trim().toLowerCase()
+  return b.qualities.some(
+    x => !x.free && x.uid !== self && (x.id === id || (!!fam && data.family('qualities', x.id) === fam)) && (x.note ?? '').trim().toLowerCase() === key,
+  )
+}
+
 export function opposite(b: Sr6Build, data: Sr6Data, cr: CreationRules, id: string, note: string, self?: string): boolean {
   const apt = str(cr, 'aptitudeQuality'),
     inc = str(cr, 'incompetentQuality'),
@@ -1248,8 +1301,9 @@ export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6
   // Only a slot-only host (no Capacity: weapon mounts, vehicle hardpoints) is limited by its mount slots themselves. A
   // vehicle is governed by modsOf below (its declared-or-Body mod-slot budget), not the generic mount-slot placement.
   if (remaining === null && host.kind !== 'vehicles') {
-    const slots = mountSlots(he, [...items, { ...line, entry: e }], ratingOf(host, he), host.addedSlots)
-    if (slots.unplaced.length > mountSlots(he, items, ratingOf(host, he), host.addedSlots).unplaced.length) return 'No compatible mount slot remaining.'
+    // (the one fit engine, as Review's catalog.accessoryHost and the picker)
+    const f = e ? fit(he, e, items, ratingOf(host, he), host.addedSlots) : undefined
+    if (f?.ok === false) return f.reason === 'size' ? 'Too big for this mount.' : 'No compatible mount slot remaining.'
   }
   if (host.kind !== 'vehicles') return
   if (line.kind === 'weapons') {

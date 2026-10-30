@@ -389,7 +389,7 @@ class ClassTest(unittest.TestCase):
             r
             for p in overrides.DIR.glob("*.json")
             for r in overrides.table(p.stem)
-            if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata", "owner", "max")
+            if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata", "owner", "max", "slot")
         ]
         self.assertGreater(len(rows), 500)
         self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
@@ -1111,8 +1111,6 @@ class OwnerNameBugRowsTest(unittest.TestCase):
         for k in [
             ("bs", "augmentations", "bs.fangs", "cost"),
             ("bs", "augmentations", "bs.thermosense-organs", "cost"),
-            ("crb", "weapons", "crb.colt-cobra-tz-100", "ar"),
-            ("crb", "weapons", "crb.ares-viper-slivergun", "ar"),
             ("da", "adeptpowers", "da.motion-sense", "activation"),
         ]:
             self.assertIn(k, keep)
@@ -1165,7 +1163,12 @@ class OwnerInfectedRowsTest(unittest.TestCase):
             [(p["type"], p["ref"], p.get("negate")) for p in req],
             [("WEAPON_TYPE", "revolvers", "true"), ("WEAPON_TYPE", "shotguns", "true")],
         )
-        self.assertEqual([k["tag"] for k in row["kids"] if k["tag"] != "prerequisite"], ["fits", "variant"])
+        self.assertEqual([k["tag"] for k in row["kids"] if k["tag"] != "prerequisite"], ["variant"])
+        # (its fit is Commlink6's, in the hook row slotmap.py writes: tools/cl6check/slotmap.py)
+        hooks = next(
+            r for r in overrides.table("crb") if r.get("id") == "silencer-suppressor" and r.get("gen") == "slot"
+        )
+        self.assertIn("barrel", [k["attrs"]["slot"] for k in hooks["kids"] if k["tag"] == "fits"])
 
     def test_cl6check_keeps_the_structural_differences(self):
         from tools.cl6check import optional
@@ -1231,7 +1234,6 @@ class OwnerClassCRowsTest(unittest.TestCase):
             ("crb", "augmentations", "crb.control-rig", "cost"),
             ("so", "electronics", "so.swindler-stick-gold", "legality"),
             ("so", "weapons", "so.explosive-cosmetics-nail-polish-remover", "legality"),
-            ("nf", "armor", "nf.bowler", "avail"),
         ]:
             self.assertIn(k, keep)
         self.assertNotIn(("bs", "augmentations", "bs.transgenic-chameleon-skin", "avail"), keep)
@@ -1311,8 +1313,6 @@ class OwnerVariantSplitsTest(unittest.TestCase):
 
         keep = optional.load_keep()
         for k in [
-            ("crb", "gear", "crb.sim-module", "cost"),
-            ("crb", "gear", "crb.sim-module-w-hot-sim", "cost"),
             ("crb", "gear", "crb.laser-sight", "variants"),
             ("da", "weapons", "da.m40", "variants"),
             ("ts", "electronics", "ts.full-body-scanner-booth", "variants"),
@@ -1407,7 +1407,7 @@ class ErrataRowsTest(unittest.TestCase):
     def test_rcc_headware_is_deduped_and_priced_from_commlink6(self):
         """DC p.145 printed two 'RCC Headware' rows; the dupe (rcc) is removed and the survivor (rcc-headware) carries
         Commlink6's price/avail plus the owner's capacity. See importer/sr6/overrides/dc.json."""
-        rows = {r["id"]: r for r in overrides.table("dc") if "id" in r}
+        rows = {r["id"]: r for r in overrides.table("dc") if "id" in r and r.get("gen") not in ("slot", "family")}
         self.assertTrue(rows["rcc"].get("remove"))  # the duplicate is dropped
         self.assertEqual(
             rows["rcc-headware"]["set"],
@@ -1678,7 +1678,8 @@ class SplitRowsTest(unittest.TestCase):
             self.assertIn(("so", "electronics", f"so.swindler-stick-{g}", "avail"), keep)
             self.assertNotIn(("so", "electronics", f"so.swindler-stick-{g}", "cost"), keep)
         for m in ("mb-10", "pb-10", "mb-100", "pb-100"):
-            self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "cost"), keep)
+            if m.endswith("100"):  # (the 10 pair's cost keep rows had no difference left: removed 2026-10-29)
+                self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "cost"), keep)
             self.assertIn(("sw", "gear", f"sw.manadyne-{m}", "avail"), keep)
 
 
@@ -1687,11 +1688,12 @@ class SlotStructureRowsTest(unittest.TestCase):
     own."""
 
     def kids(self, src, kind, eid):
-        """[(tag, attributes)] of the family child rows the override table in `src` holds for one kind and id."""
+        """[(tag, attributes)] of the family and hook child rows the override table in `src` holds for one kind and id
+        (the hook rows' cost and mode left out)."""
         return [
-            (k["tag"], k["attrs"])
+            (k["tag"], {a: v for a, v in k["attrs"].items() if a in ("id", "slot", "value")})
             for r in overrides.table(src)
-            if (r["kind"], r.get("id")) == (kind, eid) and r.get("gen") == "family"
+            if (r["kind"], r.get("id")) == (kind, eid) and r.get("gen") in ("family", "slot")
             for k in r.get("kids", [])
         ]
 

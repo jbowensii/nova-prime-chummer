@@ -205,7 +205,13 @@
     <!-- bought only as an add-on to another item (Commlink6's modonly), a weapon's size class and the ammunition class it
          draws on -->
     <xs:attribute name="modonly" type="xs:boolean"/>
+    <!-- usage: how Commlink6 uses the item where it gives it no hook (tools/cl6check/slotmap.py): `enhancement` (an item
+         enhancement, applied to a host its requirements accept) or `carried` (stand-alone, never fitted) -->
+    <xs:attribute name="usage" type="xs:string"/>
     <xs:attribute name="size" type="xs:string"/>
+    <!-- sizeFrom: how an unsized weapon's size was set: `class` (Commlink6's own subtype rule) or `category` (a guess
+         from the printed category, needs owner review); absent: the data gave it -->
+    <xs:attribute name="sizeFrom" type="xs:string"/>
     <xs:attribute name="ammoClass" type="xs:string"/>
   </xs:attributeGroup>
   <!-- Commlink6's own classification of the entry, verbatim: its TYPE/SUBTYPE keys (`ARMOR/ARMOR_BODY`, `SOFTWARE/AUTOSOFT`),
@@ -246,9 +252,24 @@
   <xs:complexType name="Slot">
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="value" type="xs:string"/>
+    <!-- fit plan Stage 1: capacity (fitted items' costs sum up to value; 99 or more = no limit) or one (one item per
+         slot); no unit = an old catalog, read as one item per unit of value. maxSize: the biggest cost one item may
+         have (a small drone's hardpoint, 0.5). remove="true": Commlink6 takes this hook away (the importer drops both) -->
+    <xs:attribute name="unit"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="capacity"/><xs:enumeration value="one"/></xs:restriction></xs:simpleType></xs:attribute>
+    <xs:attribute name="maxSize" type="xs:string"/>
+    <xs:attribute name="remove" type="xs:boolean"/>
+    <!-- rule: S, V or F when the importer made or computed the slot the way Commlink6's code does (standard hooks,
+         vehicle capacities, fashion) -->
+    <xs:attribute name="rule" type="xs:string"/>
   </xs:complexType>
   <xs:complexType name="Fits">
     <xs:attribute name="slot" type="xs:string" use="required"/>
+    <!-- cost: what the item takes of the slot's capacity (Commlink6's usage value); mode: embedded, implanted, carried or
+         virtual; rule: W/I when the importer synthesized it the way Commlink6's code does (vehicle mounts, implants) -->
+    <xs:attribute name="cost" type="xs:string"/>
+    <xs:attribute name="mode" type="xs:string"/>
+    <xs:attribute name="rule" type="xs:string"/>
   </xs:complexType>
   <xs:complexType name="Variant">
     <xs:attribute name="name" type="xs:string" use="required"/>
@@ -444,7 +465,9 @@
     <xs:attribute name="switch"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="wireless"/><xs:enumeration value="activated"/><xs:enumeration value="sustained"/>
       <xs:enumeration value="conditional"/></xs:restriction></xs:simpleType></xs:attribute>
-    <!-- the condition's words (`while in the Matrix`) or a test the book names by activity (`escaping bonds`) -->
+    <!-- the condition's words (`while in the Matrix`) or a test the book names by activity (`escaping bonds`); or a
+         machine condition the app decides from the runner (`attr:str>=6`, `attr:mag<=3`, a metatype's name, `adept`,
+         `magician`, `mystic adept`, `technomancer`: docs/sr6-data-format/kinds.md "Machine conditions") -->
     <xs:attribute name="when" type="xs:string"/>
     <!-- the specialization a skill effect is limited to (`Climbing`): added to that specialization's pool when the
          runner has it, else to the skill's bracketed total (owner decision 2026-10-10) -->
@@ -557,6 +580,8 @@
       <xs:attribute name="karmaSteps" type="xs:string"/>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+      <!-- multi: its text lets it be taken more than once (each copy its own choice) -->
+      <xs:attribute name="multi" type="sr6:True"/>
       <!-- the list it is printed in (`Returned Soldier power`); granted: never bought on its own, only granted (by a
            quality's choice: Karma 0) -->
       <xs:attribute name="category" type="xs:string"/>

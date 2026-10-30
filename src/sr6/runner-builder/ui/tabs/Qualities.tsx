@@ -21,7 +21,7 @@ import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domai
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../domain/creation/infected'
 import { infectedOff } from '../../domain/assets/critterware'
 import { n, useSr6Editor } from '../editor'
-import { House } from '../Picker'
+import { House, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 
 export function QualitiesTab() {
@@ -76,6 +76,7 @@ export function QualitiesTab() {
                       <b>{v?.name ?? q.name ?? q.id}</b>
                     </Sr6Ref>
                     {!v && <span className="err"> (no longer in the catalog)</span>}
+                    <Situational line={q} name={v?.name ?? q.name ?? q.id} />
                     {q.free && (
                       <>
                         {' '}
@@ -232,7 +233,7 @@ export function QualitiesTab() {
               .map(q => ({
                 id: q.id,
                 name: q.name,
-                disabled: !qualityChoice(q.name) && b.qualities.some(x => x.id === q.id),
+                disabled: !q.multi && !qualityChoice(q.name) && b.qualities.some(x => x.id === q.id),
                 ...cardOf(c, 'qualities', q.id),
                 text:
                   data.levelOf(data.entry('qualities', q.id)) !== undefined

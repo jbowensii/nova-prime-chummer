@@ -11,7 +11,43 @@ import { counts, type EffectState } from '../../../core/shared/effects'
  *  (the shared rule, src/core/shared/effects.ts counts); the bracketed total (`on`) adds the switchable ones and, in SR6, the
  *  ones holding on some tests only (`when`: `Con 6 (9)`, replacing "shown beside, not added"). Never a low-confidence
  *  one, nor a spell's effect on its target (it counts on the character it is cast on). */
+/** Whether a situation in words scales (`per additional barrel`, `for each cyberlimb`): the player gives a count, not a switch. */
+export const perCount = (when?: string) => /\b(per|each)\b/i.test(when ?? '')
+
+/** The key of a line's situational switch (`sit`): the effect itself (target, skill, condition), not its place in the list,
+ *  so editing the list can't move a switch onto another effect. Old saves keyed by place are read by sitOf's fallback. */
+export const sitKey = (b: { target: string; skill?: string; when?: string }) => `${b.target}|${b.skill ?? ''}|${b.when ?? ''}`
+/** How many times the player switched effect `b` (at place `i`) on: its key, else (a save from before keys) its place. */
+export const sitOf = (sit: Record<string, number> | undefined, b: { target: string; skill?: string; when?: string }, i: number) =>
+  sit?.[sitKey(b)] ?? sit?.[i] ?? 0
+
 export const sr6Counts = (e: EffectState, on = false) => counts(e, on)
+
+/** What a machine condition is decided from: the runner's attribute ratings, metatype (its name and its parent's), every
+ *  metatype name the catalog knows, and its magic kind's flags. */
+export interface WhenFacts {
+  attr: (k: Sr6Attr) => number
+  metatype: string[]
+  metatypes: string[]
+  kind: { spells: boolean; powers: boolean; resonance: boolean }
+}
+const ROLES: Record<string, (k: WhenFacts['kind']) => boolean> = {
+  adept: k => k.powers,
+  magician: k => k.spells,
+  'mystic adept': k => k.spells && k.powers,
+  technomancer: k => k.resonance,
+}
+/** Whether a machine condition (docs/sr6-data-format/kinds.md "Machine conditions") holds for the runner: `attr:str>=6`
+ *  (`>=` or `<=`), a metatype's name (`Troll`: the runner's metatype or its parent), `adept`, `magician`, `mystic adept`,
+ *  `technomancer`. undefined: prose (`in animal form`), a situation only the table knows: the bracketed total keeps it. */
+export function whenHolds(when: string | undefined, f: WhenFacts): boolean | undefined {
+  if (!when) return undefined
+  const a = /^attr:([a-z]{3})(>=|<=)(\d+)$/.exec(when)
+  if (a) return (SR6_ATTRS as string[]).includes(a[1]) ? (a[2] === '>=' ? f.attr(a[1] as Sr6Attr) >= +a[3] : f.attr(a[1] as Sr6Attr) <= +a[3]) : undefined
+  const n = normName(when)
+  if (ROLES[n]) return ROLES[n](f.kind)
+  return f.metatypes.some(m => normName(m) === n) ? f.metatype.some(m => m && normName(m) === n) : undefined
+}
 
 /** The book's lists of which skills a test type covers (a vocabulary, as importer/sr6/effects.py TEST_TYPES): Social
  *  tests influence or con someone (CRB p. 97), Matrix tests are Matrix actions (CRB p. 179), magical tests the magic
@@ -54,7 +90,10 @@ export function effectValue(v: string | undefined): { value: number; perRating?:
 /** What a bonus gives at a rating or level (the one place it is counted: budgets, the export): its value times the
  *  rating when per rating, less its `minus` (`R-1`: nothing at rating 1), or its table's value for that rating
  *  (`byRating`: the last one beyond the table). */
-export function bonusValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating'>, rating: number): number {
+export function bonusValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating' | 'count'>, rating: number): number {
+  return (b.count ?? 1) * stepValue(b, rating)
+}
+function stepValue(b: Pick<Bonus, 'value' | 'perRating' | 'minus' | 'byRating'>, rating: number): number {
   if (b.byRating?.length) return b.byRating[Math.min(Math.max(1, Math.round(rating)), b.byRating.length) - 1]
   if (!b.perRating) return b.value
   return b.minus ? Math.max(0, rating * b.value - b.minus) : rating * b.value // (`R*2-2`: twice the rating, less 2: none at rating 1)

@@ -6,7 +6,7 @@
 // bought here too (after finalising: on the Ledger).
 import { useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
-import { cargoFactor, diyAllowed, entryOf, isDrone, modKind, priced, seatsOf } from '../../domain/creation/budgets'
+import { cargoFactor, estimatedDp, diyAllowed, entryOf, isDrone, modKind, priced, seatsOf } from '../../domain/creation/budgets'
 import { boughtDesign, designOf } from '../../domain/assets/design'
 import { entryLabel } from '../../../catalog/domain/categories'
 import { flag } from '../../../table-setup/domain/creation'
@@ -50,13 +50,21 @@ function Owned({ drones }: { drones: boolean }) {
         detail={x => {
           const e = entryOf(x, data),
             a = e?.attrs ?? {},
-            cf = cargo ? cargoFactor(x, e) : null
+            cf = cargoFactor(x, e)
           return (
             <>
               {STATS.filter(([k]) => a[k])
                 .map(([k, l]) => `${l} ${a[k]}`)
                 .join(' · ')}
               {cf && (
+                <span>
+                  {' · '}Cargo Factor {cf.cargo}
+                </span>
+              )}
+              <span title="Estimated from price (price ÷ 1,000); corporate prices vary ±25%. A GM can set it in Modify." className="muted">
+                {' · '}~DP {estimatedDp(x, data, cr)}
+              </span>
+              {cf && cargo && (
                 <span className="row">
                   Seats removed{' '}
                   <Stepper
@@ -177,6 +185,22 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
               v = Number(t),
               base = priced({ ...x, gmPrice: undefined }, data, cr).cost
             act({ op: 'gmprice', uid: x.uid, ...(t && Number.isFinite(v) && v >= 0 && v !== base ? { value: v } : {}) })
+          }}
+        />
+      </label>
+      <label className="row">
+        Design Points (GM sets; estimated from price otherwise)
+        <input
+          key={x.dp ?? 'none'}
+          aria-label="Design Points"
+          type="number"
+          min={0}
+          defaultValue={x.dp}
+          placeholder={String(estimatedDp({ ...x, dp: undefined }, data, cr))}
+          onBlur={ev => {
+            const t = ev.target.value.trim(),
+              v = Number(t)
+            act({ op: 'vehicledp', uid: x.uid, ...(t && Number.isFinite(v) && v >= 0 ? { value: v } : {}) })
           }}
         />
       </label>

@@ -12,6 +12,8 @@ and how many of its family's modifiers it reproduces (recall). Vocabulary only, 
 import re
 from collections import Counter, defaultdict
 
+from importer.sr6.effects.words import ATTRIBUTES, SKILLS, TEST_TYPES
+
 PRIMARY = {
     "BODY",
     "AGILITY",
@@ -464,13 +466,82 @@ def run(cl6, pairs, sources):
     return out
 
 
+# Per-effect normalisation (metric only): same meaning, different notation counts as a match. The pairs below were read
+# off the observed (CommLink6 target, our target) pairs of the baseline import, not guessed.
+_CL6_TARGET = {
+    "attribute:initiative-dice-physical": "derived:initiative-dice",
+    "attribute:initiative-dice-matrix": "derived:matrix-initiative-dice",
+    "attribute:defense-rating-physical": "derived:defense",
+    "attribute:defense-rating-social": "derived:social",
+    "attribute:defense-rating-astral": "derived:defense-astral",
+    "attribute:physical-monitor": "derived:physical-monitor",
+    "attribute:stun-monitor": "derived:stun-monitor",
+    "attribute:minor-action-physical": "derived:minor-actions",
+    "attribute:damage-overflow": "derived:overflow",
+    "attribute:defense-pool-matrix": "derived:matrix-defense",
+    "attribute:movement": "derived:movement",
+    "attribute:essence-hole": "derived:essence-hole",
+    "attribute:composure": "derived:composure",
+    "attribute:resist-damage": "test:damage-resistance",
+    "attribute:resist-toxin": "test:toxin-resistance",
+    "attribute:resist-drain": "test:drain-resistance",
+    "attribute:defense-pool-astral": "test:defense-astral",
+    "attribute:defense-pool-combat-direct": "test:defense-spell-direct",
+    "attribute:defense-pool-combat-indirect": "test:defense-spell-indirect",
+    "attribute:defense-pool-physical": "test:defense",
+    "item-attribute:attack-rating": "item:ar",
+    "item-attribute:damage": "item:dv",
+    "item-attribute:topspeed": "item:top-speed",
+    "item-attribute:firewall": "matrix:firewall",
+}
+# (CommLink6 names its attributes in full; ours use the three-letter id, `test:attr-<id>` for a dice bonus on the tests
+# of that attribute, which CommLink6 states as the attribute's checkmod)
+_SKILLS = sorted((s.replace(" ", "-") for s in SKILLS), key=len, reverse=True)
+
+
+def _canon_target(t):
+    """One spelling per meaning for an effect target."""
+    kind, _, ref = t.partition(":")
+    if kind == "attribute" and ref in ATTRIBUTES:
+        return "attr:" + ATTRIBUTES[ref]
+    if kind == "test" and ref.startswith("attr-"):
+        return "attr:" + ref[5:]
+    if kind == "skillspecialization":  # 'perception-tactile' is Perception's specialization: Perception
+        return next(("skill:" + k for k in _SKILLS if ref.startswith(k + "-")), t)
+    if kind == "item-attribute" and ref in ("handling", "acceleration", "concealability", "body", "seats"):
+        return "item:" + ref
+    return _CL6_TARGET.get(t, t)
+
+
+def _expand(effects):
+    """Our `test:<type>` group target is every skill the type covers (words.TEST_TYPES, the importer's own copy of
+    effects.ts TEST_TYPES): CommLink6 states those skill by skill. The group stays too.
+    physical/mental (attribute-linked
+    skills) need the skills catalog and stay a group."""
+    out = []
+    for t, v in effects:
+        out.append((t, v))
+        kind, _, ref = t.partition(":")
+        if kind == "test" and ref in TEST_TYPES and ref not in ("physical", "mental"):
+            out += [("skill:" + s, v) for s in TEST_TYPES[ref]]
+    return out
+
+
 def per_effect(pairs):
     """Informational: of the effects CommLink6 states on matched records, how many of ours reproduce (target, value)
-    (element ignored), counted as a multiset per record. The whole-entry 'effects' family stays all-or-nothing."""
+    (element ignored, so an EDGE_ONLY_TEST checkmod and our op=edge compare alike), counted as a multiset per record,
+    after the normalisation above (group targets expanded, attribute/derived names unified) and with CommLink6's "1 per
+    level" read as our R. The whole-entry 'effects' family stays all-or-nothing."""
     got = total = 0
     for c, o in pairs:
-        cl = Counter((t, v) for _, t, v in c["families"].get("effects", ()))
-        mine = Counter((t, v) for _, t, v in o["families"].get("effects_own", o["families"].get("effects", ())))
+        cl = Counter((_canon_target(t), v) for _, t, v in c["families"].get("effects", ()))
+        own = o["families"].get("effects_own", o["families"].get("effects", ()))
+        mine = Counter((_canon_target(t), v) for t, v in _expand([(t, v) for _, t, v in own]))
         total += sum(cl.values())
-        got += sum((cl & mine).values())
+        hit = cl & mine
+        got += sum(hit.values())
+        spare = mine - hit
+        for (t, v), n in (cl - hit).items():  # "1" per level (or "-1") printed, ours R
+            r = {"1": "r", "-1": "-r"}.get(v)
+            got += min(n, spare[(t, r)]) if r else 0
     return {"reproduced": got, "of": total, "pct": _pct(got, total)}

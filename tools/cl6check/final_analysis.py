@@ -140,6 +140,7 @@ def gather(jar, ours_dir, pdf=True, printings=None):
         "results": results,
         "keep": keep["keep"],
         "hold": keep["hold"],
+        "confirmed": {(c[0], c[1]) for c in keep.get("confirmed", [])},  # (owner-confirmed Misc. (US) records)
         "verdicts": keep["verdicts"],
         "optional": json.load(open(package.FILE, encoding="utf8"))["optional"],
         "relocated": json.load(open(package.HAVE, encoding="utf8"))["records"],
@@ -218,7 +219,7 @@ def lists(g):
                 f"Commlink6's Misc. (US) dataset, from {x['product'] or 'no product named'}; none of our books prints "
                 "it",
             )
-        else:
+        elif (x["book"], x["id"]) not in g.get("confirmed", ()):
             by_name.append(
                 {
                     "what": "Misc. (US) record one of our books prints by name (not in list 1)",

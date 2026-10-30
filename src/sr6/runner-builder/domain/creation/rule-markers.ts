@@ -5,6 +5,7 @@
 // PAIN_TOLERANCE_*, WOUND_MOD_PLUS_1, …) are the Foundry sheet/effects engine's, not the builder's, and are not here.
 import type { Sr6Build, Sr6Knowledge } from '../../../formats/domain/character'
 import type { Sr6Data } from '../../../catalog/domain/data'
+import type { Sr6Entry } from '../../../formats/domain/types'
 import { structureOf } from '../../../catalog/domain/structure'
 
 /** The creation-cost RULE refs the builder implements today. */
@@ -18,12 +19,24 @@ export type RuleRef =
   | 'FASHION_50_PERCENT'
   | 'DECK_5000_PER_KARMA'
 
+/** The RULE refs an entry carries on its own (its `<modifier type="RULE" ref>` markers): the Foundry export lists them so the module
+ *  can apply the same cost rule in play, and the effects list words them (RULE_TEXT). */
+export const ruleRefsOf = (e: Sr6Entry): string[] =>
+  structureOf(e)
+    .modifiers.filter(m => m.type === 'RULE' && m.ref)
+    .map(m => m.ref as string)
+
+/** The wording of a RULE ref for the effects list (only the refs worth a line there). */
+export const RULE_TEXT: Partial<Record<string, string>> = {
+  POLYGLOT: 'Language ranks cost 1 Karma less (never below 1) and go to rank 4',
+}
+
 /** The set of active RULE refs, read from each chosen quality's `<modifier type="RULE" ref>` marker. */
 export function activeRules(b: Sr6Build, data: Sr6Data): Set<string> {
   const refs = new Set<string>()
   for (const q of b.qualities) {
     const e = data.entry('qualities', q.id)
-    if (e) for (const m of structureOf(e).modifiers) if (m.type === 'RULE' && m.ref) refs.add(m.ref)
+    if (e) for (const ref of ruleRefsOf(e)) refs.add(ref)
   }
   return refs
 }

@@ -17,9 +17,12 @@ import type {
   SlotShift,
 } from '../../formats/domain/character'
 import { augFamily, SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind, type Sr6Part, type Sr6Source } from '../../formats/domain/types'
-import type { Sr6Compendium } from '../../formats/domain/character'
+import type { Sr6Compendium, Sr6Situational } from '../../formats/domain/character'
 import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
-import { bonusValue, linkedViews, ownParts, type LinkLookup } from '../../catalog/domain/effects'
+import { choiceOf, entryBonuses } from '../../runner-builder/domain/creation/bonuses'
+import { baseMetatype, metatypeName } from '../../runner-builder/domain/creation/infected'
+import { ruleRefsOf } from '../../runner-builder/domain/creation/rule-markers'
+import { bonusValue, linkedViews, ownParts, perCount, sitOf, type LinkLookup } from '../../catalog/domain/effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
 import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
@@ -97,6 +100,9 @@ export type Sr6ExportBonus = ({ target: Exclude<Bonus['target'], 'skill'>; value
   switch?: Bonus['switch']
   spec?: string
   affects?: Bonus['affects']
+  /** a situational effect (a prose `when`) the player switched on: 1, or the count of a `per ...` one (value is per step; the
+   *  total is value * on). Absent: off (derivedOn only) or not situational. derived already holds the switched-on ones. */
+  on?: number
 }
 /** What the entry's printed text and tables say it does (the catalog's <effect>, importer/sr6/effects.py; the targets,
  *  operations and values docs/sr6-data-format/kinds.md "Effects" lists): low: read with low confidence (shown, never applied);
@@ -154,6 +160,8 @@ export interface Sr6ExportItem {
   effects?: Sr6ExportEffect[]
   tests?: Sr6ExportTest[]
   links?: Sr6ExportLink[]
+  /** the creation-cost RULE refs the entry carries (rule-markers.ts: `POLYGLOT`), for a reader that applies them in play */
+  rules?: string[]
   /** the ids the entry had in earlier imports (the catalog's <alias id kind>, Sr6Catalog.moved): kind only when it was
    *  another kind. A reader that keyed things by the old id finds them again. */
   aliases?: { id: string; kind?: Sr6Kind }[]
@@ -254,7 +262,8 @@ export interface Sr6ExportRunner {
   realName: string
   gender?: string
   finalized: boolean
-  metatype: { id: string; name: string }
+  /** parent: a metavariant's parent metatype's name (a Sylvan's `Elf`), as the app's `when` conditions read it; absent for a base metatype */
+  metatype: { id: string; name: string; parent?: string }
   magic: { kind: MagicKind; tradition?: string; drainAttr?: 'log' | 'int' | 'cha'; aspectedSkill?: string; initiation: number; submersion: number }
   portrait: string | null
   token: string | null
@@ -265,7 +274,7 @@ export interface Sr6ExportRunner {
   edge: number
   skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string; specs?: string[] }[]
   knowledge: { name: string; kind: 'knowledge' | 'language'; native: boolean; rank: number }[]
-  qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string })[]
+  qualities: (Sr6ExportItem & { uid: string; positive: boolean; level: number; free: boolean; note?: string; bonuses: Sr6ExportBonus[] })[]
   picks: (Sr6ExportItem & { uid: string; pick: PickKind; level?: number; bonuses: Sr6ExportBonus[] })[]
   /** styles, each with the techniques learned under it */
   martialArts: (Sr6ExportItem & { uid: string; techniques: (Sr6ExportItem & { uid: string; requires?: Prerequisite[] })[] })[]
@@ -538,6 +547,7 @@ const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived =>
 function item(c: Sr6Catalog, data: Sr6Data, e: Sr6Entry, text: boolean, rating?: number): Sr6ExportItem {
   return {
     ...effectsOf(e, data),
+    ...(ruleRefsOf(e).length ? { rules: ruleRefsOf(e) } : {}),
     ...aliasesOf(c, e),
     id: e.id,
     kind: e.kind,
@@ -564,10 +574,14 @@ const bare = (kind: Sr6Kind, name: string, id?: string): Sr6ExportItem => ({
 })
 
 // every target, Defense Rating included (derived.defenseRating counts it too); a skill's by its id and name
-const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1): Sr6ExportBonus[] =>
+const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times = 1, sit?: Sr6Situational): Sr6ExportBonus[] =>
   (bs ?? [])
-    .filter(b => !b.set) // (a set replaces a base value: derived holds it, not these adds)
-    .map(b => {
+    .map((b, i) => {
+      const n = sitOf(sit, b, i)
+      return { b, on: b.when && n > 0 ? (perCount(b.when) ? n : 1) : undefined }
+    })
+    .filter(({ b }) => !b.set) // (a set replaces a base value: derived holds it, not these adds)
+    .map(({ b, on }) => {
       const value = bonusValue(b, rating) * times
       // (switchable, some tests or a specialization only: in derivedOn's totals, not derived's)
       const when = {
@@ -575,6 +589,7 @@ const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times =
         ...(b.switch ? { switch: b.switch } : {}),
         ...(b.spec ? { spec: b.spec } : {}),
         ...(b.affects ? { affects: b.affects } : {}),
+        ...(on ? { on } : {}),
       }
       return b.target === 'skill'
         ? { target: 'skill', id: b.skill ?? '', name: data.skills[b.skill ?? '']?.name ?? b.skill ?? '', value, ...when }
@@ -607,7 +622,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     grade: x.grade,
     worn: !!x.worn,
     note: x.note,
-    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1),
+    bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1, x.sit),
     accessories: x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
     mount: x.mount,
     diy: x.diy,
@@ -727,7 +742,11 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
     realName: id.name,
     ...(id.gender ? { gender: id.gender } : {}),
     finalized: !!ch.finalizedAt,
-    metatype: { id: b.metatype, name: data.metatypes[b.metatype]?.name ?? '' },
+    metatype: defined({
+      id: b.metatype,
+      name: data.metatypes[b.metatype]?.name ?? '',
+      parent: baseMetatype(data, b.metatype) !== metatypeName(data, b.metatype) ? baseMetatype(data, b.metatype) : undefined,
+    }),
     magic: defined({
       kind: b.magic,
       tradition: b.tradition,
@@ -774,6 +793,8 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         level: q.level,
         free: !!q.free,
         note: q.note,
+        // (as the app counts a quality: rating 1 times its level, with its note's choice)
+        bonuses: e ? bonuses(data, entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level || 1, q.sit) : [],
       })
     }),
     picks: b.picks.map(p => {
@@ -783,7 +804,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         uid: p.uid,
         pick: p.kind,
         level: p.level,
-        bonuses: bonuses(data, lineBonuses(data, p.bonuses, e), p.level ?? 1),
+        bonuses: bonuses(data, lineBonuses(data, p.bonuses, e, choiceOf(data, p.note)), p.level ?? 1, 1, p.sit),
       })
     }),
     martialArts: b.martialArts.map(m => {

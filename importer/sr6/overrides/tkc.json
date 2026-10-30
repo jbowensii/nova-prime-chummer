@@ -13,5 +13,11 @@
   {"cl6": "Guizhen 1 Handheld", "kind": "weapons", "id": "handheld", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Small"}, "gen": "family"},
   {"cl6": "Guizhen 1 Mob Light", "kind": "weapons", "id": "mob-light", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Large"}, "gen": "family"},
   {"cl6": "Guizhen 2 Pulse Hammer", "kind": "weapons", "id": "pulse-hammer", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Big"}, "gen": "family"},
-  {"cl6": "Guizhen 2 Storm Shield", "kind": "weapons", "id": "storm-shield", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Big"}, "gen": "family"}
+  {"cl6": "Guizhen 2 Storm Shield", "kind": "weapons", "id": "storm-shield", "set": {"skill": "Exotic Weapons", "spec": "Emitter", "size": "Big"}, "gen": "family"},
+  {"cl6": "Guizhen 1 Handheld", "cl6id": "guizhen_1_handheld", "kind": "weapons", "id": "handheld", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Guizhen 1 Flash Scope", "cl6id": "guizhen_1_flash_scope", "kind": "weapons", "id": "flash-scope", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Guizhen 1 Mob Light", "cl6id": "guizhen_1_mob_light", "kind": "weapons", "id": "mob-light", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Guizhen 2 Storm Shield", "cl6id": "guizhen_2_storm_shield", "kind": "weapons", "id": "storm-shield", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Guizhen 2 Pulse Hammer", "cl6id": "guizhen_2_pulse_hammer", "kind": "weapons", "id": "pulse-hammer", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Guizhen 2 Hall of Tears", "cl6id": "guizhen_2_hall_of_tears", "kind": "weapons", "id": "hall-of-tears", "set": {"usage": "carried"}, "gen": "slot"}
 ]

@@ -343,6 +343,11 @@
             "caster",
             "target"
           ]
+        },
+        "on": {
+          "description": "A situational effect (a prose `when`) the player switched on: 1, or the count of a `per ...` one; value is per step, the total is value * on. Absent: off (in derivedOn's totals only) or not situational. derived already holds the switched-on ones; a reader mirrors the switch (an Active Effect on while `on`, times `on`).",
+          "type": "integer",
+          "minimum": 1
         }
       },
       "if": {
@@ -496,6 +501,11 @@
               }
             }
           }
+        },
+        "rules": {
+          "description": "The creation-cost RULE refs the entry carries (POLYGLOT: language ranks cost 1 Karma less, never below 1, up to rank 4), for a reader that applies them in play.",
+          "type": "array",
+          "items": { "type": "string" }
         },
         "links": {
           "description": "Another entry this one grants (rel grants) or works as (rel as), by its printed name (and kind and id when the book tells): a reader uses that entry's effects.",
@@ -878,7 +888,8 @@
         "uid",
         "positive",
         "level",
-        "free"
+        "free",
+        "bonuses"
       ],
       "properties": {
         "uid": {
@@ -895,6 +906,12 @@
         },
         "note": {
           "type": "string"
+        },
+        "bonuses": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/bonus"
+          }
         }
       }
     },
@@ -1393,6 +1410,9 @@
               "type": "string"
             },
             "name": {
+              "type": "string"
+            },
+            "parent": {
               "type": "string"
             }
           }

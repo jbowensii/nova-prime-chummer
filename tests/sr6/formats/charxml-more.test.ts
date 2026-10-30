@@ -247,3 +247,16 @@ test('a custom design mod (no id) keeps its slots, cost, avail and rating throug
   d.design = { kind: 'vehicle', options: [], mods: [m] }
   expect(good(sr6ToXml(d)).design?.mods[0]).toMatchObject({ name: 'Home Brew', cost: 1500, avail: 4, slots: 2, rating: 3 })
 })
+
+test('situational switches on a purchase, pick and quality keep their counts through save and read', () => {
+  const d = blankSr6('priority', 'r1', '2026-10-16T00:00:00.000Z')
+  d.build.purchases.push({ uid: 'p1', kind: 'gear', name: 'Horns', qty: 1, accessories: [], sit: { '0': 1, '3': 4 } })
+  d.build.picks.push({ uid: 'k1', kind: 'adeptpowers', id: 'x', sit: { '1': 2 } })
+  d.build.qualities.push({ uid: 'q1', id: 'y', level: 1, sit: { '0': 1 } })
+  const back = good(sr6ToXml(d)).build
+  expect(back.purchases[0].sit).toEqual({ '0': 1, '3': 4 })
+  expect(back.picks[0].sit).toEqual({ '1': 2 })
+  expect(back.qualities[0].sit).toEqual({ '0': 1 })
+  d.build.qualities[0].sit = { 'str||in animal form': 2 }
+  expect(good(sr6ToXml(d)).build.qualities[0].sit).toEqual({ 'str||in animal form': 2 })
+})

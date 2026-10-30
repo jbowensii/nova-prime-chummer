@@ -22,7 +22,7 @@ import { entryLabel } from '../../catalog/domain/categories'
 import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
-import { designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
+import { chassisOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
 import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
 import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
@@ -36,6 +36,17 @@ const href = (id: string) => `#/sr6/designs/${id}`
 /** The design parts of one kind, by name. */
 const partsOf = (c: Sr6Catalog, p: DesignPart) =>
   [...c.entries.vehicledesign.values()].filter(e => designPart(e) === p).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
+/** The custom-chassis form's fields: the chassis table's own columns (DP, Body, Armor, Handling, Seats, Size Class). */
+const CUSTOM = '__custom'
+const CHASSIS_FIELDS = [
+  ['name', 'Chassis name'],
+  ['dp', 'Chassis DP'],
+  ['body', 'Chassis Body'],
+  ['armor', 'Chassis Armor'],
+  ['handling', 'Chassis Handling'],
+  ['seats', 'Chassis Seats'],
+  ['sizeClass', 'Chassis Size Class'],
+] as const
 /** A drone chassis (`Drone, Small`). */
 const droneChassis = (e: Sr6Entry) => /drone/i.test(e.name)
 
@@ -128,7 +139,7 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const row = ({ ch }: Stored<Sr6Character>, mine: boolean) => {
     const d = ch.design
     const s = d && designOf(d, data, cr)
-    const chassis = d?.chassis && data.entry('vehicledesign', d.chassis)
+    const chassis = d && chassisOf(d, data)
     return (
       <div className="dossier" key={ch.id}>
         <span className="face" aria-hidden>
@@ -355,8 +366,7 @@ const FACING: Record<'ground' | 'air' | 'water' | 'space', FacingSet> = {
 }
 /** Where the vehicle moves, from the chassis and powertrain names: air, water, space, else ground. */
 function vehicleDomain(d: Sr6Design, data: Sr6Data): keyof typeof FACING {
-  const t =
-    `${d.chassis ? (data.entry('vehicledesign', d.chassis)?.name ?? '') : ''} ${d.powertrain ? (data.entry('vehicledesign', d.powertrain)?.name ?? '') : ''}`.toLowerCase()
+  const t = `${chassisOf(d, data)?.name ?? ''} ${d.powertrain ? (data.entry('vehicledesign', d.powertrain)?.name ?? '') : ''}`.toLowerCase()
   if (/space|orbital|rocket|spacecraft/.test(t)) return 'space'
   if (/fixed[-\s]?wing|rotor|vtol|vstol|\blta\b|aircraft|flight|\bwing\b|glide|vectored|\bair\b/.test(t)) return 'air'
   if (/boat|\bship\b|\bsub\b|submarine|watercraft|naval|\bhull\b|hover|amphib|aquatic/.test(t)) return 'water'
@@ -433,6 +443,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const { doc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe())
   const [adding, setAdding] = useState(false)
+  const [makingC, setMakingC] = useState<Record<(typeof CHASSIS_FIELDS)[number][0], string> | null>(null)
   const [making, setMaking] = useState<Record<'name' | 'cost' | 'slots' | 'rating' | 'avail', string> | null>(null)
   const back = <a href="#/sr6/designs">Back to the Designer</a>
   if (!loaded)
@@ -479,8 +490,21 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const pick = (what: 'chassis' | 'powertrain' | 'console', list: Sr6Entry[], label: string) => (
     <label>
       {label}
-      <select value={d[what] ?? ''} onChange={e => update(x => void (e.target.value ? (x[what] = e.target.value) : delete x[what]))}>
+      <select
+        value={what === 'chassis' && d.customChassis ? CUSTOM : (d[what] ?? '')}
+        onChange={e => {
+          if (what === 'chassis' && e.target.value === CUSTOM) return setMakingC(Object.fromEntries(CHASSIS_FIELDS.map(([k]) => [k, ''])) as never)
+          update(x => {
+            if (what === 'chassis') delete x.customChassis
+            if (e.target.value) x[what] = e.target.value
+            else delete x[what]
+          })
+        }}
+      >
         <option value="">None yet</option>
+        {what === 'chassis' && (
+          <option value={CUSTOM}>{d.customChassis ? `${d.customChassis.name} (custom, ${d.customChassis.dp} DP)` : 'Custom chassis…'}</option>
+        )}
         {list.map(e => (
           <option key={e.id} value={e.id}>
             {entryLabel(e)} ({dpText(e)})
@@ -548,6 +572,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     update(x => {
                       x.kind = e.target.value as Sr6Design['kind']
                       delete x.chassis // (a vehicle's chassis isn't a drone's)
+                      delete x.customChassis
                     })
                   }
                 >
@@ -627,6 +652,44 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     {pick('powertrain', partsOf(c, 'powertrain'), 'Powertrain')}
                     {pick('console', partsOf(c, 'console'), 'Console')}
                   </div>
+                  {makingC && (
+                    <form
+                      className="row"
+                      aria-label="Custom chassis"
+                      onSubmit={e => {
+                        e.preventDefault()
+                        const f = makingC,
+                          n = (k: keyof typeof f) => Number(f[k]) || 0
+                        if (!f.name.trim()) return
+                        update(x => {
+                          delete x.chassis
+                          x.customChassis = {
+                            name: f.name.trim(),
+                            dp: n('dp'),
+                            body: n('body'),
+                            armor: n('armor'),
+                            handling: n('handling'),
+                            seats: n('seats'),
+                            sizeClass: n('sizeClass'),
+                          }
+                        })
+                        setMakingC(null)
+                      }}
+                    >
+                      {CHASSIS_FIELDS.map(([k, label]) => (
+                        <label key={k}>
+                          {label}
+                          <input value={makingC[k]} onChange={e => setMakingC({ ...makingC, [k]: e.target.value })} />
+                        </label>
+                      ))}
+                      <button className="btn small" type="submit" disabled={!makingC.name.trim()}>
+                        Save chassis
+                      </button>
+                      <button className="btn small quiet" type="button" onClick={() => setMakingC(null)}>
+                        Cancel
+                      </button>
+                    </form>
+                  )}
                 </section>
               )}
               <section className="panel dsn-vehicle" aria-label="The vehicle">

@@ -5,6 +5,7 @@ import { attrs, each, el, esc, kid, kids, readDoc, text, type ReadOpts } from '.
 import { BACKDROPS, type Backdrop } from '../../../core/shared/types'
 import {
   BONUS_SWITCHES,
+  type Sr6Situational,
   BONUS_TARGETS,
   CONTACT_TYPES,
   CORE_ATTRS,
@@ -67,6 +68,21 @@ const bonusXml = (x: Bonus) =>
     switch: x.switch,
     affects: x.affects,
   })
+/** A line's situational switches as `key:times` words (the key url-encoded; a plain 1:1 4:3 is a save keyed by place), read back by readSit. */
+const sitText = (x?: Sr6Situational) => {
+  const w = Object.entries(x ?? {})
+    .filter(([, n]) => n > 0)
+    .map(([k, n]) => `${encodeURIComponent(k)}:${n}`)
+  return w.length ? w.join(' ') : undefined
+}
+function readSit(e: Element): Sr6Situational | undefined {
+  const out: Sr6Situational = {}
+  for (const w of str(e, 'sit')?.split(/\s+/) ?? []) {
+    const m = /^(\S+):(\d+)$/.exec(w)
+    if (m && +m[2] > 0) out[decodeURIComponent(m[1])] = +m[2]
+  }
+  return Object.keys(out).length ? out : undefined
+}
 const bonusesXml = (xs?: Bonus[]) => (xs ?? []).map(bonusXml).join('')
 function purchaseXml(p: Sr6Purchase): string {
   return el(
@@ -81,11 +97,13 @@ function purchaseXml(p: Sr6Purchase): string {
       gmPrice: p.gmPrice,
       avail: p.avail,
       slots: p.slots,
+      dp: p.dp,
       essence: p.essence,
       rating: p.rating,
       qty: p.qty,
       grade: p.grade,
       worn: p.worn,
+      sit: sitText(p.sit),
       note: p.note,
       seatsRemoved: p.seatsRemoved,
       mount: p.mount,
@@ -118,8 +136,9 @@ const trainedXml = (t: Sr6CritterTrained) => el('trained', { uid: t.uid, what: t
 const knowledgeXml = (k: Sr6Knowledge) =>
   `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma, payment: k.payment })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) =>
-  el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name, boughtOff: q.boughtOff })
-const pickXml = (p: Sr6Pick) => el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note }, bonusesXml(p.bonuses))
+  el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name, boughtOff: q.boughtOff, sit: sitText(q.sit) })
+const pickXml = (p: Sr6Pick) =>
+  el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note, sit: sitText(p.sit) }, bonusesXml(p.bonuses))
 const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
 const martialXml = (m: Sr6MartialArt) => el('martialart', { uid: m.uid, id: m.id, name: m.name }, m.techniques.map(techniqueXml).join(''))
 const contactXml = (c: Sr6Contact) =>
@@ -201,7 +220,7 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
     case 'knowledge':
       return [{}, knowledgeXml(a.line)]
     case 'quality':
-      return [{ target: a.target, magic: a.magic }, qualityXml(a.line)]
+      return [{ target: a.target, magic: a.magic, single: a.single }, qualityXml(a.line)]
     case 'buyoff':
       return [{ target: a.target, part: a.part }, a.line ? qualityXml(a.line) : '']
     case 'pick':
@@ -330,7 +349,7 @@ const designXml = (d?: Sr6Design) =>
           diy: d.diy,
           approved: d.approved,
         },
-        d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
+        (d.customChassis ? el('customChassis', d.customChassis) : '') + d.options.map(o => el('option', o)).join('') + d.mods.map(purchaseXml).join(''),
       )
     : ''
 
@@ -452,12 +471,14 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     gmPrice: num(e, 'gmPrice'),
     avail: num(e, 'avail'),
     slots: num(e, 'slots'),
+    dp: num(e, 'dp'),
     essence: num(e, 'essence'),
     rating: num(e, 'rating'),
     qty: num(e, 'qty', 1),
     grade: str(e, 'grade'),
     worn: yes(e, 'worn'),
     bonuses: readBonuses(e),
+    sit: readSit(e),
     note: str(e, 'note'),
     seatsRemoved: num(e, 'seatsRemoved'),
     mount: str(e, 'mount'),
@@ -586,6 +607,7 @@ const readQuality = (e: Element): Sr6Quality =>
     note: str(e, 'note'),
     name: str(e, 'name'),
     boughtOff: num(e, 'boughtOff'),
+    sit: readSit(e),
   })
 const readPick = (e: Element): Sr6Pick =>
   def({
@@ -594,6 +616,7 @@ const readPick = (e: Element): Sr6Pick =>
     id: e.getAttribute('id') ?? '',
     level: num(e, 'level'),
     bonuses: readBonuses(e),
+    sit: readSit(e),
     name: str(e, 'name'),
     note: str(e, 'note'),
   })
@@ -784,6 +807,7 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
         op,
         line: line(e, 'quality', readQuality, true),
         target: str(e, 'target'),
+        single: yes(e, 'single'),
         magic: m == null ? undefined : oneOf(m, MAGIC_KINDS, 'magic kind an Infected type gives', undefined, fix),
       })
     }
@@ -937,6 +961,18 @@ function readDesign(d: Element, fix?: string[]): Sr6Design {
     base: str(d, 'base'),
     removedParts: (u => (u.length ? u : undefined))(str(d, 'removedParts')?.split(/\s+/).filter(Boolean) ?? []),
     chassis: str(d, 'chassis'),
+    customChassis: ((k: Element | null) =>
+      k
+        ? {
+            name: k.getAttribute('name') ?? '',
+            dp: num(k, 'dp', 0),
+            body: num(k, 'body', 0),
+            armor: num(k, 'armor', 0),
+            handling: num(k, 'handling', 0),
+            seats: num(k, 'seats', 0),
+            sizeClass: num(k, 'sizeClass', 0),
+          }
+        : undefined)(kid(d, 'customChassis')),
     powertrain: str(d, 'powertrain'),
     console: str(d, 'console'),
     options: each(

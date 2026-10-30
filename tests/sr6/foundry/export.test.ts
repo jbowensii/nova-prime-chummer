@@ -5,6 +5,7 @@ import Ajv2020 from 'ajv/dist/2020'
 import { describe, expect, test } from 'vitest'
 import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { balances, currentBuild } from '../../../src/sr6/runner-builder/domain/career/career'
+import { bonusSources } from '../../../src/sr6/runner-builder/domain/creation/bonuses'
 import { deriveSr6 } from '../../../src/sr6/runner-builder/domain/creation/derive'
 import { entryValues, exportAttrs, exportSr6Books, exportSr6Compendium, exportSr6Runners } from '../../../src/sr6/foundry/domain/export'
 import { xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
@@ -127,6 +128,37 @@ describe('SR6 export: runners', () => {
       { target: 'rea', value: 3 },
       { target: 'initDice', value: 1 },
     ])
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
+  test('a situational effect the player switched on carries its on / count; the schema accepts it', () => {
+    const { data, cr } = made(),
+      ch = career()
+    ch.build.purchases.push({
+      uid: 's1',
+      kind: 'gear',
+      name: 'Gun',
+      qty: 1,
+      accessories: [],
+      bonuses: [
+        { target: 'str', value: 1, switch: 'conditional', when: 'animal form' },
+        { target: 'str', value: 2, switch: 'conditional', when: 'per additional barrel' },
+        { target: 'rea', value: 1, switch: 'conditional', when: 'in the dark' },
+      ],
+      sit: { '0': 1, '1': 3 },
+    })
+    const f = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS)
+    expect(f.runners![0].purchases.find(p => p.uid === 's1')!.bonuses.map(b => b.on)).toEqual([1, 3, undefined])
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
+  test('a metavariant carries its parent metatype (for `when="Elf"`); a base metatype none; the schema accepts it', () => {
+    const { data, cr } = made(),
+      ch = career()
+    const base = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS).runners![0]
+    expect(base.metatype).not.toHaveProperty('parent')
+    ;(data.metatypes as Record<string, unknown>)['x.dryad'] = { ...data.metatypes[ch.build.metatype], name: 'Dryad' }
+    ch.build.metatype = 'x.dryad'
+    const f = exportSr6Runners(fixtureCatalog(), data, cr, [ch], OPTS)
+    expect(f.runners![0].metatype).toEqual({ id: 'x.dryad', name: 'Dryad', parent: 'Elf' })
     expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
   })
   test('a custom line: no catalog entry, not canon, the player’s numbers', () => {
@@ -386,6 +418,32 @@ describe('SR6 export: what Eden takes besides the numbers', () => {
     ])
     expect(q.tests).toEqual([{ skill: 'skill:perception', attr: 'attr:int', threshold: 3 }])
     expect(r().qualities.find(x => x.id === 'mur.night-eyes')).not.toHaveProperty('effects')
+  })
+  test('a quality carries its bonuses; a situational one the player switched on carries on', () => {
+    const ch = mara(w),
+      lb = ch.build.qualities.find(q => q.id === 'mus.lucky-break')!,
+      entry = w.data.entry('qualities', 'mus.lucky-break')!
+    entry.parts.push({ tag: 'effect', attrs: { target: 'attr:str', op: 'add', value: '1', when: 'in animal form' }, text: '' })
+    const before = exportSr6Runners(w.c, w.data, w.cr, [ch], SAMPLE_OPTS).runners![0].qualities.find(x => x.uid === lb.uid)!
+    const sitIdx = before.bonuses.findIndex(b => b.when)
+    expect(before.bonuses.length).toBeGreaterThan(0)
+    expect(sitIdx).toBeGreaterThanOrEqual(0)
+    expect(before.bonuses[sitIdx].on).toBeUndefined()
+    lb.sit = { [String(sitIdx)]: 1 }
+    const f = exportSr6Runners(w.c, w.data, w.cr, [ch], SAMPLE_OPTS),
+      after = f.runners![0].qualities.find(x => x.uid === lb.uid)!
+    entry.parts.pop() // (w is shared by this describe's tests)
+    expect(after.bonuses[sitIdx].on).toBe(1)
+    expect(schema(f), JSON.stringify(schema.errors)).toBe(true)
+  })
+  test('a leveled quality exports the bonus the app counts: rating 1 times its level', () => {
+    const ch = mara(w),
+      lb = ch.build.qualities.find(q => q.id === 'mus.lucky-break')!
+    lb.level = 3
+    const out = exportSr6Runners(w.c, w.data, w.cr, [ch], SAMPLE_OPTS).runners![0].qualities.find(x => x.uid === lb.uid)!,
+      app = bonusSources(ch.build, w.data, 'agi').find(s => s.id === 'mus.lucky-break')!.value
+    expect(out.bonuses.find(b => b.target === 'agi' && !b.when)!.value).toBe(app)
+    expect(app).toBe(3)
   })
   test('an accessory’s effect on its host, under the host', () => {
     const sight = r().purchases.find(x => x.uid === 'w1')!.accessories[0]

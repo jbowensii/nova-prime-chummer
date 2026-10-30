@@ -237,9 +237,12 @@ def associations(el):
     EMBEDDED usages (`fits`), those of its variants too (the `cybereye` variant of Image link adds CYBEREYE_IMPLANT: one
     item per variant is OUR entry's name for it, the association is the item's). Host and accessory stay apart."""
     out = set()
+    inner = {id(x) for g in el.iter("geardef") for x in g.iter()}  # (a <geardef> defines another item: not this one's)
     for x in el.iter():
-        if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref"):
-            out.add(("slot", _norm(x.get("ref"))))
+        if id(x) in inner:
+            continue
+        if x.tag in ("valmod", "itemmod") and x.get("type") == "HOOK" and x.get("ref") and x.get("remove") != "true":
+            out.add(("slot", _norm(x.get("ref"))))  # (a removed hook is one the record takes away, not offers)
         elif x.tag == "usage" and x.get("mode") == "EMBEDDED" and x.get("slot"):
             out.add(("fits", _norm(x.get("slot"))))
     return out
