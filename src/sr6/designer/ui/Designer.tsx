@@ -7,7 +7,7 @@
 // (src/sr6/runner-builder/domain/assets/design.ts): the stats, Design Points, price, Availability, notes and warnings (never refused). A GM's
 // design is approved (a GM may tick or untick it); a player's, bought by a runner, is a Review warning a GM approves.
 // A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs (src/sr6/runner-builder/ui/repo.ts).
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { because, canEdit, useMe } from '../../../core/ui-kit/auth'
 import { Brand, Modal, Stepper } from '../../../core/ui-kit/bits'
 import { IconButton, IconLink } from '../../../core/ui-kit/icons'
@@ -20,7 +20,6 @@ import { ConflictDialog, SaveLine, useAutosave } from '../../../features/runner-
 import { newId } from '../../../core/shared/types'
 import { entryLabel } from '../../catalog/domain/categories'
 import { entryKey } from '../../catalog/domain/names'
-import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { basePowertrain, chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
@@ -31,6 +30,8 @@ import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehi
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
 import { n } from '../../runner-builder/ui/editor'
+import { sr6Row } from '../../runner-builder/ui/EntryRef'
+import { EntryHover } from '../../../core/ui-kit/EntryHover'
 import { CatalogPicker } from '../../runner-builder/ui/Picker'
 import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../runner-builder/ui/repo'
 
@@ -422,10 +423,12 @@ const STATS: [keyof ReturnType<typeof designOf>['stats'], string][] = [
   ['pilot', 'Pilot'],
   ['sensor', 'Sensor'],
 ]
-/** What a design part does, for the row's hover tooltip: its effects (effectText) and any notes, else its name. */
-const descOf = (e: Sr6Entry): string =>
-  [...e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(effectText), ...(e.notes ?? []).map(x => x.text)].filter(Boolean).join('; ') ||
-  entryLabel(e)
+/** A design part's name with the app's hover card (the same one Game data shows: the book text, page, Design Points, maximum level and effects). */
+const Hover = ({ c, e, children }: { c: Sr6Catalog; e: Sr6Entry; children: ReactNode }) => (
+  <EntryHover row={() => sr6Row(c, e)} kind="Design part">
+    {children}
+  </EntryHover>
+)
 
 /** A part's Design Points as listed: `4 DP a level`, `+10 DP`, `×2`. */
 const dpText = (e: Sr6Entry) => {
@@ -740,9 +743,11 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
     })
   const toggles = (p: DesignPart) =>
     partsOf(c, p).map(e => (
-      <label key={e.id} className="inline" title={descOf(e)}>
+      <label key={e.id} className="inline">
         <input type="checkbox" aria-label={entryLabel(e)} checked={levelOf(e.id) > 0} onChange={ev => setLevel(e.id, ev.target.checked ? 1 : 0)} />{' '}
-        {entryLabel(e)} ({dpText(e)})
+        <Hover c={c} e={e}>
+          {entryLabel(e)} ({dpText(e)})
+        </Hover>
       </label>
     ))
   const st = sheet.stats
@@ -937,7 +942,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
             <h3>Options</h3>
             <div className="dsn-opts">
               {partsOf(c, 'option').map(e => (
-                <span key={e.id} className="row" title={descOf(e)}>
+                <span key={e.id} className="row">
                   <Stepper
                     label={`${entryLabel(e)} level`}
                     value={levelOf(e.id)}
@@ -945,7 +950,10 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     max={blocked(e) ? 0 : 20}
                     onChange={v => setLevel(e.id, v)}
                   />{' '}
-                  {entryLabel(e)} ({dpText(e)}){blocked(e) && <span className="muted"> — {blocked(e)}</span>}
+                  <Hover c={c} e={e}>
+                    {entryLabel(e)} ({dpText(e)})
+                  </Hover>
+                  {blocked(e) && <span className="muted"> — {blocked(e)}</span>}
                   {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
                     <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
                       <option value="">On- and off-road</option>

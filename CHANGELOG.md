@@ -15,6 +15,7 @@
 - Cyberlimb rulings: +4 per stat; only full limbs add a Physical box; an Armor increase adds to Defense (catalog limbs too); limbs start at STR/AGI 2; a career increase change pays the difference.
 
 **Designer**
+- Designer options, design modifications and quality factors show the same hover card as the rest of the app: the book text, page, Design Points, maximum level and effects.
 - A vehicle's built-in mods now change its stats, not just its price (three Increased Seating mods raise Seats). A mod whose effect is a percent or conditional is left to the GM, with a note.
 
 **Review flags settled**
