@@ -210,6 +210,68 @@
         "ammo": {
           "type": "number"
         },
+        "printed": {
+          "description": "A weapon line's stats as the catalog prints them, before its fittings (dv, ar, modes and ammo are with them: the always-on effects and the ones switched on).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dv": {
+              "type": "number"
+            },
+            "ar": {
+              "type": "array",
+              "items": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            },
+            "modes": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "ammo": {
+              "type": "number"
+            }
+          }
+        },
+        "arOn": {
+          "description": "A weapon line's Attack Ratings with every switched fitting on (wireless, conditional): the bracketed total.",
+          "type": "array",
+          "items": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "recoil": {
+          "description": "A weapon line's Attack Rating adjustment per firing mode (CRB p. 110, less what its fittings reduce).",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "SA": {
+              "type": "number"
+            },
+            "BF": {
+              "type": "number"
+            },
+            "FA": {
+              "type": "number"
+            }
+          }
+        },
+        "concealability": {
+          "description": "What a weapon line's fittings move its Concealability threshold by.",
+          "type": "number"
+        },
+        "attackPool": {
+          "description": "Dice a weapon line's fittings add to its attack tests.",
+          "type": "number"
+        },
         "defense": {
           "type": "number"
         },
@@ -497,7 +559,10 @@
               },
               "gen": {
                 "description": "cl6: a hand-written Commlink6 override; book: a hand-written correction of what the book says that no reader rule expresses; neither is the book reader's own.",
-                "enum": ["cl6", "book"]
+                "enum": [
+                  "cl6",
+                  "book"
+                ]
               }
             }
           }
@@ -505,7 +570,9 @@
         "rules": {
           "description": "The creation-cost RULE refs the entry carries (POLYGLOT: language ranks cost 1 Karma less, never below 1, up to rank 4), for a reader that applies them in play.",
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "links": {
           "description": "Another entry this one grants (rel grants) or works as (rel as), by its printed name (and kind and id when the book tells): a reader uses that entry's effects.",

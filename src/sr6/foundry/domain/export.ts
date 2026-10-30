@@ -27,7 +27,8 @@ import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-bui
 import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
 import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
-import { deriveSr6, type Sr6Derived } from '../../runner-builder/domain/creation/derive'
+import { deriveSr6, type Sr6Derived, weaponSkill } from '../../runner-builder/domain/creation/derive'
+import { weaponOf, type WeaponStats } from '../../runner-builder/domain/assets/weapons'
 import { withSampleFixes } from '../../runner-builder/domain/creation/samplefix'
 import { withSr6House } from '../../runner-builder/domain/career/house'
 import {
@@ -72,6 +73,16 @@ export interface Sr6Values {
   ar?: (number | null)[]
   modes?: string[]
   ammo?: number
+  /** a weapon line's: its stats as the catalog prints them, before its fittings (dv, ar, modes and ammo above are with
+   *  them: assets/weapons.ts weaponOf, the always-on effects and the ones switched on) */
+  printed?: { dv?: number; ar?: (number | null)[]; modes?: string[]; ammo?: number }
+  /** a weapon line's Attack Ratings with every switched fitting on (wireless, conditional): the bracketed total */
+  arOn?: (number | null)[]
+  /** a weapon line's Attack Rating adjustment per firing mode (CRB p. 110, less what its fittings reduce) */
+  recoil?: { SA?: number; BF?: number; FA?: number }
+  /** a weapon line's: what its fittings move its Concealability threshold by, and add to its attack tests' dice pool */
+  concealability?: number
+  attackPool?: number
   defense?: number
   /** an armor's Social modifier (its printed `+2`, `–4`) */
   social?: number
@@ -602,6 +613,26 @@ const bonuses = (data: Sr6Data, bs: Bonus[] | undefined, rating: number, times =
 const leveled = (data: Sr6Data, e: Sr6Entry | undefined, level: number | undefined) =>
   e && data.family(e.kind, e.id)?.parent === e ? (data.atLevel(e.kind, e.id, level ?? Math.min(...data.family(e.kind, e.id)!.levels.keys())) ?? e) : e
 
+/** A weapon line's values with its fittings (weaponOf): the modified DV, Attack Ratings, modes and ammo in place of the
+ *  printed ones, which move to `printed`; only the keys the entry prints a number for. */
+function weaponValues(w: ReturnType<typeof weaponOf>, v: Sr6Values): Partial<Sr6Values> {
+  const nums = (s: WeaponStats) =>
+    defined({
+      dv: v.dv !== undefined ? num(s.dv.match(/^\s*(\d+)/)?.[1]) : undefined,
+      ar: v.ar && s.ar,
+      modes: v.modes && s.modes.split(/[/,\s]+/).filter(m => ['SS', 'SA', 'BF', 'FA'].includes(m)),
+      ammo: v.ammo !== undefined ? num(s.ammo.match(/^\s*(\d+)/)?.[1]) : undefined,
+    })
+  return defined({
+    ...nums(w.now),
+    printed: nums(w.base),
+    arOn: v.ar && w.on.ar,
+    recoil: Object.keys(w.now.recoil).length ? w.now.recoil : undefined,
+    concealability: w.now.concealability || undefined,
+    attackPool: w.now.pool || undefined,
+  })
+}
+
 function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true, host?: Sr6Purchase): Sr6ExportPurchase {
   const e = leveled(data, entryOf(x, data), x.rating)
   // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)
@@ -613,6 +644,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
   if (x.gmPrice !== undefined && values.cost !== undefined) values.cost = x.gmPrice
   if (!e && x.rating !== undefined) values.rating = x.rating
   // the seats left after some went to cargo (Double Clutch p. 126)
+  if (x.kind === 'weapons' && top) Object.assign(values, weaponValues(weaponOf(x, data, weaponSkill(data, e)), values))
   if (x.seatsRemoved && values.vehicle?.seats !== undefined) values.vehicle = { ...values.vehicle, seats: Math.max(0, values.vehicle.seats - x.seatsRemoved) }
   return defined({
     ...base,
@@ -625,7 +657,7 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
     bonuses: bonuses(data, lineBonuses(data, x.bonuses, e), ratingOf(x, e), top ? x.qty : 1, x.sit),
     accessories: [
       ...x.accessories.map(a => purchase(c, data, cr, fitted(x, a), false, x)),
-      // a weapon's standard upgrades not removed: fitted accessories already in its price (owner ruling 2026-10-30)
+      // a weapon's standard upgrades not removed: fitted accessories already in its price and printed stats (owner rulings 2026-10-30)
       ...(x.kind === 'weapons'
         ? partsOf(x, data).flatMap(p => {
             if (p.removed || !p.entry) return []
@@ -638,8 +670,16 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
               x,
             )
             // (a factory tutorsoft switched on: its Instruction pool as the item's note, CRB p. 273; Foundry gets no effect for it)
+            // (the printed stats already hold its always-on effects, owner ruling on PR #207: only its switched ones go)
             const pool = instructionPools(x, data).find(i => i.part.id === p.id && i.on)
-            return [{ ...a, values: { ...a.values, cost: 0 }, ...(pool ? { note: instructionText(pool) } : {}) }]
+            return [
+              {
+                ...a,
+                values: { ...a.values, cost: 0 },
+                bonuses: a.bonuses?.filter(b => b.switch || b.when),
+                ...(pool ? { note: instructionText(pool) } : {}),
+              },
+            ]
           })
         : []),
     ],

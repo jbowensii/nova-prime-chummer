@@ -93,7 +93,12 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
       m = materialOf(data, x.material)
     return `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${m ? ` (${m.name})` : ''}`
   }
-  const attrsOf = (x: Sr6Purchase) => entryOf(x, data)?.attrs ?? {}
+  // (a weapon's DV, modes and ammo as its fittings leave them: derive.ts weapons, assets/weapons.ts weaponOf)
+  const attrsOf = (x: Sr6Purchase): Record<string, string> => {
+    const a = entryOf(x, data)?.attrs ?? {},
+      w = x.kind === 'weapons' ? d.attackRatings.weapons.find(y => y.uid === x.uid)?.stats : undefined
+    return w ? { ...a, ...(a.dv ? { dv: w.dv } : {}), ...(a.modes ? { modes: w.modes } : {}), ...(a.ammo ? { ammo: w.ammo } : {}) } : a
+  }
   // a weapon with modes or ammo shoots; the rest (blades, clubs, unarmed extras) are melee
   const ranged = (x: Sr6Purchase) => {
     const a = attrsOf(x)
@@ -125,6 +130,8 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
         .join(', '),
     rated: (x: Sr6Purchase) => [x.rating && `rating ${x.rating}`, x.grade].filter(Boolean).join(', '),
     bands: (x: Sr6Purchase) => d.attackRatings.weapons.find(a => a.uid === x.uid)?.bands ?? [null, null, null, null, null],
+    /** what a weapon's fittings change, base → modified (`AR 9/9/7 → 10/10/8`; weaponChanges) */
+    weaponChanges: (x: Sr6Purchase) => d.attackRatings.weapons.find(a => a.uid === x.uid)?.changes ?? [],
     rangedWeapons: lines('weapons').filter(ranged),
     meleeWeapons: lines('weapons').filter(x => !ranged(x)),
     know: b.knowledge.filter(x => x.kind === 'knowledge'),

@@ -11,7 +11,7 @@ import { within } from './timing'
 
 const BUDGET = {
   catalog: 45, // median 8.6 ms
-  validate: 8, // median 1.6 ms (was 1.2 → 6; vehicle factory parts add per-part review work, 2026-10-28)
+  validate: 12, // median 1.6 ms (was 1.2 → 6; vehicle factory parts add per-part review work, 2026-10-28; 8 → 12: CI runner variance of 6–9 ms caused random failures, owner-approved 2026-10-30)
   xml: 10, // median 2.0 ms
 }
 

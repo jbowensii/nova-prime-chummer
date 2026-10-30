@@ -493,6 +493,10 @@
          reader's: shown as such, a rare exception to the owner's rule that our reader is the primary source -->
     <xs:attribute name="gen"><xs:simpleType><xs:restriction base="xs:string">
       <xs:enumeration value="cl6"/><xs:enumeration value="book"/></xs:restriction></xs:simpleType></xs:attribute>
+    <!-- needs-owner: a book rule written for a stat no reader or Commlink6 value gives (a weapon accessory's recoil, clip
+         size; an eye or ear option's sense), applied but listed for the owner's review with its book and page -->
+    <xs:attribute name="review"><xs:simpleType><xs:restriction base="xs:string">
+      <xs:enumeration value="needs-owner"/></xs:restriction></xs:simpleType></xs:attribute>
   </xs:complexType>
   <!-- another entry this one grants (rel grants: `gain the Built Tough quality`, `1 free level of Rapid Healing`, at
        `level`) or works as (rel as: `the same result as a Personalized Grip`): the app uses that entry's effects, so a

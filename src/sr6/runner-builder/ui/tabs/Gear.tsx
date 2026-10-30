@@ -37,7 +37,10 @@ export function GearTab() {
   }
   const ar = (uid: string) => {
     const w = d.attackRatings.weapons.find(x => x.uid === uid)
-    return w && `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}`
+    return (
+      w &&
+      `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}${w.changes.length ? ` · ${w.changes.join(' · ')}` : ''}`
+    )
   }
   const u = d.unarmedDamage
   // ammunition's material (silver rounds: Bestial Nature p. 36) and, on an ammunition line, its ammunition types (CRB p. 261)
