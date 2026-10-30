@@ -678,7 +678,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     }
     case 'part': {
       // a factory part off or back (decomposition plan D1/D4): free, no refund; checked on a copy, as creation's op does
-      const host = b.purchases.find(y => y.uid === a.target && y.kind === 'vehicles') ?? no('unknown-host')
+      const host = b.purchases.find(y => y.uid === a.target && (y.kind === 'vehicles' || y.kind === 'weapons')) ?? no('unknown-host')
       const r = setPart(structuredClone(host), a.part, !!a.restore, data)
       if (!r.ok) no(r.reason)
       const p = partsOf(host, data).find(y => y.id === a.part)

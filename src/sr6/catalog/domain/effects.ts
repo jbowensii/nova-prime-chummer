@@ -484,7 +484,7 @@ export function effectText(p: Sr6Part): string {
   const how = `${a.affects === 'target' ? 'on the target: ' : a.affects === 'others' ? 'others get: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
   const text =
     a.op === 'set'
-      ? `${t} ${(a.target === 'item:damage-type' || a.target === 'derived:unarmed-damage') && /^[PS]$/.test(v) ? (v === 'S' ? 'Stun' : 'Physical') : valueText(v)}`
+      ? `${t} ${(a.target === 'item:damage-type' || a.target === 'derived:unarmed-damage') && /^[PS](\(e\))?$/.test(v) ? `${v[0] === 'S' ? 'Stun' : 'Physical'}${v.endsWith('(e)') ? ' (electrical)' : ''}` : valueText(v)}`
       : a.target?.startsWith('pricemod:')
         ? `${t} ${signed(v)}`
         : a.target?.startsWith('sense:')

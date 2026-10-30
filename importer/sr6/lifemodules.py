@@ -124,6 +124,15 @@ def _choice(body, module, page, report):
     return (points, list(dict.fromkeys(opts))) if opts else None
 
 
+def knowledge_options(rest):
+    """`: Arcana, [Sprawl] Streets, or one level in any language skill. ##### …` -> the named Knowledge skills the
+    player picks from (`Arcana`, `[Sprawl] Streets`); the language level and `any …` are no named option."""
+    s = re.sub(r"<!--.*?-->", " ", rest)
+    s = re.split(r"#|\.(?:\s|$)", s.lstrip(": "), maxsplit=1)[0]
+    words = [" ".join(re.sub(r"/\s+", "/", w).split()) for w in re.split(r"(?:,?\s+or\s+|,\s*)(?![^\[]*\])", s)]
+    return [w for w in words if w and not re.match(r"(?:a|one|any)\b", w, re.I) and len(w.split()) <= 6]
+
+
 def _module_grants(name, text, page, report):
     """attrs, children (choices) from an adult module's labelled lines."""
     attrs, kids = {}, []
@@ -179,7 +188,12 @@ def _module_grants(name, text, page, report):
                     )
                 attrs["contactTypes"] = " ".join(t for t in types if t in CONTACT_TYPES) or None
         elif m := re.match(r"Knowledge skills?\s*(?:\(choose (\w+)\)|:\s*choose (?:any |up to )?(\w+))", it, re.I):
-            add("knowledgeSkills", NUMBERS.get(m.group(1) or m.group(2), 1))
+            times = NUMBERS.get(m.group(1) or m.group(2), 1)
+            add("knowledgeSkills", times)
+            # (only `(choose one): A, B`: `choose up to two academic knowledge skills (biology, …)` names no list)
+            if m.group(1) and (opts := knowledge_options(it[m.end() :])):
+                count = {"count": str(times)} if times > 1 else {}
+                kids.append(("selection", {"type": "KNOWLEDGE", "options": ",".join(opts), **count}, None))
         elif it.startswith("One rank in"):
             add("knowledgeSkills", 1)
         # Choose an Alignment, Option: (karma spends) and qualities are no grants
