@@ -173,7 +173,8 @@ const MOD_STAT: Record<string, 'body' | 'armor' | 'handling' | 'seats' | 'accel'
   'item:pilot': 'pilot',
   'item:sensor': 'sensor',
 }
-function applyModEffects(stats: Record<string, number>, d: Sr6Design, data: Sr6Data, notes: string[]) {
+function applyModEffects(target: object, d: Sr6Design, data: Sr6Data, notes: string[]) {
+  const stats = target as Record<string, number>
   for (const x of d.mods) {
     const e = entryOf(x, data)
     for (const f of e?.parts ?? []) {
