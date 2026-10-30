@@ -311,7 +311,7 @@ function step(get: () => number, set: (v: number) => void, delta: number): Resul
 
 /** Every purchase, and every accessory on one. */
 /** Lines and everything fitted to them, at any depth (a weapon's ammunition's ammunition type, as imports nest them). */
-const deep = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...deep(x.accessories)])
+export const deep = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...deep(x.accessories)])
 const allLines = (b: Sr6Build) => deep(b.purchases)
 /** An accessory taken off its host; a weapon in it (a weapon mount) stays, in no mount. Shared with career.ts. */
 export function unfit(host: Sr6Purchase, uid: string): void {

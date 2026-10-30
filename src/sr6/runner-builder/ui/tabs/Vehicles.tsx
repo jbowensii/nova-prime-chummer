@@ -15,7 +15,7 @@ import { SHIFT_KINDS, type ShiftKind, type SlotKind, type Sr6Purchase } from '..
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { n, reasonText, useSr6Editor } from '../editor'
 import { useSr6Designs } from '../repo'
-import { CatalogPicker, isAccessory, PurchaseSection } from '../Picker'
+import { Accessories, ACCESSORY_KINDS, CatalogPicker, isAccessory, PurchaseSection } from '../Picker'
 
 const STATS: [string, string][] = [
   ['handling', 'Handling'],
@@ -425,7 +425,10 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
                   </option>
                 ))}
               </select>
-            ) : (
+            ) : null}
+            {/* a mounted weapon takes its own accessories (a silencer), the hand-carried weapon's picker; its ammo is bought on Gear */}
+            {a.kind === 'weapons' && <Accessories host={a} name={`${label(a)} on ${name}`} kinds={ACCESSORY_KINDS} filter={isAccessory} />}
+            {a.kind !== 'weapons' && (
               <>
                 {' · '}
                 {f.kind === 'hardpoint' ? 'on a hardpoint' : `${f.kind}${m.dc ? `, ${n(f.slots)} slot${f.slots === 1 ? '' : 's'}` : ''}`} ·{' '}

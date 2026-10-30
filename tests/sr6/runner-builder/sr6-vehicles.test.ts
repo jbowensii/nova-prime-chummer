@@ -4,7 +4,7 @@
 // Ledger. Made-up runner, items and prices on the made-up fixture.
 import { createElement } from 'react'
 import { expect, test } from 'vitest'
-import { currentBuild } from '../../../src/sr6/runner-builder/domain/career/career'
+import { currentBuild, record } from '../../../src/sr6/runner-builder/domain/career/career'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { blankSr6, type Sr6Character } from '../../../src/sr6/formats/domain/character'
@@ -210,4 +210,22 @@ test('Ledger: after finalising, slots are shifted and a weapon moved to another 
   const voided = await saved()
   expect(voided.ledger.at(-1)).toMatchObject({ type: 'void', eventId: after.ledger.at(-1)!.id })
   expect(currentBuild(voided).purchases[0].accessories.find(a => a.uid === 'w1')!.mount).toBe('m1')
+})
+
+test('a weapon in a vehicle mount takes accessories: creation shows its picker, career fits and removes one on it', async () => {
+  const ch = runner()
+  ch.build.purchases[0].accessories = [{ uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [] }]
+  await open(structuredClone(ch), 'vehicles')
+  expect(document.querySelector('[aria-label="Add an accessory to Fizz Rifle 70 on Putt-Putt"]')).not.toBeNull()
+  Object.assign(ch, { finalizedAt: '2026-10-16T00:00:00.000Z', final: { karma: 0, nuyen: 5000 } })
+  ch.ledger = [{ id: 'f1', at: '2026-10-16T00:00:00.000Z', type: 'finalize', karma: 0, nuyen: 5000 }]
+  const c = catalog(),
+    data = sr6Data(c),
+    cr = fixtureCreation()
+  const fit = record(ch, { op: 'fit', target: 'w1', line: { uid: 'a1', kind: 'gear', id: 'crb.zap-bars', qty: 1, accessories: [] } }, data, cr)
+  if (!fit.ok) throw new Error(fit.reason)
+  expect(currentBuild(fit.ch, data, cr).purchases[0].accessories[0].accessories.map(a => a.id)).toEqual(['crb.zap-bars'])
+  const off = record(fit.ch, { op: 'unfit', target: 'a1' }, data, cr)
+  if (!off.ok) throw new Error(off.reason)
+  expect(currentBuild(off.ch, data, cr).purchases[0].accessories[0].accessories).toEqual([])
 })
