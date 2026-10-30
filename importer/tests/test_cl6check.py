@@ -619,7 +619,34 @@ class PerEffectTest(unittest.TestCase):
     def test_counts_cl6_modifiers_ours_reproduces_by_target_and_value(self):
         c = {"families": {"effects": (("effect", "attribute:strength", "1"), ("test", "skill:stealth", "2"))}}
         o = {"families": {"effects": (("effect", "attribute:strength", "1"),)}}
-        self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0})
+        self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0, "bookruled": 0})
+
+    def test_the_gate_vocabulary_and_notation_aliases(self):
+        """set=MAX, Edge-cost sign, Essence thousandths, AR lists, natural weapons, physical tests, rule names."""
+        el = ET.fromstring(
+            "<q><modifications>"
+            '<valmod type="ATTRIBUTE" ref="AGILITY" set="MAX" value="6"/>'
+            '<checkmod type="SKILL" ref="cracking" what="EDGE_COST_MALUS" value="1"/>'
+            '<valmod type="ATTRIBUTE" ref="ESSENCE" value="-1000"/>'
+            '<valmod type="ITEM_ATTRIBUTE" ref="ATTACK_RATING" value="+2,0,0,0,0"/>'
+            '<valmod type="ITEM_ATTRIBUTE" ref="DAMAGE" set="NATURAL" apply="UNARMED" value="1"/>'
+            '<checkmod type="SKILL" ref="firearms" value="-2"/>'
+            '<itemmod type="RULE" ref="UNARMED_DAMAGE_IS_PHYSICAL"/>'
+            '<valmod type="ITEM_ATTRIBUTE" ref="TOPSPEED" value="-10"/>'
+            "</modifications></q>"
+        )
+        mine = [
+            ("attr-max:agi", "6", ""),
+            ("skill:cracking", "-1", "edge-cost"),
+            ("attr:ess", "-1", ""),
+            ("item:ar", "2", ""),
+            ("derived:unarmed-dv", "str/2+1", ""),
+            ("test:physical", "-2", ""),
+            ("derived:unarmed-damage", "p", ""),
+            ("item:top-speed", "-r*10", ""),
+        ]
+        o = {"families": {"effects_own": tuple(("effect", t, v, op) for t, v, op in mine)}}
+        self.assertEqual(modifiers.per_effect([({"el": el, "families": {}}, o)])["reproduced"], 8)
 
     def pe(self, cl6, mine):
         """per_effect's reproduced count for CL6 effects `cl6` against ours `mine` (target, value pairs)."""
