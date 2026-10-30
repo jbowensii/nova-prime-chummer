@@ -2,7 +2,7 @@
 // with a Firearms tutorsoft): child parts of the device, named with their pick, removed with it. Invented entries.
 import { expect, test } from 'vitest'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
-import { partsOf } from '../../../src/sr6/runner-builder/domain/assets/vehiclemods'
+import { instructionPools, instructionText, partsOf } from '../../../src/sr6/runner-builder/domain/assets/vehiclemods'
 import { fixtureCatalog } from '../catalog/fixture'
 
 const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
@@ -42,4 +42,12 @@ test('a factory program is a child part of its device, named with its pick, and 
   ])
   expect(partsOf(gun(['tutorsoft']), data).map(p => p.removed)).toEqual([false, true])
   expect(partsOf(gun(['zap-link']), data).map(p => p.removed)).toEqual([true, true])
+})
+
+test('a factory tutorsoft: an Instruction pool of rating x 2 for its skill, on its switch only, never a skill bonus (CRB p. 273)', () => {
+  expect(instructionPools(gun(), data).map(i => [i.key, i.skill, i.pool, i.on])).toEqual([['part:tutorsoft', 'Firearms', 2, false]])
+  const on = { ...gun(), sit: { 'part:tutorsoft': 1 } }
+  expect(instructionPools(on, data).map(instructionText)).toEqual(['Instruction pool (Firearms): 2'])
+  expect(instructionPools(on, data)[0].on).toBe(true)
+  expect(instructionPools({ ...on, removedParts: ['zap-link'] }, data)).toEqual([])
 })

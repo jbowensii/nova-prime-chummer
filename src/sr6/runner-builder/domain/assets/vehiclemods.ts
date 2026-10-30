@@ -233,6 +233,16 @@ export function partsOf(x: Sr6Purchase, data: Sr6Data): FactoryPart[] {
   const dead = (p: FactoryPart, depth = 0): boolean => p.removed || (!!p.parent && depth < 20 && !!byId.get(p.parent) && dead(byId.get(p.parent)!, depth + 1))
   return all.map(p => (dead(p) ? { ...p, removed: true } : p))
 }
+/** A line's factory-installed tutorsofts (a weapon's integral commlink's, Krime Katalog p. 12): each makes Instruction
+ *  tests for its chosen skill with a pool of its rating x 2 (CRB p. 273: learning the skill, never a bonus to it), while
+ *  the player has it switched on (`sit`, key `part:<id>`, the situational switch). Owner ruling 2026-10-30. */
+export const instructionPools = (x: Sr6Purchase, data: Sr6Data) =>
+  partsOf(x, data).flatMap(p =>
+    !p.removed && p.entry && /^tutorsoft$/i.test(p.entry.name)
+      ? [{ part: p, key: `part:${p.id}`, skill: p.choice ?? 'skill', pool: 2 * (Number(p.rating) || 1), on: (x.sit?.[`part:${p.id}`] ?? 0) > 0 }]
+      : [],
+  )
+export const instructionText = (i: { skill: string; pool: number }) => `Instruction pool (${i.skill}): ${i.pool}`
 /** D4 (owner): removing a factory part refunds nothing; a GM's custom refund is Stage 4's, and reads here. */
 export const partRefund = (_x: Sr6Purchase, _part: FactoryPart): number => 0
 /** A built-in mod's catalog gear entry (its ref); none: a name only. */

@@ -1,7 +1,7 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
 import type { Sr6Build } from '../../formats/domain/character'
 import { mountSlots, requirementsOf, slotLabel } from '../../catalog/domain/structure'
-import { fittedParts, modsOf, partsOf } from '../domain/assets/vehiclemods'
+import { fittedParts, instructionPools, instructionText, modsOf, partsOf } from '../domain/assets/vehiclemods'
 import { ratingOf } from '../domain/creation/purchases'
 import { sitOf } from '../../catalog/domain/effects'
 // The SR6 catalog picker and the bits every purchase tab shares: a searchable list of one or more kinds with a category
@@ -527,6 +527,19 @@ export function Accessories({
             </button>
           </span>
         ))}
+      {instructionPools(host, data).map(i => (
+        // a factory tutorsoft's Instruction pool (CRB p. 273): a switch, as the situational effects have
+        <label key={i.key} className="chip">
+          <input
+            type="checkbox"
+            role="switch"
+            checked={i.on}
+            aria-label={`${instructionText(i)}, on ${name}`}
+            onChange={e => act({ op: 'situational', uid: host.uid, key: i.key, times: e.target.checked ? 1 : 0 })}
+          />{' '}
+          {i.on ? instructionText(i) : `Instruction pool (${i.skill}) off`}
+        </label>
+      ))}
       {host.accessories.map(a => {
         const e = entryOf(a, data),
           own = e ? entryLabel(e) : (a.name ?? 'Accessory'),

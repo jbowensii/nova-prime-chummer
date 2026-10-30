@@ -49,7 +49,7 @@ import { armorSocial, attackRatings, bookValue, legality, rated, ratingRange, ty
 import { entryLabel } from '../../catalog/domain/categories'
 import { prerequisites, type Prerequisite } from '../../runner-builder/domain/creation/martial'
 import { critterClass, isTaught, trainedName, type CritterClass } from '../../runner-builder/domain/assets/critters'
-import { builtinText, modsOf, partsOf } from '../../runner-builder/domain/assets/vehiclemods'
+import { builtinText, instructionPools, instructionText, modsOf, partsOf } from '../../runner-builder/domain/assets/vehiclemods'
 import { levelOf } from '../../catalog/domain/levels'
 
 export const SR6_EXPORT_FORMAT = 'chummer-sr6-export',
@@ -637,7 +637,9 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
               false,
               x,
             )
-            return [{ ...a, values: { ...a.values, cost: 0 } }]
+            // (a factory tutorsoft switched on: its Instruction pool as the item's note, CRB p. 273; Foundry gets no effect for it)
+            const pool = instructionPools(x, data).find(i => i.part.id === p.id && i.on)
+            return [{ ...a, values: { ...a.values, cost: 0 }, ...(pool ? { note: instructionText(pool) } : {}) }]
           })
         : []),
     ],
