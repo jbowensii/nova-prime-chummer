@@ -172,7 +172,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       ) : page === 'n' && route[1] ? (
         <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       ) : page === 'c' && route[1] ? (
-        <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} />
+        <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} sub={route.slice(3).join('/') || undefined} />
       ) : (
         <Sr6Runners c={c} data={data} cr={cr.rules} />
       )

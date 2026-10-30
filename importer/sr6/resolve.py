@@ -964,7 +964,36 @@ def standard_upgrades(regrouped):
     return out
 
 
+# Commlink6 GEARMOD refs found by their words alone that the owner accepted (ruling 2026-10-30): the 13 Personalized
+# Grips (the Zoe Heritage melee weapons, Deadly Arts' chakram) and the Ruger Lawbringer's Weapon Security System
+ACCEPTED_GEARMODS = frozenset(
+    {"personalized_grip_melee", "weapon_security_system", "weapon_security_system_add_option"}
+)
+
+
 _GENERIC_PART_WORDS = catalog.word_stems("system improved standard kit unit module")
+_INTEGRAL = re.compile(r"(?i)integral\s+\w+\s*\(\s*([^,)]+)")  # (`Integral commlink (Meta Link, DR 1)`: its model)
+# (a skill a program names by an earlier edition's name: SR6 folded Longarms into Firearms, CRB p. 98)
+_SKILL_NAMES = {"longarm": "Firearms"}
+
+
+def _factory_program(name, programs):
+    """(program id, {rating, choice}) for a built-in program a Standard Upgrades line names (`Longarms tutorsoft (1)`:
+    the Tutorsoft at rating 1 for Firearms), or None. programs: {name stems: entry}."""
+    m = re.fullmatch(r"(.*?)\s*\((\d+)\)", name.strip()) or re.fullmatch(r"(.*)()", name.strip())
+    words = m.group(1).split()
+    for i in range(len(words)):
+        el = programs.get(catalog.word_stems(" ".join(words[i:])))
+        if el is not None:
+            skill = " ".join(words[:i])
+            skill = _SKILL_NAMES.get(next(iter(catalog.word_stems(skill)), ""), skill) if i == 1 else skill
+            out = {k: v for k, v in (("rating", m.group(2)), ("choice", skill)) if v}
+            return el.get("id"), out
+    return None
+
+
+_PLAIN = catalog.word_stems("regular")  # (a `Sling` is the Regular Sling, not the Tactical one: Firing Squad p. 74)
+_QUALIFIER = re.compile(r"\s*\((?![^)]*\d)[^)]*\)\s*$")  # (a trailing note with no number: `(all models)`, not `(2)`)
 
 
 def _same_part(a, b):
@@ -989,15 +1018,41 @@ def weapon_parts(bs, entries, changed):
         for _ob, _src, _kind, el, _p in entries
         if (el.get("class") or "").startswith("ACCESSORY/WEAPON_ACCESSORY")
     }
-    by_cl6 = {}
+    by_cl6, cl6_names = {}, {}
     for src in sorted({s for _ob, s, _k, _el, _p in entries}):
         for r in overrides.table(src):
             if r.get("cl6id") and r.get("id") and f"{src}.{r['id']}" in acc:
                 by_cl6.setdefault(r["cl6id"], f"{src}.{r['id']}")
-    mods = [(i, [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")]) for i, el in acc.items()]
+                cl6_names.setdefault(f"{src}.{r['id']}", set()).add(r.get("cl6") or "")
+    # (an accessory's names: its own, its aliases and Commlink6's: `Smartgun System` is Commlink6's smartgun_system, our
+    # Smartgun system, internal)
+    mods = [
+        (i, [el.findtext("name") or ""] + [a.text or "" for a in kids(el, "alias")] + sorted(cl6_names.get(i, ())))
+        for i, el in acc.items()
+    ]
+    dates = {el.get("id"): getattr(ob, "date", None) or "" for ob, _s, _k, el, _p in entries if el.get("id") in acc}
+    # (a built-in matrix device and the programs factory-installed on it: Krime Katalog p. 12's Junior carbine prints
+    # `Integral commlink (Meta Link, DR 1), Longarms tutorsoft (1)`, Commlink6 embeds krime_metalink with tutorsoft)
+    devices = {
+        norm(el.findtext("name") or ""): el.get("id")
+        for _ob, _s, _k, el, _p in entries
+        if (el.get("class") or "").startswith("ELECTRONICS/")
+        and any(x.get("id") == "software" for x in kids(el, "slot"))
+    }
+    programs = {
+        catalog.word_stems(el.findtext("name") or ""): el
+        for _ob, _s, _k, el, _p in entries
+        if (el.get("class") or "").startswith("SOFTWARE/")
+    }
+    every = {el.get("id"): el for _ob, _s, _k, el, _p in entries}
 
     def find(name):
-        exact = [i for i, ns in mods if any(catalog.word_stems(n) == catalog.word_stems(name) for n in ns)]
+        name = _QUALIFIER.sub("", name)  # (`folding stock (shopkeeper only)`: the model it comes on, not the part)
+        want = catalog.word_stems(name) - _PLAIN
+
+        exact = [i for i, ns in mods if any(catalog.word_stems(n) - _PLAIN == want for n in ns if n)]
+        if len(exact) > 1:  # (printings of one part, CRB's and Firing Squad's Folding Stock: the latest published wins)
+            exact = [i for i in exact if dates[i] == max(dates[j] for j in exact)]
         if len(exact) == 1:
             return exact[0], "none"
         ref = _mod_ref(name, None, mods)
@@ -1013,43 +1068,54 @@ def weapon_parts(bs, entries, changed):
     for ob, _src, kind, el, epath in entries:
         if kind != "weapons" or el.get("id") in acc:
             continue
-        want = []  # (ref, origin, review)
+        want = []  # (ref, origin, review, {other part attributes})
         for m in kids(el, "modifier"):
             if m.get("type") == "GEARMOD" and m.get("kind") == "itemmod" and m.get("ref"):
                 ref, review = (
                     (by_cl6[m.get("ref")], "none") if m.get("ref") in by_cl6 else find(m.get("ref").replace("_", " "))
                 )
                 if ref:
-                    want.append((ref, "cl6", review))
+                    want.append((ref, "cl6", "none" if m.get("ref") in ACCEPTED_GEARMODS else review, {}))
                 else:
                     missed.append(f"{el.get('id')}: {m.get('ref')}")
         line = books.get(id(ob), {}).get(norm(el.findtext("name") or ""))
-        for tag, attrs, _t in builtin_parts(line) if line else ():
+        device = None
+        for tag, attrs, text in builtin_parts(line) if line else ():
+            if tag == "note" and (m := _INTEGRAL.match(text or "")) and norm(m.group(1)) in devices:
+                device = devices[norm(m.group(1))]
+                want.append((device, "book", "none", {"hook": "internal"}))
+                continue
             if tag != "builtin" or attrs.get("slots"):
+                continue
+            if device and (prog := _factory_program(attrs["name"], programs)):
+                want.append(
+                    (prog[0], "book", "none", {"hook": "software", "parent": device.split(".", 1)[1], **prog[1]})
+                )
                 continue
             ref, review = find(attrs["name"])
             if not ref:
                 missed.append(f"{el.get('id')}: {attrs['name']}")
             # (the book's name for a part Commlink6 already gives, by another printing: `gas-vent system (2)` beside its
             # `Gas Vent (improved)`, is that part, not a second one)
-            elif all(w[0] != ref and not _same_part(attrs["name"], acc[w[0]].findtext("name") or "") for w in want):
-                want.append((ref, "book", review))
+            elif all(w[0] != ref and not _same_part(attrs["name"], every[w[0]].findtext("name") or "") for w in want):
+                want.append((ref, "book", review, {}))
         want = list({w[0]: w for w in reversed(want)}.values())[::-1]  # one <part> per id (the first kept)
         old = kids(el, "part")
         if not want and not old:
             continue
         for k in old:
             el.remove(k)
-        for ref, origin, review in want:
-            a = acc[ref]
-            hook = next((k.get("slot") for k in kids(a, "fits") if k.get("slot")), None) or "weapon"
+        for ref, origin, review, extra in want:
+            a = every[ref]
+            hook = extra.pop("hook", None) or next((k.get("slot") for k in kids(a, "fits") if k.get("slot")), None)
             add_kid(
                 el,
                 "part",
                 {
                     "id": ref.split(".", 1)[1],
                     "ref": ref,
-                    "hook": hook,
+                    "hook": hook or "weapon",
+                    **extra,
                     "cost": "0",
                     "included": "true",
                     "removable": "true",

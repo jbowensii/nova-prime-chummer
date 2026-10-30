@@ -258,7 +258,7 @@ test('Improved Handling on-road or off-road only: 3 DP a level, only that value,
   expect([at().dp, at().stats.handling, at().stats.offRoad]).toEqual([22 + 10, 1, 1])
   expect([at('on').dp, at('on').stats.handling, at('on').stats.offRoad]).toEqual([22 + 6, 1, 3])
   expect([at('off').dp, at('off').stats.handling, at('off').stats.offRoad]).toEqual([22 + 6, 3, 1])
-  expect(at('off', 4).warnings.map(w => w.message)).toEqual(['Improved Handling 4: at most 3 levels off-road only.'])
+  expect(at('off', 4).warnings.map(w => w.message)).toContain('Improved Handling 4: at most 3 levels off-road only.')
   expect(at('on', -3).warnings).toEqual([])
   // the file keeps it and validates; an unknown one: refused, in repair left out
   const doc = blankSr6('priority', 'des-3', '2026-10-16T00:00:00.000Z')
@@ -391,12 +391,12 @@ test('a custom (id-less) mod counts its own slots (2 DP each), nuyen and Availab
 
 test('a custom chassis drives the stats, Design Points and cargo like a catalog one, and round-trips through charxml', () => {
   const { data, cr } = world()
-  const customChassis = { name: 'Tractor Trailer', dp: 30, body: 20, armor: 8, handling: -1, seats: 2, sizeClass: 6 }
+  const customChassis = { name: 'Tractor Trailer', dp: 30, body: 20, armor: 8, handling: 1, seats: 2, sizeClass: 6 }
   const d = design({ chassis: undefined, customChassis })
   const s = designOf(d, data, cr)
   const cat = designOf(design(), data, cr) // (the Zip Frame: 7 DP, size class 6)
   // its cargo by its seats, Commlink6's way (2 x 1.5), the size class table's on request, a typed-in figure over both
-  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: -1, seats: 2, size: 6, cargoText: '3 CF' })
+  expect(s.stats).toMatchObject({ body: 20, armor: 8, handling: 1, seats: 2, size: 6, cargoText: '3 CF' })
   expect(designOf(design({ chassis: undefined, customChassis: { ...customChassis, cargoFrom: 'size' } }), data, cr).stats.cargoText).toBe(cat.stats.cargoText)
   expect(designOf(design({ chassis: undefined, customChassis: { ...customChassis, cargo: 12 } }), data, cr).stats.cargoText).toBe('12 CF')
   expect(s.dp).toBe(cat.dp - 7 + 30)
@@ -404,4 +404,23 @@ test('a custom chassis drives the stats, Design Points and cargo like a catalog 
   const doc = { ...blankSr6('priority', 'x', '2026-10-16T00:00:00.000Z'), design: d }
   const back = xmlToSr6(sr6ToXml(doc))
   expect(back.ok && back.character.design?.customChassis).toEqual(customChassis)
+})
+
+test('a built-in mod applies its catalog stat effects to the stats (3 seating mods raise Seats); one with no stat effect changes none', () => {
+  const { data, cr } = world()
+  const base = { kind: 'vehicle' as const, base: 'zz.grizzly', options: [] }
+  const seats = designOf({ ...base, mods: [{ ...mod('more-seats'), qty: 3 }] }, data, cr)
+  expect(seats.stats.seats).toBe(9) // 6 + 3 × (+R at rating 1)
+  const paint = designOf({ ...base, mods: [mod('glitter-paint')] }, data, cr)
+  expect(paint.stats).toEqual(designOf({ ...base, mods: [] }, data, cr).stats)
+})
+
+test('Handling never goes below 1, on-road or off-road (owner ruling 2026-10-30), with a warning when the floor bites', () => {
+  const { data, cr } = world()
+  const based = designOf({ kind: 'vehicle', base: 'zz.grizzly', options: [opt('improved-handling', 3)], mods: [] }, data, cr) // 4/3 less 3
+  expect([based.stats.handling, based.stats.offRoad]).toEqual([1, 1])
+  expect(based.warnings.some(w => /can’t go below 1/.test(w.message))).toBe(true)
+  const scratch = designOf(design({ options: [opt('improved-handling', 3)] }), data, cr) // Zip Frame handling 3 less 3
+  expect([scratch.stats.handling, scratch.stats.offRoad]).toEqual([1, 1])
+  expect(scratch.warnings.some(w => /can’t go below 1/.test(w.message))).toBe(true)
 })

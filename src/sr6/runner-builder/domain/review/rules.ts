@@ -4,6 +4,7 @@
 // unset is skipped and Review warns once per setting (setting.unset). Errors block Finalize unless a GM approves them.
 // A prerequisite the runner lacks is always an error, cited to the page that prints it (owner, 2026-10-09): the editor
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
+import { limbSnapshot } from '../assets/limbs'
 import { canFinalize } from '../../../../core/shared/rules'
 import type { Severity, Violation } from '../../../../core/shared/types'
 import {
@@ -142,6 +143,10 @@ const pickName = (c: Ctx, x: Sr6Build['picks'][number]) => {
 export const DESIGN_APPROVAL = 'vehicle.design'
 /** The Review code of a vehicle or drone bought at a GM-adjusted price: a warning a GM approves (Review.tsx). */
 export const PRICE_APPROVAL = 'vehicle.price'
+/** The Review code of a player's own add-on (the item builders, owner ruling 6): a warning a GM approves. */
+export const CUSTOM_APPROVAL = 'gear.custom'
+/** The Review codes a GM approves in career too (Review.tsx). */
+export const GM_APPROVALS = new Set([DESIGN_APPROVAL, PRICE_APPROVAL, CUSTOM_APPROVAL])
 
 const RULES: Rule[] = [
   {
@@ -1585,7 +1590,8 @@ const RULES: Rule[] = [
         for (const t of m.techniques) if (!c.data.entry('martialtechniques', t.id)) hits.push(gone(`martial.${m.uid}`, t.name ?? t.id))
       }
       // (a design's line is no catalog entry: its snapshot is the vehicle)
-      for (const { x, path } of lines(c.b)) if (x.id && !x.design && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
+      for (const { x, path } of lines(c.b))
+        if (x.id && !x.design && !x.id.startsWith('custom.') && !c.data.entry(x.kind, x.id)) hits.push(gone(path, x.snapshot?.name ?? x.name ?? x.id))
       for (const s of c.b.sins) for (const l of s.lifestyles ?? []) if (!c.data.entry('lifestyles', l.id)) hits.push(gone(`contacts.lifestyle.${l.uid}`, l.id))
       for (const pk of c.b.lifepath) if (!c.data.lifemodules[pk.id]) hits.push(gone(`method.${pk.id}`, pk.id))
       return hits
@@ -1727,7 +1733,27 @@ const RULES: Rule[] = [
     check: c =>
       c.b.purchases
         .filter(x => (x.design || [x.id, x.snapshot?.id].some(i => i?.startsWith('design.'))) && x.snapshot?.attrs.approved !== 'true')
-        .map(x => ({ path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 })),
+        .filter(x => x.kind === 'vehicles' || !x.approved)
+        .map(x =>
+          x.kind === 'vehicles'
+            ? { path: `vehicles.${x.uid}`, message: `Custom design: needs GM approval (${nameOf(c, x)}).`, source: 'DC', page: 155 }
+            : { path: `${PURCHASE_TAB[x.kind]}.${x.uid}`, message: `Saved design: needs GM approval (${nameOf(c, x)}).` },
+        ),
+  },
+  // a player's own add-on (the item builders' custom add-on, owner ruling 6) or any other `custom.` line the app can't re-derive
+  // (only the builders' limbs and their increases are, from the CYBERLIMBS table): a warning until a GM approves it
+  {
+    code: CUSTOM_APPROVAL,
+    severity: 'warning',
+    tab: 'gear',
+    check: c =>
+      [...lines(c.b)]
+        .map(l => ({ ...l, line: l.own ?? l.x }))
+        .filter(({ line }) => line.id?.startsWith('custom.') && !limbSnapshot(line))
+        .map(({ x, host }) => ({
+          path: `${PURCHASE_TAB[(host ?? x).kind]}.${x.uid}`,
+          message: `Custom ${host ? 'add-on' : 'item'}: needs GM approval (${nameOf(c, x)}${host ? ` on ${nameOf(c, host)}` : ''}).`,
+        })),
   },
   // a vehicle or drone bought at a price other than its catalog/design price (career Ledger gmPrice): needs a GM's approval
   {
@@ -1984,6 +2010,7 @@ export const CAREER_KEEP = new Set([
   'licence.none',
   'vehicle.mods',
   'vehicle.design',
+  'gear.custom',
   'critter.rules',
 ])
 

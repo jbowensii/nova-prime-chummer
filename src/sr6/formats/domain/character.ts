@@ -192,6 +192,8 @@ export interface Sr6Purchase {
   /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
    *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
   design?: string
+  /** a weapon or cyberware line bought from a saved item design a GM made or approved (the item builders): Review asks nothing */
+  approved?: true
   /** a vehicle or drone's mod slots shifted between categories, in the order made (Double Clutch p. 120) */
   slotShifts?: SlotShift[]
   /** GM override (owner 2026-10-27): the built-in mods removed from this vehicle/drone instance, each by its builtin
@@ -252,8 +254,30 @@ export interface Sr6Design {
   /** road: Improved Handling for on-road or off-road only (3 Design Points a level, DC p. 151); absent: both */
   options: { id: string; level: number; road?: 'on' | 'off' }[]
   mods: Sr6Purchase[]
+  /** mil-spec hardpoints (Deadly Arts pp. 151-153): each its Grade and the weapon assigned (catalog `weapons` id, its
+   *  Size, how it is mounted) */
+  hardpoints?: Sr6Hardpoint[]
   diy?: true
   approved?: true
+}
+/** A weapon or cyberware design (the item builders): the line as built, its add-ons and factory parts removed; approved
+ *  when a GM made or approved it (a line bought from it then needs no approval). */
+export interface Sr6ItemDesign {
+  kind: 'weapon' | 'cyberware'
+  line: Sr6Purchase
+  approved?: true
+}
+export interface Sr6Hardpoint {
+  grade: number
+  weapon?: string
+  /** the weapon's Size (DA's SIZE column, 0-8), typed in: the catalog does not carry it */
+  size?: number
+  /** absent: turreted (the default) */
+  mount?: 'inline' | 'open'
+  popOut?: true
+  link?: 'twin' | 'quad'
+  /** a dedicated primary weapon: built in, permanent, the Body minimum of a hardpoint one Grade smaller */
+  dedicated?: true
 }
 /** specs: specializations past the first (Exotic Weapons, CRB Hong Kong p. 95; any skill with the Sixth World Companion's
  *  Expanded Specializations, p. 153) */
@@ -594,6 +618,8 @@ export interface Sr6Character {
   npc?: Sr6Npc
   /** set on a vehicle or drone design (the Designer's store; its build stays blank) */
   design?: Sr6Design
+  /** set on a saved weapon or cyberware design (the item builders, same store as the Designer's; its build stays blank) */
+  itemDesign?: Sr6ItemDesign
   sampleKey?: string
   house?: Sr6Entry[]
   printed?: Sr6Printed

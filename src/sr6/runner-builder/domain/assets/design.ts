@@ -16,6 +16,8 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { cargoFactor, entryOf, priced, ratingOf } from '../creation/purchases'
 import { availability, bookValue, dataFind, legality } from '../../../catalog/domain/values'
+import { milspec, type MilspecSheet } from './milspec'
+import { bonusValue, effectValue } from '../../../catalog/domain/effects'
 
 export type DesignPart = 'chassis' | 'powertrain' | 'console' | 'size' | 'option' | 'modification' | 'quality'
 /** A vehicledesign entry's part of a design: its table (by its category, the table's first header: `chassis type`), else
@@ -43,6 +45,9 @@ export function multiplierOf(e: Sr6Entry): number | null {
 export function partDp(e: Sr6Entry, level = 1): number | null {
   const raw = e.attrs.dp ?? e.attrs.bp ?? '0'
   if (multiplierOf(e) !== null) return 0
+  // a flat part and a per-rating part (Mil-Spec Frame, DA p. 151: `10+5 x Rating`)
+  const fp = /^\s*(\d+)\s*\+\s*(\d+)\s*x\s*[a-z][\w ]*$/i.exec(raw)
+  if (fp) return Number(fp[1]) + Number(fp[2]) * level
   const m = /^\s*([+-]?\d[\d,]*(?:\.\d+)?)\s*(x\s*[a-z][\w ]*)?\s*$/i.exec(raw.replace(/[–−]/g, '-'))
   if (!m) return null
   const v = Number(m[1].replace(/,/g, ''))
@@ -76,6 +81,12 @@ const PER_LEVEL: Record<string, Partial<Record<Stat, number>>> = {
   'improved top speed': { topSpeed: 25 },
   'improved cargo space': { cargo: 2 },
   'easily modified': {},
+  // Deadly Arts' mil-spec options: their rules are milspec.ts's
+  'mil spec frame': {},
+  'heavy mil spec plate': {},
+  'airframe ceramic plate': {},
+  'mil spec hardpoints': {},
+  'pop out weapon mount': {},
 }
 /** The stat a book word in a maximum names (`2 x Body`, `50% x Seat`, `min(3, 2 x CF)`, `Size Class 20`). */
 const WORD: Record<string, Stat> = {
@@ -134,7 +145,10 @@ export interface DesignSheet {
   /** printed specials no rule reads (the console's 10/12, the Bike's 0: owner Q4), and other notes */
   notes: string[]
   warnings: { message: string; source: string; page: number }[]
+  /** Deadly Arts' mil-spec options worked out: damage reduction, Body resisting damage, armor dice, hardpoints, comms */
+  milspec: MilspecSheet
 }
+const NO_MILSPEC: MilspecSheet = { damageReduction: 0, resistBody: 0, armorPool: 0, hardpoints: [], comms: [] }
 
 const handlingText = (s: Pick<DesignStats, 'handling' | 'offRoad'>) => (s.handling === s.offRoad ? `${s.handling}` : `${s.handling}/${s.offRoad}`)
 /** A size class table cargo cell in Cargo Factors (`4 CF`, `1/4 CF`, `10,000+ CF`), else null (`20 kg`). */
@@ -143,6 +157,58 @@ function cargoCf(s?: string): number | null {
   return m ? Number(m[1].replace(/,/g, '')) / (m[2] ? Number(m[2]) : 1) : s?.trim() === '0' ? 0 : null
 }
 const LEGAL_ORDER = ['', 'L', 'I', 'F']
+
+/** The always-on stat effects of the mods built in (`item:seats` +R on Increased Seating, `item:armor`, `item:body`, ...),
+ *  read from the catalog entry's own <effect>s at its rating and quantity: the Designer charged a mod's price but never
+ *  applied what it does. A percent, a switched or conditional one, or one that only affects others is left to the GM
+ *  (a note). Handling and the speeds are read as on/off-road where printed `a/b` (handling only). */
+const MOD_STAT: Record<string, 'body' | 'armor' | 'handling' | 'seats' | 'accel' | 'interval' | 'topSpeed' | 'pilot' | 'sensor'> = {
+  'item:body': 'body',
+  'item:armor': 'armor',
+  'item:handling': 'handling',
+  'item:seats': 'seats',
+  'item:acceleration': 'accel',
+  'item:speed-interval': 'interval',
+  'item:top-speed': 'topSpeed',
+  'item:pilot': 'pilot',
+  'item:sensor': 'sensor',
+}
+function applyModEffects(target: object, d: Sr6Design, data: Sr6Data, notes: string[]) {
+  const stats = target as Record<string, number>
+  for (const x of d.mods) {
+    const e = entryOf(x, data)
+    for (const f of e?.parts ?? []) {
+      const a = f.attrs,
+        st = MOD_STAT[a.target ?? '']
+      if (f.tag !== 'effect' || !st || a.switch || a.when || a.affects === 'others' || a.confidence === 'low' || (a.op !== 'add' && a.op !== 'set')) continue
+      const parts = (a.value ?? '').split('/')
+      const vs = parts.map(effectValue)
+      if (!vs.length || vs.length > 2 || vs.some(v => !v) || (vs.length === 2 && st !== 'handling')) {
+        notes.push(`${entryLabel(e!)}: its ${a.target} “${a.value}” isn’t a number the app can read; left to the GM.`)
+        continue
+      }
+      const [on, off = on] = vs.map(v => bonusValue(v!, ratingOf(x, e)) * (x.qty || 1))
+      if (a.op === 'set') stats[st] = on
+      else {
+        stats[st] += on
+        if (st === 'handling') stats.offRoad += off
+      }
+    }
+  }
+}
+
+/** Owner ruling 2026-10-30: Handling (on-road and off-road) never goes below 1; Double Clutch sets no floor. */
+function clampHandling(stats: { handling: number; offRoad: number }, warnings: DesignSheet['warnings']) {
+  const lost = Math.max(1 - stats.handling, 1 - stats.offRoad, 0)
+  if (!lost) return
+  stats.handling = Math.max(1, stats.handling)
+  stats.offRoad = Math.max(1, stats.offRoad)
+  warnings.push({
+    message: `Handling can’t go below 1 (owner ruling 2026-10-30); ${lost} level${lost === 1 ? '' : 's'} of Improved Handling have no effect.`,
+    source: 'DC',
+    page: 151,
+  })
+}
 
 /** A design that starts from a known catalog vehicle (`d.base`): its stats, price and Availability are the vehicle's,
  *  and the built-in mods are added on top (nuyen, slots and Availability). The from-scratch point-buy (chassis/powertrain/
@@ -179,6 +245,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
       mods: [],
       notes,
       warnings,
+      milspec: NO_MILSPEC,
     }
   }
   const a = veh.attrs
@@ -297,6 +364,10 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     stats.topSpeed *= 2
   }
   if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
+  applyModEffects(stats, d, data, notes)
+  clampHandling(stats, warnings)
+  const ms = milspec(d, picked, stats, num(a.body), data, (message, page, source = 'DC') => warnings.push({ message, source, page }), notes)
+  dp += ms.dp
   // the mods built in: their real slots and nuyen (no Design-Point conversion — this is not a point-buy)
   const find = dataFind(data)
   const mods = d.mods.map(x => {
@@ -336,6 +407,7 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     mods,
     notes,
     warnings,
+    milspec: ms.sheet,
   }
 }
 
@@ -534,6 +606,10 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     s.topSpeed = Math.floor(s.topSpeed * f)
   }
   if (has('underpowered')) s.topSpeed = Math.floor(s.topSpeed / 2)
+  applyModEffects(s, d, data, notes)
+  clampHandling(s, warnings)
+  const ms = milspec(d, picked, s, base.body, data, warn, notes)
+  dp += ms.dp
 
   // cargo: the size class's, plus the options' and the truck's Cargo Factors, doubled for a Cargo Hauler
   const cargoRow = sizeCargo(s.size)
@@ -632,6 +708,7 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     mods,
     notes,
     warnings,
+    milspec: ms.sheet,
   }
 }
 const round2 = (x: number) => Math.round(x * 100) / 100
@@ -725,6 +802,13 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
       const pe = book ? data.entry('gear', ref) : undefined
       parts.push({ tag: 'builtin', attrs: { name: pe ? entryLabel(pe) : `${swap.name} Powertrain`, ...(pe ? { ref: pe.id } : {}) }, text: '' })
     }
+  }
+  // Mil-spec Comms' in-console commlink and the hardpoints' weapons, built in
+  for (const c of sheet.milspec.comms)
+    parts.push({ tag: 'builtin', attrs: { name: c.entry ? entryLabel(c.entry) : c.name, ...(c.entry ? { ref: c.entry.id } : {}) }, text: '' })
+  for (const h of d.hardpoints ?? []) {
+    const w = h.weapon ? data.entry('weapons', h.weapon) : undefined
+    if (w) parts.push({ tag: 'builtin', attrs: { name: entryLabel(w), ref: w.id }, text: '' })
   }
   const universal = d.options.reduce((t, o) => t + (o.level > 0 && /easily modified/i.test(data.entry('vehicledesign', o.id)?.name ?? '') ? 2 * o.level : 0), 0)
   if (universal) parts.push({ tag: 'builtin', attrs: { name: 'Easily Modified', slots: String(universal), category: 'universal' }, text: '' })

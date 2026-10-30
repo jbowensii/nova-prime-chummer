@@ -116,6 +116,7 @@ class Book:
     entries: list = field(default_factory=list)
     _md: dict = field(default_factory=dict)
     _index: dict = None
+    _cache: dict = field(default_factory=dict, repr=False, compare=False)  # lineage's per-book memo
 
     @property
     def order(self):

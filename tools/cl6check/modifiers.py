@@ -498,6 +498,14 @@ _CL6_TARGET = {
     "item-attribute:damage": "item:dv",
     "item-attribute:topspeed": "item:top-speed",
     "item-attribute:firewall": "matrix:firewall",
+    # (Commlink6 names the VR Matrix initiative per mode, cold and hot; ours is one derived value for both)
+    "attribute:initiative-dice-matrix-vr-cold": "derived:matrix-initiative-dice",
+    "attribute:initiative-dice-matrix-vr-hot": "derived:matrix-initiative-dice",
+    "attribute:initiative-matrix-vr-cold": "derived:matrix-initiative",
+    "attribute:initiative-matrix-vr-hot": "derived:matrix-initiative",
+    "attribute:initiative-matrix": "derived:matrix-initiative",
+    "attribute:drake-edge": "attr:edg",  # (a drake's Edge, set apart for its own maximum)
+    "attribute:attack-rating-matrix": "item:ar",  # (a complex form's Matrix attack rating)
 }
 # (CommLink6 names its attributes in full; ours use the three-letter id, `test:attr-<id>` for a dice bonus on the tests
 # of that attribute, which CommLink6 states as the attribute's checkmod)
@@ -595,6 +603,8 @@ def _cl6_keys(m):
     natural = m.get("apply") in ("UNARMED", "ANIMAL", "DRAKE") or m.get("set") == "NATURAL"
     if natural and t in ("item-attribute:attack-rating", "item-attribute:damage"):  # (a natural weapon: our unarmed)
         targets.add("derived:unarmed-ar" if ref == "attack-rating" else "derived:unarmed-dv")
+    if natural and t == "attribute:attack-rating-physical":  # (a natural weapon's Attack Rating: our unarmed)
+        targets.add("derived:unarmed-ar")
     v = _v(m.get("value"))
     what = m.get("what") or ""
     values = {v}
@@ -676,12 +686,12 @@ def _cl6_value(m):
 
 @functools.cache
 def _bookwins():
-    """{(CommLink6 id, signature, CommLink6 value)} the book rules on: the gate's bookruled.json and the page-checked
-    rows of effects_bookwins.json (owner rule: the latest printing, the book, wins)."""
+    """{(CommLink6 id, signature, CommLink6 value): kind} the book rules on: the gate's bookruled.json and the
+    page-checked rows of effects_bookwins.json (owner rule: the latest printing, the book, wins)."""
     rows = evaluate._load("bookruled.json")  # pylint: disable=protected-access
     with open(os.path.join(os.path.dirname(__file__), "effects_bookwins.json"), encoding="utf-8") as f:
         rows += json.load(f)
-    return {(r["pair"][1], r["sig"], r["cl6"]) for r in rows}
+    return {(r["pair"][1], r["sig"], r["cl6"]): r["pair"][2] for r in rows}
 
 
 _ELEM_TAG = {"effect": "valmod", "test": "checkmod", "grant": "itemmod", "allow": "allowmod"}
@@ -717,7 +727,7 @@ def per_effect(pairs, misses=False):
     maximums, Edge flags, group targets expanded to skills, derived names) plus the notation aliases below; a number
     printed per level reads as our R times it; a modification the book rules on (bookruled.json, effects_bookwins.json)
     counts as reproduced. The whole-entry 'effects' family stays all-or-nothing."""
-    got = total = ruled = 0
+    got = total = ruled = exempt = 0
     rows = []  # (misses=True: the modifications not reproduced, for working through them)
     for c, o in pairs:
         own = o["families"].get("effects_own", o["families"].get("effects", ()))
@@ -728,6 +738,7 @@ def per_effect(pairs, misses=False):
             # (VR cold and hot initiative are one effect of ours: the hot one may take it again)
             hit = _take(_cl6_keys(m), mine, used, "hot" if "VR_HOT" in m.get("ref", "") else "")
             if not hit and (c.get("id"), _sig(m), _cl6_value(m)) in _bookwins():
+                exempt += _bookwins()[(c.get("id"), _sig(m), _cl6_value(m))] == "exempt"
                 ruled += 1
                 hit = True
             got += bool(hit)
@@ -738,4 +749,4 @@ def per_effect(pairs, misses=False):
                 )
     if misses:
         return rows
-    return {"reproduced": got, "of": total, "pct": _pct(got, total), "bookruled": ruled}
+    return {"reproduced": got, "of": total, "pct": _pct(got, total), "bookruled": ruled - exempt, "exempt": exempt}

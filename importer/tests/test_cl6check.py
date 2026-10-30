@@ -619,7 +619,9 @@ class PerEffectTest(unittest.TestCase):
     def test_counts_cl6_modifiers_ours_reproduces_by_target_and_value(self):
         c = {"families": {"effects": (("effect", "attribute:strength", "1"), ("test", "skill:stealth", "2"))}}
         o = {"families": {"effects": (("effect", "attribute:strength", "1"),)}}
-        self.assertEqual(modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0, "bookruled": 0})
+        self.assertEqual(
+            modifiers.per_effect([(c, o)]), {"reproduced": 1, "of": 2, "pct": 50.0, "bookruled": 0, "exempt": 0}
+        )
 
     def test_the_gate_vocabulary_and_notation_aliases(self):
         """set=MAX, Edge-cost sign, Essence thousandths, AR lists, natural weapons, physical tests, rule names."""
@@ -653,6 +655,15 @@ class PerEffectTest(unittest.TestCase):
         c = {"families": {"effects": tuple(("effect", t, v) for t, v in cl6)}}
         o = {"families": {"effects_own": tuple(("effect", t, v) for t, v in mine)}}
         return modifiers.per_effect([(c, o)])["reproduced"]
+
+    def test_matrix_initiative_modes_and_matrix_attack_rating_read_as_ours(self):
+        cl6 = [
+            ("attribute:initiative-dice-matrix-vr-cold", "$RATING"),
+            ("attribute:initiative-matrix-vr-hot", "$RATING"),
+            ("attribute:attack-rating-matrix", "3"),
+        ]
+        mine = [("derived:matrix-initiative-dice", "r"), ("derived:matrix-initiative", "r"), ("item:ar", "3")]
+        self.assertEqual(self.pe(cl6, mine), 3)
 
     def test_a_test_group_expands_into_its_skills(self):
         self.assertEqual(self.pe([("skill:con", "1"), ("skill:influence", "1")], [("test:social", "1")]), 2)

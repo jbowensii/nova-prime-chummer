@@ -9,7 +9,7 @@ import { Modal } from '../../../../core/ui-kit/bits'
 import { balances, canDraft } from '../../domain/career/career'
 import { purchaseTab } from '../../domain/creation/purchases'
 import { draftAgain, finalizeSr6 } from '../../domain/career/finalize'
-import { canFinalizeSr6, DESIGN_APPROVAL, PRICE_APPROVAL } from '../../domain/review/rules'
+import { canFinalizeSr6, GM_APPROVALS } from '../../domain/review/rules'
 import { sr6Tabs } from '../tabList'
 import { adeptDrainLabel, ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
@@ -135,9 +135,9 @@ export function ReviewTab() {
                 )}
               </span>
               {/* (a designed vehicle's approval: a warning, approved in career too, owner Q8) */}
-              {(!career || x.code === DESIGN_APPROVAL || x.code === PRICE_APPROVAL) && (
+              {(!career || GM_APPROVALS.has(x.code)) && (
                 <span className="row">
-                  {(x.severity === 'error' || x.code === DESIGN_APPROVAL || x.code === PRICE_APPROVAL) && !x.hard && (
+                  {(x.severity === 'error' || GM_APPROVALS.has(x.code)) && !x.hard && (
                     <>
                       <label className="check inline">
                         <input

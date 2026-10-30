@@ -12,12 +12,6 @@
     "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
   },
   {
-    "pair": ["fs", "detachable_drum_magazine", "item"],
-    "sig": "valmod ITEM_ATTRIBUTE AMMUNITION",
-    "cl6": "-98",
-    "why": "owner ruling 2026-10-18: a CL6 placeholder (0 or -98), no real effect; write none"
-  },
-  {
     "pair": ["nf", "instrument_professional", "item"],
     "sig": "valmod SKILL con",
     "cl6": "0",

@@ -64,6 +64,7 @@ import {
   runnerInfected,
 } from '../creation/infected'
 import { accessoryProblem, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
+import { limbSnapshot } from '../assets/limbs'
 import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
 
@@ -91,6 +92,19 @@ export const voidedIds = (ch: Sr6Character) => new Set(ch.ledger.flatMap(e => (e
 export function liveAdvances(ch: Sr6Character): Extract<Sr6LedgerEntry, { type: 'advance' }>[] {
   const voided = voidedIds(ch)
   return sinceFinalize(ch).filter((e): e is Extract<Sr6LedgerEntry, { type: 'advance' }> => e.type === 'advance' && !voided.has(e.id))
+}
+
+/** Whether an add-on changed in place by `upgrade` stays the same add-on: the same kind, and the same stat family (a custom
+ *  limb's increase to another rating of the same stat; a catalog add-on the same entry at a rating it comes in, with the
+ *  same choice note). `data` absent (replaying a saved step): only what needs no catalog. */
+export function addonUpgradeProblem(was: Sr6Purchase, line: Sr6Purchase, data?: Sr6Data): 'not-same-addon' | 'rating-range' | null {
+  if (line.kind !== was.kind) return 'not-same-addon'
+  const inc = /^(custom\.limb-increase-(?:str|agi|armor)-)\d$/.exec(was.id ?? '')
+  if (inc) return line.id?.startsWith(inc[1]) && limbSnapshot(line) ? null : 'not-same-addon'
+  if (!was.id || line.id !== was.id || (line.note ?? '') !== (was.note ?? '')) return 'not-same-addon'
+  const e = data?.entry(line.kind, line.id)
+  const range = ratingRange(e?.attrs.rating)
+  return data && line.rating !== undefined && range.length && !range.includes(line.rating) ? 'rating-range' : null
 }
 
 /** One advance onto the build, in place. Structural only (no catalog lookups), so it replays whatever the catalog holds. */
@@ -169,6 +183,14 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
       b.purchases = b.purchases.filter(x => x.uid !== a.target)
       return
     case 'upgrade': {
+      // (an add-on changed in place, e.g. a cyberlimb's Attribute increase to another rating: it keeps its place and uid)
+      const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
+      if (host) {
+        host.accessories = host.accessories.map(y =>
+          y.uid === a.target && !addonUpgradeProblem(y, a.line) ? { ...structuredClone(a.line), uid: a.target } : y,
+        )
+        return
+      }
       const i = b.purchases.findIndex(x => x.uid === a.target)
       if (i >= 0) b.purchases[i] = { ...structuredClone(a.line), uid: a.target, accessories: b.purchases[i].accessories }
       return
@@ -587,8 +609,10 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
-      // (a design's line: its snapshot, the vehicle the design worked out to)
-      const e = x.id ? (data.entry(x.kind, x.id) ?? (x.design ? x.snapshot : undefined) ?? no('unknown-entry')) : undefined
+      // (a design's line: its snapshot, the vehicle the design worked out to; a builders' custom limb: its own)
+      const e = x.id
+        ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry'))
+        : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       // (a grade the augmentation's type doesn't take is recorded: Review's gear.grade)
@@ -610,6 +634,19 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       return a.refund ? { label: `Sold: ${name} for ${a.refund.toLocaleString('en-US')}¥`, nuyen: -a.refund } : { label: `Dropped: ${name}` }
     }
     case 'upgrade': {
+      // an add-on changed in place (a cyberlimb's Attribute increase to another rating, owner ruling 2026-10-30): one step,
+      // the difference between the new and old price (a lower rating is a credit of the difference)
+      const accHost = b.purchases.find(y => y.accessories.some(z => z.uid === a.target))
+      if (accHost) {
+        const was = accHost.accessories.find(z => z.uid === a.target)!
+        const problem = addonUpgradeProblem(was, a.line, data)
+        if (problem) no(problem)
+        const hostPr = priced({ ...accHost, accessories: [] }, data, cr)
+        const now = priced(a.line, data, cr, hostPr),
+          before = priced(was, data, cr, hostPr)
+        if (!now.ok || !before.ok) no('book-value')
+        return { label: `Changed: ${lineLabel(was)} → ${lineLabel(a.line)} on ${lineLabel(accHost)}`, nuyen: now.cost - before.cost }
+      }
       // upgrade a line in place to a higher level in its family (levels.ts) and/or a different grade, paying the DIFFERENCE
       // in cost (SR Missions FAQ v2.4 p.21: same-type upgrade credits the old piece at full value). The line keeps its
       // accessories (applyAdvance), which is why cyberware/bioware is upgraded here rather than sold and re-bought.
@@ -641,7 +678,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       // yourself: half, a mod only, Double Clutch p. 120); what goes past the vehicle's limits is recorded (Review warns)
       const host = b.purchases.find(y => y.uid === a.target) ?? no('unknown-host')
       const x = a.line,
-        e = x.id ? (data.entry(x.kind, x.id) ?? x.snapshot ?? no('unknown-entry')) : undefined
+        e = x.id ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? x.snapshot ?? no('unknown-entry')) : undefined
       const range = ratingRange(e?.attrs.rating)
       if (x.rating !== undefined && range.length && !range.includes(x.rating)) no('rating-range')
       if (x.mount !== undefined) {

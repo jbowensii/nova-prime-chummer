@@ -191,7 +191,7 @@ test('an accessory’s bonuses are its host’s: the limb’s own STR and armor 
   ).toEqual({ ok: true })
   const d = deriveSr6(data, cr, ch)
   expect(d.attrs.str).toEqual(before.attrs.str) // the runner's Strength: unchanged
-  expect(d.defenseRating).toBe(before.defenseRating)
+  expect(d.defenseRating).toBe(before.defenseRating + 2) // (a limb's Armor increase is the runner's Defense, CRB p. 288, owner ruling 2026-10-30)
   expect(d.hosts).toEqual([
     {
       uid: limb.uid,

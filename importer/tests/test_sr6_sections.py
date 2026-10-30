@@ -740,3 +740,18 @@ Riggers can use some programs. See the **Programs** section (p. 40) for more det
         got = self.kind("programs")
         self.assertEqual([n for n, _, _ in got].count("Zap"), 1)
         self.assertIn("Wobble", [n for n, _, _ in got])  # (a program the cited page doesn't define: its own entry)
+
+
+class DesignCostTest(unittest.TestCase):
+    """Deadly Arts' mil-spec design option costs (pp. 151-153; invented names, the book's cost shapes)."""
+
+    def test_costs(self):
+        d = sections.design_cost
+        pair = "**Twin Zap Cost:** +3 Design Points\n**Quad-Zap Cost:** +5 Design Points\n"
+        self.assertEqual((d("Twin Zap", pair), d("Quad Zap", pair)), ("+3", "+5"))
+        tiers = "**Cost:** 5 / 20 / 30 Design Points\n"
+        self.assertEqual([d(f"Glow Comms {n}", tiers) for n in ("I", "II", "III")], ["5", "20", "30"])
+        self.assertEqual(d("Frame", "**Cost:** 10 Design Points + 5 Design Points x Rating\n"), "10+5 x Rating")
+        self.assertEqual(d("Plate", "**Cost:** 2 Design Points x Armor Rating\n"), "2 x Armor Rating")
+        self.assertEqual(d("Pop", "**Cost:** +5 Design Points x Grade\n"), "+5 x Grade")
+        self.assertIsNone(d("Plain", "No cost here."))

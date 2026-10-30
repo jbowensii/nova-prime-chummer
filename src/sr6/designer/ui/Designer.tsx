@@ -7,7 +7,7 @@
 // (src/sr6/runner-builder/domain/assets/design.ts): the stats, Design Points, price, Availability, notes and warnings (never refused). A GM's
 // design is approved (a GM may tick or untick it); a player's, bought by a runner, is a Review warning a GM approves.
 // A runner buys one on the Vehicles or Drones tab (the Ledger after finalising): useSr6Designs (src/sr6/runner-builder/ui/repo.ts).
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { because, canEdit, useMe } from '../../../core/ui-kit/auth'
 import { Brand, Modal, Stepper } from '../../../core/ui-kit/bits'
 import { IconButton, IconLink } from '../../../core/ui-kit/icons'
@@ -20,15 +20,18 @@ import { ConflictDialog, SaveLine, useAutosave } from '../../../features/runner-
 import { newId } from '../../../core/shared/types'
 import { entryLabel } from '../../catalog/domain/categories'
 import { entryKey } from '../../catalog/domain/names'
-import { effectText } from '../../catalog/domain/effects'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { basePowertrain, chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
 import { entryOf, modKind } from '../../runner-builder/domain/creation/purchases'
+import { HARDPOINT_PARTS, hardpointCheck } from '../../runner-builder/domain/assets/milspec'
+import { normName } from '../../catalog/domain/names'
 import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
 import { blankSr6, type Sr6Character, type Sr6Design } from '../../formats/domain/character'
 import type { Sr6Catalog, Sr6Entry } from '../../formats/domain/types'
 import { n } from '../../runner-builder/ui/editor'
+import { sr6Row } from '../../runner-builder/ui/EntryRef'
+import { EntryHover } from '../../../core/ui-kit/EntryHover'
 import { CatalogPicker } from '../../runner-builder/ui/Picker'
 import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../runner-builder/ui/repo'
 
@@ -45,8 +48,17 @@ const partsOf = (c: Sr6Catalog, p: DesignPart) =>
       }),
     ).values(),
   ]
-    .filter(e => designPart(e) === p)
+    .filter(e => designPart(e) === p && !HARDPOINT_PARTS.test(partKey(e)))
     .sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
+const partKey = (e: Sr6Entry) =>
+  normName(e.name)
+    .replace(/[^a-z]+/g, ' ')
+    .trim()
+/** Deadly Arts p. 151: one specialty armor; the mil-spec frame never with Increased Structural Integrity */
+const SPECIALTY = /^(airframe ceramic plate|heavy mil spec plate|mil spec plate)$/
+/** The weapons a hardpoint can take: vehicle weapons (DA's mil-spec ones among them) */
+const vehicleWeapons = (c: Sr6Catalog) =>
+  [...c.entries.weapons.values()].filter(w => /^WEAPON_VEHICLE/.test(w.attrs.class ?? '')).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
 /** The custom-chassis form's fields: the chassis table's own columns (DP, Body, Armor, Handling, Seats, Size Class). */
 const CUSTOM = '__custom'
 const OWN = '__own'
@@ -108,9 +120,11 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     void refresh()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const mine = (list ?? []).filter(s => !me || !s.owner || s.owner === me.username)
+  // (weapon and cyberware designs, the item builders': their own list below, shared with everyone)
+  const items = (list ?? []).filter(s => s.ch.itemDesign)
+  const mine = (list ?? []).filter(s => !s.ch.itemDesign && (!me || !s.owner || s.owner === me.username))
   const others = ownerGroups(
-    (list ?? []).filter(s => !mine.includes(s)),
+    (list ?? []).filter(s => !s.ch.itemDesign && !mine.includes(s)),
     unreadable.filter(u => u.owner && u.owner !== me?.username),
     'az',
     '',
@@ -254,6 +268,50 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
           {rows.map(s => row(s, false))}
         </section>
       ))}
+      <section aria-label="Weapon and cyberware designs">
+        <h2>Weapon and cyberware designs</h2>
+        <p className="muted">
+          Saved from a runner’s weapon or cyberware builder (Customise on a weapon or an implant). Everyone sees them and any runner can buy one on the Gear or
+          Augmentations tab; Review asks a GM to approve one a player made.
+        </p>
+        {items.length === 0 ? (
+          <p className="muted">None yet.</p>
+        ) : (
+          arrange(items, 'az', '').map(({ ch, owner, ownerName }) => {
+            const x = ch.itemDesign!.line,
+              e = entryOf(x, data),
+              mineToo = !me || !owner || owner === me.username
+            return (
+              <div className="dossier" key={ch.id}>
+                <span className="face" aria-hidden>
+                  {designName(ch)[0]}
+                </span>
+                <div>
+                  <span className="title">{designName(ch)}</span>
+                  <div className="meta">
+                    {[
+                      ch.itemDesign!.kind === 'weapon' ? 'Weapon' : 'Cyberware',
+                      e ? entryLabel(e) : x.name,
+                      `${x.accessories.length} add-ons`,
+                      !mineToo && `by ${ownerName ?? owner}`,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                    {ch.itemDesign!.approved && <span className="noncanon"> GM approved</span>}
+                  </div>
+                </div>
+                {mineToo && (
+                  <div className="row">
+                    <button className="btn small quiet" aria-label={`Delete ${designName(ch)}`} onClick={() => setToDelete(ch)}>
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            )
+          })
+        )}
+      </section>
       <Modal
         open={creating}
         onClose={() => setCreating(false)}
@@ -365,15 +423,20 @@ const STATS: [keyof ReturnType<typeof designOf>['stats'], string][] = [
   ['pilot', 'Pilot'],
   ['sensor', 'Sensor'],
 ]
-/** What a design part does, for the row's hover tooltip: its effects (effectText) and any notes, else its name. */
-const descOf = (e: Sr6Entry): string =>
-  [...e.parts.filter(p => p.tag === 'effect' || p.tag === 'link').map(effectText), ...(e.notes ?? []).map(x => x.text)].filter(Boolean).join('; ') ||
-  entryLabel(e)
+/** A design part's name with the app's hover card (the same one Game data shows: the book text, page, Design Points, maximum level and effects). */
+const Hover = ({ c, e, children }: { c: Sr6Catalog; e: Sr6Entry; children: ReactNode }) => (
+  <EntryHover row={() => sr6Row(c, e)} kind="Design part">
+    {children}
+  </EntryHover>
+)
 
 /** A part's Design Points as listed: `4 DP a level`, `+10 DP`, `×2`. */
 const dpText = (e: Sr6Entry) => {
   const m = multiplierOf(e)
   if (m !== null) return `×${m}`
+  const fp = /^\s*(\d+)\s*\+\s*(\d+)\s*x/i.exec(e.attrs.dp ?? '') // (`10+5 x Rating`: Mil-Spec Frame)
+  if (fp) return `${fp[1]} DP + ${fp[2]} DP a level`
+  if (/x\s*armor/i.test(e.attrs.dp ?? '')) return `${/\d+/.exec(e.attrs.dp!)![0]} DP × Armor`
   const v = partDp(e, 1)
   return v === null ? `${e.attrs.dp ?? e.attrs.bp} DP` : `${v} DP${designPart(e) === 'option' ? ' a level' : ''}`
 }
@@ -663,11 +726,28 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
       )}
     </>
   )
+  // blocked combos (DA p. 151): a second specialty armor; the frame beside Increased Structural Integrity
+  const isi = d.mods.some(m => /increased structural integrity/i.test(entryOf(m, data)?.name ?? m.name ?? ''))
+  const blocked = (e: Sr6Entry) => {
+    const k = partKey(e)
+    if (levelOf(e.id) !== 0) return undefined
+    if (k === 'mil spec frame' && isi) return 'not with Increased Structural Integrity'
+    if (SPECIALTY.test(k) && partsOf(c, 'option').some(o => o.id !== e.id && SPECIALTY.test(partKey(o)) && levelOf(o.id) !== 0))
+      return 'only one specialty armor'
+    return undefined
+  }
+  const frameOn = partsOf(c, 'option').some(o => partKey(o) === 'mil spec frame' && levelOf(o.id) > 0)
+  const setHp = (i: number, fn: (h: NonNullable<Sr6Design['hardpoints']>[number]) => void) =>
+    update(x => {
+      fn(x.hardpoints![i])
+    })
   const toggles = (p: DesignPart) =>
     partsOf(c, p).map(e => (
-      <label key={e.id} className="inline" title={descOf(e)}>
+      <label key={e.id} className="inline">
         <input type="checkbox" aria-label={entryLabel(e)} checked={levelOf(e.id) > 0} onChange={ev => setLevel(e.id, ev.target.checked ? 1 : 0)} />{' '}
-        {entryLabel(e)} ({dpText(e)})
+        <Hover c={c} e={e}>
+          {entryLabel(e)} ({dpText(e)})
+        </Hover>
       </label>
     ))
   const st = sheet.stats
@@ -833,6 +913,24 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     <span className="sl">Cargo</span>
                     <b>{st.cargoText}</b>
                   </div>
+                  {sheet.milspec.damageReduction > 0 && (
+                    <div className="stat" title="Mil-spec plate: incoming attacks' DV reduced by its Rating (DA p. 151)">
+                      <span className="sl">Damage reduction</span>
+                      <b>−{sheet.milspec.damageReduction} DV</b>
+                    </div>
+                  )}
+                  {sheet.milspec.resistBody > 0 && (
+                    <div className="stat" title="Mil-Spec Frame: Body when resisting damage (DA p. 151)">
+                      <span className="sl">Body resisting damage</span>
+                      <b>+{sheet.milspec.resistBody}</b>
+                    </div>
+                  )}
+                  {sheet.milspec.armorPool > 0 && (
+                    <div className="stat" title="Airframe Ceramic Plate: half the Armor as a dice pool bonus (DA p. 151)">
+                      <span className="sl">Armor dice</span>
+                      <b>+{sheet.milspec.armorPool}</b>
+                    </div>
+                  )}
                 </div>
               </section>
               <FacingCircle drone={sheet.drone} set={FACING[vehicleDomain(d, data)]} />
@@ -844,9 +942,18 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
             <h3>Options</h3>
             <div className="dsn-opts">
               {partsOf(c, 'option').map(e => (
-                <span key={e.id} className="row" title={descOf(e)}>
-                  <Stepper label={`${entryLabel(e)} level`} value={levelOf(e.id)} min={-20} max={20} onChange={v => setLevel(e.id, v)} /> {entryLabel(e)} (
-                  {dpText(e)})
+                <span key={e.id} className="row">
+                  <Stepper
+                    label={`${entryLabel(e)} level`}
+                    value={levelOf(e.id)}
+                    min={blocked(e) ? 0 : -20}
+                    max={blocked(e) ? 0 : 20}
+                    onChange={v => setLevel(e.id, v)}
+                  />{' '}
+                  <Hover c={c} e={e}>
+                    {entryLabel(e)} ({dpText(e)})
+                  </Hover>
+                  {blocked(e) && <span className="muted"> — {blocked(e)}</span>}
                   {/^improved handling$/i.test(e.name) && levelOf(e.id) !== 0 && (
                     <select aria-label={`${entryLabel(e)}: on-road, off-road or both`} value={road(e.id)} onChange={ev => setRoad(e.id, ev.target.value)}>
                       <option value="">On- and off-road</option>
@@ -861,6 +968,100 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
             <div className="dsn-toggles">{toggles('modification')}</div>
             <h4>Quality factors</h4>
             <div className="dsn-toggles">{toggles('quality')}</div>
+          </section>
+
+          {/* mil-spec hardpoints and the weapons on them (DA pp. 151-153) */}
+          <section className="panel" aria-label="Mil-spec hardpoints">
+            <h3>Mil-spec hardpoints</h3>
+            {(d.hardpoints ?? []).map((h, i) => {
+              const r = sheet.milspec.hardpoints[i] ?? hardpointCheck(h, st.body)
+              return (
+                <div key={i} className="row" aria-label={`Hardpoint ${i + 1}`}>
+                  <Stepper label={`Hardpoint ${i + 1} Grade`} value={h.grade} min={0} max={12} onChange={v => setHp(i, x => void (x.grade = v))} /> Grade
+                  <select
+                    aria-label={`Hardpoint ${i + 1} weapon`}
+                    value={h.weapon ?? ''}
+                    onChange={e => setHp(i, x => void (e.target.value ? (x.weapon = e.target.value) : delete x.weapon))}
+                  >
+                    <option value="">(no weapon)</option>
+                    {vehicleWeapons(c).map(w => (
+                      <option key={w.id} value={w.id}>
+                        {entryLabel(w)}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="inline">
+                    Size{r.size !== undefined && !r.sizeTyped ? ` ${r.size} (catalog)` : ''}, override
+                    <input
+                      aria-label={`Hardpoint ${i + 1} weapon Size`}
+                      type="number"
+                      min={0}
+                      max={12}
+                      value={h.size ?? ''}
+                      onChange={e => setHp(i, x => void (e.target.value === '' ? delete x.size : (x.size = Number(e.target.value))))}
+                    />
+                  </label>
+                  <select
+                    aria-label={`Hardpoint ${i + 1} mount`}
+                    value={h.mount ?? ''}
+                    onChange={e => setHp(i, x => void (e.target.value ? (x.mount = e.target.value as 'inline' | 'open') : delete x.mount))}
+                  >
+                    <option value="">Turreted</option>
+                    <option value="inline">Inline (−2)</option>
+                    <option value="open">Open (−2)</option>
+                  </select>
+                  <label className="inline">
+                    <input type="checkbox" checked={!!h.popOut} onChange={e => setHp(i, x => void (e.target.checked ? (x.popOut = true) : delete x.popOut))} />{' '}
+                    Pop-out (+1)
+                  </label>
+                  <select
+                    aria-label={`Hardpoint ${i + 1} linked`}
+                    value={h.link ?? ''}
+                    onChange={e => setHp(i, x => void (e.target.value ? (x.link = e.target.value as 'twin' | 'quad') : delete x.link))}
+                  >
+                    <option value="">Single</option>
+                    <option value="twin">Twin linked (+1)</option>
+                    <option value="quad">Quad linked (+2)</option>
+                  </select>
+                  <label className="inline">
+                    <input
+                      type="checkbox"
+                      checked={!!h.dedicated}
+                      onChange={e => setHp(i, x => void (e.target.checked ? (x.dedicated = true) : delete x.dedicated))}
+                    />{' '}
+                    Dedicated primary
+                  </label>{' '}
+                  · {n(r.dp)} DP · Body {r.minBody}+ <b className={r.ok ? 'ok' : 'err'}>{r.ok ? 'fits' : 'does not fit'}</b>
+                  {r.reasons.map(t => (
+                    <span key={t} className="err">
+                      {' '}
+                      {t}
+                    </span>
+                  ))}
+                  {r.notes.map(t => (
+                    <span key={t} className="muted">
+                      {' '}
+                      {t}
+                    </span>
+                  ))}
+                  <button
+                    className="btn small quiet"
+                    aria-label={`Remove hardpoint ${i + 1}`}
+                    onClick={() =>
+                      update(x => {
+                        x.hardpoints = x.hardpoints!.filter((_, j) => j !== i)
+                        if (!x.hardpoints.length) delete x.hardpoints
+                      })
+                    }
+                  >
+                    ×
+                  </button>
+                </div>
+              )
+            })}
+            <button className="btn small quiet" onClick={() => update(x => void (x.hardpoints = [...(x.hardpoints ?? []), { grade: 1 }]))}>
+              Add a hardpoint
+            </button>
           </section>
 
           {/* mods built in */}
@@ -974,7 +1175,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
           open
           onClose={() => setAdding(false)}
           kinds={['gear']}
-          filter={e => modKind(e) !== null}
+          filter={e => modKind(e) !== null && !(frameOn && /increased structural integrity/i.test(e.name))}
           from={{ c, cr, data }}
           onAdd={p => {
             update(x => void x.mods.push({ uid: newId(), kind: 'gear', id: p.e.id, qty: 1, accessories: [], ...(p.rating ? { rating: p.rating } : {}) }))

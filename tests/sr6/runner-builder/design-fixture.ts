@@ -39,6 +39,7 @@ export const DESIGN_GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.powertrain-roller" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Roller Powertrain</name><fits slot="vehicle-powertrain"/></gear>
   <gear id="zz.powertrain-floater" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Floater Powertrain</name><fits slot="vehicle-powertrain"/></gear>
   <gear id="zz.glitter-paint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_SKIN" slots="0" avail="6(L)" cost="4000"><name>Glitter Paint</name></gear>
+  <gear id="zz.more-seats" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CARGO" slots="0" avail="2" cost="1200" rating="1"><name>More Seats</name><effect target="item:seats" op="add" value="R"/></gear>
 </sr6:data>`
 // a made-up catalog vehicle, for the "start from a known vehicle" path
 export const DESIGN_VEHICLE = `<sr6:data ${NS} kind="vehicles" version="1">

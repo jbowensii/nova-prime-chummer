@@ -28,6 +28,7 @@ import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
 import { choiceOptions, noteAttr } from './choices'
 import { categoryOf, entryLabel } from '../../../catalog/domain/categories'
+import { weaponChanges, weaponOf, type WeaponStats } from '../assets/weapons'
 
 export interface Sr6Pool {
   skill: string
@@ -66,6 +67,12 @@ export interface Sr6WeaponValues {
   skill?: string
   pool?: number
   dvBonus?: number
+  /** its stats with its fittings (assets/weapons.ts weaponOf): base, and modified as this total counts them (the
+   *  plain total's `now`, the bracketed one's `on`) */
+  base: WeaponStats
+  stats: WeaponStats
+  /** base -> modified in words, `AR 9/9/7 → 10/10/8 (11/11/9)` (weaponChanges) */
+  changes: string[]
 }
 export interface Sr6Derived {
   attrs: Record<Sr6Attr, { natural: number; augmented: number }>
@@ -281,6 +288,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       const e = entryOf(x, data)
       defense += rated(e?.attrs.defense, ratingOf(x, e)).n ?? 0
     }
+  // a cyberlimb's Armor increase (CRB p. 288) raises the Defense Rating at all times (owner ruling 2026-10-30)
+  for (const x of b.purchases) if (x.kind === 'augmentations') defense += hostBonus(x, data, on).defense ?? 0
 
   // CRB pp. 92–93: a pool is rank + attribute; a specialization or expertise adds its dice; an untrained skill rolls the attribute less the penalty
   // the Sixth World Companion's option (p. 150, strengthInCloseCombat): Close Combat rolls Strength, and Agility goes
@@ -342,11 +351,20 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     .filter(x => x.kind === 'weapons')
     .map(x => {
       const e = entryOf(x, data),
-        ar = attackRatings(e?.attrs.ar).bands,
+        skill = weaponSkill(data, e),
+        w = weaponOf(x, data, skill),
+        st = on ? w.on : w.now,
+        ar = st.ar,
         melee = isMelee(e)
       const add = melee && flag(cr, 'meleeArStrength') ? A(/reaction instead of strength/i.test(noteOf(e, 'ar')) ? 'rea' : meleeAttr) : 0
-      const out: Sr6WeaponValues = { uid: x.uid, name: e ? entryLabel(e) : (x.name ?? 'Weapon'), bands: add ? ar.map(v => (v === null ? null : v + add)) : ar }
-      const skill = weaponSkill(data, e)
+      const out: Sr6WeaponValues = {
+        uid: x.uid,
+        name: e ? entryLabel(e) : (x.name ?? 'Weapon'),
+        bands: add ? ar.map(v => (v === null ? null : v + add)) : ar,
+        base: w.base,
+        stats: st,
+        changes: weaponChanges(w),
+      }
       if (skill) {
         out.skill = skill
         const pl = pools.find(q => q.skill === skill),
@@ -358,6 +376,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
               : pl.spec && specFits(pl.spec, cat) && pl.specDp !== undefined
                 ? pl.specDp
                 : (pl.more?.find(m => specFits(m.spec, cat))?.dp ?? pl.dp)
+        if (out.pool !== undefined) out.pool += st.pool
       }
       if (melee && highStrength) out.dvBonus = highStrength
       return out
@@ -478,11 +497,16 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     // (a critter's augmentations add to its own stat block: critters.ts, never the runner's attributes)
     hosts: b.purchases.flatMap(x => {
       if (x.kind === 'critters') return []
-      const add = hostBonus(x, data, on),
+      const e = entryOf(x, data),
+        // CRB p. 288 (owner ruling 2026-10-30): a cyberlimb's own Strength and Agility start at 2, its increases add to that
+        limb = /^cyberlimbs?$/i.test(e?.attrs.category ?? ''),
+        add = { ...(limb ? { str: 0, agi: 0 } : {}), ...hostBonus(x, data, on) },
         targets = Object.keys(add) as (keyof typeof add)[]
       if (!targets.length) return []
-      const values = targets.map(t => ({ target: t, value: (t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]! }))
-      const e = entryOf(x, data)
+      const values = targets.map(t => ({
+        target: t,
+        value: (limb && (t === 'str' || t === 'agi') ? 2 : t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]!,
+      }))
       return [{ uid: x.uid, name: e ? entryLabel(e) : (x.name ?? 'Custom item'), values, text: hostText(values) }]
     }),
   }

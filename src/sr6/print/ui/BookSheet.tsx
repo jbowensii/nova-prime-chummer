@@ -93,10 +93,11 @@ export function BookSheet({ art }: { art: SheetArt }) {
     melee = v.meleeWeapons[0]
   const licences = b.sins.flatMap(v.licencesOf)
   const acc = (x: (typeof b.purchases)[number]) =>
-    x.accessories.length > 0 && (
+    (x.accessories.length > 0 || v.instruction(x)) && (
       <div className="k-small">
-        with {x.accessories.map(nameOf).join(', ')}
+        {x.accessories.length > 0 && `with ${x.accessories.map(nameOf).join(', ')}`}
         {v.host(x) && ` (${v.host(x)})`}
+        {v.instruction(x) && ` ${v.instruction(x)}`}
       </div>
     )
   const skillTable = (rows: typeof trained, key: string) => (

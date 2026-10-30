@@ -26,5 +26,642 @@
     "cl6": "3",
     "ours": ["action:attack-run edge-cost 2", "action:dead-to-rights edge-cost 3", "action:crossfire edge-cost 3", "action:double-down edge-cost 1"],
     "why": "page-checked (owner rule: latest printing, the book wins): Double Clutch p. 168 (PDF p. 169) Combat Ace halves the Edge cost of Attack Run (2), Dead to Rights (3), Crossfire (3) and Double Down; no Aimbot"
+  },
+  {
+    "pair": ["cl6", "savage_rend", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE DAMAGE apply=ANIMAL",
+    "cl6": "0.5",
+    "ours": ["derived:unarmed-ar=r", "derived:unarmed-dv=r/2 ru"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states Savage Rend's damage as 0.5 per level on the animal form; ours is unarmed DV r/2 with the AR (one effect, no animal form)"
+  },
+  {
+    "pair": ["cl6", "shifter_built_tough", "exempt"],
+    "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR set=NATURAL apply=ANIMAL",
+    "cl6": "1",
+    "ours": ["derived:physical-monitor=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the animal-form copy (apply=ANIMAL/CHARACTER) as a second modification; ours is one effect and models no separate animal form"
+  },
+  {
+    "pair": ["cl6", "shifter_catlike", "exempt"],
+    "sig": "checkmod SKILL athletics what=EDGE apply=ANIMAL",
+    "cl6": "1",
+    "ours": ["skill:athletics=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the animal-form copy (apply=ANIMAL/CHARACTER) as a second modification; ours is one effect and models no separate animal form"
+  },
+  {
+    "pair": ["cl6", "enhanced_senses_low_light", "exempt"],
+    "sig": "itemmod QUALITY low-light_vision apply=ANIMAL",
+    "cl6": "",
+    "ours": ["sense:low-light-vision=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the animal-form copy (apply=ANIMAL/CHARACTER) as a second modification; ours is one effect and models no separate animal form"
+  },
+  {
+    "pair": ["cl6", "enhanced_senses_termographic", "exempt"],
+    "sig": "itemmod QUALITY thermographic_vision apply=CHARACTER",
+    "cl6": "",
+    "ours": ["sense:low-light-vision=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the animal-form copy (apply=ANIMAL/CHARACTER) as a second modification; ours is one effect and models no separate animal form"
+  },
+  {
+    "pair": ["cl6", "enhanced_senses_termographic", "exempt"],
+    "sig": "itemmod QUALITY thermographic_vision apply=ANIMAL",
+    "cl6": "",
+    "ours": ["sense:low-light-vision=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the animal-form copy (apply=ANIMAL/CHARACTER) as a second modification; ours is one effect and models no separate animal form"
+  },
+  {
+    "pair": ["cl6", "enhanced_senses_vomeronasal", "exempt"],
+    "sig": "checkmod SKILL perception what=EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["sense:low-light-vision=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the Edge on Perception and Influence tests separately; ours is one smell-conditional Perception Edge plus social Edge (Bestial Nature p. 15)"
+  },
+  {
+    "pair": ["cl6", "enhanced_senses_vomeronasal", "exempt"],
+    "sig": "checkmod SKILL influence what=EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["sense:low-light-vision=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the Edge on Perception and Influence tests separately; ours is one smell-conditional Perception Edge plus social Edge (Bestial Nature p. 15)"
+  },
+  {
+    "pair": ["cl6", "neuro_retention_amplification", "exempt"],
+    "sig": "itemmod QUALITY photographic_memory",
+    "cl6": "",
+    "ours": ["derived:memory=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Photographic Memory quality: ours states its memory bonus (derived:memory), the quality grant is not modelled"
+  },
+  {
+    "pair": ["cl6", "false_face", "exempt"],
+    "sig": "checkmod SKILLSPECIALIZATION con/impersonation what=DICE",
+    "cl6": "2",
+    "ours": ["skill:con=1", "skill:con=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): specialization dice (Con: Impersonation +2): ours states it on Con with the specialization, which the checker cannot key"
+  },
+  {
+    "pair": ["cl6", "spider_eyes", "exempt"],
+    "sig": "checkmod SKILL perception what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": ["skill:perception=1", "test:defense=1", "test:defense=2", "test:surprise=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6's EDGE_ONLY_TEST flag on Perception: ours states the Edge on the named tests (defense, surprise)"
+  },
+  {
+    "pair": ["cl6", "nano_health_suites", "exempt"],
+    "sig": "valmod ATTRIBUTE RESIST_TOXIN apply=CHARACTER",
+    "cl6": "$NANITE_VOLUME",
+    "ours": ["test:toxin-resistance=nanite-volume"],
+    "why": "not modelled (CL6-only mechanic or stated differently): scales with the Nanite Volume the character bound into it: ours states it by the same formula (nanite-volume), not a literal $NANITE_VOLUME"
+  },
+  {
+    "pair": ["cl6", "toughskin", "exempt"],
+    "sig": "valmod ATTRIBUTE DEFENSE_RATING_PHYSICAL",
+    "cl6": "$NANITE_VOLUME",
+    "ours": ["derived:defense=nanite-volume-bound-into/2 ru", "derived:unarmed-damage=p", "derived:unarmed-dv=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): scales with the Nanite Volume the character bound into it: ours states it by the same formula (nanite-volume-bound-into/2)"
+  },
+  {
+    "pair": ["cl6", "cyber_singularity_seeker", "exempt"],
+    "sig": "itemmod RULE CYBER_SINGULARITY_SEEKER apply=CHARACTER",
+    "cl6": "",
+    "ours": ["attr:wil=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag with no numbers: ours states the rule's attribute effect"
+  },
+  {
+    "pair": ["cl6", "redliner", "exempt"],
+    "sig": "itemmod RULE REDLINER apply=CHARACTER",
+    "cl6": "",
+    "ours": ["attr:agi=1", "attr:str=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag with no numbers: ours states the rule's attribute effects"
+  },
+  {
+    "pair": ["cl6", "superhuman_ego", "exempt"],
+    "sig": "checkmod ATTRIBUTE DEFENSE_RATING_PHYSICAL what=NOT_EARN_EDGE apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["test:defense=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6's no-Edge-earn flag on Defense Rating: ours states the Defense bonus; the Edge limit is not modelled"
+  },
+  {
+    "pair": ["cl6", "gel", "exempt"],
+    "sig": "itemmod RULE PHYSICAL_DAMAGE_IS_STUN",
+    "cl6": "",
+    "ours": ["item:damage-type=s"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag 'physical damage is stun': ours states it as item:damage-type=s on the ammo"
+  },
+  {
+    "pair": ["cl6", "stick_n_shock", "exempt"],
+    "sig": "itemmod RULE PHYSICAL_DAMAGE_IS_STUN",
+    "cl6": "",
+    "ours": ["item:ar=1,1,1,1,1", "item:damage-type=s(e)", "item:dv=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag 'physical damage is stun': ours states it as item:damage-type=s on the ammo"
+  },
+  {
+    "pair": ["cl6", "bone_density_augmentation", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE DAMAGE apply=UNARMED",
+    "cl6": "$RATING",
+    "ours": ["derived:unarmed-ar=r[1,2,2,3]", "derived:unarmed-damage=p", "derived:unarmed-dv=r[1,1,2,2]", "derived:unarmed-dv=r[3,3,4,4]"],
+    "why": "not modelled (CL6-only mechanic or stated differently): stated per rating in steps (AR r[1,2,2,3], DV r[1,1,2,2]) from the book table, not Commlink6's flat $RATING"
+  },
+  {
+    "pair": ["cl6", "bone_density_augmentation", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE ATTACK_RATING apply=UNARMED",
+    "cl6": "$RATING",
+    "ours": ["derived:unarmed-ar=r[1,2,2,3]", "derived:unarmed-damage=p", "derived:unarmed-dv=r[1,1,2,2]", "derived:unarmed-dv=r[3,3,4,4]"],
+    "why": "not modelled (CL6-only mechanic or stated differently): stated per rating in steps (AR r[1,2,2,3], DV r[1,1,2,2]) from the book table, not Commlink6's flat $RATING"
+  },
+  {
+    "pair": ["cl6", "orthoskin", "exempt"],
+    "sig": "itemmod QUALITY dermal_deposits apply=CHARACTER",
+    "cl6": "",
+    "ours": ["derived:defense=r"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Dermal Deposits quality: ours states its Defense Rating bonus directly"
+  },
+  {
+    "pair": ["cl6", "dermal_plating", "exempt"],
+    "sig": "itemmod QUALITY dermal_deposits apply=CHARACTER",
+    "cl6": "",
+    "ours": ["derived:defense=r"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Dermal Deposits quality: ours states its Defense Rating bonus directly"
+  },
+  {
+    "pair": ["cl6", "laser_sight", "exempt"],
+    "sig": "valmod ACTION change_device_mode",
+    "cl6": "MINOR_NO_COST",
+    "ours": ["derived:minor-actions=1", "item:ar=1", "item:ar=1", "item:size=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 makes changing the sight's mode a free action (MINOR_NO_COST): an action-cost rule we do not model; ours has the AR bonus"
+  },
+  {
+    "pair": ["cl6", "eagle", "exempt"],
+    "sig": "itemmod QUALITY allergy",
+    "cl6": "",
+    "ours": ["skill:conjuring=-1", "skill:perception=-1", "test:defense=1", "test:defense-spell-indirect=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Allergy quality (a drawback): ours states its test penalties directly"
+  },
+  {
+    "pair": ["cl6", "snake", "exempt"],
+    "sig": "valmod SKILL knowledge",
+    "cl6": "1",
+    "ours": ["skill:knowledge=1", "test:social=1", "test:spell-detection=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 states the Knowledge +1 in a second modification; ours has the +1 once"
+  },
+  {
+    "pair": ["cl6", "centering", "exempt"],
+    "sig": "valmod ATTRIBUTE RESIST_DRAIN",
+    "cl6": "1",
+    "ours": ["test:drain-resistance=initiate-grade"],
+    "why": "not modelled (CL6-only mechanic or stated differently): scales with the Initiate Grade: ours states it by the same formula (initiate-grade)"
+  },
+  {
+    "pair": ["cl6", "astral_beacon", "exempt"],
+    "sig": "checkmod SKILL stealth what=USAGE",
+    "cl6": "1",
+    "ours": ["skill:astral=1", "skill:astral=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 flags USAGE on Stealth: ours states the astral-signature rule as its Astral skill effects"
+  },
+  {
+    "pair": ["cl6", "agent_of_flux", "exempt"],
+    "sig": "valmod SKILL language",
+    "cl6": "4",
+    "ours": ["skill:language=n", "test:social=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): language skill points (4 free languages): ours states them as the count n of languages"
+  },
+  {
+    "pair": ["cl6", "factory_blood", "exempt"],
+    "sig": "valmod CRITTER_POWER immunity",
+    "cl6": "2",
+    "ours": ["attr:cha=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 sets Immunity 2 as a critter power on the character: critter-power levels are not modelled as effects, ours has the Charisma penalty"
+  },
+  {
+    "pair": ["cl6", "sorbian_blood", "exempt"],
+    "sig": "valmod SKILL language",
+    "cl6": "4",
+    "ours": ["skill:language=n"],
+    "why": "not modelled (CL6-only mechanic or stated differently): language skill points (4 free languages): ours states them as the count n of languages"
+  },
+  {
+    "pair": ["cl6", "the_briar_patch", "exempt"],
+    "sig": "checkmod SKILL cracking apply=CHARACTER",
+    "cl6": "0",
+    "ours": ["matrix:overwatch=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "warhead_frag", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE DAMAGE",
+    "cl6": "0.75",
+    "ours": ["item:dv=x0.75"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6's blast range 2 is a grenade stat (ours: the Blast block of the item), its 0.75 damage is item:dv x0.75"
+  },
+  {
+    "pair": ["cl6", "warhead_frag", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE BLAST_RANGE",
+    "cl6": "2",
+    "ours": ["item:dv=x0.75"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6's blast range 2 is a grenade stat (ours: the Blast block of the item), its 0.75 damage is item:dv x0.75"
+  },
+  {
+    "pair": ["cl6", "mil_spec_plate", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE BUILD_POINTS",
+    "cl6": "$RATING*5",
+    "ours": ["item:dv=-r", "item:speed-interval=-5"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Design Point cost of a Build Your Dream option: priced in milspec.ts, not an effect"
+  },
+  {
+    "pair": ["cl6", "mil_spec_frame", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE BUILD_POINTS",
+    "cl6": "$RATING*5+10",
+    "ours": ["item:body=r"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Design Point cost of a Build Your Dream option: priced in milspec.ts, not an effect"
+  },
+  {
+    "pair": ["cl6", "enhanced_sensors", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE MAX_SENSOR_RATING",
+    "cl6": "$RATING-$$SENSORS",
+    "ours": ["item:sensor=r"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 caps the sensor rating at Rating minus the vehicle's sensors; ours sets item:sensor to the rating"
+  },
+  {
+    "pair": ["cl6", "always_ready", "exempt"],
+    "sig": "valmod ATTRIBUTE EDGE",
+    "cl6": "1",
+    "ours": ["pool:chase=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 adds 1 Edge; ours states it as the chase-pool Edge (pool:chase) the book names"
+  },
+  {
+    "pair": ["cl6", "junkyard_king", "exempt"],
+    "sig": "checkmod SKILL engineering",
+    "cl6": "0",
+    "ours": ["skill:engineering=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "dead_stick", "exempt"],
+    "sig": "valmod SKILL piloting",
+    "cl6": "0",
+    "ours": ["test:crash=-2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "easy_mark", "exempt"],
+    "sig": "valmod SKILL stealth",
+    "cl6": "0",
+    "ours": ["skill:perception=1", "skill:perception=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "for_a_higher_purpose", "exempt"],
+    "sig": "itemmod RULE PAIN_TOLERANCE_LOWER_MOD",
+    "cl6": "",
+    "ours": ["derived:composure=1", "derived:composure=1", "derived:wound-penalty=-1", "test:all=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 lowers the pain-tolerance modifier by rule flag with no number: ours states composure, wound-penalty and test effects"
+  },
+  {
+    "pair": ["cl6", "reactive_armor_plates", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE DAMAGE_REDUCTION",
+    "cl6": "1",
+    "ours": ["derived:damage-reduction=r"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 DAMAGE_REDUCTION 1 per level: ours is derived:damage-reduction r on the same plates (one effect per level, counted once)"
+  },
+  {
+    "pair": ["cl6", "colt_agent_special_laser_sight", "exempt"],
+    "sig": "valmod ACTION change_device_mode",
+    "cl6": "MINOR_NO_COST",
+    "ours": ["derived:minor-actions=1", "item:ar=1", "item:ar=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 makes changing the sight's mode a free action (MINOR_NO_COST): an action-cost rule we do not model; ours has the AR bonus"
+  },
+  {
+    "pair": ["cl6", "detachable_drum_magazine", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE AMMUNITION",
+    "cl6": "-98",
+    "ours": ["item:ammo=x2", "item:concealability=-2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 sentinel value (-98/-99 = n/a or 'double'): ours states the real value from the book"
+  },
+  {
+    "pair": ["cl6", "short_barrel", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE ATTACK_RATING",
+    "cl6": "+2,+1,-2,0,-99",
+    "ours": ["item:ar=2,1,-2,0,x", "item:concealability=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 sentinel value (-98/-99 = n/a or 'double'): ours states the real value from the book"
+  },
+  {
+    "pair": ["cl6", "architect_builder", "exempt"],
+    "sig": "checkmod SKILL electronics what=EDGE_BOOST",
+    "cl6": "-1",
+    "ours": ["action:edit=-1", "action:snoop=1", "action:snoop=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 -1 Edge cost on Electronics: ours states it on the Matrix actions it covers (edit, snoop)"
+  },
+  {
+    "pair": ["cl6", "delphi", "exempt"],
+    "sig": "checkmod SKILLSPECIALIZATION electronics/complex_forms what=EDGE_BOOST",
+    "cl6": "-1",
+    "ours": ["complex-form:threading=-1", "derived:matrix-initiative=-2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 -1 Edge cost on the Complex Forms specialization: ours states it on the Threading complex-form action"
+  },
+  {
+    "pair": ["cl6", "cyberadept_master", "exempt"],
+    "sig": "itemmod RULE CYBERADEPT_MASTER",
+    "cl6": "",
+    "ours": ["derived:defense=submersion", "test:defense=submersion"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag with no number: ours states the Submersion-scaled Defense bonus"
+  },
+  {
+    "pair": ["cl6", "machinists", "exempt"],
+    "sig": "allowmod COMPLEX_FORM loto",
+    "cl6": "",
+    "ours": ["skill:tasking=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 allows the Loto complex form: ours states the stream's Tasking bonus; the allowance is not modelled"
+  },
+  {
+    "pair": ["cl6", "krime_selfdefense", "exempt"],
+    "sig": "itemmod RULE PHYSICAL_DAMAGE_IS_STUN",
+    "cl6": "",
+    "ours": ["item:ar=0,0,0,0,0"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag 'physical damage is stun': ours states it as item:damage-type=s on the ammo"
+  },
+  {
+    "pair": ["cl6", "krime_chatter", "exempt"],
+    "sig": "itemmod GEARMOD metahuman_adaption",
+    "cl6": "",
+    "ours": ["skill:stealth=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "krime_tradition", "exempt"],
+    "sig": "itemmod GEARMOD gas-vent_improved",
+    "cl6": "",
+    "ours": ["skill:stealth=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "krime_tradition", "exempt"],
+    "sig": "itemmod GEARMOD foregrip",
+    "cl6": "",
+    "ours": ["skill:stealth=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "krime_tradition", "exempt"],
+    "sig": "itemmod GEARMOD metahuman_adaption",
+    "cl6": "",
+    "ours": ["skill:stealth=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "krime_saint", "exempt"],
+    "sig": "itemmod GEARMOD metahuman_adaption",
+    "cl6": "",
+    "ours": ["item:concealability=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "krime_kar_97", "exempt"],
+    "sig": "itemmod GEARMOD metahuman_adaption",
+    "cl6": "",
+    "ours": ["skill:stealth=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "teen_diva", "exempt"],
+    "sig": "itemmod SKILL knowledge",
+    "cl6": "",
+    "ours": ["contact-types:corporate=", "contact-types:media=", "attribute:choice=1", "creation-points:contact-points=4"],
+    "why": "not modelled (CL6-only mechanic or stated differently): life module: ours carries it as the module's Knowledge-skill selection / contact attributes, Commlink6 as a grant with no number"
+  },
+  {
+    "pair": ["cl6", "inside_contact", "exempt"],
+    "sig": "valmod CONTACT_TYPES CORPORATE",
+    "cl6": "2",
+    "ours": ["test:social=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): contact type Corporate +2: ours states it as a social-test bonus (test:social), contact types are not effects"
+  },
+  {
+    "pair": ["cl6", "false_tell", "exempt"],
+    "sig": "checkmod SKILL con what=OTHER apply=CHARACTER",
+    "cl6": "1",
+    "ours": ["derived:composure=1", "derived:composure=1", "test:other=1", "test:other=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 Con 'other' Edge: ours states the composure and 'other' test effects of the same quality"
+  },
+  {
+    "pair": ["cl6", "item_attunement", "exempt"],
+    "sig": "checkmod SKILL ITEM what=DICE",
+    "cl6": "&INITIATION_RANK",
+    "ours": ["test:other=initiate-grade"],
+    "why": "not modelled (CL6-only mechanic or stated differently): dice equal to the Initiation Rank: ours states it by the same formula (initiate-grade)"
+  },
+  {
+    "pair": ["cl6", "artisans_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=log", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "artists_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=cha", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "athletes_ways", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=choice", "skill:athletics=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "beasts_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=int", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "beasts_way", "exempt"],
+    "sig": "itemmod RULE MENTOR_SPIRIT_BOTH",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=int", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "burnouts_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "burnouts_way", "exempt"],
+    "sig": "itemmod DRAIN_ADEPT CHOICE:6c21c77c-9cb0-4258-9048-777e92a3f08b",
+    "cl6": "",
+    "ours": ["test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "invisible_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=agi", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "magicians_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=tradition", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "magicians_way", "exempt"],
+    "sig": "itemmod RULE MENTOR_SPIRIT_BOTH",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=tradition", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "speakers_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=cha", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "warriors_way", "exempt"],
+    "sig": "itemmod QUALITY innate_talent",
+    "cl6": "",
+    "ours": ["derived:adept-drain-attribute=choice", "skill:choice=1", "test:other=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): grant of the Innate Talent quality / mentor spirit rule: ours states the Way's own effects (drain attribute, skill, test), the grant itself is not modelled as a quality"
+  },
+  {
+    "pair": ["cl6", "ganger", "exempt"],
+    "sig": "itemmod SKILL knowledge",
+    "cl6": "",
+    "ours": ["contact-types:criminal=", "contact-types:street=", "attribute:choice=1", "creation-points:contact-points=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): life module: ours carries it as the module's Knowledge-skill selection / contact attributes, Commlink6 as a grant with no number"
+  },
+  {
+    "pair": ["cl6", "it_support", "exempt"],
+    "sig": "valmod CREATION_POINTS NUYEN",
+    "cl6": "25000",
+    "ours": ["contact-types:academic=", "contact-types:corporate=", "contact-types:matrix=", "attribute:choice=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): life module: ours carries it as the module's Knowledge-skill selection / contact attributes, Commlink6 as a grant with no number"
+  },
+  {
+    "pair": ["cl6", "it_support", "exempt"],
+    "sig": "itemmod SKILL knowledge",
+    "cl6": "",
+    "ours": ["contact-types:academic=", "contact-types:corporate=", "contact-types:matrix=", "attribute:choice=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): life module: ours carries it as the module's Knowledge-skill selection / contact attributes, Commlink6 as a grant with no number"
+  },
+  {
+    "pair": ["cl6", "cyclopean_eye", "exempt"],
+    "sig": "checkmod SKILL athletics what=EDGE",
+    "cl6": "-99",
+    "ours": ["skill:athletics=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 sentinel value (-98/-99 = n/a or 'double'): ours states the real value from the book"
+  },
+  {
+    "pair": ["cl6", "astral_beacon_metagenetic", "exempt"],
+    "sig": "checkmod SKILL stealth what=USAGE",
+    "cl6": "1",
+    "ours": ["skill:astral=1", "skill:astral=2"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 flags USAGE on Stealth: ours states the astral-signature rule as its Astral skill effects"
+  },
+  {
+    "pair": ["cl6", "neoteny", "exempt"],
+    "sig": "itemmod RULE PHYSICAL_ROUND_DOWN apply=CHARACTER",
+    "cl6": "",
+    "ours": ["attr-max:agi=-1", "attr-max:bod=-1", "attr-max:rea=-1", "attr-max:str=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag 'physical rounds down': ours states the resulting attribute maximums, monitor and social effects"
+  },
+  {
+    "pair": ["cl6", "insectoid_features", "exempt"],
+    "sig": "checkmod SKILL con what=EDGE",
+    "cl6": "-99",
+    "ours": ["test:social=1", "test:social=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 sentinel value (-98/-99 = n/a or 'double'): ours states the real value from the book"
+  },
+  {
+    "pair": ["cl6", "insectoid_features", "exempt"],
+    "sig": "checkmod SKILL influence what=EDGE",
+    "cl6": "-99",
+    "ours": ["test:social=1", "test:social=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 sentinel value (-98/-99 = n/a or 'double'): ours states the real value from the book"
+  },
+  {
+    "pair": ["cl6", "relentless_tracker", "exempt"],
+    "sig": "checkmod SKILL outdoors what=EDGE",
+    "cl6": "0",
+    "ours": ["skill:outdoors=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "software_optimization", "exempt"],
+    "sig": "valmod ITEM_ATTRIBUTE CONCURRENT_PROGRAMS apply=ACTIVE_GEAR",
+    "cl6": "1",
+    "ours": ["test:other=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 raises concurrently running programs by 1: ours states it as a +1 dice effect, the program count is not modelled"
+  },
+  {
+    "pair": ["cl6", "soothing_static", "exempt"],
+    "sig": "checkmod SKILL cracking what=EDGE_COST_MALUS",
+    "cl6": "0",
+    "ours": ["test:matrix=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "soothing_static", "exempt"],
+    "sig": "checkmod SKILL electronics what=EDGE_COST_MALUS",
+    "cl6": "0",
+    "ours": ["test:matrix=-1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "spell_components", "exempt"],
+    "sig": "checkmod SKILL sorcery what=OTHER",
+    "cl6": "0",
+    "ours": ["test:drain-resistance=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "all_business", "exempt"],
+    "sig": "itemmod RULE MAX_3_CONTACT_LOYALTY",
+    "cl6": "",
+    "ours": ["skill:influence=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 rule flag capping contact Loyalty at 3: a contact rule we do not model; ours has the Influence bonus"
+  },
+  {
+    "pair": ["cl6", "trust_issues", "exempt"],
+    "sig": "checkmod SKILL con what=NOT_SPEND_EDGE",
+    "cl6": "0",
+    "ours": ["derived:judge-intentions=1", "derived:judge-intentions=1", "skill:influence=1", "skill:influence=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "trust_issues", "exempt"],
+    "sig": "checkmod SKILL con what=NOT_EARN_EDGE",
+    "cl6": "0",
+    "ours": ["derived:judge-intentions=1", "derived:judge-intentions=1", "skill:influence=1", "skill:influence=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 prints 0 (no effect); ours states the book's effect"
+  },
+  {
+    "pair": ["cl6", "twitchy", "exempt"],
+    "sig": "valmod ATTRIBUTE COMPOSURE",
+    "cl6": "$INITIATIVE_DICE_PHYSICAL",
+    "ours": ["derived:composure=-initiative-dice"],
+    "why": "not modelled (CL6-only mechanic or stated differently): Commlink6 composure from the physical initiative dice: ours states it by the same formula (-initiative-dice)"
+  },
+  {
+    "pair": ["cl6", "ruger_lawbringer_cs", "exempt"],
+    "sig": "itemmod GEARMOD biometric_gun_lock",
+    "cl6": "",
+    "ours": ["item:concealability=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["cl6", "defiance_t-290", "exempt"],
+    "sig": "itemmod GEARMOD foregrip",
+    "cl6": "",
+    "ours": ["item:dv=1", "test:combat=1"],
+    "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
   }
 ]

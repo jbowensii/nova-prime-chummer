@@ -268,17 +268,17 @@
     "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
   },
   {
-    "pair": ["dc", "driving_style_getaway_driver", "quality"],
-    "sig": "checkmod ACTION double_down what=EDGE_BOOST",
-    "cl6": "1",
-    "ours": [],
-    "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
-  },
-  {
     "pair": ["dc", "driving_style_interceptor", "quality"],
     "sig": "checkmod ACTION redline what=EDGE_BOOST",
     "cl6": "2",
     "ours": ["action:redline edge-cost -1"],
     "why": "effects review 2026-10-18: the printed text rules (Getaway Driver and Interceptor halve the Edge costs, round up: owner default; cyber-ears' Edge is against a target whose hearing is interfered with, not a Hearing Perception bonus)"
+  },
+  {
+    "pair": ["crb", "attribute_increase", "item"],
+    "sig": "valmod ATTRIBUTE CHOICE set=ARTIFICIAL apply=CHARACTER",
+    "cl6": "$RATING",
+    "ours": [],
+    "why": "CRB p. 288: a cyberlimb's Attribute increase raises the limb's own Agility or Strength (ours limb-attr:choice add R, owner ruling weapon-cyber-builders 2026-10-30), not the character's"
   }
 ]

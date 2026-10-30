@@ -353,7 +353,12 @@ export function createServer({
     /** A <design> block first in the root: an SR6 vehicle or drone design (the Designer's store). */
     const isDesign = xml => {
       const r = rootTag(xml, tag)
-      return /^\s*<design[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+      return /^\s*<(design|itemDesign)[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+    }
+    /** A saved weapon or cyberware design (the item builders, SR6): shared, every account sees and buys every one's. */
+    const isItemDesign = xml => {
+      const r = rootTag(xml, tag)
+      return /^\s*<itemDesign[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
     }
     /** The design without its `approved` (either quote, any value): a GM's mark, which a player's own save never sets
      *  (owner 2026-10-16, BUILDER Q8). The <design> tag read attribute by attribute: a value may hold a `>`. null: a tag
@@ -361,9 +366,14 @@ export function createServer({
     const unapproved = xml => {
       const r = rootTag(xml, tag),
         at = xml.indexOf(r) + r.length
-      const m = /^\s*<design(?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*\/?>/.exec(xml.slice(at))
+      const m = /^\s*<(?:design|itemDesign)(?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*\s*\/?>/.exec(xml.slice(at))
       if (!m) return null
-      return xml.slice(0, at) + m[0].replace(/\s+approved\s*=\s*(?:"[^"]*"|'[^']*')/g, '') + xml.slice(at + m[0].length)
+      const dropApproved = t => t.replace(/\s+approved\s*=\s*(?:"[^"]*"|'[^']*')/g, '')
+      // (an item design's inner <purchase approved> is the mark a buyer's line would carry: stripped too, every nested one)
+      const rest = xml
+        .slice(at + m[0].length)
+        .replace(/<purchase((?:\s+[\w:.-]+\s*=\s*(?:"[^"]*"|'[^']*'))*)\s*(\/?)>/g, (_t, a, sl) => `<purchase${dropApproved(a)}${sl}>`)
+      return xml.slice(0, at) + dropApproved(m[0]) + rest
     }
     const attrOf = (xml, name) => rootAttr(xml, name, tag)
     const folder = username => join(home, username) // auth.mjs's USERNAME: no separators, never starts with a dot
@@ -416,7 +426,27 @@ export function createServer({
     // request that waited for the lock checks the role again)
     const RUNNERS = { folder, noun: 'runner', holds: (u, c) => campaigns.holds(u, c), readable: me => campaigns.readable(me) }
     const NPCS = { folder: npcFolder, noun: 'NPC', npc: true, holds: (u, c) => campaigns.leads(u, c), readable: me => campaigns.readableNpcs(me) }
-    const DESIGNS = g.id === 'sr6' ? { folder: designFolder, noun: 'design', design: true, holds: async () => false, readable: async () => [] } : null
+    const DESIGNS =
+      g.id === 'sr6'
+        ? {
+            folder: designFolder,
+            noun: 'design',
+            design: true,
+            holds: async () => false,
+            // every other account's weapon and cyberware designs (shared, owner ruling 2); vehicle designs stay each account's own
+            readable: async me =>
+              me.role === 'admin'
+                ? []
+                : (
+                    await Promise.all(
+                      auth
+                        .usernames()
+                        .filter(u => u !== me.username)
+                        .map(async owner => (await index(designFolder(owner))).filter(e => isItemDesign(e.xml)).map(e => ({ ...e, owner }))),
+                    )
+                  ).flat(),
+          }
+        : null
     const refused = (kind, me) => kind.npc && !['admin', 'editor'].includes(me.role)
 
     /** The character, NPC and trash routes (see the top of this file). */
@@ -441,7 +471,7 @@ export function createServer({
         const out = []
         for (const owner of owners)
           for (const { file, rev, xml } of await index(kind.folder(owner))) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
-        if (who.role === 'editor')
+        if (who.role === 'editor' || kind.design)
           for (const { file, rev, xml, owner } of await kind.readable(who)) out.push({ file, rev, xml, owner, ownerName: auth.nameOf(owner) })
         return send(res, 200, out)
       }

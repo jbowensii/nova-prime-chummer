@@ -81,11 +81,12 @@ export function NeonSheet({ art }: { art: SheetArt }) {
     ] as [string, ReactNode][]
   ).filter(([, x]) => x !== undefined)
   const acc = (x: (typeof b.purchases)[number]) =>
-    x.accessories.length > 0 && (
+    (x.accessories.length > 0 || v.instruction(x)) && (
       <span className="n-small">
         {' '}
-        + {x.accessories.map(nameOf).join(', ')}
+        {x.accessories.length > 0 && `+ ${x.accessories.map(nameOf).join(', ')}`}
         {v.host(x) && ` (${v.host(x)})`}
+        {v.instruction(x) && ` ${v.instruction(x)}`}
       </span>
     )
   const picks = b.picks.length > 0 && PICKS.map(([kind, label]) => [label, b.picks.filter(x => x.kind === kind)] as const).filter(([, xs]) => xs.length)

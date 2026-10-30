@@ -6,7 +6,8 @@ Owner decision 2026-10-14: the structure Commlink6 gives an item is in our data 
 importer reads none of it from the text). Children of any entry (`common.xsd` tail), and attributes of the item kinds:
 - `<slot id value?/>` a slot the item offers; `<fits slot/>` a slot it fits; `<variant name/>` a variant it comes in;
   `<relevance topic/>` a topic it is relevant to; `<flag>text</flag>` a kind flag; attributes `modonly="true"` (bought only as
-  an add-on), `size` (a weapon's size class) and `ammoClass`.
+  an add-on), `size` (a weapon's size class), `ammoClass` and `softwareTypes` (a matrix device's Commlink6
+  `SOFTWARE_TYPES`, which a program's device-type requirement tests).
 - `<modifier kind type ref value …/>` (kind `valmod`, `checkmod`, `itemmod` or `allowmod`: a modification), `<prerequisite
   kind type ref …/>` (kind `datareq` or `valuereq`) and `<selection type ref options …/>` (a pick it offers) are Commlink6's
   own rule data, every attribute as it gives it (`$RATING` formulas, conditions). **No rule reads them**: the app applies our

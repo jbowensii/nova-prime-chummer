@@ -47,11 +47,13 @@ import { StatsTab } from '../../npcs/ui/tabs/Stats'
 import { DesignTab } from '../../npcs/ui/tabs/Design'
 import { DronesTab, VehiclesTab } from '../../runner-builder/ui/tabs/Vehicles'
 import { CrittersTab } from '../../runner-builder/ui/tabs/Critters'
+import { ItemBuilder } from '../../runner-builder/ui/Builder'
 import { Sr6Sheet } from '../../print/ui/Sheet'
 import { TabBoundary } from '../../../core/shared/ui'
 import { npcTabs, sr6Tabs } from '../../runner-builder/ui/tabList'
 
-const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger'])
+// (the item builders, #/sr6/c/<id>/build/<uid path>: career changes there are recorded spends, as the Ledger's)
+const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger', 'build'])
 
 /** `cr`: the server's creation rules; a runner in a campaign with its own settings uses those instead. */
 export function Sr6EditorView({
@@ -60,6 +62,7 @@ export function Sr6EditorView({
   cr: serverRules,
   id,
   tab,
+  sub,
   npc = false,
 }: {
   c: Sr6Catalog
@@ -67,6 +70,8 @@ export function Sr6EditorView({
   cr: CreationRules
   id: string
   tab: string
+  /** the builders' line (`build/<uid>[/<uid>]`): its uid path */
+  sub?: string
   npc?: boolean
 }) {
   const repo = useMemo(() => (npc ? sr6NpcRepo() : sr6Repo()), [npc])
@@ -148,7 +153,7 @@ export function Sr6EditorView({
     career = !!ch.finalizedAt
   const { view, ...derived } = calc
   const tabs = npc ? npcTabs(ch.npc?.kind) : sr6Tabs(view.build.magic, career && !ch.npc)
-  const shown = tabs.some(([k]) => k === tab) ? tab : 'concept'
+  const shown = tab === 'build' && sub && !npc ? 'build' : tabs.some(([k]) => k === tab) ? tab : 'concept'
   const locked = career && !OPEN_IN_CAREER.has(shown),
     ro = theirs || locked
   // a compendium entry it uses is copied onto it (src/sr6/runner-builder/domain/career/house.ts): it keeps it if the compendium goes
@@ -303,7 +308,7 @@ export function Sr6EditorView({
       )}
       <div className="layout">
         <div className="chapter-tab" aria-hidden>
-          {tabs.find(([k]) => k === shown)?.[1]}
+          {shown === 'build' ? 'Builder' : tabs.find(([k]) => k === shown)?.[1]}
         </div>
         <main className="work">
           <fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}>
@@ -325,6 +330,7 @@ export function Sr6EditorView({
               {shown === 'ledger' && <LedgerTab />}
               {shown === 'stats' && <StatsTab />}
               {shown === 'design' && <DesignTab />}
+              {shown === 'build' && <ItemBuilder path={sub!} />}
             </TabBoundary>
           </fieldset>
         </main>

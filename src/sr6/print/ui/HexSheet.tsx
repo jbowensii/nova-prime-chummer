@@ -207,11 +207,12 @@ export function HexSheet({ art }: { art: SheetArt }) {
                   <tr key={x.uid}>
                     <td>
                       {nameOf(x)}
-                      {x.accessories.length > 0 && (
+                      {(x.accessories.length > 0 || v.instruction(x)) && (
                         <span className="x-small">
                           {' '}
-                          + {x.accessories.map(nameOf).join(', ')}
+                          {x.accessories.length > 0 && `+ ${x.accessories.map(nameOf).join(', ')}`}
                           {v.host(x) && ` (${v.host(x)})`}
+                          {v.instruction(x) && ` ${v.instruction(x)}`}
                         </span>
                       )}
                     </td>
