@@ -33,6 +33,8 @@ export function hardpointCheck(h: Sr6Hardpoint, body: number, catalogSize?: numb
   if (h.mount === 'inline') notes.push('Inline mount: a Piloting test replaces the Engineering (Gunnery) test to acquire a target.')
   if (h.popOut) notes.push('Pop-out: deploying the weapon is a Major Action.')
   if (h.dedicated) notes.push('Dedicated primary weapon: permanent; changing it takes a full factory redesign.')
+  // (twin/quad are mount options of the one hardpoint, charged once per hardpoint on top of its larger Grade, p. 153; the book
+  //  prices a dedicated primary weapon nowhere, so it is the hardpoint's 5 × Grade, as Commlink6 has no such option either)
   const dp = 5 * h.grade + (h.popOut ? 5 * h.grade : 0) + (h.link === 'twin' ? 3 : h.link === 'quad' ? 5 : 0)
   return { size, sizeTyped: h.size !== undefined, need, minBody, dp, ok: reasons.length === 0, reasons, notes }
 }
@@ -88,6 +90,7 @@ export function milspec(
   // the frame: +Rating Body resisting damage, at most half the base Body; every 2 points carry a level of plate
   const frame = lv('mil spec frame')
   if (frame > 12) warn(`Mil-Spec Frame is Rating 1 to 12 (it is ${frame}).`, 150, 'DA')
+  // ("the vehicle base Body rating", p. 151: the chassis' own Body, before Improved Body or any other mod)
   const cap = Math.floor(baseBody / 2)
   if (frame > cap) warn(`Mil-Spec Frame ${frame}: at most +50% of the base Body (${cap}).`, 150, 'DA')
   if (frame && (lv('increased structural integrity') || modNamed(/increased structural integrity/i)))
