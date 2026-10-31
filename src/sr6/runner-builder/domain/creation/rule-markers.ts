@@ -3,7 +3,7 @@
 // carries as a `<modifier kind="itemmod" type="RULE" ref="REF"/>` child (structureOf reads it); CL6 hardcodes what each
 // ref does, so we read the marker instead of a quality id. Combat/damage/condition refs (UNARMED_DAMAGE_IS_PHYSICAL,
 // PAIN_TOLERANCE_*, WOUND_MOD_PLUS_1, …) are the Foundry sheet/effects engine's, not the builder's, and are not here.
-import type { Sr6Build, Sr6Knowledge } from '../../../formats/domain/character'
+import type { Sr6Build, Sr6Knowledge, Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { structureOf } from '../../../catalog/domain/structure'
@@ -92,3 +92,45 @@ export const isDeckPart = (e?: { attrs: { class?: string; category?: string } })
 
 /** Karma the runner has put into deck-building: karmaToDeck, but only with Deck Builder (else 0). */
 export const deckKarma = (b: Sr6Build, data: Sr6Data) => (activeRules(b, data).has('DECK_5000_PER_KARMA') ? Math.max(0, b.karmaToDeck) : 0)
+
+/** A full cyberlimb as Commlink6 counts one (its CYBERLIMB flag): the flag, or a Cyberlimb-category arm or leg.
+ *  ponytail: by category and name, as our catalog carries the flag on 2 of Commlink6's 10 items; an importer flag would replace it. */
+const isFullCyberlimb = (e?: Sr6Entry) =>
+  !!e && (structureOf(e).flags.includes('CYBERLIMB') || (/cyberlimb/i.test(e.attrs.category ?? '') && /(arm|leg)s?\b/i.test(e.name)))
+
+/** Redliner (+Agility, +Strength) and Cyber Singularity Seeker (+Willpower), Body Shop p. 168, as Commlink6's
+ *  SpecialRuleStep: +1 augmented per pair of full cyberlimbs, at most +2. */
+export function cyberlimbRuleBonus(b: Sr6Build, data: Sr6Data, attr: string, entryOf: (x: Sr6Purchase) => Sr6Entry | undefined): number {
+  const refs = activeRules(b, data)
+  const takes = (refs.has('REDLINER') && (attr === 'agi' || attr === 'str')) || (refs.has('CYBER_SINGULARITY_SEEKER') && attr === 'wil')
+  if (!takes) return 0
+  const limbs = b.purchases.filter(x => x.kind === 'augmentations' && isFullCyberlimb(entryOf(x))).reduce((t, x) => t + x.qty, 0)
+  return Math.min(2, Math.floor(limbs / 2))
+}
+
+/** Neoteny (RULE PHYSICAL_ROUND_DOWN, Commlink6's calculateMonitorPhysical): the Physical monitor's Body half rounds down. */
+export const physicalRoundsDown = (b: Sr6Build, data: Sr6Data) => activeRules(b, data).has('PHYSICAL_ROUND_DOWN')
+
+/** Commlink6's CalculateEssence: the Social Rating drops 1 per 2 full points of Essence lost, less Empathic Retention's
+ *  level (at most 2; Commlink6 keys it by the quality id `empathic_retention`), never below 0 off. */
+export function essenceSocialPenalty(b: Sr6Build, data: Sr6Data, essenceLost: number): number {
+  const er = b.qualities.find(q => /^empathic retention\b/i.test(data.entry('qualities', q.id)?.name ?? ''))
+  const relief = er ? Math.min(2, er.level || 1) : 0
+  return Math.max(0, Math.floor(essenceLost / 2 + 1e-9) - relief)
+}
+
+/** A cyberjack's Data Processing and Firewall, read from its printed `Attributes (d/f): 4/3` (CRB p. 283, the entry's
+ *  text), with Cyberjack Maximization (RULE ADD_2_TWO_LOWEST_CYBERJACK_ATTRIBUTES, SWC p. 133, owner ruling 4): +1 on the
+ *  lower of the two (Firewall on a tie). undefined: not a cyberjack, or no printed attributes. */
+export function cyberjackAttrs(b: Sr6Build, data: Sr6Data, e?: Sr6Entry): { d: number; f: number } | undefined {
+  if (!e || !/^cyberjacks?$/i.test(e.attrs.category ?? '')) return undefined
+  const m = /Attributes \(d\/f\):\**\s*(\d+)\s*\/\s*(\d+)/i.exec(e.text ?? '')
+  if (!m) return undefined
+  let d = Number(m[1]),
+    f = Number(m[2])
+  if (activeRules(b, data).has('ADD_2_TWO_LOWEST_CYBERJACK_ATTRIBUTES')) {
+    if (d < f) d++
+    else f++
+  }
+  return { d, f }
+}

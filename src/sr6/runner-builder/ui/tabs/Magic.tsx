@@ -7,16 +7,18 @@
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
 import { flag, num, str } from '../../../table-setup/domain/creation'
-import { choiceCtx, choiceOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
+import { choiceCtx, choiceOptions, entryOf, isFocus, noteAttr, ratingOf, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
 import { magicCap } from '../../domain/creation/magic'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../../catalog/domain/data'
 import { isAnimalism } from '../../domain/creation/animalism'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { pickFlags } from '../view'
-import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../../formats/domain/character'
+import { MAGIC_KIND_LABELS, type PickKind, type Sr6BoundSpirit, type Sr6Build } from '../../../formats/domain/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
-import { Bonuses, ChoiceField, House, Situational } from '../Picker'
+import { Bonuses, ChoiceField, House, PurchaseSection, Situational } from '../Picker'
+import { rated } from '../../../catalog/domain/values'
+import { newId } from '../../../../core/shared/types'
 import { cardOf, Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
 
@@ -311,6 +313,75 @@ export function MagicTab() {
       {!k.spells && !k.powers && !k.resonance && (flag(cr, 'transhumanism') || b.transhuman > 0) && grade('transhuman', 'Transhumanist grade')}
       {/* (data structures, Hack & Slash pp. 70–72: only for a technomancer, or one a runner holds) */}
       {PICKS.filter(([kind]) => kind !== 'datastructures' || allowed.datastructures || b.picks.some(x => x.kind === kind)).map(section)}
+      {!k.resonance && (
+        <PurchaseSection
+          kind="gear"
+          title="Foci"
+          one="a focus"
+          offer={isFocus}
+          show={x => isFocus(entryOf(x, data))}
+          detail={x => {
+            const e = entryOf(x, data),
+              force = ratingOf(x, e)
+            return <span className="muted">{`Force ${force} · ${rated(e?.attrs.karma, force).n ?? 0} Karma to bond`}</span>
+          }}
+        />
+      )}
+      <section className="stack">
+        <div className="row">
+          <h3 style={{ margin: 0 }}>{k.resonance ? 'Registered sprites' : 'Bound spirits'}</h3>
+          <span className="spacer" />
+          <button
+            className="btn small"
+            disabled={ro}
+            onClick={() => edit((x: Sr6Build) => void x.boundSpirits.push({ uid: newId(), name: '', force: 1, services: 0 }))}
+          >
+            Add
+          </button>
+        </div>
+        {b.boundSpirits.length === 0 ? (
+          <p className="muted">None yet.</p>
+        ) : (
+          b.boundSpirits.map((s, i) => {
+            const set = (f: (x: Sr6BoundSpirit) => void) => edit((x: Sr6Build) => f(x.boundSpirits[i]))
+            return (
+              <div key={s.uid} className="row">
+                <input aria-label="Name" placeholder="Name" value={s.name} disabled={ro} onChange={e => set(x => void (x.name = e.target.value))} />
+                <label className="inline">
+                  {k.resonance ? 'Level' : 'Force'}{' '}
+                  <input
+                    type="number"
+                    min={1}
+                    value={s.force}
+                    disabled={ro}
+                    onChange={e => set(x => void (x.force = Math.max(1, Math.floor(+e.target.value) || 1)))}
+                  />
+                </label>
+                <label className="inline">
+                  {k.resonance ? 'Tasks' : 'Services'}{' '}
+                  <input
+                    type="number"
+                    min={0}
+                    value={s.services}
+                    disabled={ro}
+                    onChange={e => set(x => void (x.services = Math.max(0, Math.floor(+e.target.value) || 0)))}
+                  />
+                </label>
+                <input
+                  aria-label="Note"
+                  placeholder="Note"
+                  value={s.note ?? ''}
+                  disabled={ro}
+                  onChange={e => set(x => void (e.target.value ? (x.note = e.target.value) : delete x.note))}
+                />
+                <button className="btn small quiet" disabled={ro} onClick={() => edit((x: Sr6Build) => void x.boundSpirits.splice(i, 1))}>
+                  Remove
+                </button>
+              </div>
+            )
+          })
+        )}
+      </section>
       <Modal open={!!adding} onClose={() => setAdding(null)} title={`Add ${PICKS.find(p => p[0] === adding)?.[2] ?? ''}`}>
         {adding && (
           <Picker

@@ -90,7 +90,7 @@ test('Stolen Gear after creation: bought off a part at a time at stolenGearBuyOf
   expect(preview(ch, { op: 'buyoff', target: 'sg', part: 0 }, data, cr)).toEqual({ ok: false, reason: 'below-one' })
   const one = ok(record(ch, { op: 'buyoff', target: 'sg', part: 1 }, data, cr, undefined, NOW))
   expect(one.ledger.at(-1)).toMatchObject({ label: 'Buy off: Butterfingers, 1 of 4 converted karma', karma: 3 })
-  expect(currentBuild(one).qualities).toEqual([{ uid: 'sg', id: 'crb.butterfingers', level: 1, boughtOff: 1 }])
+  expect(currentBuild(one).qualities).toMatchObject([{ uid: 'sg', id: 'crb.butterfingers', level: 1, boughtOff: 1 }]) // (and its order, seq)
   expect(stolenLeft(currentBuild(one), cr, data, currentBuild(one).qualities[0])).toBe(3)
   // (all that is left: the line goes, the spend recorded as a whole buy off)
   const rest = ok(record(one, { op: 'buyoff', target: 'sg', part: 3 }, data, cr, undefined, NOW))

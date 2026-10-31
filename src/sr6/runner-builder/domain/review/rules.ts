@@ -82,6 +82,7 @@ import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRe
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
 
+import { CYBERADEPT, cyberadeptSteps, GRADE_RANK } from '../creation/cyberadept'
 import { activeRules, contactLoyalty, effectiveAvailability } from '../creation/rule-markers'
 
 interface Ctx {
@@ -887,6 +888,63 @@ const RULES: Rule[] = [
   // choice's count: a warning)
   { code: 'quality.granted', severity: 'error', tab: 'qualities', check: c => granted(c).filter(h => h.none) },
   { code: 'quality.grantedCount', severity: 'warning', tab: 'qualities', check: c => granted(c).filter(h => !h.none) },
+  // Commlink6's HandleAugmentationGradeStep: omega-grade ware gives the runner the Bad Luck quality (Body Shop)
+  {
+    code: 'grade.omegaBadLuck',
+    severity: 'warning',
+    tab: 'qualities',
+    check: c =>
+      c.b.purchases.some(x => x.grade === 'omega') && !c.b.qualities.some(q => /^bad luck\b/i.test(c.data.entry('qualities', q.id)?.name ?? ''))
+        ? { message: 'Omega-grade ware brings the Bad Luck quality; add it (Body Shop).' }
+        : null,
+  },
+  // owner ruling 4 (2026-10-31), from the book: Permanent Damage (Body Shop p. 16) can't be taken at Essence 6; Essence
+  // Regrowth (p. 16) can't be taken at character creation
+  {
+    code: 'quality.permanentDamage',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      activeRules(c.b, c.data).has('CANNOT_USE_ESSENCE_HOLE') && c.budgets.essence.spent <= 0
+        ? { message: 'Permanent Damage can’t be taken by a runner with 6 Essence.', source: 'BS', page: 16 }
+        : null,
+  },
+  {
+    code: 'quality.essenceRegrowth',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      !c.ch.finalizedAt && activeRules(c.b, c.data).has('ESSENCE_REGROWTH')
+        ? { message: 'Essence Regrowth can’t be taken at character creation.', source: 'BS', page: 16 }
+        : null,
+  },
+  // the cyberadept path (H&S pp. 86–87, owner ruling 4): ware taken after a step must be of its least grade or better
+  {
+    code: 'grade.cyberadept',
+    severity: 'error',
+    tab: 'augmentations',
+    check: c =>
+      cyberadeptSteps(c.b, c.data).flatMap(st => {
+        const r = CYBERADEPT[st.step]
+        return c.b.purchases
+          .filter(x => x.kind === 'augmentations' && (x.seq ?? 0) > st.seq && (GRADE_RANK[x.grade ?? 'standard'] ?? 99) < GRADE_RANK[r.min])
+          .map(x => ({
+            message: `${entryOf(x, c.data)?.name ?? x.name ?? 'An augmentation'} is ${x.grade ?? 'standard'} grade; after ${r.name} new ware must be ${r.min} grade or better.`,
+            source: 'HS',
+            page: r.page,
+          }))
+      }),
+  },
+  // All Business (SWC p. 135, RULE MAX_3_CONTACT_LOYALTY): no contact's Loyalty above 3
+  {
+    code: 'contact.allBusiness',
+    severity: 'error',
+    tab: 'contacts',
+    check: c =>
+      activeRules(c.b, c.data).has('MAX_3_CONTACT_LOYALTY')
+        ? c.b.contacts.filter(x => x.loyalty > 3).map(x => ({ message: `${x.name || 'A contact'} has Loyalty ${x.loyalty}; All Business allows at most 3.` }))
+        : null,
+  },
 
   // martial arts (FS p. 97): their prices (set when the runner has a style), a style once, a technique once under any
   // style, and only of the style's categories, General or its signature
@@ -999,8 +1057,8 @@ const RULES: Rule[] = [
     check: c => {
       const hit = over(c.budgets.nuyen, 'Nuyen', '¥'),
         size = c.budgets.nuyen.breakdown?.find(l => l.key === 'sizePricing')?.amount
-      // a GM can't approve this one: name the table's house rule when it is part of the cost (metatypeSizePricing)
-      return hit && size ? { message: `${hit.message.slice(0, -1)}; the house rule ‘size pricing’ adds ${fmt(size)}¥.` } : hit
+      // a GM can't approve this one: name the price modifiers when they are part of the cost (metatypeSizePricing)
+      return hit && size ? { message: `${hit.message.slice(0, -1)}; the price modifiers add ${fmt(size)}¥.` } : hit
     },
   },
   {

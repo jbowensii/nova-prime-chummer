@@ -6,6 +6,7 @@ import { BACKDROPS, type Backdrop } from '../../../core/shared/types'
 import {
   BONUS_SWITCHES,
   type Sr6Situational,
+  type Sr6ItemFlag,
   BONUS_TARGETS,
   CONTACT_TYPES,
   CORE_ATTRS,
@@ -34,6 +35,7 @@ import {
   type Sr6Attr,
   type Sr6Build,
   type Sr6Character,
+  type Sr6BoundSpirit,
   type Sr6Contact,
   type Sr6CritterQuality,
   type Sr6CritterTrained,
@@ -105,6 +107,8 @@ function purchaseXml(p: Sr6Purchase): string {
       qty: p.qty,
       grade: p.grade,
       worn: p.worn,
+      flags: p.flags?.length ? p.flags.join(' ') : undefined,
+      seq: p.seq,
       sit: sitText(p.sit),
       note: p.note,
       seatsRemoved: p.seatsRemoved,
@@ -150,6 +154,7 @@ const qualityXml = (q: Sr6Quality) =>
     note: q.note,
     name: q.name,
     boughtOff: q.boughtOff,
+    seq: q.seq,
     options: optionsText(q.options),
     sit: sitText(q.sit),
   })
@@ -166,6 +171,7 @@ const contactXml = (c: Sr6Contact) =>
     loyalty: c.loyalty,
     types: c.types?.length ? c.types.join(' ') : undefined,
   })
+const spiritXml = (s: Sr6BoundSpirit) => el('spirit', { uid: s.uid, name: s.name, force: s.force, services: s.services, note: s.note })
 const lifestyleXml = (l: Sr6Lifestyle, sin?: string) => el('lifestyle', { uid: l.uid, id: l.id, months: l.months, pack: l.pack, sin })
 const sinXml = (s: Sr6Sin) =>
   el(
@@ -198,6 +204,7 @@ function buildXml(b: Sr6Build): string {
     ...b.martialArts.map(martialXml),
     ...b.purchases.map(purchaseXml),
     ...b.contacts.map(contactXml),
+    ...b.boundSpirits.map(spiritXml),
     ...b.sins.map(sinXml),
   ]
   return el(
@@ -536,6 +543,10 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     qty: num(e, 'qty', 1),
     grade: str(e, 'grade'),
     worn: yes(e, 'worn'),
+    seq: num(e, 'seq'),
+    flags: (f => (f.length ? f : undefined))(
+      (str(e, 'flags')?.split(/\s+/) ?? []).filter((t): t is Sr6ItemFlag => t === 'CUSTOM_FITTED' || t === 'CHEAP_KNOCK_OFF'),
+    ),
     bonuses: readBonuses(e),
     sit: readSit(e),
     note: str(e, 'note'),
@@ -669,6 +680,7 @@ const readQuality = (e: Element): Sr6Quality =>
     note: str(e, 'note'),
     name: str(e, 'name'),
     boughtOff: num(e, 'boughtOff'),
+    seq: num(e, 'seq'),
     options: readOptions(e),
     sit: readSit(e),
   })
@@ -702,6 +714,14 @@ const readContact = (e: Element): Sr6Contact => {
     types: types.length ? types : undefined,
   })
 }
+const readSpirit = (e: Element): Sr6BoundSpirit =>
+  def({
+    uid: e.getAttribute('uid') ?? '',
+    name: e.getAttribute('name') ?? '',
+    force: num(e, 'force', 1),
+    services: num(e, 'services', 0),
+    note: e.getAttribute('note') ?? undefined,
+  })
 
 function readBuild(b: Element, fix?: string[]): Sr6Build {
   const out = blankBuild(oneOf(b.getAttribute('method'), SR6_METHODS, 'method', 'priority', fix))
@@ -806,6 +826,7 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
     fix,
   )
   out.contacts = each(kids(b, 'contact'), readContact, label, fix)
+  out.boundSpirits = each(kids(b, 'spirit'), readSpirit, label, fix)
   return out
 }
 /** (every licence rated as its SIN, an older file's another rating too: owner 2026-10-16) */
