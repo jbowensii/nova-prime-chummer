@@ -58,5 +58,32 @@ class OptionsTest(unittest.TestCase):
         self.assertIsNone(options.variant_kids(r, "Arm (synthetic)", None))
 
 
+class SplitTest(unittest.TestCase):
+    def test_split_entry_gets_its_option_and_the_shared_data(self):
+        r = rec(
+            '<quality id="zz"><geardef><item id="zz_weapon" type="WEAPON_CLOSE_COMBAT"><weapon dmg="4P"/></item>'
+            '</geardef><choices><choice type="SUBSELECT" ref="type"><subOption id="furry"><requires>'
+            '<valuereq type="ATTRIBUTE" ref="BODY" value="3"/></requires><modifications>'
+            '<itemmod type="CRITTER_POWER" ref="natural_weapon"/></modifications></subOption><subOption id="fins"/>'
+            '</choice></choices><modifications><itemmod type="QUALITY" ref="shift"/></modifications></quality>',
+            options={"type.furry": "Furry", "type.fins": "Fins"},
+        )
+        kids = options.split_kids(r, "Zed (Furry)")
+        furry = {"split": "type.furry"}
+        self.assertEqual(
+            [k["attrs"] for k in kids],
+            [
+                {"kind": "itemmod", "type": "CRITTER_POWER", "ref": "natural_weapon", **furry},
+                {"kind": "valuereq", "type": "ATTRIBUTE", "ref": "BODY", "value": "3", "apply": "CHARACTER", **furry},
+                {"kind": "itemmod", "type": "QUALITY", "ref": "shift", "split": "shared"},
+                {"kind": "geardef", "id": "zz_weapon", "type": "WEAPON_CLOSE_COMBAT", "dmg": "4P", "split": "shared"},
+            ],
+        )
+        self.assertEqual(options.split_kids(r, "Zed"), [])  # (no single option named: nothing)
+        row = {"kids": [{"tag": "modifier", "attrs": {"kind": "itemmod", "type": "QUALITY", "ref": "shift"}}]}
+        placed = options._place_split(row, kids)  # pylint: disable=protected-access
+        self.assertEqual(sum(1 for k in placed if k["attrs"].get("ref") == "shift"), 1)  # (the shared one once)
+
+
 if __name__ == "__main__":
     unittest.main()

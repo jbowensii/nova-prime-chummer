@@ -21,6 +21,7 @@ import type { Sr6Compendium, Sr6Situational } from '../../formats/domain/charact
 import { entryOf, fitted, lineBonuses, materialOf, priced, ratingOf, skillRank } from '../../runner-builder/domain/creation/budgets'
 import { choiceOf, entryBonuses } from '../../runner-builder/domain/creation/bonuses'
 import { baseMetatype, metatypeName } from '../../runner-builder/domain/creation/infected'
+import { animalForm, animalStats } from '../../runner-builder/domain/creation/drake'
 import { ruleRefsOf } from '../../runner-builder/domain/creation/rule-markers'
 import { bonusValue, linkedViews, ownParts, perCount, sitOf, type LinkLookup } from '../../catalog/domain/effects'
 import { currentBuild, ledgerLabel, balances, voidedIds } from '../../runner-builder/domain/career/career'
@@ -292,6 +293,8 @@ export interface Sr6ExportRunner {
   /** augmented: with the always-on effects; switched: with the switchable and conditional ones on too (the bracket, `5 (7)`),
    *  only when it differs */
   attributes: Record<Sr6Attr, { natural: number; augmented: number; switched?: number }>
+  /** a shifter's animal form (optional; runner-builder drake.ts animalStats): its form, attributes and built-in weapons */
+  animalForm?: { form: string; attributes: Record<string, number>; weapons: { name: string; dv: string; skill?: string }[] }
   essence: number
   edge: number
   skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string; specs?: string[] }[]
@@ -855,6 +858,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         d.on.attrs[k as Sr6Attr].augmented === v.augmented ? v : { ...v, switched: d.on.attrs[k as Sr6Attr].augmented },
       ]),
     ) as Sr6ExportRunner['attributes'],
+    ...animalExport(b, data, d),
     essence: d.essence,
     edge: d.edge,
     skills: b.skills.map(s =>
@@ -1008,4 +1012,11 @@ export function exportSr6Compendium(c: Sr6Catalog, data: Sr6Data, cr: CreationRu
       },
     ],
   }
+}
+
+/** A shifter runner's animal form for the export (none: nothing). */
+function animalExport(b: Sr6Character['build'], data: Sr6Data, d: Sr6Derived): Pick<Sr6ExportRunner, 'animalForm'> {
+  const st = animalStats(b, data, Object.fromEntries(Object.entries(d.attrs).map(([k, v]) => [k, v.augmented])) as Record<Sr6Attr, number>)
+  const form = animalForm(b, data).form
+  return st && form ? { animalForm: { form: form.name, attributes: st.attrs, weapons: st.weapons } } : {}
 }

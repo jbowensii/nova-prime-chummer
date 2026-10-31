@@ -536,8 +536,11 @@ export const CREATION_KEYS: CreationKey[] = [
       ['noUsedCulturedBioware', 'No used (or omega) grade on cultured bioware (house rule)'],
       ['gradeCapAtCreation', 'Caps on the initiation, submersion and transhumanist grade at creation: the grades below (house rule)'],
       ['transhumanism', 'Transhumanism: a mundane buys transhumanist grades, each an Essence hole of 1.0 (option)'],
+      ['allowAnimalism', 'Animalism: shifters and others buy animalism powers (Bestial Nature)'],
+      ['allowSurge', 'SURGE: metagenic qualities and SURGE collectives (Sixth World Companion)'],
     ] as [string, string][]
   ).map(([key, label]): CreationKey => ({ key, label, type: 'bool', group: 'Optional rules', methods: [] })),
+  ...n('Optional rules', [], [['animalismMaxAtCreation', 'Animalism: highest animalism grade at creation']]),
   ...n(
     'Optional rules',
     [],
@@ -556,7 +559,7 @@ export const CREATION_KEYS: CreationKey[] = [
       ['eliteSumToThirteen', 'Elite: sum-to-thirteen instead of sum-to-twelve (house rule)'],
       ['availabilitySeven', 'Gear of Availability 7 at creation (house rule)'],
       ['cargoWithoutSeats', 'Vehicles: seats removed add cargo space (option)'],
-      ['metatypeSizePricing', 'Metatype size pricing: trolls pay 10% more for everything bought, dwarfs 10% more for armor (house rule)'],
+      ['metatypeSizePricing', 'Price modifiers: the metatype’s, qualities’ and ware’s PRICEMOD (troll-sized +10% on everything, dwarf-sized +10% on armor)'],
     ] as [string, string][]
   ).map(([key, label]): CreationKey => ({ key, label, type: 'bool', group: 'Optional rules', methods: [] })),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
@@ -774,6 +777,7 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
   // SWC p. 144: 2 Edge for twice the core rulebook's lead (HK p. 45)
   stackingAdvantage: { requires: ['arDrEdgeGap'] },
   infectedPowersAtCreation: { requires: ['infectedAllowed'] },
+  animalismMaxAtCreation: { requires: ['allowAnimalism'] },
   // SWC p. 150: "add Agility to Attack Rating in place of Strength"
   strengthInCloseCombat: { replaces: ['meleeArStrength'] },
   strengthDamageStep1: { requires: ['highStrengthDamage'] },
@@ -1246,6 +1250,12 @@ const ABOUT: Record<string, [string, string]> = {
     'On: a mundane runner buys transhumanist grades for 10 + the next grade in Karma (the initiation price), up to 20, and each gives an Essence hole of 1.0 that augmentations’ Essence is paid from first; off: none',
     SWC(146),
   ],
+  allowAnimalism: [
+    'On: a runner may buy animalism powers, 10 + the grade in Karma each grade, outside initiation (mundanes too); off: they are refused at creation',
+    'Bestial Nature p. 21',
+  ],
+  animalismMaxAtCreation: ['The highest animalism grade at creation (2 when unset)', 'Bestial Nature p. 21'],
+  allowSurge: ['On: a runner may take metagenic qualities (at most 30 Karma of them) and a SURGE collective; off: they are refused at creation', SWC(116)],
   adjustOnLoweredMax: [
     'On: adjustment points may also go on an attribute whose metatype maximum is lowered; off: only on raised maxima, Edge, Magic and Resonance (CRB Hong Kong p. 63)',
     HOUSE,
@@ -1256,8 +1266,8 @@ const ABOUT: Record<string, [string, string]> = {
   ],
   knowledgeLogicIntuition: ['Optional rule (CRB p. 98): free Knowledge points = (Logic + Intuition) × 2; off (default): Logic only (p. 97)', 'CRB p. 98'],
   metatypeSizePricing: [
-    'On: a troll-sized runner (troll, cyclops, fomori, giant, minotaur) pays 10% more for everything bought and a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune) 10% more for armor and clothing, added as one line of the nuyen budget; the books price a few metahuman-sized items on their own but print no general rule',
-    HOUSE,
+    'On: the PRICEMOD data apply, as one line of the nuyen budget: the metatype’s (troll-sized +10% on everything bought, dwarf-sized +10% on armor), and the qualities’ and ware’s (Shiva Arms, Bone Spikes, Thorns, bark: more on armor); off: none (on by default: owner ruling 5, 2026-10-31, a book rule a GM may turn off)',
+    'CRB p. 64, Sixth World Companion pp. 91–92',
   ],
   magicAboveSixByGrade: [
     'On: Magic or Resonance at creation up to the highest plus the initiation or submersion grade; off: the highest alone (CRB Hong Kong p. 65)',

@@ -156,6 +156,7 @@ export interface SlotShift {
   from: ShiftKind
   to: ShiftKind
 }
+export type Sr6ItemFlag = 'CUSTOM_FITTED' | 'CHEAP_KNOCK_OFF'
 export interface Sr6Purchase {
   uid: string
   /** Assigned identity: Sr6Sin.uid; absent means unassigned, independent of licences. */
@@ -176,6 +177,10 @@ export interface Sr6Purchase {
   qty: number
   grade?: string
   worn?: true
+  /** Commlink6's user-selectable item flags (AddUpPricesStep): custom-fitted or cheap knockoff armor */
+  flags?: Sr6ItemFlag[]
+  /** the order the line was taken in (creation actions and career advances stamp it: cyberadept.ts stampOrder) */
+  seq?: number
   bonuses?: Bonus[]
   sit?: Sr6Situational
   note?: string
@@ -319,6 +324,8 @@ export interface Sr6Quality {
   boughtOff?: number
   /** the sub-options picked (catalog structure.ts subChoices: Allergy's allergen and severity): pick ref -> option id(s) */
   options?: Record<string, string>
+  /** the order the quality was taken in (cyberadept.ts stampOrder) */
+  seq?: number
 }
 /** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
 export interface Sr6Pick {
@@ -353,6 +360,7 @@ export interface Sr6Contact {
   loyalty: number
   types?: ContactType[]
 }
+export type Sr6BoundSpirit = { uid: string; name: string; force: number; services: number; note?: string }
 export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' | 'government' | 'magic' | 'matrix' | 'media' | 'medical' | 'street'
 export const CONTACT_TYPES: ContactType[] = ['academic', 'corporate', 'criminal', 'engineering', 'government', 'magic', 'matrix', 'media', 'medical', 'street']
 /** A lifestyle always belongs to a SIN (the one it's paid under); id: the catalog lifestyle. */
@@ -472,6 +480,8 @@ export interface Sr6Build {
   martialArts: Sr6MartialArt[]
   purchases: Sr6Purchase[]
   contacts: Sr6Contact[]
+  /** spirits (sprites) bound in play: recorded, never bought (no Karma or nuyen) */
+  boundSpirits: Sr6BoundSpirit[]
   /** each with its lifestyles (an older file's single build lifestyle loads onto its first SIN: charxml.ts) */
   sins: Sr6Sin[]
   karmaToNuyen: number
@@ -688,6 +698,7 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
   martialArts: [],
   purchases: [],
   contacts: [],
+  boundSpirits: [],
   sins: [],
   karmaToNuyen: 0,
   karmaToDeck: 0,

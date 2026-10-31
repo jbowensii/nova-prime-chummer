@@ -47,7 +47,14 @@ describe.skipIf(!python)('the importer prices a sample runner as the app does', 
     expect(out.deps.levels).toEqual(LEVELS)
     expect(out.deps.sets).toEqual(SETS)
   })
-  const data = sr6Data(fixtureCatalog((_, x) => x.replaceAll(...out.patch), out.files))
+  // (the app prices size from the metatype's PRICEMOD, the importer by its name's words: the troll-sized one carries it)
+  const trollMod = '<modifier kind="valmod" type="PRICEMOD" ref="EVERYTHING" value="0.1"/><text/></metatype>'
+  const data = sr6Data(
+    fixtureCatalog(
+      (f, x) => (/metatypes\.xml$/.test(f) ? x.replace(/(<name>Stonefolk<\/name>.*?)<text\/><\/metatype>/, `$1${trollMod}`) : x).replaceAll(...out.patch),
+      out.files,
+    ),
+  )
 
   for (const r of out.runners)
     test(r.name, () => {

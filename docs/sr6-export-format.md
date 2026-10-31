@@ -55,6 +55,7 @@ is closed (no other keys).
 | `magic` | `{ kind, tradition?, drainAttr?, aspectedSkill?, initiation, submersion }`; `kind` `full`, `aspected`, `mystic-adept`, `adept`, `technomancer` or `mundane` |
 | `portrait`, `token` | a data URL (`data:image/png` or `data:image/jpeg`, base64), or `null`; no token: use the portrait |
 | `attributes` | `{ bod … cha, edg, mag, res }`, each `{ natural, augmented }`: natural is the rating (Magic or Resonance less the Essence loss), augmented adds the always-on bonuses (entered, else the catalog entry's effects); `switched`: with the switchable and conditional effects on (the bracket, `5 (7)`), only when it differs from `augmented` |
+| `animalForm` | optional: a shifter's animal form, `form` (its Shifter quality's name), `attributes` (each core attribute as the animal has it: the augmented rating plus the shifter add-ons' animal bonuses) and `weapons` (its built-in weapons: `name`, `dv`, `skill`); absent for a runner who is no shifter |
 | `essence`, `edge` | Essence left and the augmented Edge |
 | `skills` | `[{ id, name, attr, rank, spec?, expertise? }]`: `id` the catalog's (it carries the source, e.g. `crb.firearms`), so a reader matches by `name` |
 | `knowledge` | `[{ name, kind, native, rank }]`: `kind` `knowledge` or `language` |

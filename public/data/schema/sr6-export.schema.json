@@ -1817,6 +1817,25 @@
           },
           "additionalProperties": false
         },
+        "animalForm": {
+          "description": "A shifter's animal form (Bestial Nature; optional): its form quality's name, each core attribute as the animal has it (the metahuman form's augmented rating plus the shifter add-ons' animal bonuses) and its built-in weapons. Absent for a runner who is no shifter.",
+          "type": "object",
+          "required": ["form", "attributes", "weapons"],
+          "properties": {
+            "form": { "type": "string" },
+            "attributes": { "type": "object", "additionalProperties": { "type": "number" } },
+            "weapons": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "dv"],
+                "properties": { "name": { "type": "string" }, "dv": { "type": "string" }, "skill": { "type": "string" } },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
         "essence": {
           "type": "number"
         },

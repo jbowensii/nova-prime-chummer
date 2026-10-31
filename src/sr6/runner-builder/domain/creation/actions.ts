@@ -34,7 +34,10 @@ import {
   type Sr6Knowledge,
   type Sr6Method,
   type Sr6Purchase,
+  type Sr6ItemFlag,
 } from '../../../formats/domain/character'
+import { structureOf } from '../../../catalog/domain/structure'
+import { stampOrder } from './cyberadept'
 import { flag, num, str, TRANSHUMAN_MAX, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
@@ -60,7 +63,9 @@ import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
-import { addGrants, setCollective } from './surge'
+import { addGrants, setCollective, surgeAllowed } from './surge'
+import { isAnimalism } from './animalism'
+import { shifterForms, shifterLine } from './drake'
 import { dracoformPool, drakeType } from './drake'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -79,6 +84,8 @@ export type Op =
   | { op: 'quality'; remove: string }
   /** the SURGE collective (a qualitysets id; '' none) and its choice: its qualities come free (surge.ts setCollective) */
   | { op: 'collective'; id: string; choice?: string }
+  /** the shifter's animal form: a Shifter quality of one form (drake.ts shifterForms); the runner's Shifter line moves to it */
+  | { op: 'shifterForm'; id: string }
   /** a drake's dracoform adjustment points on an attribute its drake type names (drake.ts dracoformPool); 0 clears */
   | { op: 'dracoform'; attr: Sr6Attr; points: number }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
@@ -155,6 +162,8 @@ export type Op =
    *  rules, set to take `size` of the vehicle's `hook` (a freed factory part's room), fitted to `host` if it fits there */
   | { op: 'derive'; host: string; kind: Sr6Kind; id: string; hook: string; size: number; rating?: number }
   | { op: 'wear'; uid: string; worn: boolean }
+  /** an armor line's Commlink6 user flag (custom-fitted, cheap knockoff) on or off */
+  | { op: 'itemFlag'; uid: string; flag: Sr6ItemFlag; on: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
   | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
@@ -256,22 +265,23 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
  *  Resonance, as taking the type would). */
 export function setMagic(ch: Sr6Character, kind: MagicKind, data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
   const t = runnerInfected(ch.build, data)?.t
-  infectedTo(ch.build, kind, t ? infectedKind(kind, t.awakens) : kind, aspectedSkill)
+  infectedTo(ch.build, kind, t ? infectedKind(kind, t.awakens) : kind, aspectedSkill, data)
 }
 /** The runner's kind becomes `next`, the method having bought `bought`: infectedFrom keeps the bought kind while an
  *  Infected type made it another (SWC p. 105), and goes when they agree. Shared with career.ts applyAdvance. */
-export function infectedTo(b: Sr6Build, bought: MagicKind, next: MagicKind, aspectedSkill?: string): void {
+export function infectedTo(b: Sr6Build, bought: MagicKind, next: MagicKind, aspectedSkill?: string, data?: Sr6Data): void {
   if (next !== bought) b.infectedFrom = bought
   else delete b.infectedFrom
-  magicKind(b, next, aspectedSkill)
+  magicKind(b, next, aspectedSkill, data)
 }
-function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string): void {
+/** (`data`: an animalism power stays whatever the kind, mundane too: owner ruling 2026-10-31, as Commlink6 has it) */
+function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string, data?: Sr6Data): void {
   const k = MAGIC_KINDS[kind],
     allowed = picksFor(kind)
   b.magic = kind
   if (kind === 'aspected' && aspectedSkill) b.aspectedSkill = aspectedSkill
   else if (kind !== 'aspected') delete b.aspectedSkill
-  b.picks = b.picks.filter(x => allowed[x.kind])
+  b.picks = b.picks.filter(x => allowed[x.kind] || (x.kind === 'metamagics' && !!data && isAnimalism(data.entry('metamagics', x.id))))
   if (!k.paysPowers) b.powerPointsBought = 0
   if (!k.spells && !k.powers) b.initiation = 0
   if (!k.resonance) b.submersion = 0
@@ -308,7 +318,7 @@ function infect(b: Sr6Build, id: string, data: Sr6Data, cr: CreationRules): Resu
   const bought = boughtKind(b)
   if (cur) b.qualities = b.qualities.filter(q => q !== cur.line)
   if (t) b.qualities.push({ uid: newId(), id, level: 1, name: data.qualities[id]?.name ?? t.name })
-  infectedTo(b, bought, t ? infectedKind(bought, t.awakens) : bought)
+  infectedTo(b, bought, t ? infectedKind(bought, t.awakens) : bought, undefined, data)
   return OK
 }
 
@@ -338,6 +348,12 @@ const unlicense = (b: Sr6Build, gone: Sr6Purchase[]) => {
 
 /** Apply one editor step to the build. */
 export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
+  const r = applyOp(b, op, data, cr)
+  stampOrder(b) // (the order lines are taken in: cyberadept.ts)
+  return r
+}
+
+function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
   switch (op.op) {
     case 'attribute': {
       const a = b.attributes[op.target]
@@ -415,7 +431,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     }
     case 'collective': {
       if (op.id && !data.entry('qualitysets', op.id)) return no('unknown')
+      if (op.id && !surgeAllowed(cr)) return no('rule-off')
       setCollective(b, data, op.id, op.choice)
+      return OK
+    }
+    case 'shifterForm': {
+      // (the Shifter quality's animal: its line moves to that form's entry, uid kept; owner ruling 2026-10-31)
+      const form = shifterForms(data).find(e => e.id === op.id)
+      if (!form) return no('unknown')
+      const line = shifterLine(b, data)
+      if (line) Object.assign(line, { id: form.id, name: form.name })
+      else b.qualities.push({ uid: newId(), id: form.id, level: 1, name: form.name })
       return OK
     }
     case 'quality': {
@@ -959,6 +985,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       else delete x.worn
       return OK
     }
+    case 'itemFlag': {
+      const x = b.purchases.find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (x.kind !== 'armor') return no('armor-only')
+      const f = new Set(x.flags)
+      if (op.on) f.add(op.flag)
+      else f.delete(op.flag)
+      if (f.size) x.flags = [...f]
+      else delete x.flags
+      return OK
+    }
     case 'rate': {
       const x = allLines(b).find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
@@ -1039,6 +1076,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         })
       const { op: _, uid, ...patch } = op
       if ((patch.connection ?? 1) < 1 || (patch.loyalty ?? 1) < 1) return no('below-one')
+      // All Business (SWC p. 135, RULE MAX_3_CONTACT_LOYALTY): no contact's Loyalty above 3
+      if ((patch.loyalty ?? 0) > 3 && activeRules(b, data).has('MAX_3_CONTACT_LOYALTY')) return no('loyalty-max-3')
       if (patch.types) {
         // one or two types, each once (a contact gains its second from a module of another type)
         const types = [...new Set(patch.types)]
@@ -1415,6 +1454,8 @@ function newLine(
 export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): string | undefined {
   const he = entryOf(host, data),
     e = entryOf(line, data)
+  // Commlink6's UNMODIFYABLE flag (ItemTemplate.validate): the item takes no accessories
+  if (he && structureOf(he).flags.includes('UNMODIFYABLE')) return 'This item can’t be modified.'
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   if (remaining !== null && capacityUsed(e, ratingOf(line, e)) * line.qty > Math.max(0, remaining)) return 'Not enough remaining capacity.'
