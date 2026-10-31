@@ -59,6 +59,7 @@ import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
+import { addGrants, setCollective } from './surge'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
@@ -74,6 +75,8 @@ export type Op =
    *  level or the rated parent. */
   | { op: 'quality'; id: string; uid?: string; level?: number; karma?: number; note?: string }
   | { op: 'quality'; remove: string }
+  /** the SURGE collective (a qualitysets id; '' none) and its choice: its qualities come free (surge.ts setCollective) */
+  | { op: 'collective'; id: string; choice?: string }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string }
   | { op: 'pick'; remove: string }
@@ -94,6 +97,7 @@ export type Op =
       rating?: number
       qty?: number
       grade?: string
+      note?: string
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
@@ -236,6 +240,7 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
   ch.identity.metatype = id
   b.qualities = b.qualities.filter(q => !q.free)
   for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: m?.traitLevels?.[t] ?? 1, free: true, name: data.qualities[t]?.name })
+  addGrants(b, data) // (the SURGE collective's free qualities, gone with the old traits)
 }
 
 /** Pick the magic kind the method buys: picks it can't have go, as do bought power points (unless it buys them), an
@@ -391,6 +396,11 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.value === null) delete b.awakened
       else b.awakened = op.value
       return OK
+    case 'collective': {
+      if (op.id && !data.entry('qualitysets', op.id)) return no('unknown')
+      setCollective(b, data, op.id, op.choice)
+      return OK
+    }
     case 'quality': {
       if ('remove' in op) {
         const q = b.qualities.find(x => x.uid === op.remove)
@@ -613,7 +623,16 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         !OWN_LINE.has(op.kind) &&
         !isAmmoGear(entryOf(line, data)) && // each ammo line carries its own fitted ammo type, so adding again makes a new line
         !line.grade &&
-        b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind && x.rating === line.rating && !x.grade && !x.accessories.length)
+        b.purchases.find(
+          x =>
+            x.id &&
+            x.id === line.id &&
+            x.kind === line.kind &&
+            x.rating === line.rating &&
+            (x.note ?? '') === (line.note ?? '') &&
+            !x.grade &&
+            !x.accessories.length,
+        )
       if (same) same.qty += line.qty
       else b.purchases.push(line)
       return OK
@@ -1324,6 +1343,7 @@ function newLine(
     rating?: number
     qty?: number
     grade?: string
+    note?: string
     custom?: { name: string; cost: number; avail: number; essence: number }
   },
   data: Sr6Data,
@@ -1332,7 +1352,14 @@ function newLine(
   const qty = op.qty ?? 1
   if (qty < 1) return { ok: false, reason: 'below-one' }
   if (op.grade && !gradeKnown(cr, data, op.grade)) return { ok: false, reason: 'unknown-grade' }
-  const base = { uid: newId(), kind: op.kind, qty, accessories: [], ...(op.grade ? { grade: op.grade } : {}) }
+  const base = {
+    uid: newId(),
+    kind: op.kind,
+    qty,
+    accessories: [],
+    ...(op.grade ? { grade: op.grade } : {}),
+    ...(op.note?.trim() ? { note: op.note.trim().slice(0, 200) } : {}),
+  }
   if (!op.id) {
     const c = op.custom ?? { name: '', cost: 0, avail: 0, essence: 0 }
     if (c.cost < 0 || c.avail < 0 || c.essence < 0) return { ok: false, reason: 'below-zero' } // Review's hard value.negative would block it for good

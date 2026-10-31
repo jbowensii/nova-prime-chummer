@@ -212,6 +212,8 @@ function buildXml(b: Sr6Build): string {
       initiation: b.initiation,
       submersion: b.submersion,
       ...(b.transhuman ? { transhuman: b.transhuman } : {}),
+      surgeCollective: b.surgeCollective,
+      surgeChoice: b.surgeChoice,
       karmaToNuyen: b.karmaToNuyen,
       ...(b.karmaToDeck ? { karmaToDeck: b.karmaToDeck } : {}),
       bestAttr: b.bestAttr,
@@ -693,6 +695,8 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
     def({
       aspectedSkill: str(b, 'aspectedSkill'),
       tradition: str(b, 'tradition'),
+      surgeCollective: str(b, 'surgeCollective'),
+      surgeChoice: str(b, 'surgeChoice'),
       mentorSpirit: str(b, 'mentorSpirit'),
       mentorAdvantage: adv == null ? undefined : oneOf(adv, ['magician', 'adept'] as const, 'mentor advantage', undefined, fix),
       drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix),

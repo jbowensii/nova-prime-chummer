@@ -19,6 +19,7 @@ import type {
 } from '../../formats/domain/character'
 import { CRITTER_CLASS_LABELS, critterView, isTaught, trainedName } from '../domain/assets/critters'
 import { NPC_STATS } from '../domain/creation/npc'
+import { emulatedPrograms } from '../domain/creation/magic'
 import type { Sr6Entry } from '../../formats/domain/types'
 import type { Sr6Data } from '../../catalog/domain/data'
 import type { Sr6Derived, Sr6Pool } from '../domain/creation/derive'
@@ -35,6 +36,7 @@ export const PICKS: [PickKind, string][] = [
   ['complexforms', 'Complex forms'],
   ['echoes', 'Echoes'],
   ['datastructures', 'Data structures'],
+  ['critterpowers', 'Dracogenesis powers'],
 ]
 /** What a spell's or metamagic's catalog flags say, in words: `Opposed`, `Essence`, `Adepts only`, `Taken again`. */
 export function pickFlags(e: Sr6Entry): string[] {
@@ -86,7 +88,8 @@ export function licenceText(b: Sr6Character['build'], data: Sr6Data, s: Sr6Sin, 
 
 export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'data' | 'cr' | 'd' | 'career'>) {
   const b = ch.build
-  const lines = (kind: PurchaseKind) => b.purchases.filter(x => x.kind === kind)
+  // (the programs an Emulate complex form runs are on the runner too, free: magic.ts emulatedPrograms)
+  const lines = (kind: PurchaseKind) => [...b.purchases.filter(x => x.kind === kind), ...(kind === 'programs' ? emulatedPrograms(b, data) : [])]
   // (ammunition of a material says so: `Heavy pistol/SMG (silver)`)
   const nameOf = (x: Sr6Purchase) => {
     const e = entryOf(x, data),

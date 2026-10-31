@@ -28,4 +28,4 @@ createServer({
   customDir: join(dir, 'custom'),
   libraryDir: join(dir, 'library'),
   python: [process.execPath, 'tests/fixtures/stub-worker.mjs'],
-}).listen(4173, () => console.log(`e2e server on :4173, characters, custom and library in ${dir}`))
+}).listen(Number(process.env.E2E_PORT ?? 4173), () => console.log(`e2e server on :${process.env.E2E_PORT ?? 4173}, characters, custom and library in ${dir}`))
