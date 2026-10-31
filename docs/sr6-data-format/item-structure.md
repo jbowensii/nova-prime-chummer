@@ -8,6 +8,15 @@ importer reads none of it from the text). Children of any entry (`common.xsd` ta
   `<relevance topic/>` a topic it is relevant to; `<flag>text</flag>` a kind flag; attributes `modonly="true"` (bought only as
   an add-on), `size` (a weapon's size class), `ammoClass` and `softwareTypes` (a matrix device's Commlink6
   `SOFTWARE_TYPES`, which a program's device-type requirement tests).
+- Sub-options and variants (behaviour-gap plan Stage 2, 2026-10-31; written by `python -m tools.cl6check.options --runs
+  <import>` into the family rows, regenerable): `<option choice id name cost? price? avail? count?/>` one per sub-option of a
+  Commlink6 SUBSELECT pick (`cost`: karma on a quality, nuyen on an item, added to the entry's); `<variant name price?
+  essence? avail? required?/>` a variant's own values, which replace the entry's while it is picked (`required`: a
+  `reqVariant` item, one must be picked); `<effect … option="<choice>.<id>"/>` or `variant="<name>"`: holds only while that
+  one is picked, in place of the entry's own effect on the same target. An entry the book already split per option or variant
+  (`Arm (synthetic)`, `Functional Tail (Balance)`) gets none. The builder applies them (catalog `structure.ts` `subChoices`,
+  `withOptions`; a line's picks are its `options`, the runner file's `options="<pick>=<id>;…"`); an unpicked required one is
+  the Review warning `choice.option`.
 - `<modifier kind type ref value …/>` (kind `valmod`, `checkmod`, `itemmod` or `allowmod`: a modification), `<prerequisite
   kind type ref …/>` (kind `datareq` or `valuereq`) and `<selection type ref options …/>` (a pick it offers) are Commlink6's
   own rule data, every attribute as it gives it (`$RATING` formulas, conditions). **No rule reads them**: the app applies our

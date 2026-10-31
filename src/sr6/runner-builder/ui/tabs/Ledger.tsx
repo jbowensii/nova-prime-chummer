@@ -6,7 +6,18 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
-import { attrRating, choiceOptions, diyAllowed, entryOf, isDrone, licenceFee, powerCost, priced, settingQuality } from '../../domain/creation/budgets'
+import {
+  attrRating,
+  choiceCtx,
+  choiceOptions,
+  diyAllowed,
+  entryOf,
+  isDrone,
+  licenceFee,
+  powerCost,
+  priced,
+  settingQuality,
+} from '../../domain/creation/budgets'
 import {
   balances,
   careerPowerPoints,
@@ -124,7 +135,7 @@ const signed = (x: number, unit: string) => (x > 0 ? `${n(x)}${unit}` : `+${n(-x
 
 export function LedgerTab() {
   const { ch, c, data, cr, p, preview, record, ledger } = useSr6Editor()
-  const contactNames = ch.build.contacts.map(c => c.name).filter(Boolean)
+  const choiceContext = choiceCtx(data, ch.build)
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     bal = balances(ch)
@@ -284,7 +295,7 @@ export function LedgerTab() {
         return e
           ? {
               op: 'pick',
-              line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}) },
+              line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e, choiceContext) && f.note.trim() ? { note: f.note.trim() } : {}) },
             }
           : null
       case 'martialart': {
@@ -323,7 +334,7 @@ export function LedgerTab() {
                 kind: e.kind as PurchaseKind,
                 id: e.id,
                 qty: STACKING.has(e.kind) ? Math.max(1, whole(f.qty) || 1) : 1,
-                ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}),
+                ...(choiceOptions(data, e, choiceContext) && f.note.trim() ? { note: f.note.trim() } : {}),
                 accessories: f.ammo && isAmmoGear(e) ? [{ uid: newId(), kind: 'ammotypes', id: f.ammo, qty: 1, accessories: [] }] : [],
                 ...(picked!.rating ? { rating: picked!.rating } : {}),
                 ...(picked!.grade ? { grade: picked!.grade } : {}),
@@ -808,7 +819,7 @@ export function LedgerTab() {
         {(op in LEARN || op === 'purchase') &&
           picked &&
           (() => {
-            const co = choiceOptions(data, picked.e, contactNames)
+            const co = choiceOptions(data, picked.e, choiceContext)
             const pp = picked.e.kind === 'adeptpowers' ? careerPowerPoints(b, data, cr, p) : null
             const cost = pp ? powerCost(data, { id: picked.e.id, note: f.note }) : null
             return (

@@ -191,6 +191,8 @@ export interface Sr6Purchase {
   /** an ammunition line's material (purchases.ts materialOf): the catalog id of a material add-on, `bn.silver-bullets-silver`;
    *  the line costs that many times as much and its rounds are of that material */
   material?: string
+  /** the sub-options and variant picked (catalog structure.ts subChoices): pick ref -> option id(s), `,`-joined */
+  options?: Record<string, string>
   /** a vehicle or drone bought from a design in the Designer: the design's id (its line's id is `design.<id>`, its
    *  snapshot the vehicle the design worked out to when bought; later edits to the design never change it) */
   design?: string
@@ -314,6 +316,8 @@ export interface Sr6Quality {
   karma?: number
   /** Stolen Gear (No Future errata, NF p. 162): the converted karma bought off so far after creation, a part at a time */
   boughtOff?: number
+  /** the sub-options picked (catalog structure.ts subChoices: Allergy's allergen and severity): pick ref -> option id(s) */
+  options?: Record<string, string>
 }
 /** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
 export interface Sr6Pick {

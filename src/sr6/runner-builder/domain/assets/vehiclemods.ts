@@ -472,3 +472,47 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   return out
 }
 const normCat = (s?: string) => (s ?? '').toLowerCase().replace(/ mod.*$/, '')
+
+// an autosoft by name -> the test it backs when the drone acts on its own, and the drone attribute it rolls with (CRB
+// p. 269's listings: Clearsight, Targeting and Electronic Warfare with Sensor, the rest with Pilot)
+const AUTOSOFT_TESTS: [RegExp, string, 'pilot' | 'sensor'][] = [
+  [/maneuver/i, 'Piloting', 'pilot'],
+  [/targeting/i, 'Attack', 'sensor'],
+  [/evasion/i, 'Defense', 'pilot'],
+  [/clearsight/i, 'Perception', 'sensor'],
+  [/stealth/i, 'Stealth', 'pilot'],
+  [/electronic warfare/i, 'Electronic Warfare', 'sensor'],
+]
+/** A drone's pools when it acts on its own (CRB p. 201: "the drone will use its Pilot rating as its combat attribute, and
+ *  any autosofts it is running as skills"): each autosoft + its attribute; without a Targeting autosoft a mounted weapon
+ *  fires with Sensor − 1. mode `rcc`: slaved to the rigger's command console it also runs the console's autosofts (p. 201,
+ *  the best rating of each wins). Nothing for a vehicle that isn't a drone. */
+export function dronePools(
+  x: Sr6Purchase,
+  data: Sr6Data,
+  rcc: Sr6Purchase[] = [],
+): { mode: 'autonomous' | 'rcc'; test: string; autosoft: string; pool: number }[] {
+  const e = entryOf(x, data)
+  if (!isDrone(e)) return []
+  const attr = { pilot: first(e?.attrs.pilot), sensor: first(e?.attrs.sensor) }
+  const softs = (lines: Sr6Purchase[]) =>
+    lines.flatMap(a => {
+      const s = entryOf(a, data),
+        t = s && a.kind === 'programs' ? AUTOSOFT_TESTS.find(([re]) => re.test(s.name)) : undefined
+      return t ? [{ test: t[1], autosoft: entryLabel(s!), pool: attr[t[2]] + ratingOf(a, s) }] : []
+    })
+  const best = (ps: ReturnType<typeof softs>) => {
+    const by = new Map<string, (typeof ps)[number]>()
+    for (const p of ps) if (!by.has(p.test) || by.get(p.test)!.pool < p.pool) by.set(p.test, p)
+    if (!by.has('Attack')) by.set('Attack', { test: 'Attack', autosoft: 'no Targeting autosoft', pool: Math.max(0, attr.sensor - 1) })
+    return [...by.values()]
+  }
+  const own = softs(x.accessories)
+  return [
+    ...best(own).map(p => ({ mode: 'autonomous' as const, ...p })),
+    ...(rcc.length ? best([...own, ...softs(rcc.flatMap(r => r.accessories))]).map(p => ({ mode: 'rcc' as const, ...p })) : []),
+  ]
+}
+/** The runner's rigger command consoles (class ELECTRONICS/RIGGER_CONSOLE). */
+export const rccsOf = (purchases: Sr6Purchase[], data: Sr6Data) =>
+  purchases.filter(x => x.kind === 'electronics' && /RIGGER_CONSOLE/i.test(entryOf(x, data)?.attrs.class ?? ''))

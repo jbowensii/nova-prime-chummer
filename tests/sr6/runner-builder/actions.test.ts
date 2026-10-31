@@ -291,6 +291,18 @@ test('two Zap Guns are two lines and an accessory fits one; ammo stacks; the pri
   expect(b.purchases.map(x => x.id)).toEqual(['crb.zap-gun', 'crb.zap-pellets'])
 })
 
+test('gear bought for different skills (a tool kit) is one line per skill; the same skill again stacks', () => {
+  const { b, act } = runner()
+  act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets', note: 'armorer' })
+  act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets', note: 'electronics' })
+  expect(b.purchases.map(x => [x.qty, x.note])).toEqual([
+    [1, 'armorer'],
+    [1, 'electronics'],
+  ])
+  act({ op: 'purchase', kind: 'gear', id: 'crb.zap-pellets', note: 'armorer' })
+  expect(b.purchases.map(x => x.qty)).toEqual([2, 1])
+})
+
 test('rated gear stacks by id and rating; a rating outside the range or an ungraded grade is refused', () => {
   const { b, act } = runner()
   // (a rated item is one entry per rating, levels.ts: the line holds the rating's entry, no rating of its own)

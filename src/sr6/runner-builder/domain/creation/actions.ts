@@ -1,5 +1,5 @@
 import { capacityRemaining, capacityUsed, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
-import { fit } from '../../../catalog/domain/structure'
+import { fit, subChoices } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
 import { activeRules } from './rule-markers'
 // Build actions, the editor's mutators (a port of SR6 Forge's ChargenEngine setters and spend). Each one changes the
@@ -95,6 +95,7 @@ export type Op =
       rating?: number
       qty?: number
       grade?: string
+      note?: string
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
@@ -121,6 +122,8 @@ export type Op =
   | { op: 'vehicledp'; uid: string; value?: number }
   /** a purchased line's choice note: the attribute/skill/quality/matrix an item naming a choice is for ('' clears it) */
   | { op: 'purchaseNote'; uid: string; note: string }
+  /** a quality's or purchase's sub-option or variant pick (structure.ts subChoices): option ids, `,`-joined; '' clears */
+  | { op: 'lineOptions'; uid: string; ref: string; value: string }
   /** an ammunition line's material (purchases.ts materialOf: a material's id; null: none, the plain price back) */
   | { op: 'material'; uid: string; material: string | null }
   /** a weapon on a vehicle or drone put in one of its weapon mounts (mount: that accessory's uid; null: none) */
@@ -620,7 +623,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         !OWN_LINE.has(op.kind) &&
         !isAmmoGear(entryOf(line, data)) && // each ammo line carries its own fitted ammo type, so adding again makes a new line
         !line.grade &&
-        b.purchases.find(x => !x.pack && x.id && x.id === line.id && x.kind === line.kind && x.rating === line.rating && !x.grade && !x.accessories.length)
+        b.purchases.find(
+          x =>
+            !x.pack &&
+            x.id &&
+            x.id === line.id &&
+            x.kind === line.kind &&
+            x.rating === line.rating &&
+            (x.note ?? '') === (line.note ?? '') &&
+            !x.grade &&
+            !x.accessories.length,
+        )
       if (same) same.qty += line.qty
       else b.purchases.push(line)
       return OK
@@ -666,6 +679,26 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (OWN_LINE.has(x.kind)) return no('own-line')
       if (op.qty < 1) return no('below-one')
       x.qty = op.qty
+      return OK
+    }
+    case 'lineOptions': {
+      // (a quality's or a purchase's sub-option or variant pick: structure.ts subChoices; '' clears it)
+      const q = b.qualities.find(x => x.uid === op.uid)
+      const x = q ?? allLines(b).find(y => y.uid === op.uid)
+      if (!x) return no('unknown-line')
+      const e = q ? data.entry('qualities', q.id) : x.id ? data.entry((x as Sr6Purchase).kind, x.id) : undefined
+      const c = subChoices(e).find(y => y.ref === op.ref)
+      if (!c) return no('unknown-choice')
+      const ids = op.value
+        .split(',')
+        .map(t => t.trim())
+        .filter(Boolean)
+      if (ids.length > c.count || ids.some(id => !c.options.some(o => o.id === id))) return no('unknown-option')
+      const next = { ...(x.options ?? {}) }
+      if (ids.length) next[op.ref] = ids.join(',')
+      else delete next[op.ref]
+      if (Object.keys(next).length) x.options = next
+      else delete x.options
       return OK
     }
     case 'purchaseNote': {
@@ -1318,6 +1351,7 @@ function newLine(
     rating?: number
     qty?: number
     grade?: string
+    note?: string
     custom?: { name: string; cost: number; avail: number; essence: number }
   },
   data: Sr6Data,
@@ -1326,7 +1360,14 @@ function newLine(
   const qty = op.qty ?? 1
   if (qty < 1) return { ok: false, reason: 'below-one' }
   if (op.grade && !gradeKnown(cr, data, op.grade)) return { ok: false, reason: 'unknown-grade' }
-  const base = { uid: newId(), kind: op.kind, qty, accessories: [], ...(op.grade ? { grade: op.grade } : {}) }
+  const base = {
+    uid: newId(),
+    kind: op.kind,
+    qty,
+    accessories: [],
+    ...(op.grade ? { grade: op.grade } : {}),
+    ...(op.note?.trim() ? { note: op.note.trim().slice(0, 200) } : {}),
+  }
   if (!op.id) {
     const c = op.custom ?? { name: '', cost: 0, avail: 0, essence: 0 }
     if (c.cost < 0 || c.avail < 0 || c.essence < 0) return { ok: false, reason: 'below-zero' } // Review's hard value.negative would block it for good

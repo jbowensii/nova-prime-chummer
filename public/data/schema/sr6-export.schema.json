@@ -272,6 +272,50 @@
           "description": "Dice a weapon line's fittings add to its attack tests.",
           "type": "number"
         },
+        "ammoTypes": {
+          "description": "A ranged weapon line's DV and Attack Ratings with each ammunition type the runner owns loaded (CRB p. 262); stun for Gel / Stick-n-Shock.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "ar"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "dv": { "type": "number" },
+              "ar": { "type": "array", "items": { "type": ["number", "null"] } },
+              "stun": { "const": true }
+            }
+          }
+        },
+        "meleeAlternate": {
+          "description": "A firearm with Melee Hardening used as a club (Firing Squad p. 61): DV, stun, Attack Ratings, skill and specialization.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dv", "stun", "ar", "skill", "spec"],
+          "properties": {
+            "dv": { "type": "number" },
+            "stun": { "const": true },
+            "ar": { "type": "array", "items": { "type": ["number", "null"] } },
+            "skill": { "type": "string" },
+            "spec": { "type": "string" }
+          }
+        },
+        "dronePools": {
+          "description": "A drone line's dice pools when it acts on its own (autonomous) or slaved to the runner's RCC (rcc): each autosoft's rating + Pilot or Sensor (CRB p. 201).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["mode", "test", "autosoft", "pool"],
+            "properties": {
+              "mode": { "enum": ["autonomous", "rcc"] },
+              "test": { "type": "string" },
+              "autosoft": { "type": "string" },
+              "pool": { "type": "number" }
+            }
+          }
+        },
         "defense": {
           "type": "number"
         },
@@ -2109,6 +2153,14 @@
                 "$ref": "#/$defs/pool"
               }
             },
+            "rigging": {
+              "description": "The rigger's own pools for a vehicle or drone (CRB pp. 197-201): by hand and jumped in.",
+              "type": "object",
+              "properties": {
+                "driving": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } },
+                "jumpedIn": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } }
+              }
+            },
             "monitorBonus": {
               "description": "The boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes): what the module writes as Eden's physical.mod and stun.mod.",
               "type": "object",
@@ -2279,6 +2331,14 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/pool"
+              }
+            },
+            "rigging": {
+              "description": "The rigger's own pools for a vehicle or drone (CRB pp. 197-201): by hand and jumped in.",
+              "type": "object",
+              "properties": {
+                "driving": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } },
+                "jumpedIn": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } }
               }
             },
             "monitorBonus": {

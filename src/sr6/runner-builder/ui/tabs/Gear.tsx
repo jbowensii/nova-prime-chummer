@@ -41,7 +41,7 @@ export function GearTab() {
     const w = d.attackRatings.weapons.find(x => x.uid === uid)
     return (
       w &&
-      `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}${w.changes.length ? ` · ${w.changes.join(' · ')}` : ''}`
+      `AR ${w.bands.map(band).join('/')}${w.pool !== undefined ? ` · pool ${w.pool}` : ''}${w.dvBonus ? ` · DV +${w.dvBonus}` : ''}${edgeAt(w.bands)}${w.changes.length ? ` · ${w.changes.join(' · ')}` : ''}${w.ammo.length ? ` · loaded: ${w.ammo.join(' · ')}` : ''}${w.melee ? ` · ${w.melee}` : ''}`
     )
   }
   const u = d.unarmedDamage

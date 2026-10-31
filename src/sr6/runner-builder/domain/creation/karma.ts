@@ -18,16 +18,22 @@ import { bondKarma } from '../assets/critters'
  *  taken for (kept within the range; the lowest when it isn't set). */
 export function qualityCost(q: Sr6Quality, v: Sr6QualityView): number {
   // (a price line listing its prices, `7 or 12 Karma`: one of them, the highest at or below the karma it was taken for)
-  const steps = v.karmaSteps?.map(Math.abs).sort((a, b) => a - b)
+  // (one priced by its sub-options, structure.ts subChoices: the base and what they add, never a range or a step)
+  const steps = v.optionKarma ? undefined : v.karmaSteps?.map(Math.abs).sort((a, b) => a - b)
   const lo = Math.abs(v.karma ?? 0),
     each = steps?.length
       ? q.karma == null
         ? steps[0]
         : ([...steps].reverse().find(k => k <= q.karma!) ?? steps[0])
-      : v.karmaMax != null && q.karma != null
+      : v.karmaMax != null && q.karma != null && !v.optionKarma
         ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma))
         : lo
-  return each * (v.perLevel ? q.level : 1)
+  // (its sub-options' karma: Allergy's allergen and severity, catalog structure.ts subChoices)
+  const opts = Object.entries(q.options ?? {}).reduce(
+    (s, [ref, ids]) => s + ids.split(',').reduce((t, id) => t + (v.optionKarma?.[`${ref}.${id.trim()}`] ?? 0), 0),
+    0,
+  )
+  return (each + opts) * (v.perLevel ? q.level : 1)
 }
 
 /** One quality line's karma on this runner: qualityCost, or its Awakened price (<karmaif>: infected.ts priceAwakened),

@@ -186,6 +186,70 @@ export function weaponOf(x: Sr6Purchase, data: Sr6Data, skill?: string): WeaponO
   return { base, now, on, from: [...from] }
 }
 
+/** A weapon loaded with one of the runner's ammunition types: its stats with the type's effects (CRB p. 262: APDS +2 AR,
+ *  −1 DV), and whether it does Stun instead of Physical (Gel, Stick-n-Shock: PHYSICAL_DAMAGE_IS_STUN). */
+export interface AmmoLoad {
+  id: string
+  name: string
+  stats: WeaponStats
+  stun: boolean
+}
+// a weapon-type word as ammunition and weapons print it: `Submachine-gun`/`SMG`, `Hold-out`/`Holdout`, `Rifles`
+const ammoWord = (s: string) => {
+  const w = s.toLowerCase().replace(/[^a-z]/g, '')
+  return w === 'smg' ? 'submachinegun' : w.replace(/s$/, '')
+}
+/** Whether an ammunition line (CRB p. 262's "Ammo by weapon type": `Heavy Pistol/SMG`, `Rifles`, `Taser`) is the
+ *  ammunition for a weapon: one of the types its name lists is the weapon's ammunition class, else its category
+ *  (`Rifles` fits a Rifle and an Assault Rifle; `Machine Gun` the `Machine gun/assault cannon` category). */
+export function ammoFits(ammo: Sr6Entry, weapon: Sr6Entry): boolean {
+  const kinds = ammo.name.split('/').map(ammoWord).filter(Boolean)
+  const of = [weapon.attrs.ammoClass, ...(weapon.attrs.category ?? '').split('/')].filter((s): s is string => !!s).map(ammoWord)
+  return kinds.some(k => of.some(w => w.includes(k) || k.includes(w)))
+}
+/** The ammunition types the runner owns loaded in a ranged weapon, each that changes it: those fitted to an ammunition
+ *  line for this weapon (ammoFits), and any bought on their own (no line says which weapon); none for a weapon printing
+ *  no ammo (melee, unarmed). As weaponOf: always-on effects (`now`). */
+export function ammoLoads(x: Sr6Purchase, data: Sr6Data, owned: Sr6Purchase[], skill?: string): AmmoLoad[] {
+  const we = entryOf(x, data)
+  if (!we || !baseOf(we).ammo.trim()) return []
+  const plain = weaponOf(x, data, skill).now,
+    seen = new Set<string>(),
+    out: AmmoLoad[] = []
+  // (the types on lines of this weapon's ammunition, and top-level ammunition types)
+  const types = (xs: Sr6Purchase[], host?: Sr6Purchase): Sr6Purchase[] =>
+    xs.flatMap(a => {
+      if (a.kind === 'ammotypes') {
+        const h = host && entryOf(host, data)
+        return !h || h.kind !== 'gear' || ammoFits(h, we) ? [a] : []
+      }
+      return types(a.accessories, a)
+    })
+  for (const a of types(owned)) {
+    const e = a.id && !seen.has(a.id) ? entryOf(a, data) : undefined
+    if (!e) continue
+    seen.add(a.id!)
+    const stats = weaponOf({ ...x, accessories: [...x.accessories, { uid: '', kind: 'ammotypes', id: a.id, qty: 1, accessories: [] }] }, data, skill).now
+    const stun = (e.parts ?? []).some(p => p.attrs.ref === 'PHYSICAL_DAMAGE_IS_STUN')
+    if (stun || stats.dv !== plain.dv || stats.ar.join() !== plain.ar.join()) out.push({ id: e.id, name: e.name, stats, stun })
+  }
+  return out.sort((p, q) => p.name.localeCompare(q.name))
+}
+/** `APDS: AR 10/10/8, DV 3P` (a stun load's DV in S). */
+export function ammoLoadText(l: AmmoLoad): string {
+  const dv = l.stun ? l.stats.dv.replace(/P\b/, 'S') : l.stats.dv
+  return `${l.name}: AR ${bandsText(l.stats.ar)}, DV ${dv}`
+}
+
+/** A firearm's other use as a melee weapon: with Melee Hardening fitted (Firing Squad p. 61: "When used as melee weapon:
+ *  DV 3S, 4/—/—/—/—"; Commlink6 CreateAlternatesStep: a Close Combat (Clubs) alternate). Undefined without it. */
+export function meleeAlternate(x: Sr6Purchase, data: Sr6Data): { dv: string; ar: (number | null)[]; skill: string; spec: string } | undefined {
+  const hardened = [entryOf(x, data), ...x.accessories.map(a => entryOf(a, data))].some(e =>
+    (e?.parts ?? []).some(p => p.attrs.ref === 'MELEE_HARDENING_ALTERNATE'),
+  )
+  return hardened ? { dv: '3S', ar: [4, null, null, null, null], skill: 'Close Combat', spec: 'Clubs' } : undefined
+}
+
 /** `9/9/7/—/—`. */
 export const bandsText = (bs: (number | null)[]) => bs.map(v => (v === null ? '—' : String(v))).join('/')
 /** `AR 9/9/7 → 10/10/8 (11/11/9), DV 3P, SA/BF, ammo 15(c) → 25(c)`: what the fittings change, base → modified (bracketed:
