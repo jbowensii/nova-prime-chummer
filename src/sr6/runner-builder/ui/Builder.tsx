@@ -12,16 +12,16 @@ import { newId } from '../../../core/shared/types'
 import { saveAsNew } from '../../../features/runner-store/repo'
 import type { Sr6Advance, Sr6Purchase } from '../../formats/domain/character'
 import { blankSr6 } from '../../formats/domain/character'
-import type { Sr6Entry } from '../../formats/domain/types'
 import { capacityOf, capacityUsed, entryLabel } from '../../catalog/domain/categories'
-import { fit, hookBudgets, slotLabel, structureOf } from '../../catalog/domain/structure'
+import { hookBudgets, slotLabel, structureOf } from '../../catalog/domain/structure'
 import { entryOf, priced, ratingOf } from '../domain/creation/purchases'
 import { weaponSkill } from '../domain/creation/derive'
 import { gradeName, gradeOptions } from '../domain/creation/grades'
 import { bandsText, weaponOf, type WeaponStats } from '../domain/assets/weapons'
-import { fittedParts, partsOf } from '../domain/assets/vehiclemods'
+import { partsOf } from '../domain/assets/vehiclemods'
 import {
   accessoryState,
+  addonBlocked,
   boughtItemDesign,
   customAddon,
   CYBERLIMBS,
@@ -275,13 +275,7 @@ function Mounts({ x, name, path }: { x: Sr6Purchase; name: string; path: string 
   const parts = x.kind === 'weapons' ? partsOf(x, data) : []
   const where = (a: Sr6Purchase) => st.slots.occupied.get(a.uid) ?? OTHER
   // what the picker greys: a failed host requirement, no room on its hook, or past the Capacity left
-  const blocked = (e: Sr6Entry) => {
-    const why = st.blocked(e)
-    if (why) return why
-    if (st.remaining !== null) return capacityUsed(e, 1) > st.remaining ? 'not enough Capacity left' : undefined
-    const f = fit(st.he, e, [...fittedParts(x, data), ...st.items], rating, x.addedSlots)
-    return f.ok === false ? (f.reason === 'size' ? 'too big for this mount' : f.reason === 'room' ? 'no room left on that mount' : undefined) : undefined
-  }
+  const blocked = addonBlocked(x, data, st)
   const groups = [...hooks, OTHER].filter(h => h !== OTHER || st.remaining !== null || x.accessories.some(a => where(a) === OTHER) || !hooks.length)
   const chip = (a: Sr6Purchase) => {
     const e = entryOf(a, data),

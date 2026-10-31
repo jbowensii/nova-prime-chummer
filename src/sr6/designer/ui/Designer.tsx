@@ -22,8 +22,22 @@ import { entryLabel } from '../../catalog/domain/categories'
 import { entryKey } from '../../catalog/domain/names'
 import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
-import { basePowertrain, chassisOf, powertrainOf, designOf, designPart, multiplierOf, partDp, type DesignPart } from '../../runner-builder/domain/assets/design'
-import { entryOf, isMount, modKind } from '../../runner-builder/domain/creation/purchases'
+import {
+  basePowertrain,
+  chassisOf,
+  powertrainOf,
+  designMounts,
+  designOf,
+  designPart,
+  multiplierOf,
+  partDp,
+  type DesignMount,
+  type DesignPart,
+} from '../../runner-builder/domain/assets/design'
+import { entryOf, modKind, priced } from '../../runner-builder/domain/creation/purchases'
+import { accessoryState, addonBlocked } from '../../runner-builder/domain/assets/builders'
+import { HOLDS, weaponSize } from '../../runner-builder/domain/assets/vehiclemods'
+import { slotLabel } from '../../catalog/domain/structure'
 import { HARDPOINT_PARTS, hardpointCheck } from '../../runner-builder/domain/assets/milspec'
 import { normName } from '../../catalog/domain/names'
 import { partsOf as factoryParts } from '../../runner-builder/domain/assets/vehiclemods'
@@ -56,9 +70,6 @@ const partKey = (e: Sr6Entry) =>
     .trim()
 /** Deadly Arts p. 151: one specialty armor; the mil-spec frame never with Increased Structural Integrity */
 const SPECIALTY = /^(airframe ceramic plate|heavy mil spec plate|mil spec plate)$/
-/** The weapons a hardpoint can take: vehicle weapons (DA's mil-spec ones among them) */
-const vehicleWeapons = (c: Sr6Catalog) =>
-  [...c.entries.weapons.values()].filter(w => /^WEAPON_VEHICLE/.test(w.attrs.class ?? '')).sort((a, z) => entryLabel(a).localeCompare(entryLabel(z)))
 /** The custom-chassis form's fields: the chassis table's own columns (DP, Body, Armor, Handling, Seats, Size Class). */
 const CUSTOM = '__custom'
 const OWN = '__own'
@@ -529,8 +540,12 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const { doc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe())
   const [adding, setAdding] = useState(false)
-  // a weapon picked for a mount mod (`mount`: its uid), or an accessory for a weapon in one (`weapon`: its uid)
-  const [arming, setArming] = useState<{ mount: string } | { weapon: string } | null>(null)
+  // the mount a weapon is being placed in; the mounted weapon being customised (its uid) and whether its accessory picker is
+  // open; the hardpoint (its index) a weapon is being picked for
+  const [arming, setArming] = useState<DesignMount | null>(null)
+  const [customising, setCustomising] = useState<string | null>(null)
+  const [fitting, setFitting] = useState(false)
+  const [hpPick, setHpPick] = useState<number | null>(null)
   const [makingC, setMakingC] = useState<{ what: CustomPart; f: Record<string, string> } | null>(null)
   const [making, setMaking] = useState<Record<'name' | 'cost' | 'slots' | 'rating' | 'avail', string> | null>(null)
   const back = <a href="#/sr6/designs">Back to the Designer</a>
@@ -579,6 +594,18 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
       if (o && (v === 'on' || v === 'off')) o.road = v
       else if (o) delete o.road
     })
+  const mounts = designMounts(d, data)
+  const lineLabel = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Weapon')))(entryOf(x, data))
+  /** A line's name with the app's hover card (as the design parts have). */
+  const WeaponName = ({ x }: { x: Sr6Purchase }) =>
+    (e =>
+      e ? (
+        <Hover c={c} e={e}>
+          {entryLabel(e)}
+        </Hover>
+      ) : (
+        <>{lineLabel(x)}</>
+      ))(entryOf(x, data))
   const name = designName(doc)
   const chassisList = partsOf(c, 'chassis').filter(e => droneChassis(e) === (d.kind === 'drone'))
   const pick = (what: 'chassis' | 'powertrain' | 'console', list: Sr6Entry[], label: string) => (
@@ -986,18 +1013,26 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
               return (
                 <div key={i} className="row" aria-label={`Hardpoint ${i + 1}`}>
                   <Stepper label={`Hardpoint ${i + 1} Grade`} value={h.grade} min={0} max={12} onChange={v => setHp(i, x => void (x.grade = v))} /> Grade
-                  <select
-                    aria-label={`Hardpoint ${i + 1} weapon`}
-                    value={h.weapon ?? ''}
-                    onChange={e => setHp(i, x => void (e.target.value ? (x.weapon = e.target.value) : delete x.weapon))}
-                  >
-                    <option value="">(no weapon)</option>
-                    {vehicleWeapons(c).map(w => (
-                      <option key={w.id} value={w.id}>
-                        {entryLabel(w)}
-                      </option>
-                    ))}
-                  </select>
+                  {(w =>
+                    w ? (
+                      <>
+                        <Hover c={c} e={w}>
+                          {entryLabel(w)}
+                        </Hover>
+                        <button
+                          className="btn small quiet"
+                          aria-label={`Take ${entryLabel(w)} off hardpoint ${i + 1}`}
+                          onClick={() => setHp(i, x => void delete x.weapon)}
+                        >
+                          ×
+                        </button>
+                      </>
+                    ) : (
+                      <span className="muted">Empty</span>
+                    ))(h.weapon ? data.entry('weapons', h.weapon) : undefined)}
+                  <button className="btn small" aria-label={`Place a weapon on hardpoint ${i + 1}`} onClick={() => setHpPick(i)}>
+                    {h.weapon ? 'Change weapon…' : 'Place weapon…'}
+                  </button>
                   <label className="inline">
                     Size{r.size !== undefined && !r.sizeTyped ? ` ${r.size} (catalog)` : ''}, override
                     <input
@@ -1072,6 +1107,54 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
             </button>
           </section>
 
+          {/* weapon mounts: each one's weapon, placed and customised (part of the design: price and Availability count) */}
+          <section className="panel" aria-label="Weapon mounts">
+            <h3>Weapon mounts</h3>
+            {!mounts.length && <p className="muted">No weapon mounts yet: add a weapon mount mod below, or start from a vehicle that has one.</p>}
+            {mounts.map(m => {
+              const w = d.mods.find(z => z.kind === 'weapons' && z.mount === m.key)
+              return (
+                <div key={m.key} className="card row" aria-label={`Mount ${m.name}`}>
+                  <Hover c={c} e={m.e}>
+                    <b>{m.name}</b>
+                  </Hover>
+                  <span className="muted">holds {HOLDS[m.holds]}</span>
+                  <span className="spacer" />
+                  {m.factory ? (
+                    <span>{m.factory} (factory)</span>
+                  ) : w ? (
+                    <>
+                      <WeaponName x={w} /> · {n(priced(w, data, cr).cost)}¥
+                      {w.accessories.length > 0 && (
+                        <span className="muted">
+                          {' '}
+                          · {w.accessories.length} accessor{w.accessories.length === 1 ? 'y' : 'ies'}
+                        </span>
+                      )}
+                      <button className="btn small" aria-label={`Customise ${lineLabel(w)}`} onClick={() => setCustomising(w.uid)}>
+                        Customise…
+                      </button>
+                      <button
+                        className="btn small quiet"
+                        aria-label={`Take ${lineLabel(w)} out of ${m.name}`}
+                        onClick={() => update(y => void (y.mods = y.mods.filter(z => z.uid !== w.uid)))}
+                      >
+                        ×
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="muted">Empty</span>
+                      <button className="btn small" aria-label={`Place a weapon in ${m.name}`} onClick={() => setArming(m)}>
+                        Place weapon…
+                      </button>
+                    </>
+                  )}
+                </div>
+              )
+            })}
+          </section>
+
           {/* mods built in */}
           <section className="panel" aria-label="Mods built in">
             <h3>Mods built in</h3>
@@ -1092,7 +1175,6 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
                     >
                       ×
                     </button>
-                    {(e => e && isMount(e))(entryOf(x, data)) && <MountWeapon mount={x} />}
                   </span>
                 )
               })}
@@ -1194,64 +1276,150 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
         />
       )}
       {arming && (
+        // only weapons that fit the mount are offered for picking; too big ones show greyed with why
         <CatalogPicker
-          title={'mount' in arming ? `Put a weapon in the mount` : `Fit an accessory to the weapon`}
+          title={`Place a weapon in ${arming.name} (holds ${HOLDS[arming.holds]})`}
           open
           onClose={() => setArming(null)}
-          kinds={'mount' in arming ? ['weapons'] : ACCESSORY_KINDS}
-          filter={'mount' in arming ? e => !isAccessory(e) : isAccessory}
+          kinds={['weapons']}
+          filter={e => !isAccessory(e)}
+          blocked={e => ((weaponSize(e) ?? 0) > arming.holds ? `too big for this mount (it holds ${HOLDS[arming.holds]})` : undefined)}
           from={{ c, cr, data }}
           onAdd={p => {
-            const line = { uid: newId(), kind: p.e.kind as PurchaseKind, id: p.e.id, qty: 1, accessories: [], ...(p.rating ? { rating: p.rating } : {}) }
-            update(y => {
-              if ('mount' in arming) y.mods.push({ ...line, mount: arming.mount })
-              else y.mods.find(z => z.uid === arming.weapon)?.accessories.push(line)
-            })
+            const uid = newId()
+            update(
+              y =>
+                void y.mods.push({ uid, kind: 'weapons', id: p.e.id, qty: 1, accessories: [], mount: arming.key, ...(p.rating ? { rating: p.rating } : {}) }),
+            )
             setArming(null)
+            setCustomising(uid) // (straight on to its customiser: what most placements want next)
             return null
           }}
         />
       )}
+      {hpPick !== null && (
+        <CatalogPicker
+          title={`Pick the weapon on hardpoint ${hpPick + 1}`}
+          open
+          onClose={() => setHpPick(null)}
+          kinds={['weapons']}
+          filter={e => /^WEAPON_VEHICLE/.test(e.attrs.class ?? '')}
+          blocked={e => {
+            const h = d.hardpoints?.[hpPick]
+            const ws = e.attrs.weaponSize
+            const r = h && hardpointCheck({ ...h, weapon: e.id }, st.body, ws !== undefined && /^\d+$/.test(ws) ? Number(ws) : undefined)
+            return r && !r.ok ? r.reasons.join(' ') : undefined
+          }}
+          from={{ c, cr, data }}
+          onAdd={p => {
+            setHp(hpPick, x => void (x.weapon = p.e.id))
+            setHpPick(null)
+            return null
+          }}
+        />
+      )}
+      {customising && <WeaponCustomiser uid={customising} />}
       <ConflictDialog s={save} name={name} />
     </>
   )
 
-  /** A mount mod's weapon (part of the design: its price and Availability count) and the weapon's accessories, each removable. */
-  function MountWeapon({ mount }: { mount: Sr6Purchase }) {
-    const w = d.mods.find(z => z.kind === 'weapons' && z.mount === mount.uid)
-    const label = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Weapon')))(entryOf(x, data))
-    if (!w)
-      return (
-        <button className="btn small quiet" aria-label={`Put a weapon in ${label(mount)}`} onClick={() => setArming({ mount: mount.uid })}>
-          Weapon…
-        </button>
-      )
+  /** A mounted weapon's customiser: its price and Availability (accessories included), its standard upgrades (removable,
+   *  restorable), its accessories and modifications (each removable) and a picker offering only what fits it (the item
+   *  builders' accessoryState and fit engine: what fails is greyed with why). */
+  function WeaponCustomiser({ uid }: { uid: string }) {
+    const w = d.mods.find(z => z.uid === uid)
+    if (!w) return null
+    const st = accessoryState(w, data, { filter: isAccessory, isAccessory })
+    const p = priced(w, data, cr)
+    const edit = (fn: (x: Sr6Purchase) => void) => update(y => void (z => z && fn(z))(y.mods.find(z => z.uid === uid)))
+    const close = () => {
+      setFitting(false)
+      setCustomising(null)
+    }
     return (
-      <span className="row" aria-label={`Weapon in ${label(mount)}`}>
-        holds {label(w)}
-        <button
-          className="btn small quiet"
-          aria-label={`Take ${label(w)} out of ${label(mount)}`}
-          onClick={() => update(y => void (y.mods = y.mods.filter(z => z.uid !== w.uid)))}
-        >
-          ×
-        </button>
-        {w.accessories.map(a => (
-          <span key={a.uid} className="chip">
-            {label(a)}{' '}
-            <button
-              className="btn small quiet"
-              aria-label={`Remove ${label(a)} from ${label(w)}`}
-              onClick={() => update(y => void (y.mods.find(z => z.uid === w.uid)!.accessories = w.accessories.filter(z => z.uid !== a.uid)))}
-            >
-              ×
+      <Modal open onClose={close} title={`Customise ${lineLabel(w)}`}>
+        <div className="stack" aria-label={`Weapon customiser for ${lineLabel(w)}`}>
+          <p>
+            <WeaponName x={w} /> · <b>{n(p.cost)}¥</b> · Availability {p.avail}
+            {st.remaining !== null && <span className="muted"> · Capacity remaining {n(st.remaining)}</span>}
+            {[...st.slots.remaining].map(([id, left]) => (
+              <span key={id} className="muted">
+                {' '}
+                · {slotLabel(id)} slots remaining {n(left)}
+              </span>
+            ))}
+          </p>
+          <div className="row">
+            {factoryParts(w, data).map(f => (
+              <span key={f.id} className={f.removed ? 'chip muted' : 'chip'}>
+                {f.name} {f.removed ? '(removed)' : '(standard)'}{' '}
+                <button
+                  className="btn small quiet"
+                  aria-label={`${f.removed ? 'Restore' : 'Remove'} standard upgrade ${f.name}`}
+                  onClick={() =>
+                    edit(x => {
+                      const gone = new Set(x.removedParts ?? [])
+                      if (f.removed) gone.delete(f.id)
+                      else gone.add(f.id)
+                      if (gone.size) x.removedParts = [...gone]
+                      else delete x.removedParts
+                    })
+                  }
+                >
+                  {f.removed ? 'restore' : '×'}
+                </button>
+              </span>
+            ))}
+            {w.accessories.map(a => (
+              <span key={a.uid} className="chip">
+                <WeaponName x={a} />
+                {a.rating ? ` ${a.rating}` : ''} · {n(priced(a, data, cr).cost)}¥{' '}
+                <button
+                  className="btn small quiet"
+                  aria-label={`Remove ${lineLabel(a)} from ${lineLabel(w)}`}
+                  onClick={() => edit(x => void (x.accessories = x.accessories.filter(z => z.uid !== a.uid)))}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+            {!w.accessories.length && !factoryParts(w, data).length && <span className="muted">No accessories or modifications yet.</span>}
+          </div>
+          <span className="row">
+            <button className="btn small" disabled={st.full} aria-label={`Add an accessory to ${lineLabel(w)}`} onClick={() => setFitting(true)}>
+              Add accessory or modification…
+            </button>
+            <span className="spacer" />
+            <button className="btn small quiet" onClick={close}>
+              Done
             </button>
           </span>
-        ))}
-        <button className="btn small quiet" aria-label={`Add an accessory to ${label(w)}`} onClick={() => setArming({ weapon: w.uid })}>
-          Accessory…
-        </button>
-      </span>
+        </div>
+        <CatalogPicker
+          title={`Fit to ${lineLabel(w)}`}
+          open={fitting}
+          onClose={() => setFitting(false)}
+          kinds={ACCESSORY_KINDS}
+          filter={st.fits}
+          blocked={addonBlocked(w, data, st)}
+          from={{ c, cr, data }}
+          onAdd={q => {
+            edit(
+              x =>
+                void x.accessories.push({
+                  uid: newId(),
+                  kind: q.e.kind as PurchaseKind,
+                  id: q.e.id,
+                  qty: 1,
+                  accessories: [],
+                  ...(q.rating ? { rating: q.rating } : {}),
+                }),
+            )
+            setFitting(false)
+            return null
+          }}
+        />
+      </Modal>
     )
   }
 }

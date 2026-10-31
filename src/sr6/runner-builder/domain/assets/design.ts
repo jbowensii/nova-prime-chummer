@@ -15,7 +15,7 @@ import type { CreationRules } from '../../../table-setup/domain/creation'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { cargoFactor, entryOf, isMount, priced, ratingOf } from '../creation/purchases'
-import { HOLDS, mountHolds, weaponSize } from './vehiclemods'
+import { HOLDS, mountHolds, partsOf, weaponSize } from './vehiclemods'
 import { availability, bookValue, dataFind, legality } from '../../../catalog/domain/values'
 import { milspec, type MilspecSheet } from './milspec'
 import { bonusValue, effectValue } from '../../../catalog/domain/effects'
@@ -728,21 +728,48 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
 }
 /** A design's mods with its weapons' accessories: what its Availability is the highest of. */
 const withWeaponParts = (d: Sr6Design) => [...d.mods, ...d.mods.filter(x => x.kind === 'weapons').flatMap(x => x.accessories)]
-/** A design's weapons (a `weapons` line among its mods, `mount` naming the mount mod it sits in) that break a mount rule:
- *  in no mount the design has, two in one mount, too big for its mount (CRB p. 295; vehiclemods.ts weaponSize). */
+/** A weapon mount on a design a weapon can be placed in: a mount mod built in (`key` its uid), or a weapon mount among the
+ *  starting vehicle's factory parts (`part:<id>`, the uid the bought vehicle's part keeps). `holds`: the biggest weapon it
+ *  takes (vehiclemods.ts mountHolds); `factory`: the factory weapon already in it (a child part), so no other goes in. */
+export interface DesignMount {
+  key: string
+  e: Sr6Entry
+  name: string
+  holds: number
+  factory?: string
+}
+export function designMounts(d: Sr6Design, data: Sr6Data): DesignMount[] {
+  const out: DesignMount[] = []
+  for (const x of d.mods) {
+    const e = x.kind === 'weapons' ? undefined : entryOf(x, data)
+    if (e && isMount(e)) out.push({ key: x.uid, e, name: entryLabel(e), holds: mountHolds(e) })
+  }
+  if (d.base) {
+    const parts = partsOf({ uid: '', kind: 'vehicles', id: d.base, qty: 1, accessories: [], removedParts: d.removedParts }, data).filter(p => !p.removed)
+    for (const p of parts)
+      if (p.entry && isMount(p.entry)) {
+        const child = parts.find(q => q.parent === p.id.replace(/#\d+$/, ''))
+        out.push({ key: p.uid, e: p.entry, name: p.name, holds: mountHolds(p.entry), ...(child ? { factory: child.name } : {}) })
+      }
+  }
+  return out
+}
+/** A design's weapons (a `weapons` line among its mods, `mount` naming the mount it sits in: designMounts) that break a
+ *  mount rule: in no mount the design has, two in one mount (or one holding a factory weapon), too big for its mount
+ *  (CRB p. 295; vehiclemods.ts weaponSize). */
 export function designWeaponProblems(d: Sr6Design, data: Sr6Data): string[] {
   const out: string[] = []
   const name = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'A weapon')))(entryOf(x, data))
   const weapons = d.mods.filter(x => x.kind === 'weapons')
+  const mounts = designMounts(d, data)
   for (const w of weapons) {
-    const m = d.mods.find(x => x.uid === w.mount && x.kind !== 'weapons'),
-      me = m && entryOf(m, data)
-    if (!me || !isMount(me)) out.push(`${name(w)} isn’t in a weapon mount of the design.`)
-    else if (weapons.some(o => o !== w && o.mount === w.mount && weapons.indexOf(o) < weapons.indexOf(w)))
-      out.push(`${name(w)}: its ${name(m!)} already holds a weapon.`)
+    const m = mounts.find(x => x.key === w.mount)
+    if (!m) out.push(`${name(w)} isn’t in a weapon mount of the design.`)
+    else if (m.factory || weapons.some(o => o !== w && o.mount === w.mount && weapons.indexOf(o) < weapons.indexOf(w)))
+      out.push(`${name(w)}: its ${m.name} already holds a weapon.`)
     else {
       const size = weaponSize(entryOf(w, data))
-      if (size !== undefined && size > mountHolds(me)) out.push(`${name(w)} is too big for its ${name(m!)} (it holds ${HOLDS[mountHolds(me)]}).`)
+      if (size !== undefined && size > m.holds) out.push(`${name(w)} is too big for its ${m.name} (it holds ${HOLDS[m.holds]}).`)
     }
   }
   return out
@@ -859,6 +886,8 @@ export function boughtDesign(doc: Sr6Character, data: Sr6Data, cr: CreationRules
       const i = builtIn.findIndex(m => m.uid === w.mount),
         line = fresh(structuredClone(w))
       delete line.mount
+      // (a factory part mount keeps its uid on the bought vehicle: `part:<id>`)
+      if (w.mount?.startsWith('part:')) return { ...line, mount: w.mount }
       return i >= 0 ? { ...line, mount: `${pre}:${i}` } : line
     })
   const id = `design.${doc.id}`

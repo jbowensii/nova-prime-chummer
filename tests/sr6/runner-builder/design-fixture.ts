@@ -44,6 +44,7 @@ export const DESIGN_GEAR = `<sr6:data ${NS} kind="gear" version="1">
 // a made-up catalog vehicle, for the "start from a known vehicle" path
 export const DESIGN_VEHICLE = `<sr6:data ${NS} kind="vehicles" version="1">
   <vehicle id="zz.grizzly" source="ZZ" page="200" category="Truck" body="12" armor="10" handling="4/3" accel="7" interval="20" topSpeed="90" pilot="3" sensor="3" seats="6" avail="6" cost="40000"><name>Custom Grizzly</name><part id="pp" ref="zz.powertrain-roller" hook="vehicle-powertrain" cost="4" origin="synth" removable="true"/></vehicle>
+  <vehicle id="zz.gunwagon" source="ZZ" page="201" category="Truck" body="12" armor="10" handling="4/3" accel="7" interval="20" topSpeed="90" pilot="3" sensor="3" seats="6" avail="6" cost="50000"><name>Gun Wagon</name><part id="wm" ref="zz.zip-mount" hook="vehicle-weapon-standard" cost="1" removable="true"/></vehicle>
 </sr6:data>`
 /** The fixture catalog with the made-up design parts and mods. */
 export const designCatalog = () =>

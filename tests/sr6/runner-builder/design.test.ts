@@ -8,7 +8,7 @@ import { validateXML } from 'xmllint-wasm'
 import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
-import { boughtDesign, designOf, maxProblems } from '../../../src/sr6/runner-builder/domain/assets/design'
+import { boughtDesign, designMounts, designOf, designWeaponProblems, maxProblems } from '../../../src/sr6/runner-builder/domain/assets/design'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { modsOf, mountsOf } from '../../../src/sr6/runner-builder/domain/assets/vehiclemods'
 import { blankBuild, blankSr6, type Sr6Design } from '../../../src/sr6/formats/domain/character'
@@ -458,4 +458,20 @@ test('a weapon in a design’s mount (owner 2026-10-30): priced and Availability
   expect(w).toMatchObject({ kind: 'weapons', id: 'crb.fizz-rifle-70', accessories: [{ id: 'crb.zap-scope' }] })
   expect(mountsOf(line, data).map(m => m.uid)).toEqual([w.mount])
   expect(w.uid).not.toBe('w1')
+})
+
+test('a weapon mount among the starting vehicle’s factory parts takes a weapon too, kept on that part when bought (owner 2026-10-31)', () => {
+  const { data, cr } = world()
+  const rifle = { uid: 'w1', kind: 'weapons' as const, id: 'crb.fizz-rifle-70', qty: 1, mount: 'part:wm', accessories: [] }
+  const d: Sr6Design = { kind: 'vehicle', base: 'zz.gunwagon', options: [], mods: [rifle] }
+  expect(designMounts(d, data).map(m => [m.key, m.name])).toEqual([['part:wm', 'Zip Weapon Mount']])
+  expect(designWeaponProblems(d, data)).toEqual([])
+  // taken off the vehicle, the mount is gone and the weapon is in none
+  expect(designWeaponProblems({ ...d, removedParts: ['wm'] }, data)).toEqual(['Fizz Rifle 70 isn’t in a weapon mount of the design.'])
+  const doc = blankSr6('priority', 'des-p', '2026-10-31T00:00:00.000Z')
+  doc.design = d
+  const line = boughtDesign(doc, data, cr, 'v1')
+  expect(line.accessories[0].mount).toBe('part:wm')
+  expect(mountsOf(line, data).map(m => m.uid)).toContain('part:wm')
+  expect(modsOf(line, data).warnings.filter(w => /mount/.test(w.message))).toEqual([])
 })
