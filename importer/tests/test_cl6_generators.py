@@ -51,6 +51,7 @@ class GeneratorsTest(unittest.TestCase):
         self.dir.cleanup()
 
     def rows(self):
+        """The generated table's rows."""
         return json.loads(self.table.read_text(encoding="utf8"))
 
     def test_options_writes_the_sub_options_and_variants(self):
