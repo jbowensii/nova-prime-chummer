@@ -152,6 +152,8 @@ export const isAmmoType = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !isMateri
 /** Designer fashion (owner ruling 2026-10-25): any armor entry with a `fashion` slot of its own data. The FASHION hook
  *  Commlink6's code gives every body armor with a Social rating (rule F) is not one. */
 export const isDesignerFashion = (e?: Sr6Entry) => e?.kind === 'armor' && structureOf(e).slots.some(s => s.id === 'fashion' && s.rule !== 'F')
+/** Purchase kinds whose lines stack: N of one item is ONE line with a count (the rest are one line each, with their own accessories or levels). */
+export const STACKING: ReadonlySet<string> = new Set(['electronics', 'programs', 'gear', 'ammotypes'])
 export const isAmmoGear = (e?: Sr6Entry) => e?.kind === 'gear' && /ammo by weapon/i.test(e.attrs.category ?? '')
 
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other

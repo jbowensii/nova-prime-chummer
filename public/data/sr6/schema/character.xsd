@@ -447,7 +447,7 @@
         <xs:enumeration value="fit"/><xs:enumeration value="unfit"/><xs:enumeration value="shift"/><xs:enumeration value="move"/>
         <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
-        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/>
+        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/><xs:enumeration value="quantity"/>
         <xs:enumeration value="teach"/><xs:enumeration value="part"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
@@ -463,6 +463,8 @@
     <xs:attribute name="detach" type="xs:string"/>
     <!-- buyoff: Stolen Gear's converted karma bought off by this spend, a part (absent: all; the line goes) -->
     <xs:attribute name="part" type="xs:positiveInteger"/>
+    <!-- quantity: the stacking line (target) set to this many -->
+    <xs:attribute name="qty" type="xs:positiveInteger"/>
     <!-- read only, an older licensed entry's licence rating: not read (a licence is rated as its SIN). Not written -->
     <xs:attribute name="rating" type="c:Count"/>
     <!-- awakened: the Awakened flag's override set after creation (absent: derived again) -->
