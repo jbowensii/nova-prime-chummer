@@ -62,6 +62,7 @@ import {
   type CreationRules,
 } from '../../../table-setup/domain/creation'
 import { collectiveFits, collectiveGrants, collectiveOptions, SURGE_CAP, surgeKarma } from '../creation/surge'
+import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnimalism } from '../creation/animalism'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
@@ -1177,7 +1178,10 @@ const RULES: Rule[] = [
     tab: 'magic',
     check: c => {
       // (one taken again is a level each time: the pick's level, or the level of the entry it holds, levels.ts)
-      const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
+      // (an animalism power is bought outside initiation: animalism.ts)
+      const n = c.b.picks
+        .filter(x => x.kind === 'metamagics' && !isAnimalism(c.data.entry('metamagics', x.id)))
+        .reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
       if (n === c.b.initiation) return null
       const short = c.b.initiation - n
       return {
@@ -1186,6 +1190,24 @@ const RULES: Rule[] = [
             ? `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one, pick ${short} more.`
             : `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.`,
       }
+    },
+  },
+  // Bestial Nature's animalism, as Commlink6 handles it (SR6AnimalismController): only while the table allows it
+  // (ALLOW_ANIMALISM), and at creation up to its grade cap (CHARGEN_MAX_ANIMALISM, default 2)
+  {
+    code: 'magic.animalismOff',
+    severity: 'error',
+    tab: 'magic',
+    check: c => (animalismAllowed(c.cr) || !animalismPicks(c.b, c.data).length ? null : { message: 'This table does not allow animalism.' }),
+  },
+  {
+    code: 'magic.animalismMax',
+    severity: 'error',
+    tab: 'magic',
+    check: c => {
+      const g = animalismGrade(c.b, c.data),
+        max = animalismMax(c.cr)
+      return g <= max ? null : { message: `Animalism grade ${g} at creation; the most is ${max}.` }
     },
   },
   {
