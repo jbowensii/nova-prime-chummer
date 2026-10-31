@@ -172,6 +172,8 @@ export function priced(
   cost *= material
   // a GM-adjusted price for a vehicle/drone replaces the whole computed line (as career.ts does)
   if (!host && x.kind === 'vehicles' && x.gmPrice !== undefined && Number.isFinite(x.gmPrice) && x.gmPrice >= 0) cost = x.gmPrice
+  // a starter pack's content is free: the pack's header line carries the price (packs.ts)
+  if (x.pack && x.pack !== x.uid) cost = 0
   return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(body !== undefined ? { body } : {}) }
 }
 

@@ -9,7 +9,7 @@ import { activeRules, deckKarma, DECK_NUYEN_PER_KARMA, isDeckPart } from '../../
 import { ratingEdge } from '../../domain/creation/derive'
 import { n, useSr6Editor } from '../editor'
 import { BuyItemDesign } from '../Builder'
-import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, PurchaseSection, social } from '../Picker'
+import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, packChoices, PurchaseSection, social } from '../Picker'
 import { entryLabel, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
@@ -23,6 +23,7 @@ const band = (v: number | null) => (v === null ? '—' : String(v))
 export function GearTab() {
   const { c, d, ch, data, cr, act, edit } = useSr6Editor()
   const [custom, setCustom] = useState(false)
+  const [pack, setPack] = useState('')
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
     [cost, setCost] = useState(''),
@@ -143,6 +144,27 @@ export function GearTab() {
           Custom item…
         </button>
       </div>
+      {c.entries.packs.size > 0 && (
+        <div className="row">
+          <label className="inline">
+            Starter pack{' '}
+            <select aria-label="Starter pack" value={pack} onChange={e => setPack(e.target.value)}>
+              <option value="">Pick one</option>
+              {packChoices(c.entries.packs.values())}
+            </select>
+          </label>
+          <button
+            className="btn small"
+            disabled={!pack}
+            onClick={() => {
+              if (!act({ op: 'pack', id: pack })) setPack('')
+            }}
+          >
+            Buy pack
+          </button>
+          <span className="muted">Expands into its items as separate lines, charged at the pack price. Remove the pack line to undo it all.</span>
+        </div>
+      )}
       <BuyItemDesign kind="weapon" />
       <PurchaseSection
         kind="weapons"
