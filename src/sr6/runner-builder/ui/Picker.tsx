@@ -909,6 +909,23 @@ export function PurchaseSection({
                           checked={!!x.worn}
                           onChange={ev => act({ op: 'wear', uid: x.uid, worn: ev.target.checked })}
                         />
+                        {(
+                          [
+                            ['CUSTOM_FITTED', 'custom-fitted'],
+                            ['CHEAP_KNOCK_OFF', 'cheap knockoff'],
+                          ] as const
+                        ).map(([f, label]) => (
+                          <label key={f} className="small" title={`${name}: ${label}`}>
+                            {' '}
+                            <input
+                              type="checkbox"
+                              aria-label={`${name} is ${label}`}
+                              checked={!!x.flags?.includes(f)}
+                              onChange={ev => act({ op: 'itemFlag', uid: x.uid, flag: f, on: ev.target.checked })}
+                            />
+                            {label}
+                          </label>
+                        ))}
                       </td>
                     )}
                     {ware && <td className="num">{n(p.essence)}</td>}

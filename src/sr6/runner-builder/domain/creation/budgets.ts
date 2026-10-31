@@ -8,7 +8,8 @@
 import { SR6_ATTRS, sinName, type Sr6Attr, type Sr6Build, type Sr6Purchase, type Sr6Sin } from '../../../formats/domain/character'
 import { flag, n0, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, type Sr6Data } from '../../../catalog/domain/data'
-import { normName } from '../../../catalog/domain/names'
+import type { Sr6Entry } from '../../../formats/domain/types'
+import { attrRating } from './attributes'
 import { pool, type Budget, type BudgetLine, type Provider } from './providers'
 import { bookValue, dataFind } from '../../../catalog/domain/values'
 import { entryLabel, isDesignerFashion } from '../../../catalog/domain/categories'
@@ -105,16 +106,32 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     )
   }
   for (const k of b.knowledge) if (knowledgeUsesNuyen(b, data, k)) add(`knowledge:${k.uid}`, `${k.name} (Knowledge × ${k.karma})`, k.karma * 1000, 'skills')
-  // the owner's house rule (metatypeSizePricing, 2026-10-11): a troll-sized runner pays 10% more for everything bought, a
-  // dwarf-sized one 10% more for armor; one line, so each item still shows its printed price
-  const size = flag(cr, 'metatypeSizePricing') ? metatypeSize(data, b.metatype) : undefined
-  if (size)
+  // Commlink6's PRICEMOD (CommonEquipmentController.applyPriceModifiers): the metatype's, the qualities' and the ware's
+  // `<modifier type="PRICEMOD">` add up per kind (EVERYTHING, ARMOR, CLOTHING) as a share of what is bought; one line, so
+  // each item still shows its printed price. The table's metatypeSizePricing switch turns it off.
+  if (flag(cr, 'metatypeSizePricing')) {
+    const m = priceMods(b, data),
+      share = (x: Sr6Purchase) => m.everything + (x.kind === 'armor' ? m.armor + (isClothing(entryOf(x, data)) ? m.clothing : 0) : 0)
     add(
       'sizePricing',
-      `${size === 'troll' ? 'Troll' : 'Dwarf'}-sized: 10% more on ${size === 'troll' ? 'everything bought' : 'armor'}`,
-      b.purchases.filter(x => size === 'troll' || x.kind === 'armor').reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.1,
+      priceModLabel(m),
+      b.purchases.reduce((t, x) => t + priced(x, data, cr).cost * share(x), 0),
       'gear',
     )
+  }
+  // Commlink6's user flags (AddUpPricesStep): Custom-Fitted adds 7,000¥ per point of Agility and of Strength above 2;
+  // Cheap knockoff adds half the item's price (as Commlink6 computes it: owner to confirm the sign)
+  for (const x of b.purchases) {
+    if (x.flags?.includes('CUSTOM_FITTED'))
+      add(
+        `customFitted:${x.uid}`,
+        `${purchaseName(x, data)}: custom-fitted`,
+        x.qty * 7000 * (Math.max(0, attrRating(b, 'agi', p) - 2) + Math.max(0, attrRating(b, 'str', p) - 2)),
+        'gear',
+      )
+    if (x.flags?.includes('CHEAP_KNOCK_OFF'))
+      add(`knockOff:${x.uid}`, `${purchaseName(x, data)}: cheap knockoff`, Math.trunc(priced(x, data, cr).cost / 2), 'gear')
+  }
   let fashion = 0
   if (fashionDiscount(b, data)) {
     fashion = Math.round(b.purchases.filter(x => isDesignerFashion(entryOf(x, data))).reduce((t, x) => t + priced(x, data, cr).cost, 0) * 0.5)
@@ -137,14 +154,40 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   return { ...pool(p.nuyen(b) + converted + fashion + deck, spent), breakdown }
 }
 
-/** Whether the runner's metatype is troll- or dwarf-sized, by its name's words (metatypeSizePricing). ponytail: the core
- *  metatypes and their metavariants by name; a catalog `size` attribute would replace the list. */
-export function metatypeSize(data: Pick<Sr6Data, 'metatypes'>, metatype: string): 'troll' | 'dwarf' | undefined {
-  const words = normName(data.metatypes[metatype]?.name ?? '').split(' ')
-  if (words.some(w => ['troll', 'trolls', 'cyclops', 'fomori', 'fomorian', 'giant', 'minotaur'].includes(w))) return 'troll'
-  if (words.some(w => ['dwarf', 'dwarfs', 'dwarves', 'gnome', 'hanuman', 'koborokuru', 'menehune'].includes(w))) return 'dwarf'
-  return undefined
+export interface PriceMods {
+  everything: number
+  armor: number
+  clothing: number
 }
+/** The runner's PRICEMOD shares by kind, from the `<modifier type="PRICEMOD" ref value>` of its metatype, its qualities
+ *  (times the level, a levelled one: Shiva Arms) and its ware. LIFESTYLE_NECESSITIES is left out: Commlink6 declares it
+ *  but no code applies it. */
+export function priceMods(b: Sr6Build, data: Sr6Data): PriceMods {
+  const m: PriceMods = { everything: 0, armor: 0, clothing: 0 }
+  const take = (e: Sr6Entry | undefined, times = 1) => {
+    for (const p of e?.parts ?? []) {
+      if (p.tag !== 'modifier' || p.attrs.type !== 'PRICEMOD') continue
+      const k = (p.attrs.ref ?? '').toLowerCase() as keyof PriceMods,
+        v = Number(p.attrs.value)
+      if (k in m && Number.isFinite(v)) m[k] += v * times
+    }
+  }
+  take(data.entry('metatypes', b.metatype))
+  for (const q of b.qualities) {
+    const e = data.entry('qualities', q.id)
+    take(e, e?.attrs.perLevel === 'true' ? (data.levelOf(e) ?? q.level ?? 1) : 1)
+  }
+  for (const x of b.purchases) if (x.kind === 'augmentations') take(entryOf(x, data))
+  return m
+}
+const pct = (v: number) => `${Math.round(v * 100)}%`
+const priceModLabel = (m: PriceMods) =>
+  'Price modifiers: ' +
+  [m.everything && `${pct(m.everything)} on everything bought`, m.armor && `${pct(m.armor)} on armor`, m.clothing && `${pct(m.clothing)} on clothing`]
+    .filter(Boolean)
+    .join(', ')
+/** Clothing (Commlink6's ARMOR_CLOTHES): an armor entry whose class or category names clothes or clothing. */
+const isClothing = (e?: Sr6Entry) => /cloth/i.test(`${e?.attrs.class ?? ''} ${e?.attrs.category ?? ''}`)
 
 /** Every budget, as the editor's budget panel shows them. */
 export function allBudgets(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Provider): Sr6Budgets {

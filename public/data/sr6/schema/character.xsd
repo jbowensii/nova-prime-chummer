@@ -668,6 +668,7 @@
     <xs:attribute name="qty" type="xs:positiveInteger" use="required"/>
     <xs:attribute name="grade" type="xs:string"/>
     <xs:attribute name="worn" type="xs:boolean"/>
+    <xs:attribute name="flags" type="xs:string"/>
     <xs:attribute name="note" type="xs:string"/>
     <xs:attribute name="gmPrice" type="xs:decimal"/>
     <xs:attribute name="seatsRemoved" type="c:Count"/>

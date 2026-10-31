@@ -155,6 +155,7 @@ export interface SlotShift {
   from: ShiftKind
   to: ShiftKind
 }
+export type Sr6ItemFlag = 'CUSTOM_FITTED' | 'CHEAP_KNOCK_OFF'
 export interface Sr6Purchase {
   uid: string
   /** Assigned identity: Sr6Sin.uid; absent means unassigned, independent of licences. */
@@ -175,6 +176,8 @@ export interface Sr6Purchase {
   qty: number
   grade?: string
   worn?: true
+  /** Commlink6's user-selectable item flags (AddUpPricesStep): custom-fitted or cheap knockoff armor */
+  flags?: Sr6ItemFlag[]
   bonuses?: Bonus[]
   sit?: Sr6Situational
   note?: string

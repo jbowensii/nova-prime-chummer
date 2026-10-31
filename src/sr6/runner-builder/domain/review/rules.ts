@@ -777,6 +777,26 @@ const RULES: Rule[] = [
   // choice's count: a warning)
   { code: 'quality.granted', severity: 'error', tab: 'qualities', check: c => granted(c).filter(h => h.none) },
   { code: 'quality.grantedCount', severity: 'warning', tab: 'qualities', check: c => granted(c).filter(h => !h.none) },
+  // Commlink6's HandleAugmentationGradeStep: omega-grade ware gives the runner the Bad Luck quality (Body Shop)
+  {
+    code: 'grade.omegaBadLuck',
+    severity: 'warning',
+    tab: 'qualities',
+    check: c =>
+      c.b.purchases.some(x => x.grade === 'omega') && !c.b.qualities.some(q => /^bad luck\b/i.test(c.data.entry('qualities', q.id)?.name ?? ''))
+        ? { message: 'Omega-grade ware brings the Bad Luck quality; add it (Body Shop).' }
+        : null,
+  },
+  // All Business (SWC p. 135, RULE MAX_3_CONTACT_LOYALTY): no contact's Loyalty above 3
+  {
+    code: 'contact.allBusiness',
+    severity: 'error',
+    tab: 'contacts',
+    check: c =>
+      activeRules(c.b, c.data).has('MAX_3_CONTACT_LOYALTY')
+        ? c.b.contacts.filter(x => x.loyalty > 3).map(x => ({ message: `${x.name || 'A contact'} has Loyalty ${x.loyalty}; All Business allows at most 3.` }))
+        : null,
+  },
 
   // martial arts (FS p. 97): their prices (set when the runner has a style), a style once, a technique once under any
   // style, and only of the style's categories, General or its signature

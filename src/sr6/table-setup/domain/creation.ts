@@ -556,7 +556,10 @@ export const CREATION_KEYS: CreationKey[] = [
       ['eliteSumToThirteen', 'Elite: sum-to-thirteen instead of sum-to-twelve (house rule)'],
       ['availabilitySeven', 'Gear of Availability 7 at creation (house rule)'],
       ['cargoWithoutSeats', 'Vehicles: seats removed add cargo space (option)'],
-      ['metatypeSizePricing', 'Metatype size pricing: trolls pay 10% more for everything bought, dwarfs 10% more for armor (house rule)'],
+      [
+        'metatypeSizePricing',
+        'Price modifiers: the metatype’s, qualities’ and ware’s PRICEMOD (troll-sized +10% on everything, dwarf-sized +10% on armor) (house rule)',
+      ],
     ] as [string, string][]
   ).map(([key, label]): CreationKey => ({ key, label, type: 'bool', group: 'Optional rules', methods: [] })),
   { key: 'builtToughQuality', label: 'Built Tough quality: a Physical box per level (unset: none)', type: 'quality', group: 'Derived values', methods: [] },
@@ -1256,7 +1259,7 @@ const ABOUT: Record<string, [string, string]> = {
   ],
   knowledgeLogicIntuition: ['Optional rule (CRB p. 98): free Knowledge points = (Logic + Intuition) × 2; off (default): Logic only (p. 97)', 'CRB p. 98'],
   metatypeSizePricing: [
-    'On: a troll-sized runner (troll, cyclops, fomori, giant, minotaur) pays 10% more for everything bought and a dwarf-sized one (dwarf, gnome, hanuman, koborokuru, menehune) 10% more for armor and clothing, added as one line of the nuyen budget; the books price a few metahuman-sized items on their own but print no general rule',
+    'On: the PRICEMOD data apply, as one line of the nuyen budget: the metatype’s (troll-sized +10% on everything bought, dwarf-sized +10% on armor), and the qualities’ and ware’s (Shiva Arms, Bone Spikes, Thorns, bark: more on armor); off: none',
     HOUSE,
   ],
   magicAboveSixByGrade: [

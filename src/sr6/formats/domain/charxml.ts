@@ -6,6 +6,7 @@ import { BACKDROPS, type Backdrop } from '../../../core/shared/types'
 import {
   BONUS_SWITCHES,
   type Sr6Situational,
+  type Sr6ItemFlag,
   BONUS_TARGETS,
   CONTACT_TYPES,
   CORE_ATTRS,
@@ -103,6 +104,7 @@ function purchaseXml(p: Sr6Purchase): string {
       qty: p.qty,
       grade: p.grade,
       worn: p.worn,
+      flags: p.flags?.length ? p.flags.join(' ') : undefined,
       sit: sitText(p.sit),
       note: p.note,
       seatsRemoved: p.seatsRemoved,
@@ -485,6 +487,9 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     qty: num(e, 'qty', 1),
     grade: str(e, 'grade'),
     worn: yes(e, 'worn'),
+    flags: (f => (f.length ? f : undefined))(
+      (str(e, 'flags')?.split(/\s+/) ?? []).filter((t): t is Sr6ItemFlag => t === 'CUSTOM_FITTED' || t === 'CHEAP_KNOCK_OFF'),
+    ),
     bonuses: readBonuses(e),
     sit: readSit(e),
     note: str(e, 'note'),

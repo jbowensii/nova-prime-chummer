@@ -24,6 +24,7 @@ import { normName } from '../../../catalog/domain/names'
 import { linkedParts, ownParts } from '../../../catalog/domain/effects'
 import type { Sr6Entry, Sr6Part } from '../../../formats/domain/types'
 import { makeProvider } from './providers'
+import { cyberlimbRuleBonus, essenceSocialPenalty, physicalRoundsDown } from './rule-markers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
 import { choiceOptions, noteAttr } from './choices'
@@ -220,7 +221,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       if (infected && (CORE_ATTRS as string[]).includes(k)) natural = Math.min(natural, attrMax(data, cr, b, k) ?? natural)
       // (a mundane has no Magic to lose, unless an Infected type gave it some)
       if (k === special) natural = Math.max(0, natural - loss)
-      const bonus = augmentBonus(b, data, k, undefined, on),
+      const bonus = augmentBonus(b, data, k, undefined, on) + cyberlimbRuleBonus(b, data, k, x => entryOf(x, data)),
         counted = upTo(bonus, capA)
       if (counted < bonus) capped[k] = bonus - counted
       return [k, { natural, augmented: natural + counted }]
@@ -273,7 +274,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       : b.qualities
           .filter(q => data.sameFamily('qualities', q.id, toughId))
           .reduce((t, q) => t + (data.levelOf(data.entry('qualities', q.id)) ?? q.level), 0)) + augmentBonus(b, data, 'physical', undefined, on)
-  const physical = monitor(A('bod'))
+  // Neoteny (PHYSICAL_ROUND_DOWN): the Body half rounds down
+  const physical = physicalRoundsDown(b, data) && base !== undefined && div ? base + Math.floor(A('bod') / div) : monitor(A('bod'))
   const stunBase = monitor(A('wil')),
     stunPlus = augmentBonus(b, data, 'stun', undefined, on)
 
@@ -459,8 +461,10 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     monitorBonus: { physical: tough, stun: stunPlus },
     defenseRating: defense,
     // Firing Squad p. 50, Smooth Operations p. 127: Social Rating = CHA + the Social modifiers of the armor worn
+    // (less Commlink6's Essence-loss penalty, which Empathic Retention softens: rule-markers.ts essenceSocialPenalty)
     socialRating:
-      A('cha') +
+      A('cha') -
+      essenceSocialPenalty(b, data, budgets.essence.spent) +
       b.purchases
         .filter(x => x.kind === 'armor' && x.worn)
         .reduce(
