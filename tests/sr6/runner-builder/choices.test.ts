@@ -92,9 +92,9 @@ test('a matrix selection offers the Matrix attributes with readable labels', () 
   expect(c.options.map(o => o.value)).toEqual(['Attack', 'Sleaze', 'Data Processing', 'Firewall'])
 })
 
-test('a free-text selection (TEXT) stays a text box — no dropdown', () => {
+test('a free-text selection (TEXT) is a text box — no dropdown', () => {
   const { data } = made()
-  expect(choiceOptions(data, entry('Bane', [part('selection', { type: 'TEXT' })]))).toBeUndefined()
+  expect(choiceOptions(data, entry('Bane', [part('selection', { type: 'TEXT' })]))?.kind).toBe('text')
 })
 
 test('a critter power’s SPELL selection offers the catalog spells A to Z, or just its listed ones', () => {
@@ -112,4 +112,60 @@ test('a skill-specialization choice offers that skill’s specializations (Greas
   const c = choiceOptions(data, entry('Grease Monkey', [part('selection', { type: 'SKILLSPECIALIZATION', ref: s.id })]))!
   expect(c.kind).toBe('specialization')
   expect(c.options.map(o => o.value)).toEqual(s.specs)
+})
+
+// Sweep: every <selection> type Commlink6 1.14.0 uses (scan 2026-10) answers with a picker list or a free-text box, never nothing.
+const CL6_SELECTION_TYPES = [
+  'ITEM_ATTRIBUTE',
+  'ATTRIBUTE',
+  'SKILL',
+  'TEXT',
+  'SUBSELECT',
+  'AMMUNITION_TYPE',
+  'GEAR',
+  'QUALITY',
+  'SPELL_CATEGORY',
+  'ELEMENT',
+  'CARRIED',
+  'SPIRIT',
+  'SKILLSPECIALIZATION',
+  'PROGRAM',
+  'ACTION',
+  'SPRITE',
+  'CONTACT',
+  'SIGNATURE_MANEUVERS',
+  'SENSE',
+  'SPELL',
+  'MATRIX_ATTRIBUTE',
+  'SPRITE_POWER',
+  'PARAGON',
+  'DAMAGE_ELEMENT',
+  'ADEPT_POWER',
+  'MENTOR_SPIRIT',
+]
+test('every choice type answers with a list or a text box', () => {
+  const { data } = made()
+  for (const type of [...CL6_SELECTION_TYPES, 'SOMETHING_NEW', '']) {
+    const c = choiceOptions(data, entry('X', [part('selection', type ? { type } : {})]))
+    expect(c, type).toBeDefined()
+    if (c!.kind === 'text') expect(c!.options).toEqual([])
+    else expect(c!.options.length, type).toBeGreaterThan(0)
+  }
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'ELEMENT' })]))!.options.map(o => o.value)).toContain('Fire')
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'ACTION', options: 'dodge,take_cover' })]))!.options.map(o => o.value)).toEqual([
+    'Dodge',
+    'Take Cover',
+  ])
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'TEXT' })]))!.kind).toBe('text')
+})
+
+test('catalog-listed choices: ammo types, contacts, a multi-pick count', () => {
+  const { data } = made()
+  const ammo = choiceOptions(data, entry('X', [part('selection', { type: 'AMMUNITION_TYPE', ref: 'AMMOTYPE' })]))!
+  expect(ammo.kind === 'list' ? ammo.options.map(o => o.value) : []).toEqual(data.kindNames!('ammotypes'))
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]))!.kind).toBe('text') // none yet
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]), ['Mr. Johnson'])!.options.map(o => o.value)).toEqual(['Mr. Johnson'])
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'SUBSELECT', ref: 'vector', count: '4' })]))!.count).toBe(4)
+  const sp = choiceOptions(data, entry('X', [part('selection', { type: 'SPRITE_POWER' })]))!
+  expect(sp.kind === 'list' ? sp.options.map(o => o.value) : []).toContain('Static Burst')
 })

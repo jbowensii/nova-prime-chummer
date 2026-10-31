@@ -6,18 +6,7 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
-import {
-  attrRating,
-  choiceOptions,
-  choiceSelectOptions,
-  diyAllowed,
-  entryOf,
-  isDrone,
-  licenceFee,
-  powerCost,
-  priced,
-  settingQuality,
-} from '../../domain/creation/budgets'
+import { attrRating, choiceOptions, diyAllowed, entryOf, isDrone, licenceFee, powerCost, priced, settingQuality } from '../../domain/creation/budgets'
 import {
   balances,
   careerPowerPoints,
@@ -57,7 +46,7 @@ import {
 } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
-import { ACCESSORY_KINDS, CatalogPicker, isAccessory, type PickedItem } from '../Picker'
+import { ACCESSORY_KINDS, CatalogPicker, ChoiceField, isAccessory, type PickedItem } from '../Picker'
 import { capacityOf, isAmmoGear, isAmmoType, offeredOn, STACKING } from '../../../catalog/domain/categories'
 import { deep } from '../../domain/creation/actions'
 import { newId } from '../../../../core/shared/types'
@@ -131,6 +120,7 @@ const signed = (x: number, unit: string) => (x > 0 ? `${n(x)}${unit}` : `+${n(-x
 
 export function LedgerTab() {
   const { ch, c, data, cr, p, preview, record, ledger } = useSr6Editor()
+  const contactNames = ch.build.contacts.map(c => c.name).filter(Boolean)
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     bal = balances(ch)
@@ -288,7 +278,10 @@ export function LedgerTab() {
       case 'learnAdeptPower':
         // a power/spell that names a choice (Attribute Boost, Improved Ability) carries it as the pick's note
         return e
-          ? { op: 'pick', line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e) && f.note.trim() ? { note: f.note.trim() } : {}) } }
+          ? {
+              op: 'pick',
+              line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}) },
+            }
           : null
       case 'martialart': {
         const sig = e && signatureOf(b, c.entries.martialtechniques.values(), e)
@@ -326,6 +319,7 @@ export function LedgerTab() {
                 kind: e.kind as PurchaseKind,
                 id: e.id,
                 qty: STACKING.has(e.kind) ? Math.max(1, whole(f.qty) || 1) : 1,
+                ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}),
                 accessories: f.ammo && isAmmoGear(e) ? [{ uid: newId(), kind: 'ammotypes', id: f.ammo, qty: 1, accessories: [] }] : [],
                 ...(picked!.rating ? { rating: picked!.rating } : {}),
                 ...(picked!.grade ? { grade: picked!.grade } : {}),
@@ -803,25 +797,18 @@ export function LedgerTab() {
             </button>
           </div>
         )}
-        {op in LEARN &&
+        {(op in LEARN || op === 'purchase') &&
           picked &&
           (() => {
-            const co = choiceOptions(data, picked.e)
+            const co = choiceOptions(data, picked.e, contactNames)
             const pp = picked.e.kind === 'adeptpowers' ? careerPowerPoints(b, data, cr, p) : null
             const cost = pp ? powerCost(data, { id: picked.e.id, note: f.note }) : null
             return (
               <>
                 {co && (
                   <label>
-                    The {co.kind} it is for
-                    <select value={f.note} aria-label="Choice note" onChange={e => set({ note: e.target.value })}>
-                      <option value="">Pick one</option>
-                      {choiceSelectOptions(co, f.note).map(o => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    {co.kind === 'attribute' || co.kind === 'skill' ? `The ${co.kind} it is for` : 'Its choice'}
+                    <ChoiceField co={co} value={f.note} label="Choice note" onChange={v => set({ note: v })} />
                   </label>
                 )}
                 {pp && (

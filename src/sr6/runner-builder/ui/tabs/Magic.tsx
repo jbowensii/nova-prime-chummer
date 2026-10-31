@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
 import { flag, num, str } from '../../../table-setup/domain/creation'
-import { choiceOptions, choiceSelectOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
+import { choiceOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
 import { magicCap } from '../../domain/creation/magic'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../../catalog/domain/data'
 import type { Sr6Entry } from '../../../formats/domain/types'
@@ -15,7 +15,7 @@ import { pickFlags } from '../view'
 import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../../formats/domain/character'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { Left } from '../Budgets'
-import { Bonuses, House, Situational } from '../Picker'
+import { Bonuses, ChoiceField, House, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 import { Suggest } from './Skills'
 
@@ -97,7 +97,7 @@ export function MagicTab() {
                     power = kind === 'adeptpowers' ? data.powers[x.id] : undefined,
                     name = e?.name ?? x.name ?? x.id
                   const max = pickMaxLevel(data, kind, x.id),
-                    co = e && choiceOptions(data, e),
+                    co = e && choiceOptions(data, e, b.contacts.map(c => c.name).filter(Boolean)),
                     want = co?.kind,
                     levels = data.siblings(kind, x.id).map(s => data.levelOf(s)!)
                   const chosen =
@@ -117,19 +117,10 @@ export function MagicTab() {
                         )}
                         {co && (
                           <div className="row">
-                            <select
-                              value={x.note ?? ''}
-                              aria-label={`${name} note`}
-                              onChange={ev => act({ op: 'pickNote', uid: x.uid, note: ev.target.value })}
-                            >
-                              <option value="">Pick one</option>
-                              {choiceSelectOptions(co, x.note).map(o => (
-                                <option key={o.value} value={o.value}>
-                                  {o.label}
-                                </option>
-                              ))}
-                            </select>
-                            <span className={chosen ? 'muted small' : 'err small'}>{chosen ? `For ${chosen}` : `Name the ${want}`}</span>
+                            <ChoiceField co={co} value={x.note} label={`${name} note`} onChange={v => act({ op: 'pickNote', uid: x.uid, note: v })} />
+                            {(want === 'attribute' || want === 'skill') && (
+                              <span className={chosen ? 'muted small' : 'err small'}>{chosen ? `For ${chosen}` : `Name the ${want}`}</span>
+                            )}
                           </div>
                         )}
                         <Situational line={x} name={name} />

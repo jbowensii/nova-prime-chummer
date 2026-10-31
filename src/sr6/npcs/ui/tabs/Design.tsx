@@ -93,7 +93,7 @@ export function DesignTab() {
         </label>
         <label className="inline">
           Note
-          {co ? (
+          {co && co.kind !== 'text' ? (
             <select
               aria-label={`${p.name} note`}
               value={p.note ?? ''}

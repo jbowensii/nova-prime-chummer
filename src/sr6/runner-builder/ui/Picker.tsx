@@ -10,7 +10,7 @@ import { sitOf } from '../../catalog/domain/effects'
 import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../../core/ui-kit/bits'
 import { effectsOf, entryOf, materialOf, priced, situations, takesMaterial } from '../domain/creation/budgets'
-import { choiceOptions, choiceSelectOptions } from '../domain/creation/choices'
+import { choiceOptions, choiceSelectOptions, type ChoiceSpec } from '../domain/creation/choices'
 import { num, type CreationRules } from '../../table-setup/domain/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../../catalog/domain/values'
 import { formulaOf, formulaText } from '../../../core/shared/formula'
@@ -733,24 +733,64 @@ export const CHOICE_PROMPT: Record<string, string> = {
   quality: 'Which',
   matrix: 'Which Matrix attribute',
   spell: 'Which spell',
+  specialization: 'Which specialization',
+  list: 'Which',
+  text: 'Which (type it)',
+}
+/** A choice's input: the ordered dropdown, or a free-text box (committed on blur) when the catalog can't list it. */
+export function ChoiceField({ co, value, label, onChange }: { co: ChoiceSpec; value?: string; label: string; onChange: (v: string) => void }) {
+  if (co.count && co.count > 1) {
+    // a book asking for several picks (Natural Venom's 4 vectors): that many pickers, stored joined by `; `
+    const vals = (value ?? '').split('; ')
+    return (
+      <>
+        {Array.from({ length: co.count }, (_, i) => (
+          <ChoiceField
+            key={i}
+            co={{ ...co, count: undefined }}
+            value={vals[i] ?? ''}
+            label={`${label} ${i + 1}`}
+            onChange={v => {
+              const next = Array.from({ length: co.count! }, (_, j) => (j === i ? v : (vals[j] ?? '')))
+              onChange(next.every(x => !x) ? '' : next.join('; '))
+            }}
+          />
+        ))}
+      </>
+    )
+  }
+  if (co.kind === 'text')
+    return (
+      <input
+        key={value ?? ''}
+        defaultValue={value ?? ''}
+        maxLength={200}
+        aria-label={label}
+        placeholder={CHOICE_PROMPT.text}
+        onBlur={ev => ev.target.value.trim() !== (value ?? '') && onChange(ev.target.value.trim())}
+      />
+    )
+  return (
+    <select aria-label={label} value={value ?? ''} onChange={ev => onChange(ev.target.value)}>
+      <option value="">Pick one</option>
+      {choiceSelectOptions(co, value).map(o => (
+        <option key={o.value} value={o.value}>
+          {o.label}
+        </option>
+      ))}
+    </select>
+  )
 }
 /** A purchased item that names a choice (an attribute/skill/quality/matrix): the ordered picker that records it, so a
  *  cyberware or gear choice applies the same way a quality's or power's does. Nothing for an item with no choice. */
 function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; name: string }) {
-  const { data, act } = useSr6Editor()
-  const co = e && choiceOptions(data, e)
+  const { data, act, ch } = useSr6Editor()
+  const co = e && choiceOptions(data, e, ch.build.contacts.map(c => c.name).filter(Boolean))
   if (!co) return null
   return (
     <label className="inline">
       {CHOICE_PROMPT[co.kind]}{' '}
-      <select aria-label={`${name}: ${co.kind} choice`} value={x.note ?? ''} onChange={ev => act({ op: 'purchaseNote', uid: x.uid, note: ev.target.value })}>
-        <option value="">Pick one</option>
-        {choiceSelectOptions(co, x.note).map(o => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
+      <ChoiceField co={co} value={x.note} label={`${name}: ${co.kind} choice`} onChange={v => act({ op: 'purchaseNote', uid: x.uid, note: v })} />
     </label>
   )
 }

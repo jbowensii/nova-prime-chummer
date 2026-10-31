@@ -91,7 +91,7 @@ export function QualitiesTab() {
                     )}
                   </td>
                   <td>
-                    {co ? (
+                    {co && co.kind !== 'text' ? (
                       <select
                         value={q.note ?? ''}
                         aria-label={`${v?.name ?? q.id} note`}
