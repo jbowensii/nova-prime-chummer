@@ -58,7 +58,7 @@ import {
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { ACCESSORY_KINDS, CatalogPicker, ChoiceField, isAccessory, type PickedItem } from '../Picker'
-import { capacityOf, isAmmoGear, isAmmoType, offeredOn, STACKING } from '../../../catalog/domain/categories'
+import { capacityOf, isAmmoGear, isAmmoType, offeredOn, stacks } from '../../../catalog/domain/categories'
 import { deep } from '../../domain/creation/actions'
 import { newId } from '../../../../core/shared/types'
 import { structureOf } from '../../../catalog/domain/structure'
@@ -193,7 +193,8 @@ export function LedgerTab() {
   const importRef = useRef<HTMLInputElement>(null)
   const set = (patch: Partial<typeof f>) => setF(x => ({ ...x, ...patch }))
   const designs = useSr6Designs()
-  const kindDesigns = designs.filter(d => (d.design!.kind === 'drone') === (op === 'drone'))
+  const designName = (d: (typeof designs)[number]) => d.identity.streetName || 'Unnamed design'
+  const kindDesigns = designs.filter(d => (d.design!.kind === 'drone') === (op === 'drone')).sort((x, y) => designName(x).localeCompare(designName(y)))
   const dropLabel = (x: Sr6Purchase) => (x.id && (e => e && entryLabel(e))(data.entry(x.kind, x.id))) || x.name || 'Custom item'
   const itemName = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
   // the runner's vehicles and drones (fit: one of them; unfit: what is fitted to them), and critters (critterware, gear)
@@ -333,7 +334,7 @@ export function LedgerTab() {
                 uid: '',
                 kind: e.kind as PurchaseKind,
                 id: e.id,
-                qty: STACKING.has(e.kind) ? Math.max(1, whole(f.qty) || 1) : 1,
+                qty: stacks(e.kind, e) ? Math.max(1, whole(f.qty) || 1) : 1,
                 ...(choiceOptions(data, e, choiceContext) && f.note.trim() ? { note: f.note.trim() } : {}),
                 accessories: f.ammo && isAmmoGear(e) ? [{ uid: newId(), kind: 'ammotypes', id: f.ammo, qty: 1, accessories: [] }] : [],
                 ...(picked!.rating ? { rating: picked!.rating } : {}),
@@ -1081,7 +1082,7 @@ export function LedgerTab() {
             </select>
           </label>
         )}
-        {op === 'purchase' && picked && STACKING.has(picked.e.kind) && (
+        {op === 'purchase' && picked && stacks(picked.e.kind, picked.e) && (
           <label>
             Quantity{isAmmoGear(picked.e) ? ' (printed units, e.g. 10 rounds each)' : ''}
             <input type="number" min={1} step={1} aria-label="Quantity" value={f.qty} onChange={e => set({ qty: e.target.value })} style={{ width: '6rem' }} />
@@ -1097,7 +1098,7 @@ export function LedgerTab() {
               >
                 <option value="">Pick one</option>
                 {b.purchases
-                  .filter(x => STACKING.has(x.kind))
+                  .filter(x => stacks(x.kind, entryOf(x, data)))
                   .sort((a, z) => dropLabel(a).localeCompare(dropLabel(z)))
                   .map(x => (
                     <option key={x.uid} value={x.uid}>

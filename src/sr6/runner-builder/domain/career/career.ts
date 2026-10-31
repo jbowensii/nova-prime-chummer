@@ -47,7 +47,7 @@ import { gradeName, gradeProblem } from '../creation/grades'
 import { makeProvider, type Provider } from '../creation/providers'
 import { CAREER_KEEP, validateSr6 } from '../review/rules'
 import { bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
-import { entryLabel, STACKING } from '../../../catalog/domain/categories'
+import { entryLabel, stacks } from '../../../catalog/domain/categories'
 import { critterOnly, infectedOff, infectedQuality } from '../assets/critterware'
 import { critterQualityKarma, isCritterQuality, taughtPrice, TRAINED_LABELS, trainedWhat } from '../assets/critters'
 import type { Sr6QualityView } from '../../../catalog/domain/types'
@@ -626,7 +626,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
-      if (x.qty > 1 && !STACKING.has(x.kind)) no('own-line') // (only stacking kinds take a count)
+      if (x.qty > 1 && !stacks(x.kind, data.entry(x.kind, x.id ?? ''))) no('own-line') // (only stackable items take a count)
       // (a design's line: its snapshot, the vehicle the design worked out to; a builders' custom limb: its own)
       const e = x.id
         ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry'))
@@ -652,7 +652,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'quantity': {
       // a stacking line bought again or sold down: the price difference (more costs, fewer credits it back at full price)
       const x = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
-      if (!STACKING.has(x.kind)) no('own-line')
+      if (!stacks(x.kind, data.entry(x.kind, x.id ?? ''))) no('own-line')
       if (!Number.isInteger(a.qty) || a.qty < 1) no('below-one')
       if (a.qty === x.qty) no('unchanged')
       const now = priced({ ...x, qty: a.qty }, data, cr),
