@@ -134,8 +134,10 @@ export interface Sr6Data extends CreationCatalog {
   metamagics: Record<string, Sr6MetamagicView>
   /** every catalog spell's name, A to Z (the Innate Spell critter power's picker) */
   spellNames: string[]
-  /** every catalog mentor spirit's name, A to Z (a mentor-spirit choice's picker) */
-  mentorNames?: string[]
+  /** the names of a kind's catalog entries, A to Z (a choice's picker: ammo types, programs, sprites, mentor spirits…) */
+  kindNames?(kind: Sr6Kind): string[]
+  /** the catalog's entries of a kind (a choice listed from their text: a sprite's powers) */
+  kindEntries?(kind: Sr6Kind): Sr6Entry[]
   lifemodules: Record<string, Sr6LifeModuleView>
   /** the catalog's implant grades by key (alpha, omega…); a later one with the same key replaces an earlier */
   grades: Record<string, Sr6GradeView>

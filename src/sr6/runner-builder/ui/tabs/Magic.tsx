@@ -97,7 +97,7 @@ export function MagicTab() {
                     power = kind === 'adeptpowers' ? data.powers[x.id] : undefined,
                     name = e?.name ?? x.name ?? x.id
                   const max = pickMaxLevel(data, kind, x.id),
-                    co = e && choiceOptions(data, e),
+                    co = e && choiceOptions(data, e, b.contacts.map(c => c.name).filter(Boolean)),
                     want = co?.kind,
                     levels = data.siblings(kind, x.id).map(s => data.levelOf(s)!)
                   const chosen =

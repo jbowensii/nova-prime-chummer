@@ -721,6 +721,26 @@ export const CHOICE_PROMPT: Record<string, string> = {
 }
 /** A choice's input: the ordered dropdown, or a free-text box (committed on blur) when the catalog can't list it. */
 export function ChoiceField({ co, value, label, onChange }: { co: ChoiceSpec; value?: string; label: string; onChange: (v: string) => void }) {
+  if (co.count && co.count > 1) {
+    // a book asking for several picks (Natural Venom's 4 vectors): that many pickers, stored joined by `; `
+    const vals = (value ?? '').split('; ')
+    return (
+      <>
+        {Array.from({ length: co.count }, (_, i) => (
+          <ChoiceField
+            key={i}
+            co={{ ...co, count: undefined }}
+            value={vals[i] ?? ''}
+            label={`${label} ${i + 1}`}
+            onChange={v => {
+              const next = Array.from({ length: co.count! }, (_, j) => (j === i ? v : (vals[j] ?? '')))
+              onChange(next.every(x => !x) ? '' : next.join('; '))
+            }}
+          />
+        ))}
+      </>
+    )
+  }
   if (co.kind === 'text')
     return (
       <input
@@ -746,8 +766,8 @@ export function ChoiceField({ co, value, label, onChange }: { co: ChoiceSpec; va
 /** A purchased item that names a choice (an attribute/skill/quality/matrix): the ordered picker that records it, so a
  *  cyberware or gear choice applies the same way a quality's or power's does. Nothing for an item with no choice. */
 function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; name: string }) {
-  const { data, act } = useSr6Editor()
-  const co = e && choiceOptions(data, e)
+  const { data, act, ch } = useSr6Editor()
+  const co = e && choiceOptions(data, e, ch.build.contacts.map(c => c.name).filter(Boolean))
   if (!co) return null
   return (
     <label className="inline">

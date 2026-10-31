@@ -42,6 +42,8 @@ export function qualityChoice(name: string | undefined): 'attribute' | 'skill' |
 export interface ChoiceSpec {
   kind: 'attribute' | 'skill' | 'specialization' | 'quality' | 'matrix' | 'spell' | 'list' | 'text'
   options: { value: string; label: string }[]
+  /** how many picks the book asks for (Natural Venom: 4 vectors); the note holds them joined by `; ` */
+  count?: number
 }
 const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
 const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
@@ -64,9 +66,20 @@ const STATIC_LISTS: Record<string, string[]> = {
   MATRIX_ATTRIBUTE: ['Attack', 'Sleaze', 'Data Processing', 'Firewall'],
 }
 // types listed from the catalog's own entries
-const CATALOG_LISTS: Record<string, (d: Sr6Data) => string[]> = {
+const CATALOG_LISTS: Record<string, (d: Sr6Data, ref: string, contacts: string[]) => string[]> = {
   ADEPT_POWER: d => Object.values(d.powers).map(p => p.name),
-  MENTOR_SPIRIT: d => d.mentorNames ?? [],
+  MENTOR_SPIRIT: d => d.kindNames?.('mentorspirits') ?? [],
+  PARAGON: d => d.kindNames?.('mentorspirits') ?? [], // (Commlink6 files paragons with the mentor spirits)
+  AMMUNITION_TYPE: d => d.kindNames?.('ammotypes') ?? [],
+  SPRITE_POWER: d =>
+    (d.kindEntries?.('sprites') ?? []).flatMap(e => e.parts.filter(p => p.tag === 'powers').flatMap(p => p.text.split(/,|;/).map(t => t.trim()))),
+  PROGRAM: d => d.kindNames?.('programs') ?? [],
+  SPRITE: d => d.kindNames?.('sprites') ?? [],
+  SIGNATURE_MANEUVERS: d => d.kindNames?.('martialtechniques') ?? [],
+  GEAR: d => d.kindNames?.('gear') ?? [],
+  CARRIED: (d, ref) =>
+    d.kindNames?.(/WEAPON|MELEE/i.test(ref) ? 'weapons' : /CYBERWARE/i.test(ref) ? 'augmentations' : /DEVICE/i.test(ref) ? 'electronics' : 'gear') ?? [],
+  CONTACT: (_d, _r, contacts) => contacts, // the runner's own contacts (text box while there are none)
 }
 /** Every `<selection>` type choiceOptions answers for (the typed ones above plus the lists): a test iterates the catalog's. */
 export const HANDLED_SELECTIONS = [
@@ -92,7 +105,7 @@ const SEL_KIND: Record<string, ChoiceSpec['kind']> = {
  *  choice domain (ATTRIBUTE/SKILL/QUALITY/ITEM_ATTRIBUTE) and its comma-separated `options`; older entries mark it with a
  *  `ref="CHOICE"` modifier, an `attr/skill(-max):choice` effect, or the `(Attribute)`/`(Skill)` name suffix. Options keep the
  *  data's order. A free-text selection (TEXT/PARAGON/…) returns undefined so the UI keeps a text box. */
-export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpec | undefined {
+export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, contacts: string[] = []): ChoiceSpec | undefined {
   if (!e) return undefined
   const parts = e.parts ?? []
   const typed = parts.find(p => p.attrs.ref === 'CHOICE' && /^(ATTRIBUTE|SKILL)$/.test(p.attrs.type ?? ''))
@@ -111,7 +124,7 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
       : sel
         ? SEL_KIND[sel.attrs.type!]
         : qualityChoice(e.name)
-  if (!kind && other) return otherChoice(data, other.attrs)
+  if (!kind && other) return otherChoice(data, other.attrs, contacts)
   if (!kind) return undefined
   // explicit catalog options are comma-separated; skill names hold spaces, so never split on whitespace. Prefer the
   // selection part's options, else any typed CHOICE part's (e.g. Improved Mental Attribute's separate selection).
@@ -146,18 +159,20 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
     names = tokens.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) // matrix attribute labels
   }
   const options = [...new Set(names)].map(v => ({ value: v, label: v }))
-  return options.length ? { kind, options } : sel ? { kind: 'text', options: [] } : undefined // a selection nothing can list: a text box
+  const n = Number(sel?.attrs.count) > 1 ? { count: Number(sel!.attrs.count) } : {}
+  return options.length ? { kind, options, ...n } : sel ? { kind: 'text', options: [], ...n } : undefined // a selection nothing can list: a text box
 }
-function otherChoice(data: Sr6Data, a: Record<string, string>): ChoiceSpec {
+function otherChoice(data: Sr6Data, a: Record<string, string>, contacts: string[]): ChoiceSpec {
   const type = a.type ?? ''
   const listed = (a.options ?? '')
     .split(',')
     .map(t => t.trim())
     .filter(Boolean)
   const cat = CATALOG_LISTS[type]
-  const names = listed.length ? listed.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) : (STATIC_LISTS[type] ?? cat?.(data) ?? [])
+  const names = listed.length ? listed.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) : (STATIC_LISTS[type] ?? cat?.(data, a.ref ?? '', contacts) ?? [])
   const options = [...new Set(names)].sort((x, y) => x.localeCompare(y)).map(v => ({ value: v, label: v }))
-  return options.length ? { kind: 'list', options } : { kind: 'text', options: [] }
+  const count = Number(a.count) > 1 ? { count: Number(a.count) } : {}
+  return options.length ? { kind: 'list', options, ...count } : { kind: 'text', options: [], ...count }
 }
 /** choiceOptions' values plus the current note when it isn't one of them (an older free-text note, `AGI`): so a stored,
  *  still-valid choice stays shown in the dropdown instead of reading blank and being lost on the next edit. */

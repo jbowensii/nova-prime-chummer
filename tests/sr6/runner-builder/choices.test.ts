@@ -158,3 +158,14 @@ test('every choice type answers with a list or a text box', () => {
   ])
   expect(choiceOptions(data, entry('X', [part('selection', { type: 'TEXT' })]))!.kind).toBe('text')
 })
+
+test('catalog-listed choices: ammo types, contacts, a multi-pick count', () => {
+  const { data } = made()
+  const ammo = choiceOptions(data, entry('X', [part('selection', { type: 'AMMUNITION_TYPE', ref: 'AMMOTYPE' })]))!
+  expect(ammo.kind === 'list' ? ammo.options.map(o => o.value) : []).toEqual(data.kindNames!('ammotypes'))
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]))!.kind).toBe('text') // none yet
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]), ['Mr. Johnson'])!.options.map(o => o.value)).toEqual(['Mr. Johnson'])
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'SUBSELECT', ref: 'vector', count: '4' })]))!.count).toBe(4)
+  const sp = choiceOptions(data, entry('X', [part('selection', { type: 'SPRITE_POWER' })]))!
+  expect(sp.kind === 'list' ? sp.options.map(o => o.value) : []).toContain('Static Burst')
+})

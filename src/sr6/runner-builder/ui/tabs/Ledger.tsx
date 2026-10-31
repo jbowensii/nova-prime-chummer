@@ -119,6 +119,7 @@ const signed = (x: number, unit: string) => (x > 0 ? `${n(x)}${unit}` : `+${n(-x
 
 export function LedgerTab() {
   const { ch, c, data, cr, p, preview, record, ledger } = useSr6Editor()
+  const contactNames = ch.build.contacts.map(c => c.name).filter(Boolean)
   const b = ch.build,
     kind = MAGIC_KINDS[b.magic],
     bal = balances(ch)
@@ -274,7 +275,10 @@ export function LedgerTab() {
       case 'learnAdeptPower':
         // a power/spell that names a choice (Attribute Boost, Improved Ability) carries it as the pick's note
         return e
-          ? { op: 'pick', line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e) && f.note.trim() ? { note: f.note.trim() } : {}) } }
+          ? {
+              op: 'pick',
+              line: { uid: '', kind: e.kind as PickKind, id: e.id, ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}) },
+            }
           : null
       case 'martialart': {
         const sig = e && signatureOf(b, c.entries.martialtechniques.values(), e)
@@ -312,6 +316,7 @@ export function LedgerTab() {
                 kind: e.kind as PurchaseKind,
                 id: e.id,
                 qty: 1,
+                ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}),
                 accessories: f.ammo && isAmmoGear(e) ? [{ uid: newId(), kind: 'ammotypes', id: f.ammo, qty: 1, accessories: [] }] : [],
                 ...(picked!.rating ? { rating: picked!.rating } : {}),
                 ...(picked!.grade ? { grade: picked!.grade } : {}),
@@ -785,10 +790,10 @@ export function LedgerTab() {
             </button>
           </div>
         )}
-        {op in LEARN &&
+        {(op in LEARN || op === 'purchase') &&
           picked &&
           (() => {
-            const co = choiceOptions(data, picked.e)
+            const co = choiceOptions(data, picked.e, contactNames)
             const pp = picked.e.kind === 'adeptpowers' ? careerPowerPoints(b, data, cr, p) : null
             const cost = pp ? powerCost(data, { id: picked.e.id, note: f.note }) : null
             return (
