@@ -7,7 +7,7 @@ import { GAME_KEY } from '../src/core/ui-kit/game'
 export { GAME_KEY }
 
 export const STATE = join(process.env.CA2_E2E_DIR!, 'e2e-state.json')
-const ORIGIN = 'http://localhost:4173'
+const ORIGIN = `http://localhost:${process.env.E2E_PORT ?? 4173}`
 
 /** Sign the admin in through the API; the context (a page's `page.request`, or the `request` fixture) keeps the cookie. */
 export async function signIn(request: APIRequestContext) {
