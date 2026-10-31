@@ -7,7 +7,7 @@
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
 import { flag, num, str } from '../../../table-setup/domain/creation'
-import { choiceOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
+import { choiceCtx, choiceOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
 import { magicCap } from '../../domain/creation/magic'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../../catalog/domain/data'
 import { isAnimalism } from '../../domain/creation/animalism'
@@ -101,7 +101,7 @@ export function MagicTab() {
                     power = kind === 'adeptpowers' ? data.powers[x.id] : undefined,
                     name = e?.name ?? x.name ?? x.id
                   const max = pickMaxLevel(data, kind, x.id),
-                    co = e && choiceOptions(data, e, b.contacts.map(c => c.name).filter(Boolean)),
+                    co = e && choiceOptions(data, e, choiceCtx(data, b)),
                     want = co?.kind,
                     levels = data.siblings(kind, x.id).map(s => data.levelOf(s)!)
                   const chosen =
