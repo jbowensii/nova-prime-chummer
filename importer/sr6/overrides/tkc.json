@@ -19,5 +19,13 @@
   {"cl6": "Guizhen 1 Mob Light", "cl6id": "guizhen_1_mob_light", "kind": "weapons", "id": "mob-light", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Guizhen 2 Storm Shield", "cl6id": "guizhen_2_storm_shield", "kind": "weapons", "id": "storm-shield", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Guizhen 2 Pulse Hammer", "cl6id": "guizhen_2_pulse_hammer", "kind": "weapons", "id": "pulse-hammer", "set": {"usage": "carried"}, "gen": "slot"},
-  {"cl6": "Guizhen 2 Hall of Tears", "cl6id": "guizhen_2_hall_of_tears", "kind": "weapons", "id": "hall-of-tears", "set": {"usage": "carried"}, "gen": "slot"}
+  {"cl6": "Guizhen 2 Hall of Tears", "cl6id": "guizhen_2_hall_of_tears", "kind": "weapons", "id": "hall-of-tears", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Guizhen 1 Handheld", "kind": "weapons", "id": "handheld", "set": {"cl6": "guizhen_1_handheld"}, "gen": "marker"},
+  {"cl6": "Guizhen 1 Flash Scope", "kind": "weapons", "id": "flash-scope", "set": {"cl6": "guizhen_1_flash_scope"}, "gen": "marker"},
+  {"cl6": "Guizhen 1 Mob Light", "kind": "weapons", "id": "mob-light", "set": {"cl6": "guizhen_1_mob_light"}, "gen": "marker"},
+  {"cl6": "Guizhen 2 Storm Shield", "kind": "weapons", "id": "storm-shield", "set": {"cl6": "guizhen_2_storm_shield"}, "gen": "marker"},
+  {"cl6": "Guizhen 2 Pulse Hammer", "kind": "weapons", "id": "pulse-hammer", "set": {"cl6": "guizhen_2_pulse_hammer"}, "gen": "marker"},
+  {"cl6": "Guizhen 2 Hall of Tears", "kind": "weapons", "id": "hall-of-tears", "set": {"cl6": "guizhen_2_hall_of_tears"}, "gen": "marker"},
+  {"cl6": "Kuàizi (Chopsticks)", "kind": "qualities", "id": "kuaizi-chopsticks", "set": {"cl6": "chopsticks"}, "gen": "marker"},
+  {"cl6": "Corporate Scapegoat", "kind": "qualities", "id": "corporate-scapegoat", "set": {"cl6": "corp_scapegoat"}, "gen": "marker"}
 ]

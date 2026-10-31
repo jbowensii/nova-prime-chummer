@@ -36,5 +36,20 @@
   {"cl6": "Nova Scorpion Venom", "cl6id": "nova_scorpion_venom", "kind": "gear", "id": "nova-scorpion-venom", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Void Wasp Venom", "cl6id": "void_wasp_venom", "kind": "gear", "id": "void-wasp-venom", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Naga Venom", "cl6id": "naga_venom", "kind": "gear", "id": "naga-venom", "set": {"usage": "carried"}, "gen": "slot"},
-  {"cl6": "Ceramic/Plasteel Components", "cl6id": "ceramic_components", "kind": "gear", "id": "ceramic-components", "set": {"usage": "enhancement"}, "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_CLOSE_COMBAT", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_RANGED", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_FIREARMS", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_SPECIAL", "group": "1"}}], "gen": "slot"}
+  {"cl6": "Ceramic/Plasteel Components", "cl6id": "ceramic_components", "kind": "gear", "id": "ceramic-components", "set": {"usage": "enhancement"}, "kids": [{"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_CLOSE_COMBAT", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_RANGED", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_FIREARMS", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "valuereq", "type": "ITEM_ATTRIBUTE", "ref": "ITEMTYPE", "value": "WEAPON_SPECIAL", "group": "1"}}], "gen": "slot"},
+  {"cl6": "Archer's Focus", "kind": "adeptpowers", "id": "archers-focus", "set": {"cl6": "archers_focus"}, "gen": "marker"},
+  {"cl6": "Mortimer of London Trafalgar Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-trafalgar-gun-cane", "set": {"cl6": "trafalgar_cane"}, "gen": "marker"},
+  {"cl6": "Tiffany Elegance Bracelet", "kind": "weapons", "id": "tiffani-elegance-dart-bracelet", "set": {"cl6": "tiffany_bracelet_pistol"}, "gen": "marker"},
+  {"cl6": "Tiffany Stinger Bracelet", "kind": "weapons", "id": "tiffani-stinger-dart-bracelet", "set": {"cl6": "tiffany_bracelet_dart"}, "gen": "marker"},
+  {"cl6": "Ceramic/Plasteel Knife", "kind": "weapons", "id": "ceramic-plasteel-knife", "set": {"cl6": "ceramic_knife"}, "gen": "marker"},
+  {"cl6": "Mortimer of London Belgrade Cane", "kind": "weapons", "id": "mortimer-of-london-weapon-cane-belgrade-sword-cane", "set": {"cl6": "belgrade_cane"}, "gen": "marker"},
+  {"cl6": "Black Mamba Venom", "kind": "gear", "id": "black-mamba-venom", "set": {"cl6": "black_mamba"}, "gen": "marker"},
+  {"cl6": "Deathrattle Venom", "kind": "gear", "id": "deathrattle-venom", "set": {"cl6": "deathrattle"}, "gen": "marker"},
+  {"cl6": "Dog Asp Venom", "kind": "gear", "id": "dog-asp-venom", "set": {"cl6": "dog_asp"}, "gen": "marker"},
+  {"cl6": "Developed Immunity", "kind": "qualities", "id": "developed-immunity", "set": {"cl6": "developed_imunity"}, "gen": "marker"},
+  {"cl6": "Family Initiate", "kind": "qualities", "id": "part-of-the-family-initiate", "set": {"cl6": "family_initiate"}, "gen": "marker"},
+  {"cl6": "Family Graduate", "kind": "qualities", "id": "part-of-the-family-graduate", "set": {"cl6": "family_graduate"}, "gen": "marker"},
+  {"cl6": "Family Operative", "kind": "qualities", "id": "part-of-the-family-operative", "set": {"cl6": "family_operative"}, "gen": "marker"},
+  {"cl6": "Family Retired", "kind": "qualities", "id": "part-of-the-family-retired", "set": {"cl6": "family_retired"}, "gen": "marker"},
+  {"cl6": "Family Deserted", "kind": "qualities", "id": "part-of-the-family-deserted", "set": {"cl6": "family_deserted"}, "gen": "marker"}
 ]

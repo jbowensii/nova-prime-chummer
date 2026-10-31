@@ -60,6 +60,8 @@ import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
+import { addGrants, setCollective } from './surge'
+import { dracoformPool, drakeType } from './drake'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
@@ -75,6 +77,10 @@ export type Op =
    *  level or the rated parent. */
   | { op: 'quality'; id: string; uid?: string; level?: number; karma?: number; note?: string }
   | { op: 'quality'; remove: string }
+  /** the SURGE collective (a qualitysets id; '' none) and its choice: its qualities come free (surge.ts setCollective) */
+  | { op: 'collective'; id: string; choice?: string }
+  /** a drake's dracoform adjustment points on an attribute its drake type names (drake.ts dracoformPool); 0 clears */
+  | { op: 'dracoform'; attr: Sr6Attr; points: number }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string }
   | { op: 'pick'; remove: string }
@@ -240,6 +246,7 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
   ch.identity.metatype = id
   b.qualities = b.qualities.filter(q => !q.free)
   for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: m?.traitLevels?.[t] ?? 1, free: true, name: data.qualities[t]?.name })
+  addGrants(b, data) // (the SURGE collective's free qualities, gone with the old traits)
 }
 
 /** Pick the magic kind the method buys: picks it can't have go, as do bought power points (unless it buys them), an
@@ -395,6 +402,22 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.value === null) delete b.awakened
       else b.awakened = op.value
       return OK
+    case 'dracoform': {
+      const { attrs, points } = dracoformPool(drakeType(b, data))
+      if (!attrs.includes(op.attr)) return no('not-dracoform')
+      if (op.points < 0) return no('below-zero')
+      const next = { ...(b.dracoform ?? {}), [op.attr]: op.points }
+      if (Object.values(next).reduce((s, v) => s + (v ?? 0), 0) > points) return no('over-pool')
+      if (!op.points) delete next[op.attr]
+      if (Object.keys(next).length) b.dracoform = next
+      else delete b.dracoform
+      return OK
+    }
+    case 'collective': {
+      if (op.id && !data.entry('qualitysets', op.id)) return no('unknown')
+      setCollective(b, data, op.id, op.choice)
+      return OK
+    }
     case 'quality': {
       if ('remove' in op) {
         const q = b.qualities.find(x => x.uid === op.remove)

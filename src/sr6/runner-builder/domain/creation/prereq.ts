@@ -63,12 +63,17 @@ export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1, 
   if (!tests.length) return { failed, unchecked }
   const { data, b } = c
   const nameOf = (kind: string, id: string, fallback?: string) => data.entry(kind as never, id)?.name ?? fallback
+  // (a line is the reference by its name, or by the Commlink6 id its entry carries: `cl6="skin_link"`)
+  const is = (kind: string, id: string | undefined, fallback: string | undefined, ref: string) =>
+    named(id ? nameOf(kind, id, fallback) : fallback, ref) || (!!id && data.entry(kind as never, id)?.attrs.cl6?.toLowerCase() === ref.toLowerCase())
+  const isLine = (x: Sr6Purchase, ref: string) =>
+    named(x.name ?? entryOf(x, data)?.name, ref) || entryOf(x, data)?.attrs.cl6?.toLowerCase() === ref.toLowerCase()
   const held = (kinds: string[], ref: string) =>
-    b.picks.some(x => kinds.includes(x.kind) && named(nameOf(x.kind, x.id, x.name), ref)) ||
-    (kinds.includes('qualities') && b.qualities.some(q => named(nameOf('qualities', q.id, q.name), ref)))
-  const level = (ref: string) => Math.max(0, ...b.qualities.filter(q => named(nameOf('qualities', q.id, q.name), ref)).map(q => q.level))
+    b.picks.some(x => kinds.includes(x.kind) && is(x.kind, x.id, x.name, ref)) ||
+    (kinds.includes('qualities') && b.qualities.some(q => is('qualities', q.id, q.name, ref)))
+  const level = (ref: string) => Math.max(0, ...b.qualities.filter(q => is('qualities', q.id, q.name, ref)).map(q => q.level))
   const owned = (ref: string) => {
-    const walk = (x: Sr6Purchase): boolean => named(x.name ?? entryOf(x, data)?.name, ref) || x.accessories.some(walk)
+    const walk = (x: Sr6Purchase): boolean => isLine(x, ref) || x.accessories.some(walk)
     return b.purchases.some(walk)
   }
   const skillRank = (ref: string) => {
@@ -76,11 +81,9 @@ export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1, 
     // rank plus the bonuses the build already computes (augmentations, qualities); ponytail: before the table's augmented-skill cap
     return s ? s.points + s.karma + augmentBonus(b, data, 'skill', s.id) : 0
   }
-  const powerLevel = (ref: string) =>
-    Math.max(0, ...b.picks.filter(x => x.kind === 'adeptpowers' && named(nameOf(x.kind, x.id, x.name), ref)).map(x => x.level ?? 1))
+  const powerLevel = (ref: string) => Math.max(0, ...b.picks.filter(x => x.kind === 'adeptpowers' && is(x.kind, x.id, x.name, ref)).map(x => x.level ?? 1))
   const gearCount = (ref: string) => {
-    const walk = (x: Sr6Purchase): number =>
-      (named(x.name ?? entryOf(x, data)?.name, ref) ? (x.rating ?? x.qty) : 0) + x.accessories.reduce((n, a) => Math.max(n, walk(a)), 0)
+    const walk = (x: Sr6Purchase): number => (isLine(x, ref) ? (x.rating ?? x.qty) : 0) + x.accessories.reduce((n, a) => Math.max(n, walk(a)), 0)
     return Math.max(0, ...b.purchases.map(walk))
   }
   // a reference naming nothing in the catalog (a book not imported, a localized or renamed item) can't be told: never a false error

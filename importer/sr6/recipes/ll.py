@@ -8,7 +8,9 @@ import sys
 from dataclasses import replace
 
 from importer.sr6 import catalog
-from importer.sr6.regroup import blocks, norm
+from importer.sr6.ids import slug
+from importer.xmlio import HEAD
+from importer.sr6.regroup import blocks, md_tables, norm
 
 ID, NAME, PUBLISHER, CANON = "LL", "Shadowrun: Lofwyr's Legions", "Catalyst Game Labs", True
 BOOK = "Lofwyr's Legions"
@@ -90,6 +92,120 @@ def prepare(bs):
     return out
 
 
+_ATTR = {
+    "body": "bod",
+    "agility": "agi",
+    "reaction": "rea",
+    "strength": "str",
+    "will": "wil",
+    "willpower": "wil",
+    "logic": "log",
+    "intuition": "int",
+    "charisma": "cha",
+}
+
+
+_DOWNSIDES = re.compile(r"gain the downsides (.+?) when in dracoform, and (.+?) in both forms", re.I)
+
+
+def _named(entries, name):
+    """The id of the entry of this book `name` names: the same name, or one whose words open or close the other's
+    (`Natural Armor` is the drake powers' `Armor`; `Magical Defenses` is `Magical Defenses (Eastern Drake)`), else
+    the name as an id."""
+    n = norm(re.sub(r"\s*\([^()]*\)\s*$", "", name))
+    for i, other in entries:
+        o = norm(re.sub(r"\s*\([^()]*\)\s*$", "", other))
+        if n == o:
+            return slug(name)  # (the power itself: `Elemental Attack (Fire)` is one of its kinds)
+        if o and (n.endswith(" " + o) or n.startswith(o + " ") or o.startswith(n + " ")):
+            return i
+    return slug(name)
+
+
+def drake_types(bs, powers=(), qualities=()):
+    """The four drake types (`basic dracoform bonuses`, p. 16; Commlink6's draketypes) as granted qualities a Drake
+    picks, each with a `dracoform` effect on the attributes its adjustment points (the header's pool) may raise and a
+    `grant` effect for each basic and special power (powers: this book's critter powers, (id, name)) and for the
+    downsides the Drake quality names (`gain the downsides Unsteady Hands, Memorable, and Misshapen when in dracoform,
+    and Most Wanted in both forms`; qualities: this book's, (id, name)). A catalog of them, else None."""
+    cat = catalog.Catalog(ID, ID.lower(), BOOK)
+    down = []
+    for b in bs:
+        if m := _DOWNSIDES.search(" ".join(b.text.split())):
+            for part, when in ((m.group(1), "dracoform"), (m.group(2), "")):
+                down += [(x.strip(), when) for x in re.split(r",\s*(?:and\s+)?|\s+and\s+", part) if x.strip()]
+    for b in bs:
+        for header, rows in md_tables(b.text):
+            if len(header) < 4 or norm(header[0]) != "type" or "dracoform" not in norm(header[1]):
+                continue
+            pool = (re.search(r"\((\d+)\)", header[1]) or [None, "6"])[1]
+            for r in rows:
+                attrs = [_ATTR[w] for w in re.findall(r"[a-z]+", r[1].lower()) if w in _ATTR]
+                effects = [("effect", {"target": f"attr:{a}", "op": "dracoform", "value": pool}, None) for a in attrs]
+                effects += [
+                    (
+                        "effect",
+                        {"target": f"critter-power:{_named(powers, p.strip())}", "op": "grant", "value": "1"},
+                        None,
+                    )
+                    for p in f"{r[2]},{r[3]}".split(",")
+                    if p.strip()
+                ]
+                effects += [
+                    (
+                        "effect",
+                        {
+                            "target": f"quality:{_named(qualities, q)}",
+                            "op": "grant",
+                            "value": "1",
+                            **({"when": when} if when else {}),
+                        },
+                        None,
+                    )
+                    for q, when in down
+                ]
+                cat.add(
+                    "qualities",
+                    r[0].strip(),
+                    max(1, b.page - PAGE_OFFSET),
+                    {
+                        "kind": "positive",
+                        "karma": "0",
+                        "granted": "true",
+                        "category": "Drake type",
+                        "dracoform": " ".join(attrs),
+                    },
+                    effects,
+                    "",
+                    split=False,
+                )
+    return cat if cat.entries["qualities"] else None
+
+
+def _entries(xml):
+    """(id, name) of a catalog file's entries."""
+    return re.findall(r'<\w+ id="([^"]+)"[^>]*><name>([^<]*)</name>', xml or "")
+
+
 def extract(regrouped, ctx=None):
-    """Read the book's regrouped blocks into a catalog Result."""
-    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])
+    """Read the book's regrouped blocks into a catalog Result; the drake types (drake_types) join its qualities, and
+    the Drake quality picks one."""
+    from lxml import etree
+
+    bs = prepare(blocks(regrouped))
+    res = catalog.read(bs, ctx, sys.modules[__name__])
+    types = drake_types(bs, _entries(res.files.get("critterpowers.xml")), _entries(res.files.get("qualities.xml")))
+    if types and res.files.get("qualities.xml"):
+        root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", res.files["qualities.xml"]).encode("utf8"))
+        have = {e.get("id") for e in root if isinstance(e.tag, str)}
+        for e in etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", types.xml("qualities")).encode("utf8")):
+            if isinstance(e.tag, str) and e.get("id") not in have:
+                root.append(e)
+        drake = next((e for e in root if isinstance(e.tag, str) and e.findtext("name") == "Drake"), None)
+        if drake is not None and drake.find("choice") is None:
+            c = etree.Element("choice", {"kind": "quality", "category": "Drake type", "count": "1"})
+            text = drake.find("text")
+            drake.insert(list(drake).index(text) if text is not None else len(drake), c)
+        lead = re.match(r"(?:<\?xml[^>]*\?>\s*)?((?:<!--.*?-->\s*)*)", res.files["qualities.xml"], re.S).group(1)
+        res.files["qualities.xml"] = HEAD + lead + etree.tostring(root, encoding="unicode").rstrip("\n") + "\n"
+    return res

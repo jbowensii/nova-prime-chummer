@@ -77,6 +77,7 @@ export function picksFor(kind: MagicKind): Record<PickKind, boolean> {
     metamagics: k.spells || k.powers,
     adeptpowers: k.powers,
     datastructures: k.resonance,
+    critterpowers: true, // (an aware drake's dracogenesis powers, any magic kind: review's drake.powers)
   }
 }
 
@@ -424,6 +425,13 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
             e = c.entries[k].get(p.id)
           if (e && !nameIndex.has(`${k}/${n}`)) nameIndex.set(`${k}/${n}`, e)
           if (e && !nameIndex.has(`/${n}`)) nameIndex.set(`/${n}`, e)
+        }
+      // (a Commlink6 id the importer carried, `cl6="mtoc_mark1"`, answers too: a Commlink6 reference to the entry)
+      for (const [k, map] of Object.entries(c.entries))
+        for (const e of map.values()) {
+          const n = e.attrs.cl6 && normName(e.attrs.cl6.replace(/_/g, ' '))
+          if (n && !nameIndex.has(`${k}/${n}`)) nameIndex.set(`${k}/${n}`, e)
+          if (n && !nameIndex.has(`/${n}`)) nameIndex.set(`/${n}`, e)
         }
     }
     return nameIndex.get(`${kind ?? ''}/${normName(name)}`) ?? (kind ? undefined : nameIndex.get(`/${normName(name)}`))

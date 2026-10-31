@@ -609,6 +609,8 @@ class Catalog:
             attrs = {**(attrs or {}), **flags.spell((attrs or {}).get("category"), text)}
         elif kind == "qualities":  # one the six-quality limit doesn't count (flags.py)
             attrs = {**(attrs or {}), **flags.uncounted(text)}
+            if flags.specified(text):  # (given only by another quality: granted, Karma 0 when it prints none)
+                attrs = {**attrs, "karma": attrs.get("karma") or "0", "granted": "true"}
         elif kind == "traditions":  # the attribute it resists Drain with besides Willpower (flags.py)
             attrs = {**(attrs or {}), **flags.tradition(text)}
         elif kind == "martialtechniques":  # the prerequisites its closing line prints (flags.py)

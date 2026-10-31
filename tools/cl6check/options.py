@@ -31,15 +31,26 @@ NUM = re.compile(r"[+-]?\d+(?:\.\d+)?")
 YES = ("y", "yes", "true", "1")
 
 
-def split(name, labels):
+def _words(s):
+    return set(re.findall(r"[a-z0-9]+", (s or "").casefold()))
+
+
+def split(name, labels, record="", siblings=()):
     """Whether our entry is one of a book's entries per option or variant: its name holds one's name, or its bracket's
-    words are all words of one (`Arm (synthetic)` of Commlink6's `Full, synthetic`)."""
+    words are all words of one (`Arm (synthetic)` of Commlink6's `Full, synthetic`), or a word its name adds to the
+    record's is one's (`MEMS medkit pouch (rank 4-6)` of Medkit Pouch's `for Rtg 4-6`), or an entry of the same name
+    and more holds one's name (`Concealable ammo pouch (sealed)` beside `Concealable ammo pouch`)."""
     labels = [x for x in labels if x]
     if ours.carries(name, labels):
         return True
     m = re.search(r"\(([^()]*)\)\s*$", name or "")
-    words = set(re.findall(r"[a-z0-9]+", m.group(1).casefold())) if m else set()
-    return bool(words) and any(words <= set(re.findall(r"[a-z0-9]+", x.casefold())) for x in labels)
+    words = _words(m.group(1)) if m else set()
+    if words and any(words <= _words(x) for x in labels):
+        return True
+    extra = _words(name) - _words(record) if record else set()
+    if extra and any(extra & _words(x) for x in labels):
+        return True
+    return any(x.casefold().startswith(f"{(name or '').casefold()} ") and ours.carries(x, labels) for x in siblings)
 
 
 def _avail(expr, level):
@@ -78,7 +89,7 @@ def _value(expr, table, level):
     return None if v is None else (str(int(v)) if isinstance(v, float) and v.is_integer() else str(v))
 
 
-def option_kids(rec, name):
+def option_kids(rec, name, siblings=()):
     """The `<option>`s and their effects of the record's SUBSELECT picks; [] for an entry the book split by option."""
     kids = []
     for ch in rec["el"].iter("choice"):
@@ -87,12 +98,20 @@ def option_kids(rec, name):
         ref = ch.get("ref") or "option"
         subs = [s for s in ch if s.tag == "subOption"]
         label = {s.get("id"): rec.get("options", {}).get(f"{ref}.{s.get('id')}", s.get("id")) for s in subs}
-        if not subs or split(name, label.values()):
+        if not subs or split(name, label.values(), rec.get("name", ""), siblings):
             continue
+        # (an item whose cheapest option costs its whole price states the options' prices, not what they add: Arrow
+        # Tap's 2000 and 3500 at 2000; they add 0 and 1500)
+        costs = [float(s.get("cost")) for s in subs if NUM.fullmatch(s.get("cost") or "")]
+        base = rec["attrs"].get("price") if rec.get("tag") != "quality" else None
+        less = float(base) if base and NUM.fullmatch(base) and costs and min(costs) == float(base) > 0 else 0
         for s in subs:
             a = {"choice": ref, "id": s.get("id"), "name": label[s.get("id")]}
-            if (s.get("cost") or "0") not in ("0", ""):
-                a["cost"] = s.get("cost")
+            cost = s.get("cost") or "0"
+            if less and NUM.fullmatch(cost):
+                cost = _value(str(float(cost) - less), None, None)
+            if cost not in ("0", ""):
+                a["cost"] = cost
             price, avail = canon.attrdef(s, "PRICE")[0], canon.attrdef(s, "AVAILABILITY")[0]
             if price not in (None, "0"):
                 a["price"] = price
@@ -105,12 +124,12 @@ def option_kids(rec, name):
     return kids
 
 
-def variant_kids(rec, name, level):
+def variant_kids(rec, name, level, siblings=()):
     """The record's `<variant>`s with their own price, essence and availability (and their effects); None for a record
     with none or an entry the book split by variant."""
     el, names = rec["el"], rec.get("variants") or {}
     vs = canon._own(el, "variant")  # pylint: disable=protected-access  # (canon's own-children reader)
-    if not vs or split(name, [names.get(v.get("id"), v.get("id")) for v in vs]):
+    if not vs or split(name, [names.get(v.get("id"), v.get("id")) for v in vs], rec.get("name", ""), siblings):
         return None
     req = (rec["attrs"].get("reqVariant") or "").casefold() in YES
     kids = []
@@ -135,10 +154,48 @@ def variant_kids(rec, name, level):
     return kids
 
 
-def matches(runs):
-    """{(src, kind, cl6 id lower): {(kind, our id)}} from the checker's report of the import
-    (`<runs>-report/cl6-diffs.csv`)."""
+def pick_names(rec):
+    """Every option and variant name the record gives (its picks' and its variants')."""
+    names = rec.get("variants") or {}
+    vs = canon._own(rec["el"], "variant")  # pylint: disable=protected-access  # (canon's own-children reader)
+    out = [names.get(v.get("id"), v.get("id")) for v in vs]
+    for ch in rec["el"].iter("choice"):
+        if ch.get("type") == "SUBSELECT":
+            ref = ch.get("ref") or "option"
+            out += [rec.get("options", {}).get(f"{ref}.{s.get('id')}", s.get("id")) for s in ch if s.tag == "subOption"]
+    return [x for x in out if x]
+
+
+def book_split(rec, idx, kind):
+    """The entries a book printed one per option or variant of the record under its own shorter name (`Rapid Transit
+    (basic)` … `(diamond)` of Commlink6's `AV Rapid Transit`): of the record's source and kind, an entry whose name less
+    its bracket ends the record's name and whose bracket is one of the record's option or variant names. [] else."""
+    words, names = _words(rec["name"]), pick_names(rec)
+    src = canon.canonical(rec)["src"]
+    out = []
+    for (s, k, oid), e in idx.items():
+        m = re.fullmatch(r"(.+?)\s*\(([^()]*)\)\s*", e["name"])
+        if s != src or k != kind or not m or not names:
+            continue
+        base = re.findall(r"[a-z0-9]+", m.group(1).casefold())
+        if (
+            base
+            and rec["name"].casefold().split()[-len(base) :] == base
+            and base[0] in words
+            and split(e["name"], names)
+        ):
+            out.append((s, k, oid))
+    return out
+
+
+def matches(recs, runs):
+    """{(src, kind, cl6 id lower): {(kind, our id)}}: the checker's matcher (markers.pairs: every matched record) and
+    the report of the import (`<runs>-report/cl6-diffs.csv`, when there is one)."""
+    from tools.cl6check.markers import pairs  # pylint: disable=import-outside-toplevel  # (markers imports split)
+
     out = defaultdict(set)
+    for rec, o in pairs(recs, runs):
+        out[o["src"], canon.canonical(rec)["kind"], rec["id"].lower()].add((o["kind"], o["id"]))
     p = Path(f"{str(runs).rstrip('/').rstrip(chr(92))}-report") / "cl6-diffs.csv"
     if p.exists():
         with open(p, encoding="utf-8-sig", newline="") as f:
@@ -155,7 +212,7 @@ def main(argv):
     recs, _ = reader.read(reader.find_jar(jar))
     idx = ours.index(runs)
     held = ours.kinds(idx)
-    found = matches(runs)
+    found = matches(recs, runs)
     tables = {
         p.stem: json.loads(p.read_text(encoding="utf8")) for p in OVERRIDES.glob("*.json") if ".book" not in p.name
     }
@@ -167,6 +224,13 @@ def main(argv):
     named = defaultdict(list)  # (an entry of ours by its own name: the last fallback)
     for src, kind, oid in idx:
         named[src, idx[src, kind, oid]["name"].casefold()].append((kind, oid))
+    sibs = defaultdict(list)  # (the entries of a source and kind, by first word: split entries' siblings)
+    for src, kind, oid in idx:
+        sibs[src, kind, (idx[src, kind, oid]["name"].split() or [""])[0].casefold()].append(idx[src, kind, oid]["name"])
+
+    def siblings(e):
+        return sibs[e["src"], e["kind"], (e["name"].split() or [""])[0].casefold()]
+
     stats = defaultdict(int)
     left = []
     for rec in recs:
@@ -181,11 +245,24 @@ def main(argv):
             found.get((c["src"], c["kind"], rec["id"].lower()))
             or {t for t in by_name.get((c["src"], rec["name"].casefold()), []) if t[0] == c["kind"]}
             or {t for t in named.get((c["src"], rec["name"].casefold()), []) if t[0] == c["kind"]}
+            or {(k, oid) for _s, k, oid in book_split(rec, idx, c["kind"])}
         )  # (a name fallback only in Commlink6's own kind: a program Armor is no critter power)
+        priced = any(True for _ in el.iter("subOption")) or (rec["attrs"].get("reqVariant") or "").casefold() in YES
         if not targets:
-            if any(True for _ in el.iter("subOption")) or (rec["attrs"].get("reqVariant") or "").casefold() in YES:
+            if priced:
                 left.append(f"{c['src']} {c['kind']} {rec['id']} ({rec['name']})")
             continue
+        keys = [
+            (t[1].split(".", 1)[0], ours.kind_of(held, t[1].split(".", 1)[0], t[1], t[0]) or t[0], t[1])
+            for t in targets
+        ]
+        if priced and all(
+            not option_kids(rec, idx[k]["name"], siblings(idx[k]))
+            and variant_kids(rec, idx[k]["name"], None, siblings(idx[k])) is None
+            for k in keys
+            if k in idx
+        ):
+            stats["split by the book"] += 1  # (our entries are one per option or variant: nothing to pick)
         for kind, oid in sorted(targets):
             src, bare = oid.split(".", 1)
             kind = ours.kind_of(held, src, oid, kind) or kind
@@ -194,8 +271,8 @@ def main(argv):
                 continue
             level = ours.rating_range(e.get("attrs", {}).get("rating"))
             level = level[0] if level and level[0] == level[1] else None
-            new = option_kids(rec, e["name"])
-            vk = variant_kids(rec, e["name"], level)
+            new = option_kids(rec, e["name"], siblings(e))
+            vk = variant_kids(rec, e["name"], level, siblings(e))
             if not new and not vk:
                 continue
             rows = tables[src]

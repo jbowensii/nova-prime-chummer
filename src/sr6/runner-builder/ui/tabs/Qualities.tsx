@@ -21,7 +21,9 @@ import { flag, num } from '../../../table-setup/domain/creation'
 import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domain/data'
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../domain/creation/infected'
 import { infectedOff } from '../../domain/assets/critterware'
-import { n, useSr6Editor } from '../editor'
+import { dracoformPool, dracogenesisRank, drakeGrants, drakeKind, drakeType, isDracogenesis } from '../../domain/creation/drake'
+import { collectiveOptions, collectives, SURGE_CAP, surgeKarma } from '../../domain/creation/surge'
+import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { House, OptionFields, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 
@@ -30,6 +32,7 @@ export function QualitiesTab() {
   const b = ch.build
   const [picking, setPicking] = useState<'positive' | 'negative' | null>(null)
   const { pos, neg } = qualityKarma(b, data, cr)
+  const powers = b.picks.filter(x => x.kind === 'critterpowers')
   const cap = num(cr, 'qualityNetBonusCap'),
     most = num(cr, 'qualityMaxCount')
   const all = Object.values(data.qualities)
@@ -213,6 +216,106 @@ export function QualitiesTab() {
       <button className="btn" onClick={() => setPicking('negative')}>
         Add a negative quality…
       </button>
+      {/* a drake's type (the Drake quality's pick, a granted quality) and its dracoform adjustment points (LL p. 16; drake.ts) */}
+      {drakeType(b, data) && (
+        <>
+          <h3>Dracoform: {drakeType(b, data)!.name}</h3>
+          <p className="muted">
+            Gains{' '}
+            {drakeGrants(data, drakeType(b, data))
+              .map(g => `${g.name}${g.when ? ` (${g.when})` : ''}`)
+              .join(', ')}
+          </p>
+          <p>
+            Adjustment points: {Object.values(b.dracoform ?? {}).reduce((s, v) => s + (v ?? 0), 0)} of {dracoformPool(drakeType(b, data)).points}{' '}
+            {dracoformPool(drakeType(b, data)).attrs.map(a => (
+              <label key={a} className="inline">
+                {ATTR_NAMES[a]}{' '}
+                <Stepper
+                  label={`Dracoform ${ATTR_NAMES[a]}`}
+                  value={b.dracoform?.[a] ?? 0}
+                  min={0}
+                  max={dracoformPool(drakeType(b, data)).points}
+                  onChange={v => act({ op: 'dracoform', attr: a, points: v })}
+                />
+              </label>
+            ))}
+          </p>
+        </>
+      )}
+      {/* an aware drake's dracogenesis powers (Commlink6's Dracoform page: 5 + n Karma for the nth; drake.ts) */}
+      {(drakeKind(b, data) === 'aware' || powers.length > 0) && (
+        <>
+          <h3>Dracogenesis powers</h3>
+          <p className="muted">
+            Rank {dracogenesisRank(b)}: the next power costs {5 + dracogenesisRank(b) + 1} karma.
+          </p>
+          {powers.length > 0 && (
+            <ul>
+              {powers.map(x => (
+                <li key={x.uid}>
+                  <Sr6Ref kind="critterpowers" id={x.id}>
+                    {data.entry('critterpowers', x.id)?.name ?? x.name ?? x.id}
+                  </Sr6Ref>{' '}
+                  <button className="btn small quiet" aria-label={`Remove ${x.name ?? x.id}`} onClick={() => act({ op: 'pick', remove: x.uid })}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <select
+            aria-label="Add a dracogenesis power"
+            value=""
+            onChange={e => e.target.value && act({ op: 'pick', kind: 'critterpowers', id: e.target.value })}
+          >
+            <option value="">Add a dracogenesis power…</option>
+            {(data.kindEntries?.('critterpowers') ?? [])
+              .filter(e => isDracogenesis(e) && !powers.some(x => x.id === e.id))
+              .sort((x, y) => x.name.localeCompare(y.name))
+              .map(e => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+          </select>
+        </>
+      )}
+      {/* SURGE (Sixth World Companion; Commlink6's SURGE page): one collective, its qualities free, and the metagenic Karma */}
+      {collectives(data).length > 0 && (
+        <>
+          <h3>SURGE</h3>
+          <p>
+            <label>
+              Collective{' '}
+              <select value={b.surgeCollective ?? ''} onChange={e => act({ op: 'collective', id: e.target.value })}>
+                <option value="">None</option>
+                {[...collectives(data)]
+                  .sort((x, y) => x.name.localeCompare(y.name))
+                  .map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.attrs.karma ?? '?'} karma)
+                    </option>
+                  ))}
+              </select>
+            </label>{' '}
+            {collectiveOptions(data.entry('qualitysets', b.surgeCollective ?? '')).length > 0 && (
+              <label>
+                Choice{' '}
+                <select value={b.surgeChoice ?? ''} onChange={e => act({ op: 'collective', id: b.surgeCollective!, choice: e.target.value })}>
+                  <option value="">Choose…</option>
+                  {collectiveOptions(data.entry('qualitysets', b.surgeCollective ?? '')).map(o => (
+                    <option key={o} value={o}>
+                      {o.replace(/_/g, ' ')}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}{' '}
+            · Metagenic qualities: <b className={surgeKarma(b, data) > SURGE_CAP ? 'err' : ''}>{surgeKarma(b, data)}</b> of {SURGE_CAP} karma
+          </p>
+        </>
+      )}
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         {/* (owner's decision 4: a poser quality is offered only to the metatypes its description names) */}
         {picking && (
