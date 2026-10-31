@@ -14,6 +14,7 @@ import {
   entryBonuses,
   entryOf,
   hostBonus,
+  priced,
   ratingOf,
   skillRank,
   specBonus,
@@ -27,9 +28,9 @@ import { makeProvider } from './providers'
 import { cyberlimbRuleBonus, essenceSocialPenalty, physicalRoundsDown } from './rule-markers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
-import { choiceOptions, noteAttr } from './choices'
+import { choiceOptions, noteAttr, noteSkill } from './choices'
 import { categoryOf, entryLabel } from '../../../catalog/domain/categories'
-import { weaponChanges, weaponOf, type WeaponStats } from '../assets/weapons'
+import { ammoLoadText, ammoLoads, bandsText, meleeAlternate, weaponChanges, weaponOf, type WeaponStats } from '../assets/weapons'
 
 export interface Sr6Pool {
   skill: string
@@ -74,6 +75,16 @@ export interface Sr6WeaponValues {
   stats: WeaponStats
   /** base -> modified in words, `AR 9/9/7 → 10/10/8 (11/11/9)` (weaponChanges) */
   changes: string[]
+  /** with each ammunition type the runner owns loaded, the stats it changes (`APDS: AR 10/10/8, DV 3P`; ammoLoads) */
+  ammo: string[]
+  /** a firearm with Melee Hardening used as a club (meleeAlternate): `as a club: DV 3S, AR 7/—/—/—/—, pool 9` */
+  melee?: string
+}
+/** A dice pool for a vehicle or drone test the rigger rolls: driving it by hand, or jumped in (mental attributes replace
+ *  the physical ones, CRB p. 197) */
+export interface Sr6RigPool {
+  test: string
+  pool: number
 }
 export interface Sr6Derived {
   attrs: Record<Sr6Attr, { natural: number; augmented: number }>
@@ -90,6 +101,9 @@ export interface Sr6Derived {
   monitors: { physical: number | null; stun: number | null; overflow: number }
   /** the boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes) */
   monitorBonus: { physical: number; stun: number }
+  /** the rigger's own pools for a vehicle or drone (CRB pp. 197-201): by hand (Piloting + Reaction, Engineering + Logic for
+   *  a mounted weapon) and jumped in (Piloting + Intuition, Stealth + Logic …); a skill they can't roll is left out */
+  rigging: { driving: Sr6RigPool[]; jumpedIn: Sr6RigPool[] }
   defenseRating: number
   /** Charisma + the Social modifiers of the armor worn (Firing Squad p. 50) */
   socialRating: number
@@ -274,6 +288,9 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       : b.qualities
           .filter(q => data.sameFamily('qualities', q.id, toughId))
           .reduce((t, q) => t + (data.levelOf(data.entry('qualities', q.id)) ?? q.level), 0)) + augmentBonus(b, data, 'physical', undefined, on)
+  // Body Shop p. 28: exoware adds a Physical box for every full point of Essence it costs, and −4 Social Rating
+  const exo = b.purchases.filter(x => x.kind === 'augmentations' && /^exo/i.test(x.grade ?? ''))
+  const exoBoxes = Math.floor(exo.reduce((t, x) => t + (priced(x, data, cr).essence ?? 0), 0) + 1e-9)
   // Neoteny (PHYSICAL_ROUND_DOWN): the Body half rounds down
   const physical = physicalRoundsDown(b, data) && base !== undefined && div ? base + Math.floor(A('bod') / div) : monitor(A('bod'))
   const stunBase = monitor(A('wil')),
@@ -366,6 +383,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
         base: w.base,
         stats: st,
         changes: weaponChanges(w),
+        ammo: ammoLoads(x, data, b.purchases, skill).map(ammoLoadText),
       }
       if (skill) {
         out.skill = skill
@@ -381,7 +399,21 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
         if (out.pool !== undefined) out.pool += st.pool
       }
       if (melee && highStrength) out.dvBonus = highStrength
+      const alt = meleeAlternate(x, data)
+      if (alt) {
+        const pl = pools.find(q => q.skill === noteSkill(data, alt.skill)),
+          sAdd = flag(cr, 'meleeArStrength') ? A(meleeAttr) : 0
+        const p = pl && ((pl.spec && specFits(pl.spec, alt.spec) ? pl.specDp : pl.more?.find(m => specFits(m.spec, alt.spec))?.dp) ?? pl.dp)
+        out.melee = `as a club: DV ${alt.dv}, AR ${bandsText(alt.ar.map(v => (v === null ? null : v + sAdd)))}${p !== undefined ? `, pool ${p}` : ''}`
+      }
       return out
+    })
+
+  // a rigger pool: the skill's pool with its attribute swapped for the one the test uses (the jumped-in one, p. 197)
+  const rig = (ts: [string, string, Sr6Attr][]): Sr6RigPool[] =>
+    ts.flatMap(([test, skill, attr]) => {
+      const pl = pools.find(q => q.skill === noteSkill(data, skill))
+      return pl ? [{ test, pool: Math.max(0, pl.dp - A(pl.attr as Sr6Attr) + A(attr)) }] : []
     })
 
   // CRB Hong Kong p. 94: base unarmed damage 2S (unarmedDV); Physical with Dermal Deposits (p. 71) or an effect that says
@@ -454,14 +486,29 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     ...(kind.spells ? { astralInit: { base: A('log') + A('int'), dice: capDice(need('astralInitiativeDice') ?? null) } } : {}),
     // CRB Hong Kong p. 121: dead at (Body × 2) boxes of Overflow (overflowPerBody), plus what adds to it (Will to Live)
     monitors: {
-      physical: physical === null ? null : floor(physical + tough),
+      physical: physical === null ? null : floor(physical + tough + exoBoxes),
       stun: stunBase === null ? null : floor(stunBase + stunPlus),
       overflow: A('bod') * (need('overflowPerBody') ?? 0) + augmentBonus(b, data, 'overflow', undefined, on),
     },
-    monitorBonus: { physical: tough, stun: stunPlus },
+    monitorBonus: { physical: tough + exoBoxes, stun: stunPlus },
+    rigging: {
+      driving: rig([
+        ['Piloting', 'Piloting', 'rea'],
+        ['Gunnery', 'Engineering', 'log'],
+        ['Perception', 'Perception', 'int'],
+      ]),
+      jumpedIn: rig([
+        ['Piloting', 'Piloting', 'int'],
+        ['Gunnery', 'Engineering', 'log'],
+        ['Perception', 'Perception', 'int'],
+        ['Stealth', 'Stealth', 'log'],
+        ['Electronic Warfare', 'Cracking', 'log'],
+      ]),
+    },
     defenseRating: defense,
     // Firing Squad p. 50, Smooth Operations p. 127: Social Rating = CHA + the Social modifiers of the armor worn
-    // (less Commlink6's Essence-loss penalty, which Empathic Retention softens: rule-markers.ts essenceSocialPenalty)
+    // (less the Essence-loss penalty on every augmented runner, as Commlink6 does — owner ruling 2, 2026-10-31: a
+    // standard book rule; Empathic Retention softens it: rule-markers.ts essenceSocialPenalty)
     socialRating:
       A('cha') -
       essenceSocialPenalty(b, data, budgets.essence.spent) +
@@ -470,7 +517,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
         .reduce(
           (t, x) => t + [x, ...x.accessories].reduce((u, y) => u + (armorSocial(entryOf(y, data)?.attrs.social, ratingOf(y, entryOf(y, data))) ?? 0), 0),
           0,
-        ),
+        ) -
+      (exo.length ? 4 : 0), // (exoware: −4, Body Shop p. 28)
     // CRB p. 67: unarmed Attack Rating = REA + STR (and what adds to it: bone lacing); a weapon's from its catalog line
     // (an effect that sets it, Hardening's 6, is the better of it and REA + STR: an unarmed attack uses the higher; the highest set wins)
     attackRatings: {

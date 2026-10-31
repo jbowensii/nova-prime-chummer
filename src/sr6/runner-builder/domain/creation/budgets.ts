@@ -120,7 +120,8 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     )
   }
   // Commlink6's user flags (AddUpPricesStep): Custom-Fitted adds 7,000¥ per point of Agility and of Strength above 2;
-  // Cheap knockoff adds half the item's price (as Commlink6 computes it: owner to confirm the sign)
+  // Cheap knockoff costs half price (owner ruling 1, 2026-10-31, overriding Commlink6, which adds half): half back
+  let knockOff = 0
   for (const x of b.purchases) {
     if (x.flags?.includes('CUSTOM_FITTED'))
       add(
@@ -129,8 +130,12 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
         x.qty * 7000 * (Math.max(0, attrRating(b, 'agi', p) - 2) + Math.max(0, attrRating(b, 'str', p) - 2)),
         'gear',
       )
-    if (x.flags?.includes('CHEAP_KNOCK_OFF'))
-      add(`knockOff:${x.uid}`, `${purchaseName(x, data)}: cheap knockoff`, Math.trunc(priced(x, data, cr).cost / 2), 'gear')
+    if (x.flags?.includes('CHEAP_KNOCK_OFF')) {
+      const half = Math.round(priced(x, data, cr).cost / 2)
+      knockOff += half
+      if (half)
+        breakdown.push({ key: `knockOff:${x.uid}`, label: `${purchaseName(x, data)}: cheap knockoff, half price`, amount: half, sign: 'gain', tab: 'gear' })
+    }
   }
   let fashion = 0
   if (fashionDiscount(b, data)) {
@@ -151,7 +156,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   const spent = breakdown.filter(l => l.sign === 'spend').reduce((t, l) => t + l.amount, 0)
   // the Fashion Influencer discount and the Deck Builder karma are real nuyen back in the pocket, like karma turned into
   // nuyen: add them to what's available
-  return { ...pool(p.nuyen(b) + converted + fashion + deck, spent), breakdown }
+  return { ...pool(p.nuyen(b) + converted + fashion + deck + knockOff, spent), breakdown }
 }
 
 export interface PriceMods {

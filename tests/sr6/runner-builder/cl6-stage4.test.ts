@@ -83,7 +83,7 @@ test('PRICEMOD: a levelled quality’s share times its level, and a ware’s, ad
   expect(line(setup({ metatypeSizePricing: false }), 'sizePricing')).toBeUndefined()
 })
 
-test('user flags: custom-fitted adds 7,000¥ per Agility and Strength point above 2; a knockoff half the price; armor only', () => {
+test('user flags: custom-fitted adds 7,000¥ per Agility and Strength point above 2; a knockoff costs half (owner ruling 1); armor only', () => {
   const s = setup()
   s.b.attributes.agi.points = 3
   s.b.attributes.str.points = 4
@@ -96,7 +96,15 @@ test('user flags: custom-fitted adds 7,000¥ per Agility and Strength point abov
   expect(s.act({ op: 'itemFlag', uid: 'v', flag: 'CHEAP_KNOCK_OFF', on: true })).toEqual({ ok: true })
   const over2 = (k: 'agi' | 'str') => Math.max(0, attrRating(s.b, k, s.p) - 2)
   expect(line(s, 'customFitted:v')?.amount).toBe(7000 * (over2('agi') + over2('str')))
-  expect(line(s, 'knockOff:v')?.amount).toBe(Math.round(Math.trunc(priced(s.b.purchases[0], s.data, s.cr).cost / 2)))
+  // owner ruling 1 (2026-10-31): a knockoff costs half price, a gain line of half the price
+  const vest = priced(s.b.purchases[0], s.data, s.cr).cost
+  expect(line(s, 'knockOff:v')).toMatchObject({ amount: Math.round(vest / 2), sign: 'gain' })
+  const custom = line(s, 'customFitted:v')!.amount
+  s.act({ op: 'itemFlag', uid: 'v', flag: 'CUSTOM_FITTED', on: false })
+  const n = s.nuyen()
+  s.act({ op: 'itemFlag', uid: 'v', flag: 'CHEAP_KNOCK_OFF', on: false })
+  expect(s.nuyen().left - n.left).toBe(-Math.round(vest / 2))
+  expect(custom).toBeGreaterThan(0)
   s.act({ op: 'itemFlag', uid: 'v', flag: 'CUSTOM_FITTED', on: false })
   s.act({ op: 'itemFlag', uid: 'v', flag: 'CHEAP_KNOCK_OFF', on: false })
   expect(s.b.purchases[0].flags).toBeUndefined()

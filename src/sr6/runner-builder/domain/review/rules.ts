@@ -66,6 +66,7 @@ import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
 import { adeptBars, opposite } from '../creation/actions'
 import type { Sr6Entry } from '../../../formats/domain/types'
+import { characterRequirements } from '../creation/prereq'
 import { deriveSr6 } from '../creation/derive'
 import { makeProvider, uncovered, type Provider } from '../creation/providers'
 import { ratingRange } from '../../../catalog/domain/values'
@@ -73,7 +74,7 @@ import { fittedParts, modsOf } from '../assets/vehiclemods'
 import { critterView } from '../assets/critters'
 import { gradeFits, gradeKnown, gradeName } from '../creation/grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from '../../../catalog/domain/categories'
-import { fit, mountSlots, requirementsOf, slotLabel, structureOf } from '../../../catalog/domain/structure'
+import { fit, missingPicks, mountSlots, requirementsOf, slotLabel, structureOf, VARIANT } from '../../../catalog/domain/structure'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from '../creation/infected'
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
@@ -648,6 +649,26 @@ const RULES: Rule[] = [
           ...entryCite(c.data.entry('qualities', q.id)),
         })),
   },
+  // Commlink6's character requirements (behaviour-gaps Stage 3): what the runner must have for a quality, power,
+  // metamagic, echo or piece of gear (another quality, a magic type, a minimum attribute or Essence, a skill rank …)
+  {
+    code: 'prerequisite.character',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const out: Hit[] = []
+      const say = (e: Sr6Entry | undefined, path: string, rating?: number, skip?: string[]) => {
+        if (!e) return
+        const { failed } = characterRequirements(e, c, rating, skip)
+        if (failed.length) out.push({ path, message: `${entryLabel(e)} requires ${failed.join('; ')}, which the runner doesn’t have.`, ...entryCite(e) })
+      }
+      for (const q of c.b.qualities)
+        if (!q.free) say(c.data.entry('qualities', q.id), `qualities.${q.uid}`, q.level, c.data.qualities[q.id]?.metatypes ? ['METATYPE'] : []) // (a metatype list is quality.metatype's)
+      for (const x of c.b.picks) say(c.data.entry(x.kind, x.id), `magic.${x.uid}`, x.level)
+      for (const { x, path } of lines(c.b)) say(entryOf(x, c.data), path, x.rating)
+      return out
+    },
+  },
   {
     code: 'quality.level',
     severity: 'error',
@@ -666,6 +687,31 @@ const RULES: Rule[] = [
             ]
           : []
       }),
+  },
+
+  // a required sub-option or variant left unpicked (Commlink6's SUBSELECT and reqVariant, behaviour-gap plan Stage 2):
+  // the line's price and effects depend on it
+  {
+    code: 'choice.option',
+    severity: 'warning',
+    tab: 'gear',
+    check: c => {
+      const lines: [string, Sr6Entry | undefined, Record<string, string> | undefined][] = [
+        ...c.b.qualities.map(
+          q => [`qualities.${q.uid}`, c.data.entry('qualities', q.id), q.options] as [string, Sr6Entry | undefined, Record<string, string> | undefined],
+        ),
+        ...c.b.purchases.flatMap(function all(x: Sr6Purchase): [string, Sr6Entry | undefined, Record<string, string> | undefined][] {
+          return [[`purchases.${x.uid}`, x.id ? c.data.entry(x.kind, x.id) : undefined, x.options], ...x.accessories.flatMap(all)]
+        }),
+      ]
+      return lines.flatMap(([path, e, o]) =>
+        missingPicks(e, o).map(ch => ({
+          path,
+          message: `${e!.name}: pick its ${ch.ref === VARIANT ? 'variant' : ch.ref.replace(/_/g, ' ')} (${ch.options.map(x => x.label).join(', ')}).`,
+          ...entryCite(e),
+        })),
+      )
+    },
   },
 
   // the Awakened flag overridden by the player (owner, 2026-10-16: always allowed, shown with what it overrides): also
@@ -2022,6 +2068,7 @@ export const CAREER_KEEP = new Set([
   'magic.spellsAllowed',
   'magic.metamagicUser',
   'magic.metamagicCount',
+  'prerequisite.character',
   'martial.category',
   'martial.requires',
   'martial.augmentation',
