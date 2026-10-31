@@ -10,6 +10,7 @@ import { flag, num, str } from '../../../table-setup/domain/creation'
 import { choiceOptions, noteAttr, noteSkill, powerCost, qualityChoice } from '../../domain/creation/budgets'
 import { magicCap } from '../../domain/creation/magic'
 import { MAGIC_KINDS, metamagicFits, pickMaxLevel, picksFor } from '../../../catalog/domain/data'
+import { isAnimalism } from '../../domain/creation/animalism'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { pickFlags } from '../view'
 import { MAGIC_KIND_LABELS, type PickKind, type Sr6Build } from '../../../formats/domain/character'
@@ -77,7 +78,10 @@ export function MagicTab() {
           {/* one metamagic per initiation grade (CRB p. 167): show chosen of owed so the player knows how many to pick */}
           {kind === 'metamagics' && b.initiation > 0 && (
             <span className="muted">
-              {rows.reduce((t, x) => t + (x.level ?? data.levelOf(data.entry('metamagics', x.id)) ?? 1), 0)} of {b.initiation} · {b.initiation} initiation grade
+              {rows
+                .filter(x => !isAnimalism(data.entry('metamagics', x.id)))
+                .reduce((t, x) => t + (x.level ?? data.levelOf(data.entry('metamagics', x.id)) ?? 1), 0)}{' '}
+              of {b.initiation} · {b.initiation} initiation grade
               {b.initiation === 1 ? '' : 's'}
             </span>
           )}
