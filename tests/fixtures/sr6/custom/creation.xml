@@ -8,6 +8,9 @@
   <setting key="oneSkillAtMax" value="false" source="CRB" page="61"/>
   <setting key="restrictMethods" value="false"/>
   <setting key="transhumanism" value="false" source="SWC" page="146"/>
+  <setting key="allowAnimalism" value="true" source="BN" page="21"/>
+  <setting key="animalismMaxAtCreation" value="2" source="BN" page="21"/>
+  <setting key="allowSurge" value="true" source="SWC" page="116"/>
   <setting key="attributeBaseMax" value="6" source="CRB" page="61"/>
   <setting key="skillCap" value="5" source="CRB" page="61"/>
   <setting key="skillCapAptitude" value="6" source="CRB" page="61"/>

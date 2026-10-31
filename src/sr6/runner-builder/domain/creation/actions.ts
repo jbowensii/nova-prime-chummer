@@ -60,7 +60,9 @@ import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
-import { addGrants, setCollective } from './surge'
+import { addGrants, setCollective, surgeAllowed } from './surge'
+import { isAnimalism } from './animalism'
+import { shifterForms, shifterLine } from './drake'
 import { dracoformPool, drakeType } from './drake'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
@@ -79,6 +81,8 @@ export type Op =
   | { op: 'quality'; remove: string }
   /** the SURGE collective (a qualitysets id; '' none) and its choice: its qualities come free (surge.ts setCollective) */
   | { op: 'collective'; id: string; choice?: string }
+  /** the shifter's animal form: a Shifter quality of one form (drake.ts shifterForms); the runner's Shifter line moves to it */
+  | { op: 'shifterForm'; id: string }
   /** a drake's dracoform adjustment points on an attribute its drake type names (drake.ts dracoformPool); 0 clears */
   | { op: 'dracoform'; attr: Sr6Attr; points: number }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
@@ -256,22 +260,23 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
  *  Resonance, as taking the type would). */
 export function setMagic(ch: Sr6Character, kind: MagicKind, data: Sr6Data, _cr: CreationRules, aspectedSkill?: string): void {
   const t = runnerInfected(ch.build, data)?.t
-  infectedTo(ch.build, kind, t ? infectedKind(kind, t.awakens) : kind, aspectedSkill)
+  infectedTo(ch.build, kind, t ? infectedKind(kind, t.awakens) : kind, aspectedSkill, data)
 }
 /** The runner's kind becomes `next`, the method having bought `bought`: infectedFrom keeps the bought kind while an
  *  Infected type made it another (SWC p. 105), and goes when they agree. Shared with career.ts applyAdvance. */
-export function infectedTo(b: Sr6Build, bought: MagicKind, next: MagicKind, aspectedSkill?: string): void {
+export function infectedTo(b: Sr6Build, bought: MagicKind, next: MagicKind, aspectedSkill?: string, data?: Sr6Data): void {
   if (next !== bought) b.infectedFrom = bought
   else delete b.infectedFrom
-  magicKind(b, next, aspectedSkill)
+  magicKind(b, next, aspectedSkill, data)
 }
-function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string): void {
+/** (`data`: an animalism power stays whatever the kind, mundane too: owner ruling 2026-10-31, as Commlink6 has it) */
+function magicKind(b: Sr6Build, kind: MagicKind, aspectedSkill?: string, data?: Sr6Data): void {
   const k = MAGIC_KINDS[kind],
     allowed = picksFor(kind)
   b.magic = kind
   if (kind === 'aspected' && aspectedSkill) b.aspectedSkill = aspectedSkill
   else if (kind !== 'aspected') delete b.aspectedSkill
-  b.picks = b.picks.filter(x => allowed[x.kind])
+  b.picks = b.picks.filter(x => allowed[x.kind] || (x.kind === 'metamagics' && !!data && isAnimalism(data.entry('metamagics', x.id))))
   if (!k.paysPowers) b.powerPointsBought = 0
   if (!k.spells && !k.powers) b.initiation = 0
   if (!k.resonance) b.submersion = 0
@@ -308,7 +313,7 @@ function infect(b: Sr6Build, id: string, data: Sr6Data, cr: CreationRules): Resu
   const bought = boughtKind(b)
   if (cur) b.qualities = b.qualities.filter(q => q !== cur.line)
   if (t) b.qualities.push({ uid: newId(), id, level: 1, name: data.qualities[id]?.name ?? t.name })
-  infectedTo(b, bought, t ? infectedKind(bought, t.awakens) : bought)
+  infectedTo(b, bought, t ? infectedKind(bought, t.awakens) : bought, undefined, data)
   return OK
 }
 
@@ -415,7 +420,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
     }
     case 'collective': {
       if (op.id && !data.entry('qualitysets', op.id)) return no('unknown')
+      if (op.id && !surgeAllowed(cr)) return no('rule-off')
       setCollective(b, data, op.id, op.choice)
+      return OK
+    }
+    case 'shifterForm': {
+      // (the Shifter quality's animal: its line moves to that form's entry, uid kept; owner ruling 2026-10-31)
+      const form = shifterForms(data).find(e => e.id === op.id)
+      if (!form) return no('unknown')
+      const line = shifterLine(b, data)
+      if (line) Object.assign(line, { id: form.id, name: form.name })
+      else b.qualities.push({ uid: newId(), id: form.id, level: 1, name: form.name })
       return OK
     }
     case 'quality': {

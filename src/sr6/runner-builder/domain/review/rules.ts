@@ -62,7 +62,7 @@ import {
   type CreationRules,
 } from '../../../table-setup/domain/creation'
 import { dracoformProblems, drakeKind, isShifter, isShifterAddOn, shifterResonance } from '../creation/drake'
-import { collectiveFits, collectiveGrants, collectiveOptions, SURGE_CAP, surgeKarma } from '../creation/surge'
+import { collectiveFits, collectiveGrants, collectiveOptions, isMetagenic, SURGE_CAP, surgeAllowed, surgeKarma } from '../creation/surge'
 import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnimalism } from '../creation/animalism'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
@@ -575,6 +575,16 @@ const RULES: Rule[] = [
   // SURGE as Commlink6 handles it (CommonQualityGenerator): at most 30 Karma on metagenic qualities picked (a collective's free
   // ones not counted); a collective only for the metatypes it lists, with its choice made; a collective quality the catalog
   // lacks is said
+  // SURGE off at the table (allowSurge: owner ruling 2026-10-31): no metagenic quality nor collective at creation
+  {
+    code: 'quality.surgeOff',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      surgeAllowed(c.cr) || (!c.b.surgeCollective && !c.b.qualities.some(q => !q.free && isMetagenic(c.data.entry('qualities', q.id))))
+        ? null
+        : { message: 'This table does not allow SURGE (metagenic qualities and collectives).' },
+  },
   {
     code: 'quality.surgeCap',
     severity: 'error',
@@ -1167,7 +1177,7 @@ const RULES: Rule[] = [
       // adept powers are adept.ppBudget's
       const allowed = { ...picksFor(c.b.magic), adeptpowers: true }
       return c.b.picks
-        .filter(x => !allowed[x.kind])
+        .filter(x => !allowed[x.kind] && !(x.kind === 'metamagics' && isAnimalism(c.data.entry('metamagics', x.id)))) // (animalism: any kind, owner 2026-10-31)
         .map(x => ({ path: `magic.${x.uid}`, message: `${article(kindLabel(c.b))} ${kindLabel(c.b)} can’t have ${pickName(c, x)}.`, ...CRB(67) }))
     },
   },

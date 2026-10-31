@@ -8,6 +8,8 @@ import type { Sr6Build } from '../../../formats/domain/character'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
+import { flag, type CreationRules } from '../../../table-setup/domain/creation'
+import { baseMetatype } from './infected'
 
 /** The most Karma on metagenic qualities (CL6's fixed 30). */
 export const SURGE_CAP = 30
@@ -93,5 +95,8 @@ export function collectiveFits(b: Sr6Build, data: Sr6Data): boolean {
     .split(',')
     .map(s => normName(s))
     .filter(Boolean)
-  return !list.length || list.includes(normName(data.metatypes[b.metatype]?.name ?? ''))
+  // (a metavariant counts as its base metatype: owner ruling 2026-10-31; Hobgoblin is an ork)
+  return !list.length || [data.metatypes[b.metatype]?.name ?? '', baseMetatype(data, b.metatype)].some(n => list.includes(normName(n)))
 }
+/** The table's SURGE setting (allowSurge, default on): off, no metagenic quality or collective at creation. */
+export const surgeAllowed = (cr: CreationRules) => flag(cr, 'allowSurge') ?? true
