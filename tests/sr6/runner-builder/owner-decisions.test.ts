@@ -183,7 +183,7 @@ test('6 (continued), effects 12: no language above languageMax; the Native one c
   ])
 })
 
-test('effects 15 (house rule, on by default): a troll-sized runner pays 10% more on everything bought, a dwarf-sized one on armor', () => {
+test('effects 15 (book rule, on by default: owner ruling 5): a troll-sized runner pays 10% more on everything bought, a dwarf-sized one on armor', () => {
   const bought = (metatype: string, on = true) => {
     const s = setup({ metatypeSizePricing: on }, { metatype })
     s.b.purchases.push(
@@ -204,7 +204,7 @@ test('effects 15 (house rule, on by default): a troll-sized runner pays 10% more
   expect(bought('x.troll')).toEqual([1210, 'Price modifiers: 10% on everything bought'])
   expect(bought('x.gnome')).toEqual([1140, 'Price modifiers: 10% on armor'])
   expect(bought('x.troll', false)).toEqual([1100, undefined])
-  expect(aboutOf('metatypeSizePricing')).toMatch(/\(house rule\)\.$/)
+  expect(aboutOf('metatypeSizePricing')).toMatch(/\(CRB p\. 64, Sixth World Companion pp\. 91–92\)\.$/) // a book rule (owner ruling 5)
 })
 
 test('9: each augmentation once (its ratings one), a cyberlimb once a body part and side, a choice-naming one per choice', () => {
@@ -403,12 +403,12 @@ test('23, L1, 0 (verified): metatype traits never count toward the six in any me
   expect(b.karmaToNuyen).toBe(0)
 })
 
-test('nuyen overspent (no GM can approve it) names the size pricing house rule when it adds to the cost', () => {
+test('nuyen overspent (no GM can approve it) names the price modifiers when it adds to the cost', () => {
   const message = (on: boolean) => {
     const s = setup({ metatypeSizePricing: on }, { metatype: 'x.troll' })
     s.b.purchases.push({ uid: 's', kind: 'gear', id: 'crb.zap-scope', qty: 50000, accessories: [] })
     return s.v().find(x => x.code === 'nuyen.overspent')?.message
   }
-  expect(message(true)).toMatch(/^Nuyen overspent by [\d,]+¥; the house rule ‘size pricing’ adds [\d,]+¥\.$/)
+  expect(message(true)).toMatch(/^Nuyen overspent by [\d,]+¥; the price modifiers add [\d,]+¥\.$/)
   expect(message(false)).toMatch(/^Nuyen overspent by [\d,]+¥\.$/)
 })

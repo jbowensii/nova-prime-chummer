@@ -5,6 +5,7 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { pool, type Budget } from './providers'
 import { entryOf, priced, round2 } from './purchases'
 import { infectedEssence } from './infected'
+import { activeRules } from './rule-markers'
 
 /** The Essence factor Sensitive System puts on a line (CRB Hong Kong p. 78: doubled for cyberware, bioware and nanoware,
  *  not geneware; sensitiveSystemQuality, sensitiveSystemEssence): 1 without it. */
@@ -23,7 +24,9 @@ export function essenceBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules): Bu
   const all = round2(b.purchases.reduce((t, x) => t + (x.kind === 'critters' ? 0 : priced(x, data, cr).essence * sensitiveFactor(b, data, cr, x)), 0))
   // the Sixth World Companion's Transhumanism (p. 146): each transhumanist grade is an Essence hole of 1.0, and an
   // augmentation's Essence is paid from the hole first
-  const spent = round2(Math.max(0, all - essenceHole(b, cr)))
+  // (Permanent Damage, RULE CANNOT_USE_ESSENCE_HOLE, Body Shop p. 16: no augmentation fills the hole; owner ruling 4)
+  const hole = activeRules(b, data).has('CANNOT_USE_ESSENCE_HOLE') ? 0 : essenceHole(b, cr)
+  const spent = round2(Math.max(0, all - hole))
   // (a Strain II or III Infected starts at Essence 5, the Sixth World Companion p. 106)
   const max = infectedEssence(b, data) ?? n0(cr, 'essence')
   return { ...pool(max, spent), left: round2(max - spent), magicLoss: Math.ceil(spent - 1e-9) }

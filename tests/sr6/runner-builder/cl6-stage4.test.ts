@@ -27,7 +27,10 @@ const EXTRA = [
         q('neoteny', 'Neoteny', rule('PHYSICAL_ROUND_DOWN')) +
         q('business', 'All Business', rule('MAX_3_CONTACT_LOYALTY')) +
         q('empathic', 'Empathic Retention', '', ' perLevel="true" maxLevel="2"') +
-        q('badluck', 'Bad Luck'),
+        q('badluck', 'Bad Luck') +
+        q('damage', 'Permanent Damage', rule('CANNOT_USE_ESSENCE_HOLE')) +
+        q('regrowth', 'Essence Regrowth', rule('ESSENCE_REGROWTH')) +
+        '<quality id="x.feathers" source="CRB" page="1" kind="negative" karma="4"><name>Feathers</name></quality>',
     ),
   },
   {
@@ -37,7 +40,8 @@ const EXTRA = [
       '<augmentation id="x.arm" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Cyberarm (obvious)</name></augmentation>' +
         '<augmentation id="x.leg" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Cyberleg (obvious)</name></augmentation>' +
         '<augmentation id="x.hand" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="0.5" avail="1" cost="10"><name>Cyberhand</name></augmentation>' +
-        '<augmentation id="x.spurs" source="CRB" page="1" type="bioware" category="Bodyware" essence="0.1" avail="1" cost="10"><name>Spurs</name><modifier kind="valmod" type="PRICEMOD" ref="EVERYTHING" value="0.05"/></augmentation>',
+        '<augmentation id="x.spurs" source="CRB" page="1" type="bioware" category="Bodyware" essence="0.1" avail="1" cost="10"><name>Spurs</name><modifier kind="valmod" type="PRICEMOD" ref="EVERYTHING" value="0.05"/></augmentation>' +
+        '<augmentation id="x.cosmetic" source="CRB" page="1" type="cyberware" category="Cosmetic" essence="*" avail="4" cost="*"><name>Metagenic cosmetic alteration</name><flag>NUYEN_COST_KARMA1000</flag></augmentation>',
     ),
   },
   {
@@ -169,4 +173,31 @@ test('omega-grade ware asks for the Bad Luck quality', () => {
   expect(s.codes()).toContain('grade.omegaBadLuck')
   s.quality('badluck')
   expect(s.codes()).not.toContain('grade.omegaBadLuck')
+})
+
+test('owner ruling 4: metagenic cosmetic alteration costs 1,000¥ and 0.1 Essence per Karma of the chosen quality (BS p. 34)', () => {
+  const s = setup()
+  s.b.purchases.push({ uid: 'c', kind: 'augmentations', id: 'x.cosmetic', qty: 1, note: 'Feathers', accessories: [] })
+  expect(priced(s.b.purchases[0], s.data, s.cr)).toMatchObject({ cost: 4000, essence: 0.4, ok: true })
+})
+
+test('owner ruling 4: Permanent Damage fills no Essence hole and needs Essence below 6 (BS p. 16)', () => {
+  const s = setup({ transhumanism: true })
+  s.b.transhuman = 1
+  s.b.purchases.push({ uid: 'l', kind: 'augmentations', id: 'x.hand', qty: 1, accessories: [] }) // 0.5 Essence
+  const spent = () => allBudgets(s.b, s.data, s.cr, s.p).essence.spent
+  expect(spent()).toBe(0)
+  s.quality('damage')
+  expect(spent()).toBe(0.5)
+  expect(s.codes()).not.toContain('quality.permanentDamage')
+  s.b.purchases.length = 0
+  expect(s.codes()).toContain('quality.permanentDamage')
+})
+
+test('owner ruling 4: Essence Regrowth can’t be taken at character creation (BS p. 16)', () => {
+  const s = setup()
+  s.quality('regrowth')
+  expect(s.codes()).toContain('quality.essenceRegrowth')
+  s.ch.finalizedAt = '2026-10-31T00:00:00Z'
+  expect(s.codes()).not.toContain('quality.essenceRegrowth')
 })

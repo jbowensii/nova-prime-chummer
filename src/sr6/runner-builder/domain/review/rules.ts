@@ -833,6 +833,26 @@ const RULES: Rule[] = [
         ? { message: 'Omega-grade ware brings the Bad Luck quality; add it (Body Shop).' }
         : null,
   },
+  // owner ruling 4 (2026-10-31), from the book: Permanent Damage (Body Shop p. 16) can't be taken at Essence 6; Essence
+  // Regrowth (p. 16) can't be taken at character creation
+  {
+    code: 'quality.permanentDamage',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      activeRules(c.b, c.data).has('CANNOT_USE_ESSENCE_HOLE') && c.budgets.essence.spent <= 0
+        ? { message: 'Permanent Damage can’t be taken by a runner with 6 Essence.', source: 'BS', page: 16 }
+        : null,
+  },
+  {
+    code: 'quality.essenceRegrowth',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      !c.ch.finalizedAt && activeRules(c.b, c.data).has('ESSENCE_REGROWTH')
+        ? { message: 'Essence Regrowth can’t be taken at character creation.', source: 'BS', page: 16 }
+        : null,
+  },
   // All Business (SWC p. 135, RULE MAX_3_CONTACT_LOYALTY): no contact's Loyalty above 3
   {
     code: 'contact.allBusiness',
@@ -955,8 +975,8 @@ const RULES: Rule[] = [
     check: c => {
       const hit = over(c.budgets.nuyen, 'Nuyen', '¥'),
         size = c.budgets.nuyen.breakdown?.find(l => l.key === 'sizePricing')?.amount
-      // a GM can't approve this one: name the table's house rule when it is part of the cost (metatypeSizePricing)
-      return hit && size ? { message: `${hit.message.slice(0, -1)}; the house rule ‘size pricing’ adds ${fmt(size)}¥.` } : hit
+      // a GM can't approve this one: name the price modifiers when they are part of the cost (metatypeSizePricing)
+      return hit && size ? { message: `${hit.message.slice(0, -1)}; the price modifiers add ${fmt(size)}¥.` } : hit
     },
   },
   {
