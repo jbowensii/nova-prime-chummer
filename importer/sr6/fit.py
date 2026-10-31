@@ -51,6 +51,7 @@ REQUIRES = {
     "twentyQuestionsKarma": ["twentyQuestions"],
     "stackingAdvantage": ["arDrEdgeGap"],
     "infectedPowersAtCreation": ["infectedAllowed"],
+    "animalismMaxAtCreation": ["allowAnimalism"],
     "strengthDamageStep1": ["highStrengthDamage"],
     "strengthDamageStep2": ["highStrengthDamage"],
     "advance.karmaToNuyenRate": ["workingForTheMan"],

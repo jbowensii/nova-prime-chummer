@@ -9,6 +9,7 @@ import { awakenedFlag, runnerInfected } from '../domain/creation/infected'
 import type {
   PickKind,
   PurchaseKind,
+  Sr6Attr,
   Sr6Character,
   Sr6CritterQuality,
   Sr6Licence,
@@ -20,6 +21,7 @@ import type {
 import { CRITTER_CLASS_LABELS, critterView, isTaught, trainedName } from '../domain/assets/critters'
 import { NPC_STATS } from '../domain/creation/npc'
 import { emulatedPrograms } from '../domain/creation/magic'
+import { animalStats, shifterLine } from '../domain/creation/drake'
 import type { Sr6Entry } from '../../formats/domain/types'
 import type { Sr6Data } from '../../catalog/domain/data'
 import type { Sr6Derived, Sr6Pool } from '../domain/creation/derive'
@@ -113,7 +115,10 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
   const aw = awakenedFlag(b, data),
     yes = (x: boolean) => (x ? 'yes' : 'no'),
     inf = runnerInfected(b, data),
-    stolen = settingQuality(b, cr, 'stolenGearQuality', data)
+    stolen = settingQuality(b, cr, 'stolenGearQuality', data),
+    animal = d.attrs
+      ? animalStats(b, data, Object.fromEntries(Object.entries(d.attrs).map(([k, v]) => [k, v.augmented])) as Record<Sr6Attr, number>)
+      : undefined
   return {
     name: ch.identity.streetName || ch.identity.name || (ch.npc ? 'Unnamed NPC' : 'Unnamed runner'),
     lines,
@@ -163,6 +168,14 @@ export function runnerView({ ch, data, cr, d, career }: Pick<Sr6Ctx, 'ch' | 'dat
             const gs = inf.t.gains.filter(g => g.tag === tag)
             return gs.length ? [`${tag === 'power' ? 'Powers' : 'Weaknesses'}: ${gs.map(g => `${g.name}${g.rating ? ` ${g.rating}` : ''}`).join(', ')}`] : []
           })
+        : []),
+      // (a shifter's animal form beside its metahuman one: drake.ts animalStats, owner 2026-10-31)
+      ...(animal && shifterLine(b, data) === q
+        ? [
+            `Animal form: ${Object.entries(animal.attrs)
+              .map(([a, v]) => `${a.toUpperCase()} ${v}`)
+              .join(', ')}${animal.weapons.length ? `; ${animal.weapons.map(w => `${w.name} ${w.dv}`).join(', ')}` : ''}`,
+          ]
         : []),
       ...(stolen === q ? [`Bounty: ${stolenLeft(b, cr, data, q)} of ${toNuyen(b, cr, data)} karma turned into nuyen not bought off`] : []),
     ],

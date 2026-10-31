@@ -2,7 +2,8 @@
 // animalism for a mundane, a metavariant's SURGE collective, and the shifter's animal form with what the data gives it.
 import { expect, test } from 'vitest'
 import { apply, setMagic } from '../../../src/sr6/runner-builder/domain/creation/actions'
-import { animalForm } from '../../../src/sr6/runner-builder/domain/creation/drake'
+import { animalForm, animalStats } from '../../../src/sr6/runner-builder/domain/creation/drake'
+import { exportSr6Runner } from '../../../src/sr6/foundry/domain/export'
 import { collectiveFits } from '../../../src/sr6/runner-builder/domain/creation/surge'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
 import { blankSr6, type MagicKind } from '../../../src/sr6/formats/domain/character'
@@ -31,8 +32,10 @@ const FILES = [
       '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="qualities" version="1">' +
       '<quality id="zz.tusks" source="ZZ" page="1" kind="positive" karma="8" class="METAGENIC"><name>Tusks</name></quality>' +
       '<quality id="zz.shifter-furry" source="ZZ" page="1" kind="positive" karma="15" cl6="shifter"><name>Shifter (Furry)</name>' +
-      '<modifier kind="itemmod" type="QUALITY" ref="shift"/><modifier kind="itemmod" type="CRITTER_POWER" ref="natural_weapon"/></quality>' +
-      '<quality id="zz.shifter-feathery" source="ZZ" page="1" kind="positive" karma="18" cl6="shifter"><name>Shifter (Feathery)</name></quality>' +
+      '<modifier kind="itemmod" type="QUALITY" ref="shift"/><modifier kind="itemmod" type="CRITTER_POWER" ref="natural_weapon"/>' +
+      '<modifier kind="geardef" id="shifter_weapon" dmg="4P" skill="close_combat" split="shared"/></quality>' +
+      '<quality id="zz.shifter-feathery" source="ZZ" page="1" kind="positive" karma="18" cl6="shifter"><name>Shifter (Feathery)</name>' +
+      '<prerequisite kind="valuereq" type="ATTRIBUTE" ref="BODY" max="3" apply="CHARACTER" split="type.feathery"/></quality>' +
       '<quality id="zz.might" source="ZZ" page="1" kind="positive" karma="8" perLevel="true" maxLevel="4"><name>Shifter Might (Shifter add-on)</name>' +
       '<modifier kind="valmod" type="ATTRIBUTE" ref="STRENGTH" value="1" apply="ANIMAL"/></quality></sr6:data>',
   },
@@ -101,5 +104,20 @@ test('the shifter’s animal form: picked among the Shifter forms, its grants an
   const a = animalForm(b, w.data)
   expect(a.grants).toEqual(['shift', 'natural weapon'])
   expect(a.attrs).toEqual({ str: 1 })
+  expect(a.weapons).toEqual([{ name: 'shifter weapon', dv: '4P', skill: 'close combat' }])
   expect(apply(b, { op: 'shifterForm', id: 'zz.tusks' }, w.data, w.cr)).toEqual({ ok: false, reason: 'unknown' })
+  // (the animal's stat block: the metahuman form's ratings plus the add-ons' animal bonuses; on the sheet and in the export)
+  const base = { bod: 4, agi: 3, rea: 3, str: 5, wil: 2, log: 2, int: 3, cha: 2, edg: 1, mag: 0, res: 0 }
+  expect(animalStats(b, w.data, base)?.attrs).toMatchObject({ bod: 4, str: 6 })
+  const ex = exportSr6Runner(fixtureCatalog(undefined, FILES), w.data, w.cr, ch, { descriptions: false, now: '2026-10-31T00:00:00.000Z', appVersion: 't' })
+  expect(ex.animalForm).toMatchObject({ form: 'Shifter (Furry)', weapons: [{ dv: '4P' }] })
+  expect(ex.animalForm!.attributes.str).toBe(ex.attributes.str.augmented + 1)
+})
+
+test('a Shifter form’s requirements are character prerequisites (feathery: Body at most 3)', () => {
+  const w = world(),
+    ch = runner('adept')
+  apply(ch.build, { op: 'quality', id: 'zz.shifter-feathery' }, w.data, w.cr)
+  ch.build.attributes.bod.karma = 3
+  expect(validateSr6(w.data, w.cr, ch).some(v => v.code === 'prerequisite.character' && /body/i.test(v.message))).toBe(true)
 })

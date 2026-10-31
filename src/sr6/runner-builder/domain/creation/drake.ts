@@ -110,12 +110,27 @@ const ATTR_REF: Record<string, Sr6Attr> = {
 }
 /** The animal form as the data gives it: what the form quality grants (its Commlink6 `itemmod` refs: natural weapon, Shift,
  *  Dual Natured …) and the attribute bonuses the add-ons give the animal (`valmod ATTRIBUTE … apply="ANIMAL"`, × level). */
-export function animalForm(b: Sr6Build, data: Sr6Data): { form?: Sr6Entry; grants: string[]; attrs: Partial<Record<Sr6Attr, number>> } {
+export interface AnimalForm {
+  form?: Sr6Entry
+  grants: string[]
+  attrs: Partial<Record<Sr6Attr, number>>
+  /** its built-in weapons (Commlink6's `<geardef>`: the shifter's 4P unarmed natural weapon) */
+  weapons: { name: string; dv: string; skill?: string }[]
+}
+export function animalForm(b: Sr6Build, data: Sr6Data): AnimalForm {
   const line = shifterLine(b, data),
     form = line && data.entry('qualities', line.id)
-  const grants = (form?.parts ?? [])
-    .filter(p => p.tag === 'modifier' && p.attrs.kind === 'itemmod' && /^(QUALITY|CRITTER_POWER)$/.test(p.attrs.type ?? '') && p.attrs.ref)
-    .map(p => p.attrs.ref.replace(/_/g, ' '))
+  const mods = (form?.parts ?? []).filter(p => p.tag === 'modifier')
+  const grants = [
+    ...new Set(
+      mods
+        .filter(p => p.attrs.kind === 'itemmod' && /^(QUALITY|CRITTER_POWER)$/.test(p.attrs.type ?? '') && p.attrs.ref)
+        .map(p => p.attrs.ref.replace(/_/g, ' ')),
+    ),
+  ]
+  const weapons = mods
+    .filter(p => p.attrs.kind === 'geardef' && p.attrs.dmg)
+    .map(p => ({ name: (p.attrs.id ?? 'weapon').replace(/_/g, ' '), dv: p.attrs.dmg, ...(p.attrs.skill ? { skill: p.attrs.skill.replace(/_/g, ' ') } : {}) }))
   const attrs: Partial<Record<Sr6Attr, number>> = {}
   for (const q of b.qualities.filter(x => isShifterAddOn(data, x.id)))
     for (const p of data.entry('qualities', q.id)?.parts ?? [])
@@ -123,5 +138,17 @@ export function animalForm(b: Sr6Build, data: Sr6Data): { form?: Sr6Entry; grant
         const a = ATTR_REF[p.attrs.ref]
         attrs[a] = (attrs[a] ?? 0) + (Number(p.attrs.value) || 0) * q.level
       }
-  return { ...(form ? { form } : {}), grants, attrs }
+  return { ...(form ? { form } : {}), grants, attrs, weapons }
+}
+/** The animal form's stat block (owner 2026-10-31): each core attribute as the metahuman form has it (`base`: the
+ *  augmented ratings) plus the add-ons' animal bonuses, and its weapons; undefined for a runner who is no shifter. */
+export function animalStats(
+  b: Sr6Build,
+  data: Sr6Data,
+  base: Record<Sr6Attr, number>,
+): { attrs: Record<string, number>; weapons: AnimalForm['weapons'] } | undefined {
+  const a = animalForm(b, data)
+  if (!a.form) return undefined
+  const attrs = Object.fromEntries(Object.values(ATTR_REF).map(k => [k, (base[k] ?? 0) + (a.attrs[k] ?? 0)]))
+  return { attrs, weapons: a.weapons }
 }

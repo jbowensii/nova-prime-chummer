@@ -312,6 +312,7 @@ export function QualitiesTab() {
           </p>
           <p className="muted">
             {animal.grants.length > 0 && `Gives: ${animal.grants.join(', ')}. `}
+            {animal.weapons.length > 0 && `Weapons: ${animal.weapons.map(w => `${w.name} ${w.dv}`).join(', ')}. `}
             {Object.entries(animal.attrs).length > 0 &&
               `Animal form: ${Object.entries(animal.attrs)
                 .map(([a, v]) => `${a.toUpperCase()} +${v}`)

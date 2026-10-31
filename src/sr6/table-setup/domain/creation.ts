@@ -777,6 +777,7 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
   // SWC p. 144: 2 Edge for twice the core rulebook's lead (HK p. 45)
   stackingAdvantage: { requires: ['arDrEdgeGap'] },
   infectedPowersAtCreation: { requires: ['infectedAllowed'] },
+  animalismMaxAtCreation: { requires: ['allowAnimalism'] },
   // SWC p. 150: "add Agility to Attack Rating in place of Strength"
   strengthInCloseCombat: { replaces: ['meleeArStrength'] },
   strengthDamageStep1: { requires: ['highStrengthDamage'] },

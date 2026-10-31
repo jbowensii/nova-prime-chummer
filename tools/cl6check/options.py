@@ -124,6 +124,76 @@ def option_kids(rec, name, siblings=()):
     return kids
 
 
+def _raw(x):
+    return {k: v for k, v in x.attrib.items() if k != "uuid"}
+
+
+def split_kids(rec, name):
+    """For an entry the book split per SUBSELECT option (Bestial Nature's `Shifter (Furry)` … `(Fins)` of Commlink6's
+    one `shifter`, owner ruling 2026-10-31): what that one option is, as the entry's own kids, each marked `split`
+    (`<ref>.<id>`, or `shared`): the option's modifications and its requirements (character prerequisites), and the
+    record's own modifications and built-in gear (`<geardef>` items: a `modifier kind="geardef"` with the weapon's
+    attributes), which every split entry has. [] when the name carries no single option."""
+    for ch in rec["el"].iter("choice"):
+        if ch.get("type") != "SUBSELECT":
+            continue
+        ref = ch.get("ref") or "option"
+        subs = [s for s in ch if s.tag == "subOption"]
+        label = {s.get("id"): rec.get("options", {}).get(f"{ref}.{s.get('id')}", s.get("id")) for s in subs}
+        mine = [s for s in subs if ours.carries(name, [label[s.get("id")]])]
+        if len(mine) != 1:
+            continue
+        s, mark = mine[0], f"{ref}.{mine[0].get('id')}"
+        kids = [
+            {"tag": "modifier", "attrs": {"kind": m.tag, **_raw(m), "split": mark}}
+            for m in _mods(s)
+            if m.tag in ("valmod", "checkmod", "itemmod", "allowmod")
+        ]
+        for rq in (x for x in s if x.tag == "requires"):
+            kids += [
+                {"tag": "prerequisite", "attrs": {"kind": q.tag, **_raw(q), "apply": "CHARACTER", "split": mark}}
+                for q in rq.iter()
+                if q.tag in ("datareq", "valuereq")
+            ]
+        shared = [
+            {"tag": "modifier", "attrs": {"kind": m.tag, **_raw(m), "split": "shared"}}
+            for m in canon._mods(rec["el"])  # pylint: disable=protected-access  # (canon's own modifications reader)
+            if m.tag in ("valmod", "checkmod", "itemmod", "allowmod") and m.get("type") != "HOOK"
+        ]
+        for gd in canon._own(rec["el"], "geardef"):  # pylint: disable=protected-access
+            for it in (x for x in gd if x.tag == "item"):
+                w = next((x for x in it if x.tag == "weapon"), None)
+                shared.append(
+                    {
+                        "tag": "modifier",
+                        "attrs": {
+                            "kind": "geardef",
+                            **_raw(it),
+                            **(_raw(w) if w is not None else {}),
+                            "split": "shared",
+                        },
+                    }
+                )
+        return kids + shared
+    return []
+
+
+def _place_split(row, kids):
+    """The row's kids with the earlier split kids replaced by `kids`; a shared kid the row states already (the paired
+    entry's family modifications) is not repeated."""
+    old = [k for k in row.get("kids", []) if "split" not in k.get("attrs", {})]
+    have = {json.dumps(k["attrs"], sort_keys=True) for k in old if k["tag"] == "modifier"}
+    new = [
+        k
+        for k in kids
+        if not (
+            k["attrs"]["split"] == "shared"
+            and json.dumps({a: v for a, v in k["attrs"].items() if a != "split"}, sort_keys=True) in have
+        )
+    ]
+    return old + new
+
+
 def variant_kids(rec, name, level, siblings=()):
     """The record's `<variant>`s with their own price, essence and availability (and their effects); None for a record
     with none or an entry the book split by variant."""
@@ -247,6 +317,8 @@ def main(argv):
             or {t for t in named.get((c["src"], rec["name"].casefold()), []) if t[0] == c["kind"]}
             or {(k, oid) for _s, k, oid in book_split(rec, idx, c["kind"])}
         )  # (a name fallback only in Commlink6's own kind: a program Armor is no critter power)
+        if c["kind"] == "qualities":  # (every entry a book split the quality into gets its option's data: split_kids)
+            targets = set(targets) | {(k, oid) for _s, k, oid in book_split(rec, idx, c["kind"])}
         priced = any(True for _ in el.iter("subOption")) or (rec["attrs"].get("reqVariant") or "").casefold() in YES
         if not targets:
             if priced:
@@ -273,7 +345,9 @@ def main(argv):
             level = level[0] if level and level[0] == level[1] else None
             new = option_kids(rec, e["name"], siblings(e))
             vk = variant_kids(rec, e["name"], level, siblings(e))
-            if not new and not vk:
+            # (a quality the book split per option: that option's own data on the entry, split_kids)
+            sk = split_kids(rec, e["name"]) if kind == "qualities" and not new else []
+            if not new and not vk and not sk:
                 continue
             rows = tables[src]
             row = next((r for r in rows if r.get("gen") == "family" and r["kind"] == kind and r["id"] == bare), None)
@@ -283,7 +357,11 @@ def main(argv):
                 stats["new rows"] += 1
             out, placed = [], vk is None
             for k in row.get("kids", []):  # (the variants where the row had them; earlier generated kids replaced)
-                if k["tag"] == "option" or (k["tag"] == "effect" and ({"option", "variant"} & set(k["attrs"]))):
+                if (
+                    k["tag"] == "option"
+                    or (k["tag"] == "effect" and ({"option", "variant"} & set(k["attrs"])))
+                    or "split" in k.get("attrs", {})
+                ):
                     continue
                 if k["tag"] == "variant" and vk is not None:
                     if not placed:
@@ -292,6 +370,10 @@ def main(argv):
                     continue
                 out.append(k)
             row["kids"] = out + new + ([] if placed else vk)
+            if sk:
+                row["kids"] = _place_split(row, sk)
+                stats["split entries"] += 1
+                stats["split kids"] += sum(1 for k in row["kids"] if "split" in k.get("attrs", {}))
             price = rec["attrs"].get("price")
             if (
                 any("cost" in k["attrs"] for k in new if k["tag"] == "option")
