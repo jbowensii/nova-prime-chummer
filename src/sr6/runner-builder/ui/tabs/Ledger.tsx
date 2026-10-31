@@ -62,6 +62,7 @@ import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../domai
 import { critterWearable } from './Critters'
 import { mountsOf, partsOf } from '../../domain/assets/vehiclemods'
 import { deriveMod } from '../../domain/assets/derive'
+import { accessoryProblem } from '../../domain/creation/actions'
 import { expandPack } from '../../domain/creation/packs'
 import { packChoices } from '../Picker'
 
@@ -442,7 +443,7 @@ export function LedgerTab() {
             }
           : null
       case 'pack': {
-        const x = f.target ? expandPack(data, f.target, b) : undefined
+        const x = f.target ? expandPack(data, f.target, b, (h, a) => accessoryProblem(h, a, data)) : undefined
         return x ? { op, ...x } : null
       }
       case 'lifestyle':

@@ -11,7 +11,7 @@ import { blankSr6 } from '../../../src/sr6/formats/domain/character'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { buildOf, fixtureCatalog, fixtureCreation, GLIM } from '../catalog/fixture'
 
-const PACKS = `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="packs" version="1"><pack id="tst.kit" source="CRB" page="1" cost="1000"><name>Test Kit</name><item>2 Zap Scope</item><item>Fake SIN (rating 3)</item><item>two fake licenses (rating 3, specify license)</item><item>1 month Cozy lifestyle</item><item>Mystery widget</item></pack></sr6:data>`
+const PACKS = `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="packs" version="1"><pack id="tst.kit" source="CRB" page="1" cost="1000"><name>Test Kit</name><item>2 Zap Scope</item><item>Fake SIN (rating 3)</item><item>two fake licenses (rating 3, Firearm, Hunting)</item><item>1 month Cozy lifestyle</item><item>Mystery widget</item></pack></sr6:data>`
 const data = sr6Data(fixtureCatalog(undefined, [{ file: 'packs.xml', xml: PACKS }]))
 const cr = fixtureCreation()
 const NOW = '2026-10-31T10:00:00.000Z'
@@ -25,7 +25,7 @@ test('creation: the pack costs its price, expands into editable lines, and undoe
   expect(scope).toMatchObject({ qty: 2 })
   expect(b.purchases.find(x => x.name === 'Mystery widget')).toMatchObject({ cost: 0 })
   expect(b.sins).toHaveLength(1)
-  expect(b.sins[0].licences).toHaveLength(2)
+  expect(b.sins[0].licences.map(l => l.name)).toEqual(['Firearm', 'Hunting'])
   expect(b.sins[0].lifestyles).toHaveLength(1)
   // an inner item can go on its own; the pack price stays (no refund by default)
   expect(apply(b, { op: 'purchase', remove: scope!.uid }, data, cr)).toEqual({ ok: true })

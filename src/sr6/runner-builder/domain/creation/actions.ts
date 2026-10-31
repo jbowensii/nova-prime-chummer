@@ -626,7 +626,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       return OK
     }
     case 'pack': {
-      const x = expandPack(data, op.id, b)
+      const x = expandPack(data, op.id, b, (h, a) => accessoryProblem(h, a, data))
       if (!x) return no('unknown-entry')
       applyPack(b, x)
       b.purchases.push(packHeader(x))

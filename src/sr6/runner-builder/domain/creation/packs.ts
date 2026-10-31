@@ -10,6 +10,7 @@ import type { PurchaseKind, Sr6Build, Sr6PackExpansion, Sr6Purchase, Sr6Sin } fr
 import { rateLicences } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
+import { fitsOnly, structureOf } from '../../../catalog/domain/structure'
 import { bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
 import { STACKING } from '../../../catalog/domain/categories'
 
@@ -22,28 +23,60 @@ const count = (s: string) => (/^\d+$/.test(s) ? Number(s) : (NUMBER_WORDS[s.toLo
 const KINDS: PurchaseKind[] = ['gear', 'electronics', 'armor', 'weapons', 'programs', 'augmentations', 'vehicles']
 const LICENCE_NAME = 'Fake licence (specify)'
 
+/** Whether an accessory may be fitted to its host: the reason it may not, else undefined (actions.ts accessoryProblem). */
+export type FitCheck = (host: Sr6Purchase, acc: Sr6Purchase) => string | undefined
 const all = (data: Sr6Data, kind: Sr6Kind) => data.kindEntries?.(kind) ?? []
 
 /** The catalog entry a printed item is, in KINDS: by name, else by loose name (plural, rating), else one at least 0.85 alike;
  *  undefined when none. Ties: the pack's own book. */
-function find(data: Sr6Data, name: string, source: string): { kind: PurchaseKind; e: Sr6Entry } | undefined {
-  const key = matchKey(name),
-    norm = normName(name)
-  if (key.length < 3) return undefined
+function find(data: Sr6Data, printed: string, source: string): { kind: PurchaseKind; e: Sr6Entry } | undefined {
   const pick = (es: Sr6Entry[]) => es.find(e => e.source === source) ?? es[0]
-  for (const level of ['exact', 'loose', 'close'] as const)
-    for (const kind of KINDS) {
-      const es = all(data, kind).filter(e =>
-        level === 'exact' ? normName(e.name) === norm : level === 'loose' ? matchKey(e.name) === key : nameRatio(matchKey(e.name), key) >= 0.85,
-      )
-      if (es.length) return { kind, e: pick(es) }
+  // the name, then without a trailing type word the catalog leaves off (`Hermes Ikon commlink`)
+  const names = [printed, printed.replace(/\s+(?:commlink|pack|packet)s?$/i, '')].filter((n, i, l) => l.indexOf(n) === i)
+  for (const name of names) {
+    const key = matchKey(name),
+      norm = normName(name),
+      bag = key.split(' ').sort().join(' ')
+    if (key.length < 3) continue
+    // (a word bag: `area jammer` is the catalog's `Jammer, area`)
+    const test = {
+      exact: (e: Sr6Entry) => normName(e.name) === norm,
+      loose: (e: Sr6Entry) => matchKey(e.name) === key,
+      words: (e: Sr6Entry) => matchKey(e.name).split(' ').sort().join(' ') === bag,
+      close: (e: Sr6Entry) => nameRatio(matchKey(e.name), key) >= 0.85,
     }
+    for (const level of ['exact', 'loose', 'words', 'close'] as const)
+      for (const kind of KINDS) {
+        const es = all(data, kind).filter(test[level])
+        if (es.length) return { kind, e: pick(es) }
+      }
+  }
   return undefined
+}
+
+/** A printed part (`5 spare clips`, `laser sight`, `chemical protection 1`) as an accessory line, if the catalog has it. */
+function accessoryOf(data: Sr6Data, w: string, source: string): Sr6Purchase | undefined {
+  const lead = new RegExp(`^(${COUNT})\\s+`, 'i').exec(w),
+    aq = lead ? count(lead[1]) : 1,
+    an = (lead ? w.slice(lead[0].length) : w).replace(/\s*\([^()]*\)/g, '').trim(),
+    ar = Number(/\s(\d+)$/.exec(an)?.[1]) || undefined,
+    f = find(data, an, source) ?? (ar ? find(data, an.replace(/\s+\d+$/, ''), source) : undefined)
+  // (only what is fitted, never bought alone: a helmet listed after a knife is no accessory of it)
+  if (!f || !fitsOnly(structureOf(f.e))) return undefined
+  return {
+    uid: newId(),
+    kind: f.kind,
+    id: f.e.id,
+    name: f.e.name,
+    qty: STACKING.has(f.kind) ? aq : 1,
+    accessories: [],
+    ...(ar !== undefined && ratingRange(f.e.attrs.rating).includes(ar) ? { rating: ar } : {}),
+  }
 }
 
 /** One printed item's lines. ponytail: reads the common phrasings of the packs (a leading count, `(rating N)`, a trailing
  *  note), not free prose; an item it can't match is a free custom line named as printed. */
-function itemLines(data: Sr6Data, printed: string, source: string): Sr6Purchase[] {
+function itemLines(data: Sr6Data, printed: string, source: string, check: FitCheck): Sr6Purchase[] {
   const text = printed.trim()
   const lead = new RegExp(`^(${COUNT})\\s+(?:x\\s*)?`, 'i').exec(text),
     qty = lead ? count(lead[1]) : 1
@@ -54,6 +87,17 @@ function itemLines(data: Sr6Data, printed: string, source: string): Sr6Purchase[
   const paren = [...rest.matchAll(/\(([^()]*)\)/g)].map(m => m[1])
   const rating = Number(/rating\s+(\d+)/i.exec(paren.join(' '))?.[1]) || undefined
   const name = rest.replace(/\s*\([^()]*\)/g, '').trim()
+  // `(w/ a, b, 5 c)`: what it comes with; each the catalog has and the host takes is fitted, the rest stay in the note
+  const withs = paren
+    .filter(p => /^w\//i.test(p.trim()))
+    .flatMap(p =>
+      p
+        .trim()
+        .replace(/^w\/\s*/i, '')
+        .split(/,\s*|\s+and\s+/),
+    )
+    .map(w => w.trim())
+    .filter(Boolean)
   const note = paren
     .map(p => p.replace(/rating\s+\d+,?\s*/i, '').trim())
     .filter(Boolean)
@@ -72,9 +116,14 @@ function itemLines(data: Sr6Data, printed: string, source: string): Sr6Purchase[
     const range = ratingRange(hit.e.attrs.rating)
     const r = rating !== undefined && (!range.length || range.includes(rating)) ? rating : undefined
     const stack = STACKING.has(hit.kind)
-    return Array.from({ length: stack ? 1 : q }, () =>
-      mk(hit.kind, { id: hit.e.id, name: hit.e.name, qty: stack ? q : 1, ...(r !== undefined ? { rating: r } : {}) }),
-    )
+    return Array.from({ length: stack ? 1 : q }, () => {
+      const host = mk(hit.kind, { id: hit.e.id, name: hit.e.name, qty: stack ? q : 1, ...(r !== undefined ? { rating: r } : {}) })
+      for (const w of withs) {
+        const acc = accessoryOf(data, w, source)
+        if (acc && !check(host, acc)) host.accessories.push(acc)
+      }
+      return host
+    })
   }
   return make(n)
 }
@@ -84,8 +133,9 @@ function contents(
   data: Sr6Data,
   pack: Sr6Entry,
   depth: number,
-): Pick<Sr6PackExpansion, 'lines' | 'sins'> & { months: { id: string; months: number }[]; licences: number } {
-  const out = { lines: [] as Sr6Purchase[], sins: [] as Sr6Sin[], months: [] as { id: string; months: number }[], licences: 0 }
+  check: FitCheck,
+): Pick<Sr6PackExpansion, 'lines' | 'sins'> & { months: { id: string; months: number }[]; licences: string[] } {
+  const out = { lines: [] as Sr6Purchase[], sins: [] as Sr6Sin[], months: [] as { id: string; months: number }[], licences: [] as string[] }
   const lifestyles = all(data, 'lifestyles')
   for (const raw of items(pack)) {
     const t = raw.trim()
@@ -98,7 +148,9 @@ function contents(
     // licences (`two fake licenses (rating 4, specify license)`): on the pack's SIN, to be named by the player
     const lic = new RegExp(`^(${COUNT})\\s+(?:fake\\s+)?licen[cs]es?\\b`, 'i').exec(t) ?? (/^(?:a\s+)?(?:fake\s+)?licen[cs]e\b/i.test(t) ? ['', '1'] : null)
     if (lic) {
-      out.licences += count(lic[1])
+      // (the names the pack prints in its bracket, else one to specify)
+      const named = [...t.matchAll(/\(([^()]*)\)/g)].flatMap(m => m[1].split(/,\s*/)).filter(w => w && !/^(?:rating\b|specify)/i.test(w))
+      out.licences.push(...(named.length ? named : Array.from({ length: count(lic[1]) }, () => LICENCE_NAME)))
       continue
     }
     // a lifestyle (`2 months low lifestyle`, `One month Low lifestyle`)
@@ -112,14 +164,21 @@ function contents(
     const inner =
       depth > 0 && /\bpack\b/i.test(t) ? all(data, 'packs').find(p => normName(p.name) === normName(t.replace(/\s+(?:pack|packet)s?$/i, ''))) : undefined
     if (inner && inner.id !== pack.id) {
-      const c = contents(data, inner, depth - 1)
+      const c = contents(data, inner, depth - 1, check)
       out.lines.push(...c.lines)
       out.sins.push(...c.sins)
       out.months.push(...c.months)
-      out.licences += c.licences
+      out.licences.push(...c.licences)
       continue
     }
-    out.lines.push(...itemLines(data, t, pack.source))
+    // a part listed on its own after a weapon or armor (`top-mounted laser sight`): fitted to it when it takes it
+    const host = out.lines.findLast(l => l.kind === 'weapons' || l.kind === 'armor')
+    const acc = host && accessoryOf(data, t, pack.source)
+    if (host && acc && !check(host, acc)) {
+      host.accessories.push(acc)
+      continue
+    }
+    out.lines.push(...itemLines(data, t, pack.source, check))
   }
   return out
 }
@@ -130,16 +189,16 @@ export const packCost = (data: Sr6Data, pack: Sr6Entry) => bookValue(pack, 'cost
 
 /** What buying pack `id` puts on the build `b` (b is read, never changed), or undefined for an unknown pack or one with no
  *  readable price. */
-export function expandPack(data: Sr6Data, id: string, b: Pick<Sr6Build, 'sins'>): Sr6PackExpansion | undefined {
+export function expandPack(data: Sr6Data, id: string, b: Pick<Sr6Build, 'sins'>, check: FitCheck = () => undefined): Sr6PackExpansion | undefined {
   const pack = data.entry('packs', id),
     cost = pack && packCost(data, pack)
   if (!pack || cost === undefined) return undefined
   const uid = newId(),
-    c = contents(data, pack, 2),
+    c = contents(data, pack, 2, check),
     sins: Sr6Sin[] = c.sins.map(s => ({ ...s, pack: uid }))
   // the licences go on the pack's first SIN, each rated as it
   if (sins[0]) {
-    for (let i = 0; i < c.licences; i++) sins[0].licences.push({ name: LICENCE_NAME, rating: 1 })
+    for (const name of c.licences) sins[0].licences.push({ name, rating: 1 })
     rateLicences(sins[0])
   }
   // a lifestyle is always one SIN's: the pack's, else the runner's first, else a placeholder the pack brings
