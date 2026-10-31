@@ -12,14 +12,14 @@ jobs:
     continue-on-error: true
     steps:
       - uses: https://data.forgejo.org/actions/checkout@v4
-      - run: pip install --quiet --break-system-packages semgrep
-      - run: semgrep scan --config p/default --error --exclude node_modules
+      - run: python3 -m venv /tmp/sg && /tmp/sg/bin/pip install --quiet semgrep
+      - run: /tmp/sg/bin/semgrep scan --config p/default --error --exclude node_modules
         continue-on-error: true # report-only
   trivy:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: https://data.forgejo.org/actions/checkout@v4
-      - run: curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.58.1/trivy_0.58.1_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin trivy
+      - run: curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin trivy
       - run: trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --exit-code 1 .
         continue-on-error: true # report-only

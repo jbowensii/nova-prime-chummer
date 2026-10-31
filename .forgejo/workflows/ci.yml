@@ -32,7 +32,7 @@ jobs:
         continue-on-error: true
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run e2e
+      - run: npm run e2e -- --timeout=90000 # the shared runner is slower than GitHub's; 30 s default times out
   importer:
     runs-on: ubuntu-latest
     # 3.12: the lock's and the dev setup's; 3.14: the image's (the Dockerfile's Alpine python3, pinned with its base)
