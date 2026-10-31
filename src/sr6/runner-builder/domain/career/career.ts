@@ -301,6 +301,12 @@ function advance(b: Sr6Build, a: Sr6Advance): void {
       if (x && s && !s.licences.some(l => l.item === x.uid)) s.licences.push(itemLicence(x, s, a.name))
       return
     }
+    case 'assign': {
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target)
+      if (x && a.sin) x.sin = a.sin
+      else if (x) delete x.sin
+      return
+    }
     case 'convert':
     case 'other':
       return
@@ -865,6 +871,14 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (sin.kind === 'real') return { label: what, nuyen: fee }
       const r = licenceRating(sin)
       return { label: `${what} (fake licence, rating ${r})`, nuyen: r * need('licencePerRating') }
+    }
+    case 'assign': {
+      // free, always allowed (owner 2026-10-31): which SIN an owned line is registered to costs nothing
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target) ?? no('unknown-line')
+      const sin = a.sin ? (b.sins.find(s => s.uid === a.sin) ?? no('unknown-line')) : undefined
+      if (x.sin === sin?.uid) no('unchanged')
+      const e = entryOf(x, data)
+      return { label: `Identity: ${e ? entryLabel(e) : (x.name ?? 'Custom item')} ${sin ? `registered to ${sinName(sin)}` : 'unassigned'}` }
     }
     case 'other':
       return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }

@@ -89,7 +89,20 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   await signIn(page, '/#/sr6/data', 'ada')
   await expect(page.getByRole('heading', { name: 'Game data' })).toBeVisible()
   await expect(page.getByText('No SR6 data yet.')).toBeVisible()
-  expect(await labels(page)).toEqual(['Your runners', 'Designer', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data', 'Table setup'])
+  expect(await labels(page)).toEqual([
+    'Your runners',
+    'Vehicle designer',
+    'Drone designer',
+    'Weapon designer',
+    'Cyberware designer',
+    'NPCs & Critters',
+    'Compendiums',
+    'Campaigns',
+    'Books',
+    'Rules',
+    'Game data',
+    'Table setup',
+  ])
   await expect(page.getByRole('link', { name: 'Game data' })).toHaveAttribute('aria-current', 'page')
 
   await page.getByRole('link', { name: 'Books', exact: true }).click()
@@ -266,7 +279,19 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
 
 test('editor: edit a weapon’s cost, see it Edited, restore the book version', async ({ page }) => {
   await signIn(page, '/#/sr6/data', 'eve')
-  expect(await labels(page)).toEqual(['Your runners', 'Designer', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Rules', 'Game data', 'Table setup'])
+  expect(await labels(page)).toEqual([
+    'Your runners',
+    'Vehicle designer',
+    'Drone designer',
+    'Weapon designer',
+    'Cyberware designer',
+    'NPCs & Critters',
+    'Compendiums',
+    'Campaigns',
+    'Rules',
+    'Game data',
+    'Table setup',
+  ])
   const gun = await findWeapon(page, 'Zap Gun')
   await gun.getByRole('button', { name: 'Edit Zap Gun' }).click()
   const form = page.getByRole('dialog')
@@ -308,7 +333,17 @@ test('editor: edit a weapon’s cost, see it Edited, restore the book version', 
 
 test('player: Table setup (read only), Rules and Game data, no Books and no Edit buttons', async ({ page }) => {
   await signIn(page, '/#/sr6/data', 'pat')
-  expect(await labels(page)).toEqual(['Your runners', 'Designer', 'Campaigns', 'Rules', 'Game data', 'Table setup'])
+  expect(await labels(page)).toEqual([
+    'Your runners',
+    'Vehicle designer',
+    'Drone designer',
+    'Weapon designer',
+    'Cyberware designer',
+    'Campaigns',
+    'Rules',
+    'Game data',
+    'Table setup',
+  ])
   await expect(await findWeapon(page, 'Zap Gun')).toBeVisible()
   await expect(page.getByRole('button', { name: /^Edit / })).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Your catalog edits' })).toHaveCount(0)

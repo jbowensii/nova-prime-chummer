@@ -299,6 +299,8 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ awakened: a.value }, '']
     case 'licensed':
       return [{ target: a.target, sin: a.sin, name: a.name }, '']
+    case 'assign':
+      return [{ target: a.target, sin: a.sin }, '']
     case 'powerpoint':
     case 'convert':
     case 'other':
@@ -972,6 +974,8 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
     case 'licensed':
       // (an older entry's rating is not read: the licence is rated as its SIN)
       return def({ op, target: req(e, 'target'), sin: req(e, 'sin'), name: str(e, 'name') })
+    case 'assign':
+      return def({ op, target: req(e, 'target'), sin: str(e, 'sin') })
     case 'powerpoint':
     case 'other':
       return { op }

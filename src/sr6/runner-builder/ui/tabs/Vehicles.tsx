@@ -95,7 +95,8 @@ function BuyDesign({ drones }: { drones: boolean }) {
   if (!designs.length)
     return (
       <p className="muted">
-        Your designs: none yet. <a href="#/sr6/designs">Design {drones ? 'a drone' : 'a vehicle'} in the Designer</a>.
+        Your designs: none yet.{' '}
+        <a href={drones ? '#/sr6/drones' : '#/sr6/designs'}>Design {drones ? 'a drone in the Drone designer' : 'a vehicle in the Vehicle designer'}</a>.
       </p>
     )
   return (

@@ -460,7 +460,8 @@
          style's uid), name (a specialization or expertise), lifestyle and months (sin: the uid of the SIN it's paid under,
          uid: the lifestyle's uid when new; both absent on an older entry, which goes to the first SIN's lifestyle); convert's karma is the entry's karma;
          sin: the <sin> bought (its uid a placeholder's: that one named); licensed: target the uid of the line licensed,
-         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN); fit: target the uid of the owned
+         sin the uid of the SIN the licence is on, name the licence's (rated as the SIN); assign: target the uid of the
+         owned line registered to the SIN `sin` (absent: unassigned; free); fit: target the uid of the owned
          line the <purchase> that follows is fitted to; unfit: target the uid of the accessory taken off (the <purchase>
          removed may follow); shift: target the uid of the owned vehicle or drone whose mod slots are shifted, two of the
          category `from` into one of `to` (Double Clutch p. 120; free); move: target the uid of the weapon moved, `mount`
@@ -478,7 +479,7 @@
         <xs:enumeration value="fit"/><xs:enumeration value="unfit"/><xs:enumeration value="shift"/><xs:enumeration value="move"/>
         <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
-        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/><xs:enumeration value="quantity"/>
+        <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/><xs:enumeration value="quantity"/><xs:enumeration value="assign"/>
         <xs:enumeration value="teach"/><xs:enumeration value="part"/><xs:enumeration value="pack"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
