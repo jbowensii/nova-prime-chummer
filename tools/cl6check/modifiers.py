@@ -721,6 +721,19 @@ def _cl6_rows(c):
     return out
 
 
+def _norm(s):
+    return re.sub(r"[^a-z0-9]+", "-", (s or "").casefold()).strip("-")
+
+
+def _grant_keys(x, src, paired):
+    """(targets, values, op) of one of our `grant` effects: what Commlink6 calls the entry it names (any of the kinds
+    a gain is filed under), its own slug and the paired record's id."""
+    _, t, _v, *_ = x
+    ref = t.partition(":")[2]
+    names = {ref, _norm(ref), paired.get((src, ref), "")} - {""}
+    return {f"{k}:{n}" for k in ("critter-power", "quality", "metaecho") for n in names}, {""}, "grant"
+
+
 def per_effect(pairs, misses=False):
     """Informational: of the effects CommLink6 states on matched records, how many of ours reproduce (target, value),
     counted one for one per record. Both sides are read into the release gate's vocabulary (tools/cl6effects/xlate:
@@ -729,9 +742,12 @@ def per_effect(pairs, misses=False):
     counts as reproduced. The whole-entry 'effects' family stays all-or-nothing."""
     got = total = ruled = exempt = 0
     rows = []  # (misses=True: the modifications not reproduced, for working through them)
+    # (a `grant` effect names an entry of ours by its id, `critter-power:armor`: the record the matcher paired with that
+    # entry is what it grants, `drake_armor`; Commlink6 files a gained power under critter power, quality or metaecho)
+    paired = {(oo.get("src"), (oo.get("id") or "").split(".", 1)[-1]): _norm(cc.get("id")) for cc, oo in pairs}
     for c, o in pairs:
         own = o["families"].get("effects_own", o["families"].get("effects", ()))
-        mine = [_our_keys(x) for x in own]
+        mine = [_grant_keys(x, o.get("src"), paired) if (x[3:] or [""])[0] == "grant" else _our_keys(x) for x in own]
         used = set()
         for m in _cl6_rows(c):
             total += 1

@@ -29,5 +29,8 @@
   {"cl6": "Beat Out", "cl6id": "beat_out", "kind": "qualities", "id": "beat-out", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "beat_in"}}], "gen": "slot"},
   {"cl6": "Golden Cage", "cl6id": "golden_cage", "kind": "qualities", "id": "golden-cage", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "sinner"}}], "gen": "slot"},
   {"cl6": "Connected", "cl6id": "connected", "kind": "qualities", "id": "connected", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "earner"}}], "gen": "slot"},
-  {"cl6": "Made", "cl6id": "made", "kind": "qualities", "id": "made", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "earner"}}], "gen": "slot"}
+  {"cl6": "Made", "cl6id": "made", "kind": "qualities", "id": "made", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "QUALITY", "ref": "earner"}}], "gen": "slot"},
+  {"cl6": "Big Brother’s Blindspot", "kind": "qualities", "id": "big-brothers-blindspot", "set": {"cl6": "big_brothers_blindspot"}, "gen": "marker"},
+  {"cl6": "Bilko Contact", "kind": "qualities", "id": "bilko-contact", "set": {"cl6": "bilko_contacts"}, "gen": "marker"},
+  {"cl6": "What Doesn’t Kill You", "kind": "qualities", "id": "what-doesnt-kill-you", "set": {"cl6": "what_doesnt_kill_you"}, "gen": "marker"}
 ]

@@ -55,5 +55,14 @@
   {"cl6": "Ballista Bolt, Light", "cl6id": "ballista_bolt_light", "kind": "weapons", "id": "ballista-bolt-light", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Ballista Bolt, Standard", "cl6id": "ballista_bolt_standard", "kind": "weapons", "id": "ballista-bolt-standard", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Ballista Bolt, Heavy", "cl6id": "ballista_bolt_heavy", "kind": "weapons", "id": "ballista-bolt-heavy", "set": {"usage": "carried"}, "gen": "slot"},
-  {"cl6": "Dinosaur Summoning", "cl6id": "dinosaur_summoning", "kind": "metamagics", "id": "dinosaur-summoning", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "invocation"}}], "gen": "slot"}
+  {"cl6": "Dinosaur Summoning", "cl6id": "dinosaur_summoning", "kind": "metamagics", "id": "dinosaur-summoning", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "invocation"}}], "gen": "slot"},
+  {"cl6": "Ballista Barbed", "kind": "ammotypes", "id": "ballista-bolt-barbed", "set": {"cl6": "ballista_barbed"}, "gen": "marker"},
+  {"cl6": "Ballista High Explosive", "kind": "weapons", "id": "ballista-bolt-high-explosive", "set": {"cl6": "ballista_high_explosive"}, "gen": "marker"},
+  {"cl6": "Ballista, Light", "kind": "weapons", "id": "ballista-light", "set": {"cl6": "ballistra_light"}, "gen": "marker"},
+  {"cl6": "Ballista, Standard", "kind": "weapons", "id": "ballista-standard", "set": {"cl6": "ballistra_standard"}, "gen": "marker"},
+  {"cl6": "Ballista, Heavy", "kind": "weapons", "id": "ballista-heavy", "set": {"cl6": "ballistra_heavy"}, "gen": "marker"},
+  {"cl6": "Saurian", "kind": "qualities", "id": "saurian", "set": {"class": "METAGENIC"}, "gen": "marker"},
+  {"cl6": "Astral Gateway", "kind": "rituals", "id": "astral-gateway-ritual", "set": {"cl6": "astral_gateway"}, "gen": "marker"},
+  {"cl6": "Metaplanar Gateway", "kind": "rituals", "id": "metaplanar-gateway-ritual", "set": {"cl6": "metaplanar_gateway"}, "gen": "marker"},
+  {"cl6": "Disruptive", "kind": "trueelements", "id": "true-earth-sandcasting-disruptive", "set": {"cl6": "disruptive_earth"}, "gen": "marker"}
 ]

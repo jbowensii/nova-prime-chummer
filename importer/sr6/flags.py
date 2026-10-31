@@ -190,3 +190,13 @@ def uncounted(text):
     (`This quality does not count toward the six total qualities limitation at character generation`), else {}."""
     one = re.sub(r"(?<=[a-z])-\s+(?=[a-z])", "", " ".join((text or "").replace("**", "").split()))  # (`to- ward`)
     return {"uncounted": "true"} if _UNCOUNTED.search(one) else {}
+
+
+_SPECIFIED = re.compile(r"\bonly available when specified by the [\w' ]+? quality\b", re.I)
+
+
+def specified(text):
+    """{"granted": "true"} for a quality only another quality can give (`Natural weapon is only available when
+    specified by the Shifter quality`, Bestial Nature pp. 14-17: no price of its own), else {}."""
+    one = re.sub(r"(?<=[a-z])-\s+(?=[a-z])", "", " ".join((text or "").replace("**", "").split()))
+    return {"granted": "true"} if _SPECIFIED.search(one) else {}

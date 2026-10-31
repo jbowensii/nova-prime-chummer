@@ -1342,18 +1342,27 @@ def _pack_name(name):
 
 
 def _items(text):
-    """A contents list as printed, split at its commas (not those inside parentheses)."""
+    """A contents list as printed, split at its commas (not those inside parentheses, nor a number's: `1,000 nuyen`); a
+    bold label the layout glued on after the last item (`… caps) **Fake Licenses (rating 4, two of which`) left off."""
     out, depth, cur = [], 0, ""
-    for ch in " ".join(text.split()):
+    text = " ".join(text.split())
+    for i, ch in enumerate(text):
         depth += ch == "("
         depth -= ch == ")"
-        if ch == "," and depth == 0:
+        if ch == "," and depth == 0 and not (cur[-1:].isdigit() and text[i + 1 : i + 2].isdigit()):
             out.append(cur.strip())
             cur = ""
         else:
             cur += ch
     out.append(cur.strip())
+    out = [re.sub(r"\s*\*\*[^*]*(?:\*\*)?$", "", x) if "**" in x else x for x in out]
     return [x for x in (re.sub(r"\s*(?:-\s+)", "", x) for x in out) if x]
+
+
+def _whole(items):
+    """The items less a name a column break cut short (`Remington`) when the whole one (`Remington Roomsweeper (w/ …)`)
+    is in the list too."""
+    return [x for x in items if not any(y != x and y.startswith(x + " ") for y in items)]
 
 
 def _joined(text):
@@ -1406,7 +1415,7 @@ def packs(b, page, parent, chapter_has_packs):
                 _pack_name(b.name),
                 page,
                 {k: v for k, v in attrs.items() if v},
-                [("item", {}, x) for x in dict.fromkeys(items)],
+                [("item", {}, x) for x in _whole(list(dict.fromkeys(items)))],
                 _body(b),
             )
         ]
