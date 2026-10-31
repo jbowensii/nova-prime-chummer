@@ -14,6 +14,8 @@ import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
 import { bondKarma } from '../assets/critters'
 import { dracogenesisKarma, dracogenesisRank, isShifterAddOn, shifterAddOnKarma } from './drake'
+import { collectiveKarma } from './surge'
+import { animalismGrade, animalismKarma } from './animalism'
 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
  *  taken for (kept within the range; the lowest when it isn't set). */
@@ -141,6 +143,8 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   // Commlink6's shifter add-ons (their Karma added up, never below 0) and an aware drake's dracogenesis powers (5 + n each)
   add('shifterAddOns', 'Shifter add-ons', shifterAddOnKarma(b, data), 'qualities')
   add('dracogenesis', `Dracogenesis powers (rank ${dracogenesisRank(b)})`, dracogenesisKarma(b), 'qualities')
+  // the SURGE collective's own Karma (Commlink6: paid once, its qualities free)
+  add('surgeCollective', `SURGE collective ${data.entry('qualitysets', b.surgeCollective ?? '')?.name ?? ''}`.trim(), collectiveKarma(b, data), 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
   // the Critter Bond path's Permanent Improvement (SWC p. 139): a critter's qualities bought with the runner's Karma
   add(
@@ -159,6 +163,8 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     return t
   }
   add('initiation', `Initiation grade ${b.initiation}`, grades(b.initiation), 'magic')
+  // Bestial Nature's animalism (Commlink6 SR6AnimalismController): 10 + the grade for each animalism grade
+  add('animalism', `Animalism grade ${animalismGrade(b, data)}`, animalismKarma(b, data), 'magic')
   add('submersion', `Submersion grade ${b.submersion}`, grades(b.submersion), 'magic')
   // the Sixth World Companion's Transhumanism (p. 146): 10 + the next grade, the initiation price, for a mundane's transhumanist grades
   if (flag(cr, 'transhumanism') && b.transhuman > 0) add('transhuman', `Transhumanist grade ${b.transhuman}`, grades(b.transhuman), 'gear')

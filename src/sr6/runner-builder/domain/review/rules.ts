@@ -62,6 +62,8 @@ import {
   type CreationRules,
 } from '../../../table-setup/domain/creation'
 import { drakeKind, isShifter, isShifterAddOn, shifterResonance } from '../creation/drake'
+import { collectiveFits, collectiveGrants, collectiveOptions, SURGE_CAP, surgeKarma } from '../creation/surge'
+import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnimalism } from '../creation/animalism'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
@@ -569,6 +571,34 @@ const RULES: Rule[] = [
     severity: 'error',
     tab: 'qualities',
     check: c => (shifterResonance(c.b, c.data) ? { message: 'A shifter can’t be a technomancer: it needs Magic, not Resonance.' } : null),
+  },
+  // SURGE as Commlink6 handles it (CommonQualityGenerator): at most 30 Karma on metagenic qualities picked (a collective's free
+  // ones not counted); a collective only for the metatypes it lists, with its choice made; a collective quality the catalog
+  // lacks is said
+  {
+    code: 'quality.surgeCap',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const k = surgeKarma(c.b, c.data)
+      return k <= SURGE_CAP ? null : { message: `${k} Karma on metagenic qualities; the most is ${SURGE_CAP}.` }
+    },
+  },
+  {
+    code: 'quality.surgeCollective',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      if (!c.b.surgeCollective) return null
+      const set = c.data.entry('qualitysets', c.b.surgeCollective)
+      if (!set) return { message: 'The SURGE collective is no longer in the catalog.' }
+      const out: { message: string }[] = []
+      if (!collectiveFits(c.b, c.data)) out.push({ message: `The ${set.name} collective is for ${set.attrs.metatypes}, not this metatype.` })
+      if (collectiveOptions(set).length && !c.b.surgeChoice) out.push({ message: `The ${set.name} collective: make its choice.` })
+      const lost = collectiveGrants(c.data, set, c.b.surgeChoice).filter(g => !g.id)
+      if (lost.length) out.push({ message: `The ${set.name} collective's ${lost.map(g => g.ref).join(', ')} is not in the catalog.` })
+      return out
+    },
   },
   {
     code: 'quality.maxCount',
@@ -1174,7 +1204,10 @@ const RULES: Rule[] = [
     tab: 'magic',
     check: c => {
       // (one taken again is a level each time: the pick's level, or the level of the entry it holds, levels.ts)
-      const n = c.b.picks.filter(x => x.kind === 'metamagics').reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
+      // (an animalism power is bought outside initiation: animalism.ts)
+      const n = c.b.picks
+        .filter(x => x.kind === 'metamagics' && !isAnimalism(c.data.entry('metamagics', x.id)))
+        .reduce((t, x) => t + (x.level ?? c.data.levelOf(c.data.entry('metamagics', x.id)) ?? 1), 0)
       if (n === c.b.initiation) return null
       const short = c.b.initiation - n
       return {
@@ -1183,6 +1216,24 @@ const RULES: Rule[] = [
             ? `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one, pick ${short} more.`
             : `${n} metamagic${n === 1 ? '' : 's'} at initiation grade ${c.b.initiation}: each grade brings one.`,
       }
+    },
+  },
+  // Bestial Nature's animalism, as Commlink6 handles it (SR6AnimalismController): only while the table allows it
+  // (ALLOW_ANIMALISM), and at creation up to its grade cap (CHARGEN_MAX_ANIMALISM, default 2)
+  {
+    code: 'magic.animalismOff',
+    severity: 'error',
+    tab: 'magic',
+    check: c => (animalismAllowed(c.cr) || !animalismPicks(c.b, c.data).length ? null : { message: 'This table does not allow animalism.' }),
+  },
+  {
+    code: 'magic.animalismMax',
+    severity: 'error',
+    tab: 'magic',
+    check: c => {
+      const g = animalismGrade(c.b, c.data),
+        max = animalismMax(c.cr)
+      return g <= max ? null : { message: `Animalism grade ${g} at creation; the most is ${max}.` }
     },
   },
   {

@@ -59,6 +59,7 @@ import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
 import { critterQualityNamed, isCritterQuality, trainedWhat } from '../assets/critters'
+import { addGrants, setCollective } from './surge'
 import { boughtKind, infectedFit, infectedKind, infectedOf, optionalPower, powerRefusal, runnerInfected } from './infected'
 
 export type Op =
@@ -74,6 +75,8 @@ export type Op =
    *  level or the rated parent. */
   | { op: 'quality'; id: string; uid?: string; level?: number; karma?: number; note?: string }
   | { op: 'quality'; remove: string }
+  /** the SURGE collective (a qualitysets id; '' none) and its choice: its qualities come free (surge.ts setCollective) */
+  | { op: 'collective'; id: string; choice?: string }
   /** add a spell, power, form…; a leveled power (a metamagic taken again) taken again goes up a level */
   | { op: 'pick'; kind: PickKind; id: string }
   | { op: 'pick'; remove: string }
@@ -236,6 +239,7 @@ export function setMetatype(ch: Sr6Character, id: string, data: Sr6Data): void {
   ch.identity.metatype = id
   b.qualities = b.qualities.filter(q => !q.free)
   for (const t of m?.traits ?? []) b.qualities.push({ uid: newId(), id: t, level: m?.traitLevels?.[t] ?? 1, free: true, name: data.qualities[t]?.name })
+  addGrants(b, data) // (the SURGE collective's free qualities, gone with the old traits)
 }
 
 /** Pick the magic kind the method buys: picks it can't have go, as do bought power points (unless it buys them), an
@@ -391,6 +395,11 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if (op.value === null) delete b.awakened
       else b.awakened = op.value
       return OK
+    case 'collective': {
+      if (op.id && !data.entry('qualitysets', op.id)) return no('unknown')
+      setCollective(b, data, op.id, op.choice)
+      return OK
+    }
     case 'quality': {
       if ('remove' in op) {
         const q = b.qualities.find(x => x.uid === op.remove)
