@@ -29,7 +29,7 @@ import { num as ruleNum, type CreationRules } from '../../table-setup/domain/cre
 import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
 import { deriveSr6, type Sr6Derived, weaponSkill } from '../../runner-builder/domain/creation/derive'
 import { dronePools, rccsOf } from '../../runner-builder/domain/assets/vehiclemods'
-import { ammoLoads, weaponOf, type WeaponStats } from '../../runner-builder/domain/assets/weapons'
+import { ammoLoads, meleeAlternate, weaponOf, type WeaponStats } from '../../runner-builder/domain/assets/weapons'
 import { withSampleFixes } from '../../runner-builder/domain/creation/samplefix'
 import { withSr6House } from '../../runner-builder/domain/career/house'
 import {
@@ -107,6 +107,8 @@ export interface Sr6Values {
     seats?: number
   }
   /** a drone line's dice pools when it acts on its own: Pilot + each autosoft's rating (vehiclemods.ts dronePools) */
+  /** a firearm with Melee Hardening used as a club (assets/weapons.ts meleeAlternate; Firing Squad p. 61) */
+  meleeAlternate?: { dv: number; stun: true; ar: (number | null)[]; skill: string; spec: string }
   dronePools?: { mode: 'autonomous' | 'rcc'; test: string; autosoft: string; pool: number }[]
 }
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
@@ -669,6 +671,8 @@ function purchase(
       defined({ id: l.id, name: l.name, dv: num(l.stats.dv.match(/^\s*(\d+)/)?.[1]), ar: l.stats.ar, stun: l.stun ? (true as const) : undefined }),
     )
     if (loads.length) values.ammoTypes = loads
+    const alt = meleeAlternate(x, data)
+    if (alt) values.meleeAlternate = { dv: num(alt.dv.match(/^\s*(\d+)/)?.[1]) ?? 0, stun: true, ar: alt.ar, skill: alt.skill, spec: alt.spec }
   }
   const pools = x.kind === 'vehicles' && top ? dronePools(x, data, rccsOf(owned, data)) : []
   if (pools.length) values.dronePools = pools

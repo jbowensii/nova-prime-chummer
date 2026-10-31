@@ -288,6 +288,19 @@
             }
           }
         },
+        "meleeAlternate": {
+          "description": "A firearm with Melee Hardening used as a club (Firing Squad p. 61): DV, stun, Attack Ratings, skill and specialization.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dv", "stun", "ar", "skill", "spec"],
+          "properties": {
+            "dv": { "type": "number" },
+            "stun": { "const": true },
+            "ar": { "type": "array", "items": { "type": ["number", "null"] } },
+            "skill": { "type": "string" },
+            "spec": { "type": "string" }
+          }
+        },
         "dronePools": {
           "description": "A drone line's dice pools when it acts on its own (autonomous) or slaved to the runner's RCC (rcc): each autosoft's rating + Pilot or Sensor (CRB p. 201).",
           "type": "array",
