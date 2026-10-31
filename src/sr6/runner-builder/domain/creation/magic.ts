@@ -1,5 +1,5 @@
 // Magic at creation: free spells and complex forms, those bought past them, power points, data structures, the Magic cap.
-import type { Sr6Build } from '../../../formats/domain/character'
+import type { Sr6Build, Sr6Purchase } from '../../../formats/domain/character'
 import { flag, n0, num, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
@@ -74,4 +74,19 @@ export function magicCap(b: Sr6Build, cr: CreationRules, attr: 'mag' | 'res', da
   if (infected !== undefined) return infected
   const max = num(cr, 'magicMax')
   return max === undefined ? undefined : max + (flag(cr, 'magicAboveSixByGrade') ? (attr === 'mag' ? b.initiation : b.submersion) : 0)
+}
+
+/** The programs the runner's Emulate complex forms run (Commlink6's SR6EmulatedSoftwareController): each Emulate pick whose
+ *  choice names a catalog program puts that program on the runner, embedded and free (Commlink6 builds the SOFTWARE item,
+ *  flags it ABSORBED, carries it EMBEDDED and marks it injected by the form). Never stored: worked out from the picks, so
+ *  dropping the form or changing its choice drops or swaps the program. */
+export function emulatedPrograms(b: Sr6Build, data: Sr6Data): Sr6Purchase[] {
+  return b.picks.flatMap(x => {
+    if (x.kind !== 'complexforms' || !/^emulate\b/.test(normName(data.entry('complexforms', x.id)?.name ?? x.name ?? ''))) return []
+    const want = normName(x.note ?? '')
+    const prog = want ? (data.kindEntries?.('programs') ?? []).find(e => normName(e.name) === want) : undefined
+    return prog
+      ? [{ uid: `emulate:${x.uid}`, kind: 'programs' as const, id: prog.id, qty: 1, cost: 0, note: 'Emulated by the Emulate complex form', accessories: [] }]
+      : []
+  })
 }
