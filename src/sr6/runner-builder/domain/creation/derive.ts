@@ -28,7 +28,7 @@ import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
 import { choiceOptions, noteAttr } from './choices'
 import { categoryOf, entryLabel } from '../../../catalog/domain/categories'
-import { weaponChanges, weaponOf, type WeaponStats } from '../assets/weapons'
+import { ammoLoadText, ammoLoads, weaponChanges, weaponOf, type WeaponStats } from '../assets/weapons'
 
 export interface Sr6Pool {
   skill: string
@@ -73,6 +73,8 @@ export interface Sr6WeaponValues {
   stats: WeaponStats
   /** base -> modified in words, `AR 9/9/7 → 10/10/8 (11/11/9)` (weaponChanges) */
   changes: string[]
+  /** with each ammunition type the runner owns loaded, the stats it changes (`APDS: AR 10/10/8, DV 3P`; ammoLoads) */
+  ammo: string[]
 }
 export interface Sr6Derived {
   attrs: Record<Sr6Attr, { natural: number; augmented: number }>
@@ -364,6 +366,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
         base: w.base,
         stats: st,
         changes: weaponChanges(w),
+        ammo: ammoLoads(x, data, b.purchases, skill).map(ammoLoadText),
       }
       if (skill) {
         out.skill = skill

@@ -28,7 +28,8 @@ import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
 import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
 import { deriveSr6, type Sr6Derived, weaponSkill } from '../../runner-builder/domain/creation/derive'
-import { weaponOf, type WeaponStats } from '../../runner-builder/domain/assets/weapons'
+import { dronePools } from '../../runner-builder/domain/assets/vehiclemods'
+import { ammoLoads, weaponOf, type WeaponStats } from '../../runner-builder/domain/assets/weapons'
 import { withSampleFixes } from '../../runner-builder/domain/creation/samplefix'
 import { withSr6House } from '../../runner-builder/domain/career/house'
 import {
@@ -83,6 +84,9 @@ export interface Sr6Values {
   /** a weapon line's: what its fittings move its Concealability threshold by, and add to its attack tests' dice pool */
   concealability?: number
   attackPool?: number
+  /** a ranged weapon line's: its DV and Attack Ratings with each ammunition type the runner owns loaded (assets/weapons.ts
+   *  ammoLoads; CRB p. 262), stun for Gel/Stick-n-Shock, so the sheet can switch what is loaded */
+  ammoTypes?: { id: string; name: string; dv?: number; ar: (number | null)[]; stun?: true }[]
   defense?: number
   /** an armor's Social modifier (its printed `+2`, `–4`) */
   social?: number
@@ -102,6 +106,8 @@ export interface Sr6Values {
     sensor?: number
     seats?: number
   }
+  /** a drone line's dice pools when it acts on its own: Pilot + each autosoft's rating (vehiclemods.ts dronePools) */
+  dronePools?: { test: string; autosoft: string; pool: number }[]
 }
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
@@ -636,7 +642,15 @@ function weaponValues(w: ReturnType<typeof weaponOf>, v: Sr6Values): Partial<Sr6
   })
 }
 
-function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchase, top = true, host?: Sr6Purchase): Sr6ExportPurchase {
+function purchase(
+  c: Sr6Catalog,
+  data: Sr6Data,
+  cr: CreationRules,
+  x: Sr6Purchase,
+  top = true,
+  host?: Sr6Purchase,
+  owned: Sr6Purchase[] = [],
+): Sr6ExportPurchase {
   const e = leveled(data, entryOf(x, data), x.rating)
   // values at the line's rating, else the entry's lowest; an unrated item has none (ratingOf's 1 is for pricing only)
   const base = e ? item(c, data, e, true, x.rating) : bare(x.kind, x.name ?? x.id ?? 'Custom item', x.id)
@@ -647,7 +661,15 @@ function purchase(c: Sr6Catalog, data: Sr6Data, cr: CreationRules, x: Sr6Purchas
   if (x.gmPrice !== undefined && values.cost !== undefined) values.cost = x.gmPrice
   if (!e && x.rating !== undefined) values.rating = x.rating
   // the seats left after some went to cargo (Double Clutch p. 126)
-  if (x.kind === 'weapons' && top) Object.assign(values, weaponValues(weaponOf(x, data, weaponSkill(data, e)), values))
+  if (x.kind === 'weapons' && top) {
+    Object.assign(values, weaponValues(weaponOf(x, data, weaponSkill(data, e)), values))
+    const loads = ammoLoads(x, data, owned, weaponSkill(data, e)).map(l =>
+      defined({ id: l.id, name: l.name, dv: num(l.stats.dv.match(/^\s*(\d+)/)?.[1]), ar: l.stats.ar, stun: l.stun ? (true as const) : undefined }),
+    )
+    if (loads.length) values.ammoTypes = loads
+  }
+  const pools = x.kind === 'vehicles' && top ? dronePools(x, data) : []
+  if (pools.length) values.dronePools = pools
   if (x.seatsRemoved && values.vehicle?.seats !== undefined) values.vehicle = { ...values.vehicle, seats: Math.max(0, values.vehicle.seats - x.seatsRemoved) }
   return defined({
     ...base,
@@ -883,7 +905,7 @@ export function exportSr6Runner(all: Sr6Catalog, allData: Sr6Data, cr: CreationR
         }),
       }
     }),
-    purchases: b.purchases.map(x => purchase(c, data, cr, x)),
+    purchases: b.purchases.map(x => purchase(c, data, cr, x, true, undefined, b.purchases)),
     contacts: b.contacts.map(x =>
       defined({
         uid: x.uid,

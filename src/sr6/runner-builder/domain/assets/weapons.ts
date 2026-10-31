@@ -186,6 +186,40 @@ export function weaponOf(x: Sr6Purchase, data: Sr6Data, skill?: string): WeaponO
   return { base, now, on, from: [...from] }
 }
 
+/** A weapon loaded with one of the runner's ammunition types: its stats with the type's effects (CRB p. 262: APDS +2 AR,
+ *  −1 DV), and whether it does Stun instead of Physical (Gel, Stick-n-Shock: PHYSICAL_DAMAGE_IS_STUN). */
+export interface AmmoLoad {
+  id: string
+  name: string
+  stats: WeaponStats
+  stun: boolean
+}
+const flat = (xs: Sr6Purchase[]): Sr6Purchase[] => xs.flatMap(x => [x, ...flat(x.accessories)])
+/** The ammunition types the runner owns (on an ammunition line, or bought alone) loaded in a ranged weapon, each that
+ *  changes it; none for a weapon printing no ammo (melee, unarmed). As weaponOf: always-on effects (`now`). */
+// ponytail: every ammo type the runner owns is offered for every ranged weapon; ammo lines aren't tied to a weapon or its
+// ammunition class yet (add when a line records the weapon it is loaded in)
+export function ammoLoads(x: Sr6Purchase, data: Sr6Data, owned: Sr6Purchase[], skill?: string): AmmoLoad[] {
+  if (!baseOf(entryOf(x, data)).ammo.trim()) return []
+  const plain = weaponOf(x, data, skill).now,
+    seen = new Set<string>(),
+    out: AmmoLoad[] = []
+  for (const a of flat(owned)) {
+    const e = a.kind === 'ammotypes' && a.id && !seen.has(a.id) ? entryOf(a, data) : undefined
+    if (!e) continue
+    seen.add(a.id!)
+    const stats = weaponOf({ ...x, accessories: [...x.accessories, { uid: '', kind: 'ammotypes', id: a.id, qty: 1, accessories: [] }] }, data, skill).now
+    const stun = (e.parts ?? []).some(p => p.attrs.ref === 'PHYSICAL_DAMAGE_IS_STUN')
+    if (stun || stats.dv !== plain.dv || stats.ar.join() !== plain.ar.join()) out.push({ id: e.id, name: e.name, stats, stun })
+  }
+  return out.sort((p, q) => p.name.localeCompare(q.name))
+}
+/** `APDS: AR 10/10/8, DV 3P` (a stun load's DV in S). */
+export function ammoLoadText(l: AmmoLoad): string {
+  const dv = l.stun ? l.stats.dv.replace(/P\b/, 'S') : l.stats.dv
+  return `${l.name}: AR ${bandsText(l.stats.ar)}, DV ${dv}`
+}
+
 /** `9/9/7/—/—`. */
 export const bandsText = (bs: (number | null)[]) => bs.map(v => (v === null ? '—' : String(v))).join('/')
 /** `AR 9/9/7 → 10/10/8 (11/11/9), DV 3P, SA/BF, ammo 15(c) → 25(c)`: what the fittings change, base → modified (bracketed:

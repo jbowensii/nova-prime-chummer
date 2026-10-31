@@ -3,6 +3,7 @@ import { SR6_ATTRS, type Sr6Attr } from '../../../formats/domain/character'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { normName } from '../../../catalog/domain/names'
+import type { Sr6Build } from '../../../formats/domain/character'
 
 const ATTR_WORDS: Record<string, Sr6Attr> = {
   body: 'bod',
@@ -65,8 +66,36 @@ const STATIC_LISTS: Record<string, string[]> = {
   SENSE: ['Hearing', 'Sight', 'Smell', 'Taste', 'Touch'],
   MATRIX_ATTRIBUTE: ['Attack', 'Sleaze', 'Data Processing', 'Firewall'],
 }
+/** What a choice can name from the runner: their contacts' names and the catalog entries of everything they own. */
+export interface ChoiceCtx {
+  contacts?: string[]
+  owned?: Sr6Entry[]
+}
+/** The runner's contacts and owned entries (nested lines too: a weapon in a mount, an implant in a cyberlimb). */
+export function choiceCtx(data: Sr6Data, b: Pick<Sr6Build, 'contacts' | 'purchases'>): ChoiceCtx {
+  const flat = (xs: Sr6Build['purchases']): Sr6Build['purchases'] => xs.flatMap(x => [x, ...flat(x.accessories ?? [])])
+  return {
+    contacts: b.contacts.map(c => c.name).filter(Boolean),
+    owned: flat(b.purchases)
+      .map(x => (x.id ? data.entry(x.kind, x.id) : undefined))
+      .filter((e): e is Sr6Entry => !!e),
+  }
+}
+/** Does a catalog entry belong to a GEAR/CARRIED choice's `ref` (Commlink6's item type: CHEMICALS, WEAPON, MELEE,
+ *  VEHICLE, DEVICE, ItemType:CYBERWARE)? No ref (or CARRIED) takes anything. */
+export function ofRef(e: Sr6Entry, ref = ''): boolean {
+  const r = ref.replace(/^ItemType:/i, '').toUpperCase(),
+    c = (e.attrs.class ?? '').toUpperCase()
+  if (!r || r === 'CARRIED') return true
+  if (r === 'WEAPON') return e.kind === 'weapons'
+  if (r === 'MELEE') return e.kind === 'weapons' && c.startsWith('WEAPON_CLOSE_COMBAT')
+  if (r === 'VEHICLE') return e.kind === 'vehicles'
+  if (r === 'DEVICE') return e.kind === 'electronics'
+  return c.startsWith(r) // CHEMICALS, CYBERWARE, …
+}
+const GEAR_KINDS = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles'] as const
 // types listed from the catalog's own entries
-const CATALOG_LISTS: Record<string, (d: Sr6Data, ref: string, contacts: string[]) => string[]> = {
+const CATALOG_LISTS: Record<string, (d: Sr6Data, ref: string, ctx: ChoiceCtx) => string[]> = {
   ADEPT_POWER: d => Object.values(d.powers).map(p => p.name),
   MENTOR_SPIRIT: d => d.kindNames?.('mentorspirits') ?? [],
   PARAGON: d => d.kindNames?.('mentorspirits') ?? [], // (Commlink6 files paragons with the mentor spirits)
@@ -76,10 +105,17 @@ const CATALOG_LISTS: Record<string, (d: Sr6Data, ref: string, contacts: string[]
   PROGRAM: d => d.kindNames?.('programs') ?? [],
   SPRITE: d => d.kindNames?.('sprites') ?? [],
   SIGNATURE_MANEUVERS: d => d.kindNames?.('martialtechniques') ?? [],
-  GEAR: d => d.kindNames?.('gear') ?? [],
-  CARRIED: (d, ref) =>
-    d.kindNames?.(/WEAPON|MELEE/i.test(ref) ? 'weapons' : /CYBERWARE/i.test(ref) ? 'augmentations' : /DEVICE/i.test(ref) ? 'electronics' : 'gear') ?? [],
-  CONTACT: (_d, _r, contacts) => contacts, // the runner's own contacts (text box while there are none)
+  ACTION: d => d.kindNames?.('actions') ?? [],
+  // a catalog item of the ref's type (Gas Grenade → which chemical, autosoft → which vehicle/weapon model); ref CARRIED:
+  // one of the runner's own (Item Attunement)
+  GEAR: (d, ref, ctx) =>
+    /^CARRIED$/i.test(ref)
+      ? (ctx.owned ?? []).map(e => e.name)
+      : GEAR_KINDS.flatMap(k => (d.kindEntries?.(k) ?? []).filter(e => ofRef(e, ref)).map(e => e.name)),
+  // one of the runner's own items (Weapon Focus → which of their melee weapons, Dying Cyberware → which implant); a text
+  // box while they own none
+  CARRIED: (_d, ref, ctx) => (ctx.owned ?? []).filter(e => ofRef(e, ref)).map(e => e.name),
+  CONTACT: (_d, _r, ctx) => ctx.contacts ?? [], // the runner's own contacts (text box while there are none)
 }
 /** Every `<selection>` type choiceOptions answers for (the typed ones above plus the lists): a test iterates the catalog's. */
 export const HANDLED_SELECTIONS = [
@@ -105,7 +141,7 @@ const SEL_KIND: Record<string, ChoiceSpec['kind']> = {
  *  choice domain (ATTRIBUTE/SKILL/QUALITY/ITEM_ATTRIBUTE) and its comma-separated `options`; older entries mark it with a
  *  `ref="CHOICE"` modifier, an `attr/skill(-max):choice` effect, or the `(Attribute)`/`(Skill)` name suffix. Options keep the
  *  data's order. A free-text selection (TEXT/PARAGON/…) returns undefined so the UI keeps a text box. */
-export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, contacts: string[] = []): ChoiceSpec | undefined {
+export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, ctx: ChoiceCtx = {}): ChoiceSpec | undefined {
   if (!e) return undefined
   const parts = e.parts ?? []
   const typed = parts.find(p => p.attrs.ref === 'CHOICE' && /^(ATTRIBUTE|SKILL)$/.test(p.attrs.type ?? ''))
@@ -124,7 +160,7 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, contacts: 
       : sel
         ? SEL_KIND[sel.attrs.type!]
         : qualityChoice(e.name)
-  if (!kind && other) return otherChoice(data, other.attrs, contacts)
+  if (!kind && other) return otherChoice(data, other.attrs, ctx)
   if (!kind) return undefined
   // explicit catalog options are comma-separated; skill names hold spaces, so never split on whitespace. Prefer the
   // selection part's options, else any typed CHOICE part's (e.g. Improved Mental Attribute's separate selection).
@@ -146,7 +182,15 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, contacts: 
           .sort((a, b) => a.localeCompare(b))
   } else if (kind === 'specialization') {
     // one of a skill's specializations (Grease Monkey: <selection type="SKILLSPECIALIZATION" ref="engineering">)
-    names = data.skills[sel?.attrs.ref ?? '']?.specs ?? []
+    // options are `skill/spec` pairs (Enthralling Performance: `con/performance,…`): the spec, its skill named
+    names = tokens.length
+      ? tokens.map(t => {
+          const [sk, sp = ''] = t.split('/')
+          const skill = data.skills[sk] ?? data.skills[noteSkill(data, sk.replace(/_/g, ' ')) ?? '']
+          const spec = skill?.specs?.find(x => normName(x) === normName(sp.replace(/_/g, ' '))) ?? titleCase(sp)
+          return skill ? `${skill.name} (${spec})` : spec
+        })
+      : (data.skills[sel?.attrs.ref ?? '']?.specs ?? [])
   } else if (kind === 'quality') {
     // tokens are quality ids with underscores (`artisans_way`); the catalog uses hyphens
     names = tokens.map(t => data.entry('qualities', t.replace(/_/g, '-'))?.name ?? data.entry('qualities', t)?.name).filter((s): s is string => !!s)
@@ -159,17 +203,19 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, contacts: 
     names = tokens.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) // matrix attribute labels
   }
   const options = [...new Set(names)].map(v => ({ value: v, label: v }))
+  // a non-Matrix ITEM_ATTRIBUTE choice (Shock Shield, Attribute Overclocking): an ordinary list, not "Which Matrix attribute"
+  if (kind === 'matrix' && tokens.some(t => !MATRIX_ATTRS[t])) return options.length ? { kind: 'list', options } : undefined
   const n = Number(sel?.attrs.count) > 1 ? { count: Number(sel!.attrs.count) } : {}
   return options.length ? { kind, options, ...n } : sel ? { kind: 'text', options: [], ...n } : undefined // a selection nothing can list: a text box
 }
-function otherChoice(data: Sr6Data, a: Record<string, string>, contacts: string[]): ChoiceSpec {
+function otherChoice(data: Sr6Data, a: Record<string, string>, ctx: ChoiceCtx): ChoiceSpec {
   const type = a.type ?? ''
   const listed = (a.options ?? '')
     .split(',')
     .map(t => t.trim())
     .filter(Boolean)
   const cat = CATALOG_LISTS[type]
-  const names = listed.length ? listed.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) : (STATIC_LISTS[type] ?? cat?.(data, a.ref ?? '', contacts) ?? [])
+  const names = listed.length ? listed.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) : (STATIC_LISTS[type] ?? cat?.(data, a.ref ?? '', ctx) ?? [])
   const options = [...new Set(names)].sort((x, y) => x.localeCompare(y)).map(v => ({ value: v, label: v }))
   const count = Number(a.count) > 1 ? { count: Number(a.count) } : {}
   return options.length ? { kind: 'list', options, ...count } : { kind: 'text', options: [], ...count }

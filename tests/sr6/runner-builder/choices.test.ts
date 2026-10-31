@@ -3,6 +3,7 @@ import { expect, test } from 'vitest'
 import { choiceOptions, choiceSelectOptions, noteAttr, noteSkill } from '../../../src/sr6/runner-builder/domain/creation/choices'
 import type { Sr6Entry, Sr6Part } from '../../../src/sr6/formats/domain/types'
 import { made } from '../catalog/fixture'
+import type { Sr6Data } from '../../../src/sr6/catalog/domain/data'
 
 const entry = (name: string, parts: Sr6Part[] = []) => ({ id: 'x.' + name, kind: 'adeptpowers', name, attrs: {}, parts }) as unknown as Sr6Entry
 const part = (tag: string, attrs: Record<string, string>): Sr6Part => ({ tag, text: '', attrs })
@@ -164,8 +165,42 @@ test('catalog-listed choices: ammo types, contacts, a multi-pick count', () => {
   const ammo = choiceOptions(data, entry('X', [part('selection', { type: 'AMMUNITION_TYPE', ref: 'AMMOTYPE' })]))!
   expect(ammo.kind === 'list' ? ammo.options.map(o => o.value) : []).toEqual(data.kindNames!('ammotypes'))
   expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]))!.kind).toBe('text') // none yet
-  expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]), ['Mr. Johnson'])!.options.map(o => o.value)).toEqual(['Mr. Johnson'])
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'CONTACT' })]), { contacts: ['Mr. Johnson'] })!.options.map(o => o.value)).toEqual([
+    'Mr. Johnson',
+  ])
   expect(choiceOptions(data, entry('X', [part('selection', { type: 'SUBSELECT', ref: 'vector', count: '4' })]))!.count).toBe(4)
   const sp = choiceOptions(data, entry('X', [part('selection', { type: 'SPRITE_POWER' })]))!
   expect(sp.kind === 'list' ? sp.options.map(o => o.value) : []).toContain('Static Burst')
+})
+
+test('gear-bound choices: a ref filters the catalog, CARRIED binds to the runner’s own items', () => {
+  const { data } = made()
+  const item = (kind: string, name: string, cls: string) => ({ ...entry(name), kind, attrs: { class: cls } }) as unknown as Sr6Entry
+  const knife = item('weapons', 'Knife', 'WEAPON_CLOSE_COMBAT/BLADES'),
+    gun = item('weapons', 'Ares Predator', 'WEAPON_FIREARMS/PISTOLS_HEAVY'),
+    cs = item('gear', 'CS Tear Gas', 'CHEMICALS/TOXINS'),
+    rope = item('gear', 'Rope', 'SURVIVAL/TOOLS')
+  data.kindEntries = (k => [knife, gun, cs, rope].filter(e => e.kind === k)) as Sr6Data['kindEntries']
+  const opts = (sel: Record<string, string>, owned?: Sr6Entry[]) => choiceOptions(data, entry('X', [part('selection', sel)]), { owned })!
+  expect(opts({ type: 'GEAR', ref: 'CHEMICALS' }).options.map(o => o.value)).toEqual(['CS Tear Gas']) // Gas Grenade → which chemical
+  expect(opts({ type: 'GEAR', ref: 'WEAPON' }).options.map(o => o.value)).toEqual(['Ares Predator', 'Knife']) // autosoft → which weapon
+  expect(opts({ type: 'CARRIED', ref: 'MELEE' }).kind).toBe('text') // Weapon Focus, nothing owned yet
+  expect(opts({ type: 'CARRIED', ref: 'MELEE' }, [gun, knife, rope]).options.map(o => o.value)).toEqual(['Knife'])
+  expect(opts({ type: 'CARRIED' }, [gun, rope]).options.map(o => o.value)).toEqual(['Ares Predator', 'Rope']) // Item Attunement
+  expect(opts({ type: 'GEAR', ref: 'CARRIED' }, [rope]).options.map(o => o.value)).toEqual(['Rope'])
+})
+
+test('a specialization choice listing skill/spec pairs (Enthralling Performance) offers them by skill', () => {
+  const { data } = made()
+  const s = Object.values(data.skills).find(k => k.specs.length)!
+  const c = choiceOptions(data, entry('Enthralling Performance', [part('selection', { type: 'SKILLSPECIALIZATION', options: `${s.id}/${s.specs[0]}` })]))!
+  expect(c.options.map(o => o.value)).toEqual([`${s.name} (${s.specs[0]})`])
+})
+
+test('a non-Matrix item-attribute choice is an ordinary list', () => {
+  const { data } = made()
+  expect(choiceOptions(data, entry('Attribute Overclocking', [part('selection', { type: 'ITEM_ATTRIBUTE', options: 'ATTACK,DEVICE_RATING' })]))!.kind).toBe(
+    'list',
+  )
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'ITEM_ATTRIBUTE', options: 'ATTACK,SLEAZE' })]))!.kind).toBe('matrix')
 })

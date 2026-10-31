@@ -10,7 +10,7 @@ import { sitOf } from '../../catalog/domain/effects'
 import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../../core/ui-kit/bits'
 import { effectsOf, entryOf, materialOf, priced, situations, takesMaterial } from '../domain/creation/budgets'
-import { choiceOptions, choiceSelectOptions, type ChoiceSpec } from '../domain/creation/choices'
+import { choiceCtx, choiceOptions, choiceSelectOptions, type ChoiceSpec } from '../domain/creation/choices'
 import { num, type CreationRules } from '../../table-setup/domain/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../../catalog/domain/values'
 import { formulaOf, formulaText } from '../../../core/shared/formula'
@@ -785,7 +785,7 @@ export function ChoiceField({ co, value, label, onChange }: { co: ChoiceSpec; va
  *  cyberware or gear choice applies the same way a quality's or power's does. Nothing for an item with no choice. */
 function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; name: string }) {
   const { data, act, ch } = useSr6Editor()
-  const co = e && choiceOptions(data, e, ch.build.contacts.map(c => c.name).filter(Boolean))
+  const co = e && choiceOptions(data, e, choiceCtx(data, ch.build))
   if (!co) return null
   return (
     <label className="inline">

@@ -272,6 +272,36 @@
           "description": "Dice a weapon line's fittings add to its attack tests.",
           "type": "number"
         },
+        "ammoTypes": {
+          "description": "A ranged weapon line's DV and Attack Ratings with each ammunition type the runner owns loaded (CRB p. 262); stun for Gel / Stick-n-Shock.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "ar"],
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "dv": { "type": "number" },
+              "ar": { "type": "array", "items": { "type": ["number", "null"] } },
+              "stun": { "const": true }
+            }
+          }
+        },
+        "dronePools": {
+          "description": "A drone line's dice pools when it acts on its own: Pilot + each autosoft's rating (CRB p. 201).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["test", "autosoft", "pool"],
+            "properties": {
+              "test": { "type": "string" },
+              "autosoft": { "type": "string" },
+              "pool": { "type": "number" }
+            }
+          }
+        },
         "defense": {
           "type": "number"
         },

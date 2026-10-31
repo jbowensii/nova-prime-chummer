@@ -10,7 +10,7 @@ import { cargoFactor, estimatedDp, diyAllowed, entryOf, isDrone, modKind, priced
 import { boughtDesign, designOf } from '../../domain/assets/design'
 import { entryLabel } from '../../../catalog/domain/categories'
 import { flag } from '../../../table-setup/domain/creation'
-import { builtinText, modsOf, mountsOf, shiftProblem, type Meter } from '../../domain/assets/vehiclemods'
+import { builtinText, dronePools, modsOf, mountsOf, shiftProblem, type Meter } from '../../domain/assets/vehiclemods'
 import { SHIFT_KINDS, type ShiftKind, type SlotKind, type Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { n, reasonText, useSr6Editor } from '../editor'
@@ -230,6 +230,14 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
           ...(m.autosofts ? [meter('Autosofts', m.autosofts)] : []),
         ].flatMap((el, i) => (i ? [' · ', el] : [el]))}
       </span>
+      {dronePools(x, data).length > 0 && (
+        <span>
+          Autonomous (Pilot + autosoft, p. 201):{' '}
+          {dronePools(x, data)
+            .map(p => `${p.test} ${p.pool} (${p.autosoft})`)
+            .join(' · ')}
+        </span>
+      )}
       {m.slots && (
         <span className="row">
           Shift slots (p. 120): two

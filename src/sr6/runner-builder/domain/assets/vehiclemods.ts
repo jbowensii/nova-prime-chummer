@@ -472,3 +472,26 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
   return out
 }
 const normCat = (s?: string) => (s ?? '').toLowerCase().replace(/ mod.*$/, '')
+
+// an autosoft by name -> the test it backs when the drone acts on its own (CRB p. 201)
+const AUTOSOFT_TESTS: [RegExp, string][] = [
+  [/maneuver/i, 'Piloting'],
+  [/targeting/i, 'Attack'],
+  [/evasion/i, 'Defense'],
+  [/clearsight/i, 'Perception'],
+  [/stealth/i, 'Stealth'],
+  [/electronic warfare/i, 'Electronic Warfare'],
+]
+/** A drone's dice pools when it runs autonomously: Pilot + the autosoft's rating for each autosoft it runs (CRB p. 201:
+ *  Maneuvering for vehicle tests, Targeting for attacks, Evasion for defense, Clearsight for Perception ...). Jumped in or
+ *  by remote it rolls the rigger's own skills instead. Nothing for a vehicle that isn't a drone. */
+export function dronePools(x: Sr6Purchase, data: Sr6Data): { test: string; autosoft: string; pool: number }[] {
+  const e = entryOf(x, data)
+  if (!isDrone(e)) return []
+  const pilot = first(e?.attrs.pilot)
+  return x.accessories.flatMap(a => {
+    const s = entryOf(a, data),
+      t = s && a.kind === 'programs' ? AUTOSOFT_TESTS.find(([re]) => re.test(s.name)) : undefined
+    return t ? [{ test: t[1], autosoft: entryLabel(s!), pool: pilot + ratingOf(a, s) }] : []
+  })
+}
