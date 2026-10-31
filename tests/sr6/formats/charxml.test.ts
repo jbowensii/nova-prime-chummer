@@ -352,6 +352,7 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'purchase', line: gear },
     { op: 'drop', target: 'g4' },
     { op: 'drop', target: 'lg', line: gear },
+    { op: 'quantity', target: 'g4', qty: 7 },
     { op: 'upgrade', target: 'g4', line: { ...gear, uid: 'lu', id: 'crb.tangle-rope.3' } },
     { op: 'quality', line: { ...q, uid: 'lq2', id: 'crb.lucky-streak.2' }, target: 'q7' },
     { op: 'pick', line: { uid: 'lp2', kind: 'adeptpowers', id: 'crb.quick-step.2' }, target: 'p7' },

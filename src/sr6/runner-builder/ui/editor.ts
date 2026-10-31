@@ -110,6 +110,7 @@ export const REASONS: Record<string, string> = {
   duplicate: 'The runner already has that power, and it has no levels.',
   'rating-range': 'That rating is outside the item’s range.',
   'grade-follows-host': 'An add-on has its implant’s grade (core rulebook p. 282): change the implant’s grade instead.',
+  unchanged: 'That is the quantity already.',
   'own-line': 'Each of these is its own line: add another one instead.',
   'not-fitted': 'That accessory isn’t fitted to it.',
   'not-a-mount': 'That isn’t one of its weapon mounts.',
