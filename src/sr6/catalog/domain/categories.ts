@@ -152,8 +152,21 @@ export const isAmmoType = (e?: Sr6Entry) => e?.kind === 'ammotypes' && !isMateri
 /** Designer fashion (owner ruling 2026-10-25): any armor entry with a `fashion` slot of its own data. The FASHION hook
  *  Commlink6's code gives every body armor with a Social rating (rule F) is not one. */
 export const isDesignerFashion = (e?: Sr6Entry) => e?.kind === 'armor' && structureOf(e).slots.some(s => s.id === 'fashion' && s.rule !== 'F')
-/** Purchase kinds whose lines stack: N of one item is ONE line with a count (the rest are one line each, with their own accessories or levels). */
-export const STACKING: ReadonlySet<string> = new Set(['electronics', 'programs', 'gear', 'ammotypes'])
+/** Whether N of an item are ONE line with a count (the rest are one line each, with their own accessories or levels).
+ *  Decided per ITEM, not per kind: gear/electronics/programs/ammotypes stack (except foci, each individually bound);
+ *  weapons stack only when they are expendable (grenades, explosives, rockets/missiles: class AMMUNITION/*; thrown
+ *  weapons: class WEAPON_RANGED/THROWING); firearms and melee weapons (which take accessories), armor, augmentations,
+ *  vehicles and critters never do. `e` is undefined for a custom line (it stacks only by kind). */
+export function stacks(kind: string, e?: Sr6Entry): boolean {
+  if (kind === 'weapons') return /^AMMUNITION\/|^WEAPON_RANGED\/THROWING$/i.test(e?.attrs.class ?? '')
+  if (kind === 'gear' && /foci|focus/i.test(e?.attrs.category ?? '')) return false
+  return kind === 'electronics' || kind === 'programs' || kind === 'gear' || kind === 'ammotypes'
+}
+/** Explosives and demolitions (CRB pp. 264-271): explosive packages, grenades, rockets and missiles, detonator caps; whatever
+ *  kind they are catalogued as (weapons, gear), from every book. Not the base ammunition lines (isAmmoGear). */
+export const isExplosive = (e?: Sr6Entry) =>
+  (e?.kind === 'weapons' || e?.kind === 'gear') && /^AMMUNITION\/(EXPLOSIVES|GRENADES|ROCKETS)$/i.test(e.attrs.class ?? '')
+export const EXPLOSIVES_GROUP = 'Explosives & demolitions'
 export const isAmmoGear = (e?: Sr6Entry) => e?.kind === 'gear' && /ammo by weapon/i.test(e.attrs.category ?? '')
 
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other

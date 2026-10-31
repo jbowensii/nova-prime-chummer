@@ -10,7 +10,7 @@ import { ratingEdge } from '../../domain/creation/derive'
 import { n, useSr6Editor } from '../editor'
 import { BuyItemDesign } from '../Builder'
 import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, packChoices, PurchaseSection, social } from '../Picker'
-import { entryLabel, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
+import { entryLabel, isAmmoGear, isAmmoType, isExplosive } from '../../../catalog/domain/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['gear', 'Other gear'],
@@ -170,9 +170,27 @@ export function GearTab() {
         kind="weapons"
         title="Weapons"
         one="a weapon"
+        offer={e => !isExplosive(e)}
+        show={x => !isExplosive(entryOf(x, data))}
         detail={withIdentity(x => [ar(x.uid), ...statusesOf(entryOf(x, data)).map(s => `applies ${s}`)].filter(Boolean).join(' · '))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         hint={`Unarmed: AR ${d.attackRatings.unarmed}${u ? `, DV ${u.dv}${u.physical ? 'P' : 'S'}` : ''}${edgeAt([d.attackRatings.unarmed])}.`}
+      />
+      <PurchaseSection
+        kind="weapons"
+        title="Explosives and grenades"
+        one="an explosive or grenade"
+        offer={isExplosive}
+        show={x => isExplosive(entryOf(x, data))}
+        detail={withIdentity()}
+      />
+      <PurchaseSection
+        kind="gear"
+        title="Detonators and rockets"
+        one="a detonator or rocket"
+        offer={isExplosive}
+        show={x => isExplosive(entryOf(x, data))}
+        detail={withIdentity()}
       />
       <label className="inline">
         Target’s DR <input type="number" min={0} value={dr} aria-label="Target’s DR" onChange={e => setDr(e.target.value)} />{' '}
@@ -224,8 +242,8 @@ export function GearTab() {
         kind="gear"
         title="Other gear"
         one="other gear"
-        offer={e => !isAmmoGear(e) && !isFocus(e)}
-        show={x => !isAmmoGear(entryOf(x, data)) && !isFocus(entryOf(x, data))}
+        offer={e => !isAmmoGear(e) && !isFocus(e) && !isExplosive(e)}
+        show={x => !isAmmoGear(entryOf(x, data)) && !isFocus(entryOf(x, data)) && !isExplosive(entryOf(x, data))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
         detail={withIdentity(material)}

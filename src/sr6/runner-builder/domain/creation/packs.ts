@@ -13,7 +13,7 @@ import type { Sr6Data } from '../../../catalog/domain/data'
 import { fitsOnly, structureOf } from '../../../catalog/domain/structure'
 import { ammoRowOf } from './npc'
 import { bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
-import { STACKING } from '../../../catalog/domain/categories'
+import { stacks } from '../../../catalog/domain/categories'
 
 export type { Sr6PackExpansion }
 
@@ -129,7 +129,7 @@ function attach(data: Sr6Data, w: string, host: Sr6Purchase | undefined, source:
     const f = find(data, modName(rest), source)
     if (f && isMod(f.e)) {
       const ar = Number(/\s(\d+)$/.exec(rest)?.[1]) || undefined,
-        a = line(f.kind, f.e, { qty: STACKING.has(f.kind) ? n : 1, ...(ar !== undefined && ratingRange(f.e.attrs.rating).includes(ar) ? { rating: ar } : {}) })
+        a = line(f.kind, f.e, { qty: stacks(f.kind, f.e) ? n : 1, ...(ar !== undefined && ratingRange(f.e.attrs.rating).includes(ar) ? { rating: ar } : {}) })
       if (!check(host, a)) {
         host.accessories.push(a)
         return []
@@ -180,7 +180,7 @@ function itemLines(data: Sr6Data, printed: string, source: string, check: FitChe
     if (!hit) return [mk('gear', { name: text.slice(0, 120), cost: 0, avail: 0, essence: 0, qty: q })]
     const range = ratingRange(hit.e.attrs.rating)
     const r = rating !== undefined && (!range.length || range.includes(rating)) ? rating : undefined
-    const stack = STACKING.has(hit.kind)
+    const stack = stacks(hit.kind, hit.e)
     const extra: Sr6Purchase[] = []
     const made = Array.from({ length: stack ? 1 : q }, () => {
       const host = mk(hit.kind, { id: hit.e.id, name: hit.e.name, qty: stack ? q : 1, ...(r !== undefined ? { rating: r } : {}) })

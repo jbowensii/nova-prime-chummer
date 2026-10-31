@@ -21,7 +21,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { entryLabel, entrySearch, isAmmoGear, isAmmoType, STACKING } from '../../catalog/domain/categories'
+import { entryLabel, entrySearch, EXPLOSIVES_GROUP, isAmmoGear, isExplosive, isAmmoType, stacks as itemStacks } from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -58,11 +58,13 @@ export const social = (s: string | undefined) => {
 }
 
 /** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
-export const groupOf = (e: Sr6Entry) => (e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category)
+export const groupOf = (e: Sr6Entry) =>
+  isExplosive(e) ? EXPLOSIVES_GROUP : e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category
 /** A coarse major category for a picker that spans many kinds (Buy gear): breaks out by weapons, cyberware, bioware,
  *  geneware, ammunition, armour, software, … — the item's kind (or, for an augmentation, its type) — instead of the fine,
  *  often vendor-named, category. */
-export const majorGroupOf = (e: Sr6Entry): string => (e.kind === 'augmentations' ? e.attrs.type || 'Augmentations' : SR6_KINDS[e.kind].label)
+export const majorGroupOf = (e: Sr6Entry): string =>
+  isExplosive(e) ? EXPLOSIVES_GROUP : e.kind === 'augmentations' ? e.attrs.type || 'Augmentations' : SR6_KINDS[e.kind].label
 
 /** House and the compendium's name for a GM compendium's entry (nothing for a book's). */
 export function House({ c, source }: { c: Sr6Catalog; source: string }) {
@@ -169,7 +171,7 @@ export function CatalogPicker({
     const range = ratingRange(e.attrs.rating),
       free = chosenRating(e)
     const gs = offered(e)
-    const stacks = quantity && STACKING.has(e.kind)
+    const stacks = quantity && itemStacks(e.kind, e)
     if (range.length > 1 || free || gs.length || stacks)
       setChosen({ e, rating: range.length > 1 || free ? (range[0] ?? 1) : undefined, grade: gs[0], ...(stacks ? { qty: 1 } : {}) })
     else add({ e })
@@ -726,8 +728,6 @@ function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades
   )
 }
 
-const STACKS = STACKING
-
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
 export const CHOICE_PROMPT: Record<string, string> = {
@@ -878,6 +878,7 @@ export function PurchaseSection({
   const { ch, data, cr, act, d } = useSr6Editor()
   const [adding, setAdding] = useState(false)
   const rows = ch.build.purchases.filter(x => x.kind === kind && (!show || show(x)))
+  const qtyCol = rows.some(x => itemStacks(x.kind, entryOf(x, data)))
   const own = (x: Sr6Purchase) => d.hosts.find(h => h.uid === x.uid)?.text
   const ware = kind === 'augmentations'
   return (
@@ -902,7 +903,7 @@ export function PurchaseSection({
             <thead>
               <tr>
                 <th>{title}</th>
-                {(STACKS.has(kind) || kind === 'armor') && <th>{kind === 'armor' ? 'Worn' : 'Qty'}</th>}
+                {(qtyCol || kind === 'armor') && <th>{kind === 'armor' ? 'Worn' : 'Qty'}</th>}
                 {ware && <th className="num">Essence</th>}
                 <th className="num">Avail</th>
                 <th className="num">Cost</th>
@@ -953,9 +954,11 @@ export function PurchaseSection({
                         </div>
                       )}
                     </td>
-                    {STACKS.has(kind) && (
+                    {qtyCol && (
                       <td>
-                        <Stepper label={`${name} quantity`} value={x.qty} min={1} max={999} onChange={qty => act({ op: 'quantity', uid: x.uid, qty })} />
+                        {itemStacks(x.kind, e) && (
+                          <Stepper label={`${name} quantity`} value={x.qty} min={1} max={999} onChange={qty => act({ op: 'quantity', uid: x.uid, qty })} />
+                        )}
                       </td>
                     )}
                     {kind === 'armor' && (
