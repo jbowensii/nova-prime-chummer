@@ -6,18 +6,7 @@
 // entry picked) shows its card on hover, focus or tap (EntryRef.tsx Sr6AdvanceRef).
 import { useRef, useState } from 'react'
 import { GENDER_LIST, GenderList, Modal } from '../../../../core/ui-kit/bits'
-import {
-  attrRating,
-  choiceOptions,
-  choiceSelectOptions,
-  diyAllowed,
-  entryOf,
-  isDrone,
-  licenceFee,
-  powerCost,
-  priced,
-  settingQuality,
-} from '../../domain/creation/budgets'
+import { attrRating, choiceOptions, diyAllowed, entryOf, isDrone, licenceFee, powerCost, priced, settingQuality } from '../../domain/creation/budgets'
 import {
   balances,
   careerPowerPoints,
@@ -57,7 +46,7 @@ import {
 } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
-import { ACCESSORY_KINDS, CatalogPicker, isAccessory, type PickedItem } from '../Picker'
+import { ACCESSORY_KINDS, CatalogPicker, ChoiceField, isAccessory, type PickedItem } from '../Picker'
 import { capacityOf, isAmmoGear, isAmmoType, offeredOn } from '../../../catalog/domain/categories'
 import { deep } from '../../domain/creation/actions'
 import { newId } from '../../../../core/shared/types'
@@ -806,15 +795,8 @@ export function LedgerTab() {
               <>
                 {co && (
                   <label>
-                    The {co.kind} it is for
-                    <select value={f.note} aria-label="Choice note" onChange={e => set({ note: e.target.value })}>
-                      <option value="">Pick one</option>
-                      {choiceSelectOptions(co, f.note).map(o => (
-                        <option key={o.value} value={o.value}>
-                          {o.label}
-                        </option>
-                      ))}
-                    </select>
+                    {co.kind === 'attribute' || co.kind === 'skill' ? `The ${co.kind} it is for` : 'Its choice'}
+                    <ChoiceField co={co} value={f.note} label="Choice note" onChange={v => set({ note: v })} />
                   </label>
                 )}
                 {pp && (

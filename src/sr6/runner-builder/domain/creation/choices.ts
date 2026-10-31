@@ -40,7 +40,7 @@ export function qualityChoice(name: string | undefined): 'attribute' | 'skill' |
 }
 
 export interface ChoiceSpec {
-  kind: 'attribute' | 'skill' | 'specialization' | 'quality' | 'matrix' | 'spell'
+  kind: 'attribute' | 'skill' | 'specialization' | 'quality' | 'matrix' | 'spell' | 'list' | 'text'
   options: { value: string; label: string }[]
 }
 const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
@@ -53,6 +53,32 @@ const titleCase = (t: string) =>
     .join(' ')
 // the Matrix attributes (ITEM_ATTRIBUTE choices), in their canonical A/S/D/F order
 const MATRIX_ATTRS: Record<string, string> = { ATTACK: 'Attack', SLEAZE: 'Sleaze', DATA_PROCESSING: 'Data Processing', FIREWALL: 'Firewall' }
+// Every other <selection> type Commlink6 uses (scan of 1.14.0, 2026-10): its listed options title-cased, else the book's set
+// (SR6 CRB), else — gear, contacts, programs, SUBSELECT, TEXT… nothing the catalog can list — a free-text box.
+const STATIC_LISTS: Record<string, string[]> = {
+  SPELL_CATEGORY: ['Combat', 'Detection', 'Health', 'Illusion', 'Manipulation'],
+  ELEMENT: ['Acid', 'Cold', 'Electricity', 'Fire'],
+  DAMAGE_ELEMENT: ['Acid', 'Cold', 'Electricity', 'Fire'],
+  SPIRIT: ['Air', 'Beasts', 'Earth', 'Fire', 'Man', 'Water'],
+  SENSE: ['Hearing', 'Sight', 'Smell', 'Taste', 'Touch'],
+  MATRIX_ATTRIBUTE: ['Attack', 'Sleaze', 'Data Processing', 'Firewall'],
+}
+// types listed from the catalog's own entries
+const CATALOG_LISTS: Record<string, (d: Sr6Data) => string[]> = {
+  ADEPT_POWER: d => Object.values(d.powers).map(p => p.name),
+  MENTOR_SPIRIT: d => d.mentorNames ?? [],
+}
+/** Every `<selection>` type choiceOptions answers for (the typed ones above plus the lists): a test iterates the catalog's. */
+export const HANDLED_SELECTIONS = [
+  'ATTRIBUTE',
+  'SKILL',
+  'QUALITY',
+  'ITEM_ATTRIBUTE',
+  'SPELL',
+  'SKILLSPECIALIZATION',
+  ...Object.keys(STATIC_LISTS),
+  ...Object.keys(CATALOG_LISTS),
+]
 // a <selection> part's type → the choice kind it names
 const SEL_KIND: Record<string, ChoiceSpec['kind']> = {
   ATTRIBUTE: 'attribute',
@@ -72,6 +98,8 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
   const typed = parts.find(p => p.attrs.ref === 'CHOICE' && /^(ATTRIBUTE|SKILL)$/.test(p.attrs.type ?? ''))
   const target = parts.find(p => p.tag === 'effect' && /^(attr|attr-max|skill|skill-max):choice$/.test(p.attrs.target ?? ''))
   const sel = parts.find(p => p.tag === 'selection' && /^(ATTRIBUTE|SKILL|QUALITY|ITEM_ATTRIBUTE|SPELL|SKILLSPECIALIZATION)$/.test(p.attrs.type ?? ''))
+  // any other selection part: a list or free text, never nothing
+  const other = typed || target || sel ? undefined : parts.find(p => p.tag === 'selection')
   const kind: ChoiceSpec['kind'] | undefined = typed
     ? typed.attrs.type === 'ATTRIBUTE'
       ? 'attribute'
@@ -83,6 +111,7 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
       : sel
         ? SEL_KIND[sel.attrs.type!]
         : qualityChoice(e.name)
+  if (!kind && other) return otherChoice(data, other.attrs)
   if (!kind) return undefined
   // explicit catalog options are comma-separated; skill names hold spaces, so never split on whitespace. Prefer the
   // selection part's options, else any typed CHOICE part's (e.g. Improved Mental Attribute's separate selection).
@@ -117,7 +146,18 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined): ChoiceSpe
     names = tokens.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) // matrix attribute labels
   }
   const options = [...new Set(names)].map(v => ({ value: v, label: v }))
-  return options.length ? { kind, options } : undefined
+  return options.length ? { kind, options } : sel ? { kind: 'text', options: [] } : undefined // a selection nothing can list: a text box
+}
+function otherChoice(data: Sr6Data, a: Record<string, string>): ChoiceSpec {
+  const type = a.type ?? ''
+  const listed = (a.options ?? '')
+    .split(',')
+    .map(t => t.trim())
+    .filter(Boolean)
+  const cat = CATALOG_LISTS[type]
+  const names = listed.length ? listed.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) : (STATIC_LISTS[type] ?? cat?.(data) ?? [])
+  const options = [...new Set(names)].sort((x, y) => x.localeCompare(y)).map(v => ({ value: v, label: v }))
+  return options.length ? { kind: 'list', options } : { kind: 'text', options: [] }
 }
 /** choiceOptions' values plus the current note when it isn't one of them (an older free-text note, `AGI`): so a stored,
  *  still-valid choice stays shown in the dropdown instead of reading blank and being lost on the next edit. */

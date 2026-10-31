@@ -434,6 +434,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
     powers,
     metamagics,
     spellNames: [...new Set(all('spells').map(e => e.name))].sort((a, b) => a.localeCompare(b)),
+    mentorNames: [...new Set(all('mentorspirits').map(e => e.name))].sort((a, b) => a.localeCompare(b)),
     lifemodules,
     grades,
     problems,
