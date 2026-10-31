@@ -536,8 +536,11 @@ export const CREATION_KEYS: CreationKey[] = [
       ['noUsedCulturedBioware', 'No used (or omega) grade on cultured bioware (house rule)'],
       ['gradeCapAtCreation', 'Caps on the initiation, submersion and transhumanist grade at creation: the grades below (house rule)'],
       ['transhumanism', 'Transhumanism: a mundane buys transhumanist grades, each an Essence hole of 1.0 (option)'],
+      ['allowAnimalism', 'Animalism: shifters and others buy animalism powers (Bestial Nature)'],
+      ['allowSurge', 'SURGE: metagenic qualities and SURGE collectives (Sixth World Companion)'],
     ] as [string, string][]
   ).map(([key, label]): CreationKey => ({ key, label, type: 'bool', group: 'Optional rules', methods: [] })),
+  ...n('Optional rules', [], [['animalismMaxAtCreation', 'Animalism: highest animalism grade at creation']]),
   ...n(
     'Optional rules',
     [],
@@ -774,6 +777,7 @@ export const RULE_DEPS: Record<string, RuleDeps> = {
   // SWC p. 144: 2 Edge for twice the core rulebook's lead (HK p. 45)
   stackingAdvantage: { requires: ['arDrEdgeGap'] },
   infectedPowersAtCreation: { requires: ['infectedAllowed'] },
+  animalismMaxAtCreation: { requires: ['allowAnimalism'] },
   // SWC p. 150: "add Agility to Attack Rating in place of Strength"
   strengthInCloseCombat: { replaces: ['meleeArStrength'] },
   strengthDamageStep1: { requires: ['highStrengthDamage'] },
@@ -1246,6 +1250,12 @@ const ABOUT: Record<string, [string, string]> = {
     'On: a mundane runner buys transhumanist grades for 10 + the next grade in Karma (the initiation price), up to 20, and each gives an Essence hole of 1.0 that augmentations’ Essence is paid from first; off: none',
     SWC(146),
   ],
+  allowAnimalism: [
+    'On: a runner may buy animalism powers, 10 + the grade in Karma each grade, outside initiation (mundanes too); off: they are refused at creation',
+    'Bestial Nature p. 21',
+  ],
+  animalismMaxAtCreation: ['The highest animalism grade at creation (2 when unset)', 'Bestial Nature p. 21'],
+  allowSurge: ['On: a runner may take metagenic qualities (at most 30 Karma of them) and a SURGE collective; off: they are refused at creation', SWC(116)],
   adjustOnLoweredMax: [
     'On: adjustment points may also go on an attribute whose metatype maximum is lowered; off: only on raised maxima, Edge, Magic and Resonance (CRB Hong Kong p. 63)',
     HOUSE,

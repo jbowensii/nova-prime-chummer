@@ -24,7 +24,7 @@ export const isDracogenesis = (e: Sr6Entry | undefined): boolean =>
   !!e && e.kind === 'critterpowers' && (/^DRACOGENESIS/.test(e.attrs.class ?? '') || e.source === 'LL')
 /** The dracogenesis powers learned, a power with levels its level. */
 export const dracogenesisRank = (b: Sr6Build) => b.picks.filter(x => x.kind === 'critterpowers').reduce((t, x) => t + (x.level ?? 1), 0)
-/** Karma for them: 5 + n for the nth (Commlink6's process(), from 6). */
+/** Karma for them: 5 + n for the nth (Commlink6's process(), from 6; owner confirmed 2026-10-31, not its displayed flat 5). */
 export function dracogenesisKarma(b: Sr6Build): number {
   let t = 0
   for (let n = 1; n <= dracogenesisRank(b); n++) t += 5 + n
@@ -34,7 +34,7 @@ export function dracogenesisKarma(b: Sr6Build): number {
 /** A shifter add-on: a quality Commlink6 types SHIFTER, or one Bestial Nature names `<name> (Shifter add-on)`. */
 export const isShifterAddOn = (data: Sr6Data, id: string): boolean => {
   const e = data.entry('qualities', id)
-  return !!e && (/^SHIFTER\b/.test(e.attrs.class ?? '') || /\(shifter add-on\)\s*$/i.test(e.name))
+  return !!e && (/^SHIFTER\b/.test(e.attrs.class ?? '') || /\(shifter add-on\)/i.test(e.name))
 }
 /** Whether the runner is a shifter: it has a Shifter quality (not an add-on). */
 export const isShifter = (b: Sr6Build, data: Sr6Data) => b.qualities.some(q => /^shifter\b/.test(qualityName(data, q)) && !isShifterAddOn(data, q.id))
@@ -84,4 +84,71 @@ export function dracoformProblems(b: Sr6Build, data: Sr6Data): string[] {
   if (total > points) out.push(`${total} dracoform adjustment points spent; ${t.name} has ${points}.`)
   for (const [a] of spent) if (!attrs.includes(a as Sr6Attr)) out.push(`${t.name}’s dracoform points can’t go to ${a.toUpperCase()}.`)
   return out
+}
+
+// The shifter's animal (Commlink6: the Shifter quality's `type` choice, furry/scaly/feathery/fins; our catalog: one Shifter
+// quality a form, Bestial Nature p. 13). Owner ruling 2026-10-31: picked when taking Shifter, as Commlink6 does.
+/** The Shifter forms: the qualities Commlink6's `shifter` pairs with (`cl6`), else named `Shifter (<form>)`. */
+export const shifterForms = (data: Sr6Data): Sr6Entry[] =>
+  (data.kindEntries?.('qualities') ?? [])
+    .filter(e => (e.attrs.cl6 === 'shifter' || /^shifter \(/i.test(e.name)) && !isShifterAddOn(data, e.id))
+    .sort((x, y) => x.name.localeCompare(y.name))
+/** The runner's Shifter quality line (its form), if any. */
+export const shifterLine = (b: Sr6Build, data: Sr6Data) => {
+  const ids = new Set(shifterForms(data).map(e => e.id))
+  return b.qualities.find(q => ids.has(q.id))
+}
+const ATTR_REF: Record<string, Sr6Attr> = {
+  BODY: 'bod',
+  AGILITY: 'agi',
+  REACTION: 'rea',
+  STRENGTH: 'str',
+  WILLPOWER: 'wil',
+  LOGIC: 'log',
+  INTUITION: 'int',
+  CHARISMA: 'cha',
+}
+/** The animal form as the data gives it: what the form quality grants (its Commlink6 `itemmod` refs: natural weapon, Shift,
+ *  Dual Natured …) and the attribute bonuses the add-ons give the animal (`valmod ATTRIBUTE … apply="ANIMAL"`, × level). */
+export interface AnimalForm {
+  form?: Sr6Entry
+  grants: string[]
+  attrs: Partial<Record<Sr6Attr, number>>
+  /** its built-in weapons (Commlink6's `<geardef>`: the shifter's 4P unarmed natural weapon) */
+  weapons: { name: string; dv: string; skill?: string }[]
+}
+export function animalForm(b: Sr6Build, data: Sr6Data): AnimalForm {
+  const line = shifterLine(b, data),
+    form = line && data.entry('qualities', line.id)
+  const mods = (form?.parts ?? []).filter(p => p.tag === 'modifier')
+  const grants = [
+    ...new Set(
+      mods
+        .filter(p => p.attrs.kind === 'itemmod' && /^(QUALITY|CRITTER_POWER)$/.test(p.attrs.type ?? '') && p.attrs.ref)
+        .map(p => p.attrs.ref.replace(/_/g, ' ')),
+    ),
+  ]
+  const weapons = mods
+    .filter(p => p.attrs.kind === 'geardef' && p.attrs.dmg)
+    .map(p => ({ name: (p.attrs.id ?? 'weapon').replace(/_/g, ' '), dv: p.attrs.dmg, ...(p.attrs.skill ? { skill: p.attrs.skill.replace(/_/g, ' ') } : {}) }))
+  const attrs: Partial<Record<Sr6Attr, number>> = {}
+  for (const q of b.qualities.filter(x => isShifterAddOn(data, x.id)))
+    for (const p of data.entry('qualities', q.id)?.parts ?? [])
+      if (p.tag === 'modifier' && p.attrs.kind === 'valmod' && p.attrs.type === 'ATTRIBUTE' && p.attrs.apply === 'ANIMAL' && ATTR_REF[p.attrs.ref]) {
+        const a = ATTR_REF[p.attrs.ref]
+        attrs[a] = (attrs[a] ?? 0) + (Number(p.attrs.value) || 0) * q.level
+      }
+  return { ...(form ? { form } : {}), grants, attrs, weapons }
+}
+/** The animal form's stat block (owner 2026-10-31): each core attribute as the metahuman form has it (`base`: the
+ *  augmented ratings) plus the add-ons' animal bonuses, and its weapons; undefined for a runner who is no shifter. */
+export function animalStats(
+  b: Sr6Build,
+  data: Sr6Data,
+  base: Record<Sr6Attr, number>,
+): { attrs: Record<string, number>; weapons: AnimalForm['weapons'] } | undefined {
+  const a = animalForm(b, data)
+  if (!a.form) return undefined
+  const attrs = Object.fromEntries(Object.values(ATTR_REF).map(k => [k, (base[k] ?? 0) + (a.attrs[k] ?? 0)]))
+  return { attrs, weapons: a.weapons }
 }

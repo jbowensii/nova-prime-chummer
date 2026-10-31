@@ -21,8 +21,19 @@ import { flag, num } from '../../../table-setup/domain/creation'
 import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domain/data'
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../domain/creation/infected'
 import { infectedOff } from '../../domain/assets/critterware'
-import { dracoformPool, dracogenesisRank, drakeGrants, drakeKind, drakeType, isDracogenesis } from '../../domain/creation/drake'
-import { collectiveOptions, collectives, SURGE_CAP, surgeKarma } from '../../domain/creation/surge'
+import {
+  animalForm,
+  dracoformPool,
+  dracogenesisRank,
+  drakeGrants,
+  drakeKind,
+  drakeType,
+  isDracogenesis,
+  shifterForms,
+  shifterLine,
+} from '../../domain/creation/drake'
+import { collectiveOptions, collectives, SURGE_CAP, surgeAllowed, surgeKarma } from '../../domain/creation/surge'
+import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnimalism } from '../../domain/creation/animalism'
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { House, OptionFields, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
@@ -33,6 +44,8 @@ export function QualitiesTab() {
   const [picking, setPicking] = useState<'positive' | 'negative' | null>(null)
   const { pos, neg } = qualityKarma(b, data, cr)
   const powers = b.picks.filter(x => x.kind === 'critterpowers')
+  const animal = animalForm(b, data)
+  const animalismEntries = (data.kindEntries?.('metamagics') ?? []).filter(isAnimalism).sort((x, y) => x.name.localeCompare(y.name))
   const cap = num(cr, 'qualityNetBonusCap'),
     most = num(cr, 'qualityMaxCount')
   const all = Object.values(data.qualities)
@@ -281,8 +294,66 @@ export function QualitiesTab() {
           </select>
         </>
       )}
+      {/* the shifter's animal (Commlink6's Shapeshifter page: Type of Animal; owner ruling 2026-10-31) and what the data gives it */}
+      {shifterLine(b, data) && (
+        <>
+          <h3>Shifter</h3>
+          <p>
+            <label>
+              Animal form{' '}
+              <select value={shifterLine(b, data)!.id} onChange={e => act({ op: 'shifterForm', id: e.target.value })}>
+                {shifterForms(data).map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.name} ({f.attrs.karma ?? '?'} karma)
+                  </option>
+                ))}
+              </select>
+            </label>
+          </p>
+          <p className="muted">
+            {animal.grants.length > 0 && `Gives: ${animal.grants.join(', ')}. `}
+            {animal.weapons.length > 0 && `Weapons: ${animal.weapons.map(w => `${w.name} ${w.dv}`).join(', ')}. `}
+            {Object.entries(animal.attrs).length > 0 &&
+              `Animal form: ${Object.entries(animal.attrs)
+                .map(([a, v]) => `${a.toUpperCase()} +${v}`)
+                .join(', ')}.`}
+          </p>
+        </>
+      )}
+      {/* animalism powers (Bestial Nature; Commlink6's Animalism page): any runner, mundane too (owner ruling 2026-10-31) */}
+      {(animalismAllowed(cr) || animalismPicks(b, data).length > 0) && animalismEntries.length > 0 && (
+        <>
+          <h3>Animalism</h3>
+          <p className="muted">
+            Grade {animalismGrade(b, data)} of {animalismMax(cr)} at creation: the next grade costs {10 + animalismGrade(b, data) + 1} karma.
+          </p>
+          {animalismPicks(b, data).length > 0 && (
+            <ul>
+              {animalismPicks(b, data).map(x => (
+                <li key={x.uid}>
+                  <Sr6Ref kind="metamagics" id={x.id}>
+                    {data.entry('metamagics', x.id)?.name ?? x.name ?? x.id}
+                    {x.level && x.level > 1 ? ` ${x.level}` : ''}
+                  </Sr6Ref>{' '}
+                  <button className="btn small quiet" aria-label={`Remove ${x.name ?? x.id}`} onClick={() => act({ op: 'pick', remove: x.uid })}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <select aria-label="Add an animalism power" value="" onChange={e => e.target.value && act({ op: 'pick', kind: 'metamagics', id: e.target.value })}>
+            <option value="">Add an animalism power…</option>
+            {animalismEntries.map(e => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )}
       {/* SURGE (Sixth World Companion; Commlink6's SURGE page): one collective, its qualities free, and the metagenic Karma */}
-      {collectives(data).length > 0 && (
+      {collectives(data).length > 0 && (surgeAllowed(cr) || !!b.surgeCollective) && (
         <>
           <h3>SURGE</h3>
           <p>
