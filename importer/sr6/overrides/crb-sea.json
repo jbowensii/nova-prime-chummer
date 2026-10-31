@@ -26,5 +26,8 @@
   {"cl6": "Disposable cloak", "cl6id": "disposable_cloak", "kind": "armor", "id": "disposable-cloak", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Armorweave cloak", "cl6id": "armorweave_cloak", "kind": "armor", "id": "armorweave-cloak", "set": {"usage": "carried"}, "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "4"}}], "gen": "slot"},
   {"cl6": "Trés Chic cloak", "cl6id": "tres_chick_cloak", "kind": "armor", "id": "tres-chic-cloak", "set": {"usage": "carried"}, "kids": [{"tag": "slot", "attrs": {"id": "armor", "value": "5"}}], "gen": "slot"},
-  {"cl6": "Water-Repellent Coating", "cl6id": "water_repellent_coating", "kind": "armor", "id": "water-repellent-coating", "kids": [{"tag": "fits", "attrs": {"slot": "armor", "cost": "0", "mode": "embedded"}}], "gen": "slot"}
+  {"cl6": "Water-Repellent Coating", "cl6id": "water_repellent_coating", "kind": "armor", "id": "water-repellent-coating", "kids": [{"tag": "fits", "attrs": {"slot": "armor", "cost": "0", "mode": "embedded"}}], "gen": "slot"},
+  {"cl6": "Trés Chic cloak", "kind": "armor", "id": "tres-chic-cloak", "set": {"cl6": "tres_chick_cloak"}, "gen": "marker"},
+  {"cl6": "Big Brother's Blindspot", "kind": "qualities", "id": "big-brothers-blindspot", "set": {"cl6": "big_brothers_blindspot"}, "gen": "marker"},
+  {"cl6": "What Doesn't Kill You", "kind": "qualities", "id": "what-doesnt-kill-you", "set": {"cl6": "what_doesnt_kill_you"}, "gen": "marker"}
 ]

@@ -392,7 +392,14 @@ class ClassTest(unittest.TestCase):
             if "id" in r and "set" in r and r.get("gen") not in ("value", "family", "errata", "owner", "max", "slot")
         ]
         self.assertGreater(len(rows), 500)
-        self.assertTrue(all(key.fullmatch(r["set"]["class"]) and r.get("gen") in ("class", None) for r in rows))
+        self.assertTrue(
+            all(
+                all(key.fullmatch(v) for v in r["set"].values())
+                and ("class" in r["set"] or r.get("gen") == "marker")
+                and r.get("gen") in ("class", "marker", None)
+                for r in rows
+            )
+        )  # (a marker row: a class marker and/or a Commlink6 id, tools/cl6check/markers.py)
 
     def test_class_validates_on_an_entry_of_every_kind_that_carries_one(self):
         from lxml import etree

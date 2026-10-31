@@ -73,6 +73,9 @@
     <xs:attribute name="id" type="sr6:Id" use="required"/>
     <xs:attribute name="source" type="sr6:SourceId" use="required"/>
     <xs:attribute name="page" type="xs:positiveInteger" use="required"/>
+    <!-- Commlink6's id of the record the entry is, where its name doesn't say it (`makarov22`): a Commlink6 reference (a
+         prerequisite's ref, a pack's item) finds the entry by it (tools/cl6check/markers.py) -->
+    <xs:attribute name="cl6" type="xs:string"/>
   </xs:attributeGroup>
 
   <!-- overlay files delete an entry loaded before with <remove id="..."/> -->
@@ -628,6 +631,9 @@
       <!-- an Infected quality (Commlink6's type INFECTED) or an Infected optional power (INFECTED/OPTIONAL_POWER, ours):
            offered only while the table's infectedAllowed rule is on (classes/section_prefix.json) -->
       <xs:attribute name="class" type="sr6:ClassKey"/>
+      <!-- a drake type (Lofwyr's Legions p. 16, a Drake's pick): the attributes its dracoform adjustment points go to
+           (`bod str agi log`) -->
+      <xs:attribute name="dracoform" type="xs:string"/>
   </xs:complexType>
   <!-- strain: I, II or III (Ia is I: printed="Ia"); base: the base metatype as the attributes table prints it (Human,
        Sasquatch); awakens: what a character not yet Awakened Awakens as (adept, magician); freePhysical, freeMental: the
@@ -897,6 +903,8 @@
       </xs:attribute>
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+      <!-- Commlink6's metaecho type when it marks a kind of its own (ANIMALISM, DRACOGENESIS_POWER: markers.py) -->
+      <xs:attribute name="class" type="sr6:ClassKey"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 
@@ -941,6 +949,8 @@
       <!-- a leveled critter power: perLevel karma, up to maxLevel (Commlink6's `max`, tools/cl6check/maxmap.py) -->
       <xs:attribute name="perLevel" type="sr6:True"/>
       <xs:attribute name="maxLevel" type="xs:positiveInteger"/>
+      <!-- Commlink6's type when it marks a kind of its own (DRACOGENESIS_POWER: a drake's power, markers.py) -->
+      <xs:attribute name="class" type="sr6:ClassKey"/>
     </xs:extension></xs:complexContent>
   </xs:complexType>
 

@@ -83,6 +83,20 @@ Do not hand-edit: regenerate from a fresh `import --library` made WITHOUT the ta
 oracle's placements are all in the table (rows or unmatched), each vehicle of the import carries its rows, no builtin
 survives beside parts, and overrides read exactly 1. Tests: `importer/tests/test_sr6_vehicle_parts.py` (invented data).
 
+## Sub-options, variants and markers (2026-10-31)
+
+```
+python -m tools.cl6check.options --runs <import>   # SUBSELECT <option>s, priced <variant>s, their scoped effects
+python -m tools.cl6check.markers --runs <import>   # "gen": "marker" rows (class markers, cl6 ids), variant CYBERLIMB flags
+```
+
+Both pair records with our entries by the checker's matcher (every matched record) and write into the book tables;
+both are regenerable (their earlier output replaced), never hand-edited. `options` skips an entry the book split per
+option or variant (its name, a bracket or extra word, or a sibling entry holds one's name); `markers` gives a matched
+entry `class` METAGENIC / ANIMALISM / DRACOGENESIS_POWER (the Commlink6 types our classification lacked) and `cl6`, the
+record's id, where its name doesn't say it (every level of a leveled item), which the app's name lookup and
+character prerequisites read. Tests: `importer/tests/test_cl6_options.py`, `importer/tests/test_sr6_markers.py`.
+
 ## Effects parity replay
 
 `python -m tools.cl6effects` counts how many of Commlink6's modifications (1,079 "variables": a value or a kind a

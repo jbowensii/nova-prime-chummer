@@ -35,5 +35,12 @@
   {"cl6": "Mitsubishi Heziba", "cl6id": "mitsubischi_heziba", "kind": "vehicles", "id": "mitsubishi-heziba-hovercraft", "set": {"usage": "carried"}, "kids": [{"tag": "slot", "attrs": {"id": "vehicle-cf", "value": "4"}}], "gen": "slot"},
   {"cl6": "Gaeatronics Cypruss", "cl6id": "gaeatronics_cypruss", "kind": "vehicles", "id": "gaeatronics-cypruss-large-surveillance-anthro-drone", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Gaeatronics Kneader", "cl6id": "gaeatronics_kneader", "kind": "vehicles", "id": "gaeatronics-kneader-small-surveillance-anthro-drone", "set": {"usage": "carried"}, "gen": "slot"},
-  {"cl6": "Surfstar Marine Seacop", "cl6id": "surfstar_marine_seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"usage": "carried"}, "gen": "slot"}
+  {"cl6": "Surfstar Marine Seacop", "cl6id": "surfstar_marine_seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Stake", "kind": "weapons", "id": "stakes-wooden", "set": {"cl6": "stake"}, "gen": "marker"},
+  {"cl6": "Liar's Medium", "kind": "gear", "id": "liars-medium-divination-fetish", "set": {"cl6": "liars_medium_divination"}, "gen": "marker"},
+  {"cl6": "MCT Fox", "kind": "vehicles", "id": "mct-fox-off-road-truck", "set": {"cl6": "mct_fox"}, "gen": "marker"},
+  {"cl6": "Mitsubishi Heziba", "kind": "vehicles", "id": "mitsubishi-heziba-hovercraft", "set": {"cl6": "mitsubischi_heziba"}, "gen": "marker"},
+  {"cl6": "Gaeatronics Cypruss", "kind": "vehicles", "id": "gaeatronics-cypruss-large-surveillance-anthro-drone", "set": {"cl6": "gaeatronics_cypruss"}, "gen": "marker"},
+  {"cl6": "Gaeatronics Kneader", "kind": "vehicles", "id": "gaeatronics-kneader-small-surveillance-anthro-drone", "set": {"cl6": "gaeatronics_kneader"}, "gen": "marker"},
+  {"cl6": "Surfstar Marine Seacop", "kind": "vehicles", "id": "surfstar-marine-seacop-powerboat", "set": {"cl6": "surfstar_marine_seacop"}, "gen": "marker"}
 ]

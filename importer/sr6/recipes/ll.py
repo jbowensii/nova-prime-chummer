@@ -8,7 +8,8 @@ import sys
 from dataclasses import replace
 
 from importer.sr6 import catalog
-from importer.sr6.regroup import blocks, norm
+from importer.xmlio import HEAD
+from importer.sr6.regroup import blocks, md_tables, norm
 
 ID, NAME, PUBLISHER, CANON = "LL", "Shadowrun: Lofwyr's Legions", "Catalyst Game Labs", True
 BOOK = "Lofwyr's Legions"
@@ -90,6 +91,67 @@ def prepare(bs):
     return out
 
 
+_ATTR = {
+    "body": "bod",
+    "agility": "agi",
+    "reaction": "rea",
+    "strength": "str",
+    "will": "wil",
+    "willpower": "wil",
+    "logic": "log",
+    "intuition": "int",
+    "charisma": "cha",
+}
+
+
+def drake_types(bs):
+    """The four drake types (`basic dracoform bonuses`, p. 16; Commlink6's draketypes) as granted qualities a Drake
+    picks: `dracoform` the attributes its dracoform adjustment points go to, a <power> (what it gains, as an Infected
+    type's) for each basic and special power. A catalog of them, else None."""
+    cat = catalog.Catalog(ID, ID.lower(), BOOK)
+    for b in bs:
+        for header, rows in md_tables(b.text):
+            if len(header) < 4 or norm(header[0]) != "type" or "dracoform" not in norm(header[1]):
+                continue
+            for r in rows:
+                powers = [p.strip() for p in f"{r[2]},{r[3]}".split(",") if p.strip()]
+                cat.add(
+                    "qualities",
+                    r[0].strip(),
+                    max(1, b.page - PAGE_OFFSET),
+                    {
+                        "kind": "positive",
+                        "karma": "0",
+                        "granted": "true",
+                        "category": "Drake type",
+                        "dracoform": " ".join(_ATTR[w] for w in re.findall(r"[a-z]+", r[1].lower()) if w in _ATTR),
+                    },
+                    [("power", {"name": p}, None) for p in powers],
+                    "",
+                    split=False,
+                )
+    return cat if cat.entries["qualities"] else None
+
+
 def extract(regrouped, ctx=None):
-    """Read the book's regrouped blocks into a catalog Result."""
-    return catalog.read(prepare(blocks(regrouped)), ctx, sys.modules[__name__])
+    """Read the book's regrouped blocks into a catalog Result; the drake types (drake_types) join its qualities, and
+    the Drake quality picks one."""
+    from lxml import etree
+
+    bs = prepare(blocks(regrouped))
+    res = catalog.read(bs, ctx, sys.modules[__name__])
+    types = drake_types(bs)
+    if types and res.files.get("qualities.xml"):
+        root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", res.files["qualities.xml"]).encode("utf8"))
+        have = {e.get("id") for e in root if isinstance(e.tag, str)}
+        for e in etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", types.xml("qualities")).encode("utf8")):
+            if isinstance(e.tag, str) and e.get("id") not in have:
+                root.append(e)
+        drake = next((e for e in root if isinstance(e.tag, str) and e.findtext("name") == "Drake"), None)
+        if drake is not None and drake.find("choice") is None:
+            c = etree.Element("choice", {"kind": "quality", "category": "Drake type", "count": "1"})
+            text = drake.find("text")
+            drake.insert(list(drake).index(text) if text is not None else len(drake), c)
+        lead = re.match(r"(?:<\?xml[^>]*\?>\s*)?((?:<!--.*?-->\s*)*)", res.files["qualities.xml"], re.S).group(1)
+        res.files["qualities.xml"] = HEAD + lead + etree.tostring(root, encoding="unicode").rstrip("\n") + "\n"
+    return res

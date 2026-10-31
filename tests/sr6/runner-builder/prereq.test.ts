@@ -90,3 +90,15 @@ test('a reference naming nothing in the catalog is listed unchecked, never faile
   expect(r.failed).toEqual([])
   expect(r.unchecked).toHaveLength(2)
 })
+
+test("a reference by Commlink6 id finds the entry that carries it (cl6=), whatever the entry's name", () => {
+  const t = '<prerequisite kind="datareq" type="QUALITY" ref="zz_knack_id" apply="CHARACTER"/>'
+  const take = (b: ReturnType<typeof buildOf>) => b.qualities.push({ uid: 'q', id: 'crb.knack', level: 1 })
+  expect(run(t).failed).toEqual([]) // (no entry carries it: can't be told, never a false error)
+  const { data, cr } = made({ data: d => (d.entry('qualities', 'crb.knack')!.attrs.cl6 = 'zz_knack_id') })
+  const b = buildOf('priority', { letters: 'ACDBE', metatype: STONE, magic: 'mundane' })
+  const p = makeProvider(b.method, data, cr)
+  expect(characterRequirements(item(t), { data, cr, b, p }).failed).toHaveLength(1)
+  take(b)
+  expect(characterRequirements(item(t), { data, cr, b, p }).failed).toEqual([])
+})

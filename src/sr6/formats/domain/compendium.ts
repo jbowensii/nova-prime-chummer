@@ -38,7 +38,7 @@ const ITEM = ['avail', 'cost']
  *  metatypes, attributes, skills, implant grades, life modules, rules). fields: the kind's attribute names, lines: its string children
  *  (critters, spirits, NPCs and sprites), both as common.xsd declares them (tests/sr6/compendiums/compendium.test.ts checks). */
 export const COMP_KINDS: Partial<Record<Sr6Kind, { fields: string[]; lines?: string[] }>> = {
-  qualities: { fields: ['kind', 'karma', 'karmaMax', 'karmaSteps', 'perLevel', 'maxLevel', 'multi', 'category', 'granted', 'uncounted', 'group'] },
+  qualities: { fields: ['kind', 'karma', 'karmaMax', 'karmaSteps', 'perLevel', 'maxLevel', 'multi', 'category', 'granted', 'uncounted', 'group', 'dracoform'] },
   weapons: { fields: ['category', 'rating', 'dv', 'modes', 'ar', 'ammo', 'type', 'mount', 'blast', ...ITEM, 'per', 'skill', 'spec'] },
   armor: { fields: ['category', 'rating', 'defense', 'social', 'capacity', ...ITEM] },
   augmentations: { fields: ['type', 'category', 'rating', 'essence', 'capacity', ...ITEM] },

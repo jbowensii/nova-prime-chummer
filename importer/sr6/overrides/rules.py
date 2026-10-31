@@ -4,7 +4,7 @@ description or sets anything its kind of row may not."""
 import re
 
 OPS = ("remove", "rename", "merge", "move_kind", "notext", "split")
-SETTABLE = {"class"}  # (what an id row may set)
+SETTABLE = {"class", "cl6"}  # (what an id row may set: a class, and markers.py's Commlink6 id)
 EFFECT_KEYS = {"target", "op", "value", "switch", "when", "spec", "affects", "from"}
 EFFECT_OPS = {
     "add",

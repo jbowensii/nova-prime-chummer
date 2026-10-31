@@ -5,5 +5,8 @@
   {"cl6": "Grenade, Asphyxia Spores", "cl6id": "spore_grenade", "kind": "gear", "id": "asphyxia-spores", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Grenade, Hyperallergenic", "cl6id": "allergy_grenade", "kind": "gear", "id": "hyperallergenic", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Grenade, Asphyxia Spores", "kind": "gear", "id": "asphyxia-spores", "kids": [{"tag": "variant", "attrs": {"name": "Mini"}}], "gen": "family"},
-  {"cl6": "Grenade, Hyperallergenic", "kind": "gear", "id": "hyperallergenic", "kids": [{"tag": "variant", "attrs": {"name": "Mini"}}], "gen": "family"}
+  {"cl6": "Grenade, Hyperallergenic", "kind": "gear", "id": "hyperallergenic", "kids": [{"tag": "variant", "attrs": {"name": "Mini"}}], "gen": "family"},
+  {"cl6": "Acid Thrower \"Mimung\"", "kind": "weapons", "id": "acid-thrower-mimung", "set": {"cl6": "acidthrower_mimung"}, "gen": "marker"},
+  {"cl6": "Grenade, Asphyxia Spores", "kind": "gear", "id": "asphyxia-spores", "set": {"cl6": "spore_grenade"}, "gen": "marker"},
+  {"cl6": "Grenade, Hyperallergenic", "kind": "gear", "id": "hyperallergenic", "set": {"cl6": "allergy_grenade"}, "gen": "marker"}
 ]
