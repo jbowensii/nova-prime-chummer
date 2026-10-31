@@ -112,6 +112,14 @@ export function qualityMetatypes(name: string, text: string): string[] | undefin
     .filter((w): w is string => !!w && w !== like)
   return words.length ? [...new Set(words)] : undefined
 }
+/** The metatypes a quality is for: its Commlink6 METATYPE character prerequisites (the book's own list), else the
+ *  description heuristic (qualityMetatypes; ponytail: kept for catalogs imported without prerequisites). */
+const metatypesOf = (e: Sr6Entry) => {
+  const ps = e.parts.filter(
+    p => p.tag === 'prerequisite' && p.attrs.apply === 'CHARACTER' && p.attrs.type === 'METATYPE' && p.attrs.negate !== 'true' && p.attrs.ref,
+  )
+  return ps.length ? ps.map(p => normName(p.attrs.ref.replace(/_/g, ' '))) : qualityMetatypes(e.name, e.text)
+}
 /** Whether the runner's metatype may take quality `id` (qualityMetatypes; none picked: no metatype-bound quality). */
 export const qualityFitsMetatype = (data: Pick<Sr6Data, 'qualities' | 'metatypes'>, metatype: string, id: string) => {
   const m = data.qualities[id]?.metatypes
@@ -271,7 +279,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         ...(e.attrs.category ? { category: e.attrs.category } : {}),
         ...(e.attrs.granted === 'true' ? { granted: true } : {}),
         ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
-        ...(qualityMetatypes(e.name, e.text) ? { metatypes: qualityMetatypes(e.name, e.text) } : {}),
+        ...(metatypesOf(e) ? { metatypes: metatypesOf(e) } : {}),
         ...karmaIf(e),
         ...(parts(e, 'choice').length
           ? {

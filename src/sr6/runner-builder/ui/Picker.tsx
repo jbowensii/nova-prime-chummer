@@ -1,4 +1,5 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
+import { prereqNote } from '../domain/creation/prereq'
 import type { Sr6Build } from '../../formats/domain/character'
 import { slotLabel, subChoices, VARIANT } from '../../catalog/domain/structure'
 import { instructionPools, instructionText, partsOf } from '../domain/assets/vehiclemods'
@@ -10,7 +11,7 @@ import { sitOf } from '../../catalog/domain/effects'
 import { useContext, useState, type ReactNode } from 'react'
 import { HouseChip, Modal, Picker, Stepper } from '../../../core/ui-kit/bits'
 import { effectsOf, entryOf, materialOf, priced, situations, takesMaterial } from '../domain/creation/budgets'
-import { choiceOptions, choiceSelectOptions, type ChoiceSpec } from '../domain/creation/choices'
+import { choiceCtx, choiceOptions, choiceSelectOptions, type ChoiceSpec } from '../domain/creation/choices'
 import { num, type CreationRules } from '../../table-setup/domain/creation'
 import { armorSocial, availNote, bookValue, chosenRating, dataFind, legality, ratingRange } from '../../catalog/domain/values'
 import { formulaOf, formulaText } from '../../../core/shared/formula'
@@ -289,6 +290,8 @@ export function CatalogPicker({
                 p.essence && `Essence ${p.essence}`,
                 e.kind === 'armor' && social(e.attrs.social),
                 note?.(e),
+                // the runner lacks a character prerequisite (Review errors on it; the pick is still allowed)
+                !from && ctx && prereqNote(e, { data, cr, b: ctx.ch.build, p: ctx.p }),
                 blocked?.(e),
               ]
                 .filter(Boolean)
@@ -827,7 +830,7 @@ export function OptionFields({ line, e, name }: { line: Sr6Purchase | Sr6Quality
  *  cyberware or gear choice applies the same way a quality's or power's does. Nothing for an item with no choice. */
 function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; name: string }) {
   const { data, act, ch } = useSr6Editor()
-  const co = e && choiceOptions(data, e, ch.build.contacts.map(c => c.name).filter(Boolean))
+  const co = e && choiceOptions(data, e, choiceCtx(data, ch.build))
   if (!co) return null
   return (
     <label className="inline">

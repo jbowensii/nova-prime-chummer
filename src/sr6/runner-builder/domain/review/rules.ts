@@ -66,6 +66,7 @@ import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
 import { adeptBars, opposite } from '../creation/actions'
 import type { Sr6Entry } from '../../../formats/domain/types'
+import { characterRequirements } from '../creation/prereq'
 import { deriveSr6 } from '../creation/derive'
 import { makeProvider, uncovered, type Provider } from '../creation/providers'
 import { ratingRange } from '../../../catalog/domain/values'
@@ -647,6 +648,26 @@ const RULES: Rule[] = [
           message: `${c.data.qualities[q.id]!.name} is for ${c.data.qualities[q.id]!.metatypes!.join(' or ')} runners, not ${metaName(c).toLowerCase()}.`,
           ...entryCite(c.data.entry('qualities', q.id)),
         })),
+  },
+  // Commlink6's character requirements (behaviour-gaps Stage 3): what the runner must have for a quality, power,
+  // metamagic, echo or piece of gear (another quality, a magic type, a minimum attribute or Essence, a skill rank …)
+  {
+    code: 'prerequisite.character',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const out: Hit[] = []
+      const say = (e: Sr6Entry | undefined, path: string, rating?: number, skip?: string[]) => {
+        if (!e) return
+        const { failed } = characterRequirements(e, c, rating, skip)
+        if (failed.length) out.push({ path, message: `${entryLabel(e)} requires ${failed.join('; ')}, which the runner doesn’t have.`, ...entryCite(e) })
+      }
+      for (const q of c.b.qualities)
+        if (!q.free) say(c.data.entry('qualities', q.id), `qualities.${q.uid}`, q.level, c.data.qualities[q.id]?.metatypes ? ['METATYPE'] : []) // (a metatype list is quality.metatype's)
+      for (const x of c.b.picks) say(c.data.entry(x.kind, x.id), `magic.${x.uid}`, x.level)
+      for (const { x, path } of lines(c.b)) say(entryOf(x, c.data), path, x.rating)
+      return out
+    },
   },
   {
     code: 'quality.level',
@@ -2027,6 +2048,7 @@ export const CAREER_KEEP = new Set([
   'magic.spellsAllowed',
   'magic.metamagicUser',
   'magic.metamagicCount',
+  'prerequisite.character',
   'martial.category',
   'martial.requires',
   'martial.augmentation',
