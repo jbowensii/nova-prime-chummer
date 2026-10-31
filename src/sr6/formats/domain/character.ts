@@ -182,6 +182,8 @@ export interface Sr6Purchase {
   sit?: Sr6Situational
   note?: string
   accessories: Sr6Purchase[]
+  /** a starter pack's line (Sr6PackExpansion.uid): priced 0 (the pack's header, whose uid it is, carries the price) */
+  pack?: string
   snapshot?: Sr6Entry
   /** a vehicle's seats taken out for cargo (cargoWithoutSeats: Double Clutch p. 126) */
   seatsRemoved?: number
@@ -360,6 +362,8 @@ export interface Sr6Lifestyle {
   uid: string
   id: string
   months: number
+  /** the starter pack that brought it (Sr6PackExpansion.uid): priced 0, taken away with the pack */
+  pack?: string
 }
 /** gender: the identity's own (optional; the runner's is identity.gender). lifestyles: none, one or more. placeholder: an
  *  unnamed stand-in (kind real, no rating, free) holding an older file's lifestyle when the runner had no SIN (charxml.ts);
@@ -373,6 +377,19 @@ export interface Sr6Sin {
   licences: Sr6Licence[]
   lifestyles?: Sr6Lifestyle[]
   placeholder?: true
+  /** the starter pack that brought it: free, taken away with the pack */
+  pack?: string
+}
+/** What buying a starter pack puts on a runner (owner 2026-10-31: the pack expanded into editable lines, charged at its price;
+ *  every line carries `pack` = uid and is priced 0). lifestyles: each onto the SIN `sin`. */
+export interface Sr6PackExpansion {
+  uid: string
+  id: string
+  name: string
+  cost: number
+  lines: Sr6Purchase[]
+  sins: Sr6Sin[]
+  lifestyles: { sin: string; line: Sr6Lifestyle }[]
 }
 /** One of a SIN's licences (every licence is one SIN's: owner 2026-10-16): a fake licence (`Firearm license 3`), or an
  *  owned item's (item: its line's uid, an accessory's too; named after the licence type covering it, purchases.ts
@@ -480,6 +497,8 @@ export type Sr6Advance =
   | { op: 'powerpoint' }
   | { op: 'initiate'; line?: Sr6Pick; target?: string }
   | { op: 'purchase'; line: Sr6Purchase }
+  /** a starter pack expanded into its lines at the pack's price (the entry's nuyen); voiding the entry takes them all away */
+  | ({ op: 'pack' } & Sr6PackExpansion)
   /** refund: nuyen credited back for selling the item (an adjustable sellback; the UI defaults it to 30% of value, SR
    *  Missions). Absent or 0 is a plain drop with no credit. */
   | { op: 'drop'; target: string; line?: Sr6Purchase; refund?: number }
@@ -541,6 +560,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'powerpoint',
   'initiate',
   'purchase',
+  'pack',
   'drop',
   'quantity',
   'upgrade',

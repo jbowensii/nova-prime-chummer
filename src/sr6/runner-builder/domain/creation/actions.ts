@@ -57,6 +57,7 @@ import {
   takesMaterial,
   toNuyenMax,
 } from './budgets'
+import { applyPack, expandPack, isPackHeader, packHeader, removePack } from './packs'
 import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
@@ -96,9 +97,12 @@ export type Op =
       rating?: number
       qty?: number
       grade?: string
+      note?: string
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
+  /** a starter pack bought: expanded into its lines at its price (packs.ts); taken away whole with `purchase remove` of its header */
+  | { op: 'pack'; id: string }
   /** a vehicle or drone bought from a design (design.ts boughtDesign); taken away as any line (purchase remove) */
   | { op: 'design'; line: Sr6Purchase }
   /** a custom line the item builders made (a custom cyberlimb, assets/builders.ts customLimb) or, with `host`, a player's own
@@ -604,6 +608,12 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if ('remove' in op) {
         const x = b.purchases.find(x => x.uid === op.remove)
         if (!x) return no('unknown-line')
+        // a pack's header takes all its contents with it (packs.ts)
+        if (isPackHeader(x)) {
+          unlicense(b, deep(b.purchases.filter(y => y.pack === x.uid)))
+          removePack(b, x.uid)
+          return OK
+        }
         b.purchases = b.purchases.filter(y => y !== x)
         unlicense(b, deep([x]))
         return OK
@@ -617,9 +627,26 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         !OWN_LINE.has(op.kind) &&
         !isAmmoGear(entryOf(line, data)) && // each ammo line carries its own fitted ammo type, so adding again makes a new line
         !line.grade &&
-        b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind && x.rating === line.rating && !x.grade && !x.accessories.length)
+        b.purchases.find(
+          x =>
+            !x.pack &&
+            x.id &&
+            x.id === line.id &&
+            x.kind === line.kind &&
+            x.rating === line.rating &&
+            (x.note ?? '') === (line.note ?? '') &&
+            !x.grade &&
+            !x.accessories.length,
+        )
       if (same) same.qty += line.qty
       else b.purchases.push(line)
+      return OK
+    }
+    case 'pack': {
+      const x = expandPack(data, op.id, b, (h, a) => accessoryProblem(h, a, data))
+      if (!x) return no('unknown-entry')
+      applyPack(b, x)
+      b.purchases.push(packHeader(x))
       return OK
     }
     case 'design': {
@@ -1341,6 +1368,7 @@ function newLine(
     rating?: number
     qty?: number
     grade?: string
+    note?: string
     custom?: { name: string; cost: number; avail: number; essence: number }
   },
   data: Sr6Data,
@@ -1349,7 +1377,14 @@ function newLine(
   const qty = op.qty ?? 1
   if (qty < 1) return { ok: false, reason: 'below-one' }
   if (op.grade && !gradeKnown(cr, data, op.grade)) return { ok: false, reason: 'unknown-grade' }
-  const base = { uid: newId(), kind: op.kind, qty, accessories: [], ...(op.grade ? { grade: op.grade } : {}) }
+  const base = {
+    uid: newId(),
+    kind: op.kind,
+    qty,
+    accessories: [],
+    ...(op.grade ? { grade: op.grade } : {}),
+    ...(op.note?.trim() ? { note: op.note.trim().slice(0, 200) } : {}),
+  }
   if (!op.id) {
     const c = op.custom ?? { name: '', cost: 0, avail: 0, essence: 0 }
     if (c.cost < 0 || c.avail < 0 || c.essence < 0) return { ok: false, reason: 'below-zero' } // Review's hard value.negative would block it for good

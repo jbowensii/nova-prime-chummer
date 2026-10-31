@@ -58,6 +58,7 @@ const s = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
  *  quality, and a placeholder is real, so free) plus its licences' ratings × licencePerRating, but an owned item's licence
  *  on a real SIN at `fee` (its printed fee, by the item's uid; owner 2026-10-16). `price` reads a setting. */
 export function sinCost(sin: Sr6Sin, price: (key: string) => number, fee?: (item: string) => number | undefined): number {
+  if (sin.pack) return 0 // a starter pack's SIN and its licences: in the pack's price
   let t = sin.kind === 'real' ? 0 : (sin.rating ?? 1) * price('fakeSinPerRating')
   for (const l of sin.licences) t += (sin.kind === 'real' && l.item !== undefined ? fee?.(l.item) : undefined) ?? l.rating * price('licencePerRating')
   return t
@@ -92,7 +93,7 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
       add(
         `lifestyle:${l.uid}`,
         `${e?.name ?? l.id} lifestyle × ${s(l.months, 'month')} (${sinName(sin)})`,
-        (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months,
+        l.pack ? 0 : (bookValue(e, 'cost', undefined, dataFind(data)).n ?? 0) * l.months,
         'contacts',
       )
     }

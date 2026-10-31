@@ -73,6 +73,9 @@ import { CRITTER_CLASS_LABELS, isCritterQuality, trainedWhat } from '../../domai
 import { critterWearable } from './Critters'
 import { mountsOf, partsOf } from '../../domain/assets/vehiclemods'
 import { deriveMod } from '../../domain/assets/derive'
+import { accessoryProblem } from '../../domain/creation/actions'
+import { expandPack } from '../../domain/creation/packs'
+import { packChoices } from '../Picker'
 
 export const OPS = [
   ['attribute', 'Raise attribute'],
@@ -91,6 +94,7 @@ export const OPS = [
   ['powerpoint', 'Power point (mystic adepts)'],
   ['initiate', 'Initiate or submerge'],
   ['purchase', 'Buy gear'],
+  ['pack', 'Buy a starter pack (expanded into its items)'],
   ['vehicle', 'Buy a vehicle'],
   ['drone', 'Buy a drone'],
   ['critter', 'Buy a critter'],
@@ -449,6 +453,10 @@ export function LedgerTab() {
               },
             }
           : null
+      case 'pack': {
+        const x = f.target ? expandPack(data, f.target, b, (h, a) => accessoryProblem(h, a, data)) : undefined
+        return x ? { op, ...x } : null
+      }
       case 'lifestyle':
         return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
       case 'licensed':
@@ -1419,6 +1427,15 @@ export function LedgerTab() {
               </select>
             </label>
           </>
+        )}
+        {op === 'pack' && (
+          <label>
+            Pack
+            <select value={f.target} onChange={e => set({ target: e.target.value })}>
+              <option value="">Pick one</option>
+              {packChoices(c.entries.packs.values())}
+            </select>
+          </label>
         )}
         {op === 'lifestyle' && (
           <>

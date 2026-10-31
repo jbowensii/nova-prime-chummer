@@ -839,6 +839,17 @@ function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; n
     </label>
   )
 }
+/** The <option>s of the catalog's starter packs, A to Z, each with its price. */
+export function packChoices(packs: Iterable<Sr6Entry>): ReactNode {
+  return [...packs]
+    .sort((a, z) => a.name.localeCompare(z.name))
+    .map(e => (
+      <option key={e.id} value={e.id}>
+        {e.name}
+        {e.attrs.cost ? ` · ${e.attrs.cost}¥` : ''}
+      </option>
+    ))
+}
 export function PurchaseSection({
   kind,
   title,
