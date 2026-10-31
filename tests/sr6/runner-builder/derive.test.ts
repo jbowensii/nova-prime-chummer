@@ -188,7 +188,8 @@ test('exoware: a Physical box per full point of its Essence and −4 Social Rati
   buy(ch, 'augmentations', undefined, { name: 'Exo arm', essence: 2.3, cost: 100, grade: 'exo' })
   const after = derive(ch).d
   expect(after.monitors.physical! - before.monitors.physical!).toBe(2)
-  expect(after.socialRating - before.socialRating).toBe(-4)
+  // (and Commlink6's Essence-loss penalty: 2.3 Essence spent, −1: rule-markers.ts essenceSocialPenalty)
+  expect(after.socialRating - before.socialRating).toBe(-4 - 1)
   // a jumped-in pool swaps the physical attribute for its mental one (CRB p. 197): never more tests than by hand allows
   for (const p of after.rigging.jumpedIn) expect(p.pool).toBeGreaterThanOrEqual(0)
   expect(after.rigging.driving.map(p => p.test)).toEqual(after.rigging.driving.map(p => p.test).filter(t => ['Piloting', 'Gunnery', 'Perception'].includes(t)))

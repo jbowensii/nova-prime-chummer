@@ -145,6 +145,19 @@ export function priced(
     } else cost = read('cost')
     avail = read('avail')
     essence = read('essence')
+    // Commlink6's NUYEN_COST_KARMA1000 / ESSENCE_COST_KARMA_10 (owner ruling 4, Body Shop p. 34, metagenic cosmetic
+    // alteration): the chosen quality (its line note) costs 1,000¥ and 0.1 Essence per point of its Karma
+    const fl = e?.parts ? structureOf(e).flags : []
+    if (fl.includes('NUYEN_COST_KARMA1000') || fl.includes('ESSENCE_COST_KARMA_10')) {
+      const k = Math.abs(Number(data.named?.(x.note ?? '', 'qualities')?.attrs.karma))
+      if (k > 0) {
+        if (fl.includes('NUYEN_COST_KARMA1000')) cost = k * 1000
+        essence = k / 10 // (the book ties both to the Karma: Body Shop p. 34)
+        ok = true
+        unpriced = false
+        notes.length = 0
+      }
+    }
   }
   if (x.grade) {
     const g = (k: GradeFactor) => gradeFactor(cr, data, x.grade!, k)

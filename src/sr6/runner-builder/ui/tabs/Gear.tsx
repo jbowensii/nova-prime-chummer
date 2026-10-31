@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react'
 import { Modal } from '../../../../core/ui-kit/bits'
 import type { PurchaseKind, Sr6Purchase } from '../../../formats/domain/character'
 import { sinName } from '../../../formats/domain/character'
-import { entryOf, priced, statusesOf, takesMaterial } from '../../domain/creation/budgets'
+import { entryOf, isFocus, priced, statusesOf, takesMaterial } from '../../domain/creation/budgets'
 import { activeRules, deckKarma, DECK_NUYEN_PER_KARMA, isDeckPart } from '../../domain/creation/rule-markers'
 import { ratingEdge } from '../../domain/creation/derive'
 import { n, useSr6Editor } from '../editor'
@@ -224,8 +224,8 @@ export function GearTab() {
         kind="gear"
         title="Other gear"
         one="other gear"
-        offer={e => !isAmmoGear(e)}
-        show={x => !isAmmoGear(entryOf(x, data))}
+        offer={e => !isAmmoGear(e) && !isFocus(e)}
+        show={x => !isAmmoGear(entryOf(x, data)) && !isFocus(entryOf(x, data))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
         detail={withIdentity(material)}

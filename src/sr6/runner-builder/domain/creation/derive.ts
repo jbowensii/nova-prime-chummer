@@ -25,6 +25,7 @@ import { normName } from '../../../catalog/domain/names'
 import { linkedParts, ownParts } from '../../../catalog/domain/effects'
 import type { Sr6Entry, Sr6Part } from '../../../formats/domain/types'
 import { makeProvider } from './providers'
+import { cyberjackAttrs, cyberlimbRuleBonus, essenceSocialPenalty, physicalRoundsDown } from './rule-markers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
 import { choiceOptions, noteAttr, noteSkill } from './choices'
@@ -234,7 +235,7 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
       if (infected && (CORE_ATTRS as string[]).includes(k)) natural = Math.min(natural, attrMax(data, cr, b, k) ?? natural)
       // (a mundane has no Magic to lose, unless an Infected type gave it some)
       if (k === special) natural = Math.max(0, natural - loss)
-      const bonus = augmentBonus(b, data, k, undefined, on),
+      const bonus = augmentBonus(b, data, k, undefined, on) + cyberlimbRuleBonus(b, data, k, x => entryOf(x, data)),
         counted = upTo(bonus, capA)
       if (counted < bonus) capped[k] = bonus - counted
       return [k, { natural, augmented: natural + counted }]
@@ -290,7 +291,8 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
   // Body Shop p. 28: exoware adds a Physical box for every full point of Essence it costs, and −4 Social Rating
   const exo = b.purchases.filter(x => x.kind === 'augmentations' && /^exo/i.test(x.grade ?? ''))
   const exoBoxes = Math.floor(exo.reduce((t, x) => t + (priced(x, data, cr).essence ?? 0), 0) + 1e-9)
-  const physical = monitor(A('bod'))
+  // Neoteny (PHYSICAL_ROUND_DOWN): the Body half rounds down
+  const physical = physicalRoundsDown(b, data) && base !== undefined && div ? base + Math.floor(A('bod') / div) : monitor(A('bod'))
   const stunBase = monitor(A('wil')),
     stunPlus = augmentBonus(b, data, 'stun', undefined, on)
 
@@ -505,8 +507,11 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
     },
     defenseRating: defense,
     // Firing Squad p. 50, Smooth Operations p. 127: Social Rating = CHA + the Social modifiers of the armor worn
+    // (less the Essence-loss penalty on every augmented runner, as Commlink6 does — owner ruling 2, 2026-10-31: a
+    // standard book rule; Empathic Retention softens it: rule-markers.ts essenceSocialPenalty)
     socialRating:
-      A('cha') +
+      A('cha') -
+      essenceSocialPenalty(b, data, budgets.essence.spent) +
       b.purchases
         .filter(x => x.kind === 'armor' && x.worn)
         .reduce(
@@ -549,11 +554,14 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
         limb = /^cyberlimbs?$/i.test(e?.attrs.category ?? ''),
         add = { ...(limb ? { str: 0, agi: 0 } : {}), ...hostBonus(x, data, on) },
         targets = Object.keys(add) as (keyof typeof add)[]
-      if (!targets.length) return []
-      const values = targets.map(t => ({
+      const values: { target: string; value: number }[] = targets.map(t => ({
         target: t,
         value: (limb && (t === 'str' || t === 'agi') ? 2 : t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]!,
       }))
+      // a cyberjack's Data Processing / Firewall (CRB p. 283), Cyberjack Maximization's +1 on the lower (SWC p. 133)
+      const jack = cyberjackAttrs(b, data, e)
+      if (jack) values.push({ target: 'data processing', value: jack.d }, { target: 'firewall', value: jack.f })
+      if (!values.length) return []
       return [{ uid: x.uid, name: e ? entryLabel(e) : (x.name ?? 'Custom item'), values, text: hostText(values) }]
     }),
   }

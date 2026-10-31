@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from 'vitest'
 import { apply, type Op } from '../../../src/sr6/runner-builder/domain/creation/actions'
-import { allBudgets, augmentationRoom, cargoFactor, magicCap, metatypeSize } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { allBudgets, augmentationRoom, cargoFactor, magicCap, priceMods } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { exportSr6Runner } from '../../../src/sr6/foundry/domain/export'
 import { aboutOf, parseCreation, runnerRules, type CreationRules, type CreationValue } from '../../../src/sr6/table-setup/domain/creation'
 import { qualityFitsMetatype, qualityMetatypes, sr6Data, type Sr6Data } from '../../../src/sr6/catalog/domain/data'
@@ -15,6 +15,11 @@ import { blankSr6, type MagicKind, type Sr6Character } from '../../../src/sr6/fo
 import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 import { buildOf, fixtureCatalog, fixtureCreation, STONE } from '../catalog/fixture'
 
+// invented PRICEMODs in the importer's form (Commlink6's metatype data): troll-sized on everything, dwarf-sized on armor
+const PRICEMOD: Record<string, string> = {
+  troll: '<modifier kind="valmod" type="PRICEMOD" ref="EVERYTHING" value="0.1"/>',
+  gnome: '<modifier kind="valmod" type="PRICEMOD" ref="ARMOR" value="0.1"/>',
+}
 const doc = (kind: string, rows: string) => `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="${kind}" version="1">${rows}</sr6:data>`
 // invented entries: two metatypes the posers' words name, two posers with invented descriptions, an exotic skill, ware
 const EXTRA = [
@@ -23,7 +28,7 @@ const EXTRA = [
     xml: doc(
       'metatypes',
       ['human', 'ork', 'troll', 'gnome']
-        .map(m => `<metatype id="x.${m}" source="CRB" page="1"><name>${m[0].toUpperCase()}${m.slice(1)}</name></metatype>`)
+        .map(m => `<metatype id="x.${m}" source="CRB" page="1"><name>${m[0].toUpperCase()}${m.slice(1)}</name>${PRICEMOD[m] ?? ''}</metatype>`)
         .join(''),
     ),
   },
@@ -178,7 +183,7 @@ test('6 (continued), effects 12: no language above languageMax; the Native one c
   ])
 })
 
-test('effects 15 (house rule, on by default): a troll-sized runner pays 10% more on everything bought, a dwarf-sized one on armor', () => {
+test('effects 15 (book rule, on by default: owner ruling 5): a troll-sized runner pays 10% more on everything bought, a dwarf-sized one on armor', () => {
   const bought = (metatype: string, on = true) => {
     const s = setup({ metatypeSizePricing: on }, { metatype })
     s.b.purchases.push(
@@ -188,14 +193,18 @@ test('effects 15 (house rule, on by default): a troll-sized runner pays 10% more
     const line = s.budgets().nuyen.breakdown.find(l => l.key === 'sizePricing')
     return [s.budgets().nuyen.spent, line?.label]
   }
-  expect(metatypeSize(setup().data, 'x.troll')).toBe('troll')
-  expect(metatypeSize(setup().data, 'x.gnome')).toBe('dwarf')
-  expect(metatypeSize(setup().data, 'x.ork')).toBeUndefined()
+  const mods = (metatype: string) => {
+    const s = setup({}, { metatype })
+    return priceMods(s.b, s.data)
+  }
+  expect(mods('x.troll')).toEqual({ everything: 0.1, armor: 0, clothing: 0 })
+  expect(mods('x.gnome')).toEqual({ everything: 0, armor: 0.1, clothing: 0 })
+  expect(mods('x.ork')).toEqual({ everything: 0, armor: 0, clothing: 0 })
   expect(bought('x.ork')).toEqual([1100, undefined])
-  expect(bought('x.troll')).toEqual([1210, 'Troll-sized: 10% more on everything bought'])
-  expect(bought('x.gnome')).toEqual([1140, 'Dwarf-sized: 10% more on armor'])
+  expect(bought('x.troll')).toEqual([1210, 'Price modifiers: 10% on everything bought'])
+  expect(bought('x.gnome')).toEqual([1140, 'Price modifiers: 10% on armor'])
   expect(bought('x.troll', false)).toEqual([1100, undefined])
-  expect(aboutOf('metatypeSizePricing')).toMatch(/\(house rule\)\.$/)
+  expect(aboutOf('metatypeSizePricing')).toMatch(/\(CRB p\. 64, Sixth World Companion pp\. 91–92\)\.$/) // a book rule (owner ruling 5)
 })
 
 test('9: each augmentation once (its ratings one), a cyberlimb once a body part and side, a choice-naming one per choice', () => {
@@ -394,12 +403,12 @@ test('23, L1, 0 (verified): metatype traits never count toward the six in any me
   expect(b.karmaToNuyen).toBe(0)
 })
 
-test('nuyen overspent (no GM can approve it) names the size pricing house rule when it adds to the cost', () => {
+test('nuyen overspent (no GM can approve it) names the price modifiers when it adds to the cost', () => {
   const message = (on: boolean) => {
     const s = setup({ metatypeSizePricing: on }, { metatype: 'x.troll' })
     s.b.purchases.push({ uid: 's', kind: 'gear', id: 'crb.zap-scope', qty: 50000, accessories: [] })
     return s.v().find(x => x.code === 'nuyen.overspent')?.message
   }
-  expect(message(true)).toMatch(/^Nuyen overspent by [\d,]+¥; the house rule ‘size pricing’ adds [\d,]+¥\.$/)
+  expect(message(true)).toMatch(/^Nuyen overspent by [\d,]+¥; the price modifiers add [\d,]+¥\.$/)
   expect(message(false)).toMatch(/^Nuyen overspent by [\d,]+¥\.$/)
 })

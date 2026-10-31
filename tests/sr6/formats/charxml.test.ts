@@ -146,6 +146,10 @@ function full(): Sr6Character {
     { uid: 'c1', name: 'Gil', archetype: 'Fixer', connection: 3, loyalty: 2, types: ['street', 'criminal'] },
     { uid: 'c2', name: 'Moe', archetype: 'Fence', connection: 1, loyalty: 1 },
   ]
+  b.boundSpirits = [
+    { uid: 'sp1', name: 'Rex', force: 4, services: 2, note: 'fire' },
+    { uid: 'sp2', name: '', force: 1, services: 0 },
+  ]
   b.sins = [
     {
       uid: 's1',
@@ -465,4 +469,10 @@ test('a bonus’s minus and per-rating table round-trip, and a specialization ma
   expect(await valid(xml)).toEqual([])
   const old = xmlToSr6(xml.replace(/<skill ([^>]*)><spec>Puns; mostly<\/spec><spec>Rhymes<\/spec><\/skill>/, '<skill $1 specs="Puns; Rhymes"/>'))
   expect(old.ok && old.character.build.skills[0].specs).toEqual(['Puns', 'Rhymes'])
+})
+
+test('a file without bound spirits loads as none', () => {
+  const bare = sr6ToXml(full(), 1).replace(/<(sr6:)?spirit [^>]*\/>/g, '')
+  const r = xmlToSr6(bare)
+  expect(r.ok && r.character.build.boundSpirits).toEqual([])
 })

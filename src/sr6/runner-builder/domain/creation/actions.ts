@@ -34,7 +34,10 @@ import {
   type Sr6Knowledge,
   type Sr6Method,
   type Sr6Purchase,
+  type Sr6ItemFlag,
 } from '../../../formats/domain/character'
+import { structureOf } from '../../../catalog/domain/structure'
+import { stampOrder } from './cyberadept'
 import { flag, num, str, TRANSHUMAN_MAX, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
@@ -159,6 +162,8 @@ export type Op =
    *  rules, set to take `size` of the vehicle's `hook` (a freed factory part's room), fitted to `host` if it fits there */
   | { op: 'derive'; host: string; kind: Sr6Kind; id: string; hook: string; size: number; rating?: number }
   | { op: 'wear'; uid: string; worn: boolean }
+  /** an armor line's Commlink6 user flag (custom-fitted, cheap knockoff) on or off */
+  | { op: 'itemFlag'; uid: string; flag: Sr6ItemFlag; on: boolean }
   /** a line's (or accessory's) rating or grade changed in place; grade null: none. A line holding a level of a family
    *  (levels.ts) moves to the level's entry instead (its `rating` is the level) */
   | { op: 'rate'; uid: string; rating?: number; grade?: string | null }
@@ -343,6 +348,12 @@ const unlicense = (b: Sr6Build, gone: Sr6Purchase[]) => {
 
 /** Apply one editor step to the build. */
 export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
+  const r = applyOp(b, op, data, cr)
+  stampOrder(b) // (the order lines are taken in: cyberadept.ts)
+  return r
+}
+
+function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
   switch (op.op) {
     case 'attribute': {
       const a = b.attributes[op.target]
@@ -974,6 +985,17 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       else delete x.worn
       return OK
     }
+    case 'itemFlag': {
+      const x = b.purchases.find(p => p.uid === op.uid)
+      if (!x) return no('unknown-line')
+      if (x.kind !== 'armor') return no('armor-only')
+      const f = new Set(x.flags)
+      if (op.on) f.add(op.flag)
+      else f.delete(op.flag)
+      if (f.size) x.flags = [...f]
+      else delete x.flags
+      return OK
+    }
     case 'rate': {
       const x = allLines(b).find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
@@ -1054,6 +1076,8 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         })
       const { op: _, uid, ...patch } = op
       if ((patch.connection ?? 1) < 1 || (patch.loyalty ?? 1) < 1) return no('below-one')
+      // All Business (SWC p. 135, RULE MAX_3_CONTACT_LOYALTY): no contact's Loyalty above 3
+      if ((patch.loyalty ?? 0) > 3 && activeRules(b, data).has('MAX_3_CONTACT_LOYALTY')) return no('loyalty-max-3')
       if (patch.types) {
         // one or two types, each once (a contact gains its second from a module of another type)
         const types = [...new Set(patch.types)]
@@ -1430,6 +1454,8 @@ function newLine(
 export function accessoryProblem(host: Sr6Purchase, line: Sr6Purchase, data: Sr6Data): string | undefined {
   const he = entryOf(host, data),
     e = entryOf(line, data)
+  // Commlink6's UNMODIFYABLE flag (ItemTemplate.validate): the item takes no accessories
+  if (he && structureOf(he).flags.includes('UNMODIFYABLE')) return 'This item can’t be modified.'
   const items = host.accessories.map(a => ({ ...a, entry: entryOf(a, data), rating: ratingOf(a, entryOf(a, data)) }))
   const remaining = capacityRemaining(he, items, ratingOf(host, he))
   if (remaining !== null && capacityUsed(e, ratingOf(line, e)) * line.qty > Math.max(0, remaining)) return 'Not enough remaining capacity.'

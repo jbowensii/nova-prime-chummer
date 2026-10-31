@@ -5,6 +5,7 @@
 // (the Karma prices group doubles as the career prices, plus the Advancement group); an unset price refuses its spend
 // naming the setting (`unset:<key>`), an unset cap is no cap. No book numbers. A prerequisite the runner lacks never
 // refuses a spend (owner, 2026-10-09): it is recorded, and Review's error stands until a GM approves it.
+import { stampOrder } from '../creation/cyberadept'
 import { newId, type Violation } from '../../../../core/shared/types'
 import {
   itemLicence,
@@ -110,6 +111,11 @@ export function addonUpgradeProblem(was: Sr6Purchase, line: Sr6Purchase, data?: 
 
 /** One advance onto the build, in place. Structural only (no catalog lookups), so it replays whatever the catalog holds. */
 export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
+  advance(b, a)
+  stampOrder(b) // (ledger order is the order lines are taken in: creation/cyberadept.ts)
+}
+
+function advance(b: Sr6Build, a: Sr6Advance): void {
   switch (a.op) {
     case 'attribute':
       b.attributes[a.target].karma += 1
