@@ -1,4 +1,5 @@
 import { effectiveAvailability } from '../domain/creation/rule-markers'
+import { prereqNote } from '../domain/creation/prereq'
 import type { Sr6Build } from '../../formats/domain/character'
 import { slotLabel } from '../../catalog/domain/structure'
 import { instructionPools, instructionText, partsOf } from '../domain/assets/vehiclemods'
@@ -289,6 +290,8 @@ export function CatalogPicker({
                 p.essence && `Essence ${p.essence}`,
                 e.kind === 'armor' && social(e.attrs.social),
                 note?.(e),
+                // the runner lacks a character prerequisite (Review errors on it; the pick is still allowed)
+                !from && ctx && prereqNote(e, { data, cr, b: ctx.ch.build, p: ctx.p }),
                 blocked?.(e),
               ]
                 .filter(Boolean)
