@@ -61,6 +61,7 @@ import {
   str,
   type CreationRules,
 } from '../../../table-setup/domain/creation'
+import { drakeKind, isShifter, isShifterAddOn, shifterResonance } from '../creation/drake'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
@@ -544,6 +545,30 @@ const RULES: Rule[] = [
       return neg - pos <= cap ? null : { message: `Negative qualities give ${neg - pos} karma more than positive ones cost; the most is ${cap}.` }
     },
   },
+  // drake and shifter player characters as Commlink6 builds them (drake.ts): dracogenesis powers for an aware drake only,
+  // shifter add-ons only with the Shifter quality, and no shifter technomancer
+  {
+    code: 'drake.powers',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      c.b.picks.some(x => x.kind === 'critterpowers') && drakeKind(c.b, c.data) !== 'aware'
+        ? { message: 'Only an aware drake (the Drake quality) learns dracogenesis powers.' }
+        : null,
+  },
+  {
+    code: 'shifter.addOns',
+    severity: 'error',
+    tab: 'qualities',
+    check: c =>
+      !isShifter(c.b, c.data) && c.b.qualities.some(q => isShifterAddOn(c.data, q.id)) ? { message: 'Shifter add-ons need the Shifter quality.' } : null,
+  },
+  {
+    code: 'shifter.resonance',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => (shifterResonance(c.b, c.data) ? { message: 'A shifter can’t be a technomancer: it needs Magic, not Resonance.' } : null),
+  },
   {
     code: 'quality.maxCount',
     severity: 'error',
@@ -551,7 +576,8 @@ const RULES: Rule[] = [
     setting: ['qualityMaxCount'],
     check: c => {
       // (a quality whose text says it doesn't count toward the six: Lofwyr's Legions p. 16's drake qualities)
-      const count = c.b.qualities.filter(q => !q.free && !c.data.qualities[q.id]?.uncounted).length,
+      // (nor a shifter add-on, Commlink6's own list: drake.ts)
+      const count = c.b.qualities.filter(q => !q.free && !c.data.qualities[q.id]?.uncounted && !isShifterAddOn(c.data, q.id)).length,
         cap = n0(c.cr, 'qualityMaxCount')
       return count <= cap ? null : { message: `${count} paid qualities; the most is ${cap}.` }
     },

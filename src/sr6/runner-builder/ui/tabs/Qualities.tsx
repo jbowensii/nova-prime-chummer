@@ -20,6 +20,7 @@ import { flag, num } from '../../../table-setup/domain/creation'
 import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domain/data'
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../domain/creation/infected'
 import { infectedOff } from '../../domain/assets/critterware'
+import { dracogenesisRank, drakeKind, isDracogenesis } from '../../domain/creation/drake'
 import { n, useSr6Editor } from '../editor'
 import { House, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
@@ -29,6 +30,7 @@ export function QualitiesTab() {
   const b = ch.build
   const [picking, setPicking] = useState<'positive' | 'negative' | null>(null)
   const { pos, neg } = qualityKarma(b, data, cr)
+  const powers = b.picks.filter(x => x.kind === 'critterpowers')
   const cap = num(cr, 'qualityNetBonusCap'),
     most = num(cr, 'qualityMaxCount')
   const all = Object.values(data.qualities)
@@ -211,6 +213,44 @@ export function QualitiesTab() {
       <button className="btn" onClick={() => setPicking('negative')}>
         Add a negative quality…
       </button>
+      {/* an aware drake's dracogenesis powers (Commlink6's Dracoform page: 5 + n Karma for the nth; drake.ts) */}
+      {(drakeKind(b, data) === 'aware' || powers.length > 0) && (
+        <>
+          <h3>Dracogenesis powers</h3>
+          <p className="muted">
+            Rank {dracogenesisRank(b)}: the next power costs {5 + dracogenesisRank(b) + 1} karma.
+          </p>
+          {powers.length > 0 && (
+            <ul>
+              {powers.map(x => (
+                <li key={x.uid}>
+                  <Sr6Ref kind="critterpowers" id={x.id}>
+                    {data.entry('critterpowers', x.id)?.name ?? x.name ?? x.id}
+                  </Sr6Ref>{' '}
+                  <button className="btn small quiet" aria-label={`Remove ${x.name ?? x.id}`} onClick={() => act({ op: 'pick', remove: x.uid })}>
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <select
+            aria-label="Add a dracogenesis power"
+            value=""
+            onChange={e => e.target.value && act({ op: 'pick', kind: 'critterpowers', id: e.target.value })}
+          >
+            <option value="">Add a dracogenesis power…</option>
+            {(data.kindEntries?.('critterpowers') ?? [])
+              .filter(e => isDracogenesis(e) && !powers.some(x => x.id === e.id))
+              .sort((x, y) => x.name.localeCompare(y.name))
+              .map(e => (
+                <option key={e.id} value={e.id}>
+                  {e.name}
+                </option>
+              ))}
+          </select>
+        </>
+      )}
       <Modal open={!!picking} onClose={() => setPicking(null)} title={`Add a ${picking ?? ''} quality`}>
         {/* (owner's decision 4: a poser quality is offered only to the metatypes its description names) */}
         {picking && (

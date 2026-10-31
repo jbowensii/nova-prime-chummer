@@ -314,7 +314,7 @@
     <xs:attribute name="kind" use="required">
       <xs:simpleType><xs:restriction base="xs:string">
         <xs:enumeration value="spells"/><xs:enumeration value="rituals"/><xs:enumeration value="adeptpowers"/>
-        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="datastructures"/>
+        <xs:enumeration value="complexforms"/><xs:enumeration value="metamagics"/><xs:enumeration value="echoes"/><xs:enumeration value="datastructures"/><xs:enumeration value="critterpowers"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
     <xs:attribute name="id" type="xs:string" use="required"/>

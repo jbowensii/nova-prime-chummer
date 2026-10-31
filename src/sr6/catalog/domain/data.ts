@@ -72,6 +72,7 @@ export function picksFor(kind: MagicKind): Record<PickKind, boolean> {
     metamagics: k.spells || k.powers,
     adeptpowers: k.powers,
     datastructures: k.resonance,
+    critterpowers: true, // (an aware drake's dracogenesis powers, any magic kind: review's drake.powers)
   }
 }
 

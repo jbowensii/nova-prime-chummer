@@ -104,9 +104,10 @@ export const BONUS_TARGETS: Bonus['target'][] = [
   'matrixInitDice',
 ]
 
-/** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level */
-export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures'
-export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures']
+/** datastructures: a technomancer's data structures (Hack & Slash pp. 70–72), by level; critterpowers: an aware drake's
+ *  dracogenesis powers (Lofwyr's Legions; src/sr6/runner-builder/domain/creation/drake.ts) */
+export type PickKind = 'spells' | 'rituals' | 'adeptpowers' | 'complexforms' | 'metamagics' | 'echoes' | 'datastructures' | 'critterpowers'
+export const PICK_KINDS: PickKind[] = ['spells', 'rituals', 'adeptpowers', 'complexforms', 'metamagics', 'echoes', 'datastructures', 'critterpowers']
 /** critters: a critter the runner owns (catalog critters; the Critters tab, src/sr6/runner-builder/domain/assets/critters.ts) */
 export type PurchaseKind = 'weapons' | 'armor' | 'augmentations' | 'electronics' | 'programs' | 'gear' | 'vehicles' | 'ammotypes' | 'critters'
 export const PURCHASE_KINDS: PurchaseKind[] = ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes', 'critters']

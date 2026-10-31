@@ -35,6 +35,7 @@ export const PICKS: [PickKind, string][] = [
   ['complexforms', 'Complex forms'],
   ['echoes', 'Echoes'],
   ['datastructures', 'Data structures'],
+  ['critterpowers', 'Dracogenesis powers'],
 ]
 /** What a spell's or metamagic's catalog flags say, in words: `Opposed`, `Essence`, `Adepts only`, `Taken again`. */
 export function pickFlags(e: Sr6Entry): string[] {

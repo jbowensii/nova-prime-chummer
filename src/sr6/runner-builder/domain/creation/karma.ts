@@ -13,6 +13,7 @@ import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
 import { bondKarma } from '../assets/critters'
+import { dracogenesisKarma, dracogenesisRank, isShifterAddOn, shifterAddOnKarma } from './drake'
 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
  *  taken for (kept within the range; the lowest when it isn't set). */
@@ -48,7 +49,7 @@ export function qualityKarma(b: Sr6Build, data: Sr6Data, cr: CreationRules): { p
     neg = 0
   for (const q of b.qualities) {
     const v = data.qualities[q.id]
-    if (q.free || !v) continue
+    if (q.free || !v || isShifterAddOn(data, q.id)) continue // (shifter add-ons: their own line, drake.ts)
     const total = qualityPrice(b, data, q, v)
     if (v.positive) pos += total * (num(cr, 'positiveQualityFactor') ?? 1)
     else neg += total
@@ -131,6 +132,9 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     'skills',
   )
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
+  // Commlink6's shifter add-ons (their Karma added up, never below 0) and an aware drake's dracogenesis powers (5 + n each)
+  add('shifterAddOns', 'Shifter add-ons', shifterAddOnKarma(b, data), 'qualities')
+  add('dracogenesis', `Dracogenesis powers (rank ${dracogenesisRank(b)})`, dracogenesisKarma(b), 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
   // the Critter Bond path's Permanent Improvement (SWC p. 139): a critter's qualities bought with the runner's Karma
   add(
