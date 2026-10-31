@@ -32,7 +32,9 @@ jobs:
         continue-on-error: true
       - run: npx playwright install --with-deps chromium
       - run: npm run build
-      - run: npm run e2e -- --timeout=90000 # the shared runner is slower than GitHub's; 30 s default times out
+      # Forgejo = quick builds for small fixes: e2e trimmed to the smoke spec (full suite ~15 min here; GitHub runs it all
+      # for releases). Timeout raised: the shared runner is slower than GitHub's.
+      - run: npm run e2e -- e2e/smoke.spec.ts --timeout=90000
   importer:
     runs-on: ubuntu-latest
     # 3.12: the lock's and the dev setup's; 3.14: the image's (the Dockerfile's Alpine python3, pinned with its base)
