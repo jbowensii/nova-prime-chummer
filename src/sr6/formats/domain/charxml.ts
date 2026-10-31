@@ -107,6 +107,7 @@ function purchaseXml(p: Sr6Purchase): string {
       grade: p.grade,
       worn: p.worn,
       flags: p.flags?.length ? p.flags.join(' ') : undefined,
+      seq: p.seq,
       sit: sitText(p.sit),
       note: p.note,
       seatsRemoved: p.seatsRemoved,
@@ -152,6 +153,7 @@ const qualityXml = (q: Sr6Quality) =>
     note: q.note,
     name: q.name,
     boughtOff: q.boughtOff,
+    seq: q.seq,
     options: optionsText(q.options),
     sit: sitText(q.sit),
   })
@@ -538,6 +540,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     qty: num(e, 'qty', 1),
     grade: str(e, 'grade'),
     worn: yes(e, 'worn'),
+    seq: num(e, 'seq'),
     flags: (f => (f.length ? f : undefined))(
       (str(e, 'flags')?.split(/\s+/) ?? []).filter((t): t is Sr6ItemFlag => t === 'CUSTOM_FITTED' || t === 'CHEAP_KNOCK_OFF'),
     ),
@@ -674,6 +677,7 @@ const readQuality = (e: Element): Sr6Quality =>
     note: str(e, 'note'),
     name: str(e, 'name'),
     boughtOff: num(e, 'boughtOff'),
+    seq: num(e, 'seq'),
     options: readOptions(e),
     sit: readSit(e),
   })

@@ -298,7 +298,7 @@ test('career: a quality’s or power’s higher level replaces the lower at the 
   })
   expect(preview(ch, { op: 'quality', line: { uid: '', id: 'crb.lucky-streak.1', level: 1 } }, data, cr)).toEqual({ ok: false, reason: 'already-known' })
   const q = up({ op: 'quality', line: { uid: '', id: 'crb.lucky-streak.3', level: 1 } })
-  expect(currentBuild(q).qualities).toEqual([{ uid: 'q1', id: 'crb.lucky-streak.3', level: 1, name: 'Lucky Streak 3' }])
+  expect(currentBuild(q).qualities).toMatchObject([{ uid: 'q1', id: 'crb.lucky-streak.3', level: 1, name: 'Lucky Streak 3' }])
   expect(q.ledger.at(-1)).toMatchObject({ advance: { op: 'quality', target: 'q1' }, karma: 24 })
   // the power: the next level for the difference in power points
   expect(preview(ch, { op: 'pick', line: { uid: '', kind: 'adeptpowers', id: 'crb.quick-step' } }, data, cr)).toEqual({

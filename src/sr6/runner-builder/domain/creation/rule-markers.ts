@@ -118,3 +118,19 @@ export function essenceSocialPenalty(b: Sr6Build, data: Sr6Data, essenceLost: nu
   const relief = er ? Math.min(2, er.level || 1) : 0
   return Math.max(0, Math.floor(essenceLost / 2 + 1e-9) - relief)
 }
+
+/** A cyberjack's Data Processing and Firewall, read from its printed `Attributes (d/f): 4/3` (CRB p. 283, the entry's
+ *  text), with Cyberjack Maximization (RULE ADD_2_TWO_LOWEST_CYBERJACK_ATTRIBUTES, SWC p. 133, owner ruling 4): +1 on the
+ *  lower of the two (Firewall on a tie). undefined: not a cyberjack, or no printed attributes. */
+export function cyberjackAttrs(b: Sr6Build, data: Sr6Data, e?: Sr6Entry): { d: number; f: number } | undefined {
+  if (!e || !/^cyberjacks?$/i.test(e.attrs.category ?? '')) return undefined
+  const m = /Attributes \(d\/f\):\**\s*(\d+)\s*\/\s*(\d+)/i.exec(e.text ?? '')
+  if (!m) return undefined
+  let d = Number(m[1]),
+    f = Number(m[2])
+  if (activeRules(b, data).has('ADD_2_TWO_LOWEST_CYBERJACK_ATTRIBUTES')) {
+    if (d < f) d++
+    else f++
+  }
+  return { d, f }
+}

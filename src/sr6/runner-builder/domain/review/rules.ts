@@ -82,6 +82,7 @@ import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRe
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
 
+import { CYBERADEPT, cyberadeptSteps, GRADE_RANK } from '../creation/cyberadept'
 import { activeRules, contactLoyalty, effectiveAvailability } from '../creation/rule-markers'
 
 interface Ctx {
@@ -916,6 +917,23 @@ const RULES: Rule[] = [
       !c.ch.finalizedAt && activeRules(c.b, c.data).has('ESSENCE_REGROWTH')
         ? { message: 'Essence Regrowth can’t be taken at character creation.', source: 'BS', page: 16 }
         : null,
+  },
+  // the cyberadept path (H&S pp. 86–87, owner ruling 4): ware taken after a step must be of its least grade or better
+  {
+    code: 'grade.cyberadept',
+    severity: 'error',
+    tab: 'augmentations',
+    check: c =>
+      cyberadeptSteps(c.b, c.data).flatMap(st => {
+        const r = CYBERADEPT[st.step]
+        return c.b.purchases
+          .filter(x => x.kind === 'augmentations' && (x.seq ?? 0) > st.seq && (GRADE_RANK[x.grade ?? 'standard'] ?? 99) < GRADE_RANK[r.min])
+          .map(x => ({
+            message: `${entryOf(x, c.data)?.name ?? x.name ?? 'An augmentation'} is ${x.grade ?? 'standard'} grade; after ${r.name} new ware must be ${r.min} grade or better.`,
+            source: 'HS',
+            page: r.page,
+          }))
+      }),
   },
   // All Business (SWC p. 135, RULE MAX_3_CONTACT_LOYALTY): no contact's Loyalty above 3
   {

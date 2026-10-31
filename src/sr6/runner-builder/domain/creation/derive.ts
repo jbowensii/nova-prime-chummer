@@ -25,7 +25,7 @@ import { normName } from '../../../catalog/domain/names'
 import { linkedParts, ownParts } from '../../../catalog/domain/effects'
 import type { Sr6Entry, Sr6Part } from '../../../formats/domain/types'
 import { makeProvider } from './providers'
-import { cyberlimbRuleBonus, essenceSocialPenalty, physicalRoundsDown } from './rule-markers'
+import { cyberjackAttrs, cyberlimbRuleBonus, essenceSocialPenalty, physicalRoundsDown } from './rule-markers'
 import { awakenedFlag, runnerInfected } from './infected'
 import { armorSocial, attackRatings, rated } from '../../../catalog/domain/values'
 import { choiceOptions, noteAttr, noteSkill } from './choices'
@@ -554,11 +554,14 @@ function derive(data: Sr6Data, cr: CreationRules, ch: Sr6Character, on: boolean)
         limb = /^cyberlimbs?$/i.test(e?.attrs.category ?? ''),
         add = { ...(limb ? { str: 0, agi: 0 } : {}), ...hostBonus(x, data, on) },
         targets = Object.keys(add) as (keyof typeof add)[]
-      if (!targets.length) return []
-      const values = targets.map(t => ({
+      const values: { target: string; value: number }[] = targets.map(t => ({
         target: t,
         value: (limb && (t === 'str' || t === 'agi') ? 2 : t in attrs ? attrs[t as Sr6Attr].natural : 0) + add[t]!,
       }))
+      // a cyberjack's Data Processing / Firewall (CRB p. 283), Cyberjack Maximization's +1 on the lower (SWC p. 133)
+      const jack = cyberjackAttrs(b, data, e)
+      if (jack) values.push({ target: 'data processing', value: jack.d }, { target: 'firewall', value: jack.f })
+      if (!values.length) return []
       return [{ uid: x.uid, name: e ? entryLabel(e) : (x.name ?? 'Custom item'), values, text: hostText(values) }]
     }),
   }

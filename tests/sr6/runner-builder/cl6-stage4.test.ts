@@ -10,6 +10,8 @@ import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules
 import { runnerRules, type CreationValue } from '../../../src/sr6/table-setup/domain/creation'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
 import { blankSr6, type Sr6Character } from '../../../src/sr6/formats/domain/character'
+import { stampOrder } from '../../../src/sr6/runner-builder/domain/creation/cyberadept'
+import { gradeFactor } from '../../../src/sr6/runner-builder/domain/creation/grades'
 import { buildOf, fixtureCatalog, fixtureCreation, STONE } from '../catalog/fixture'
 
 const doc = (kind: string, rows: string) => `<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="${kind}" version="1">${rows}</sr6:data>`
@@ -30,6 +32,8 @@ const EXTRA = [
         q('badluck', 'Bad Luck') +
         q('damage', 'Permanent Damage', rule('CANNOT_USE_ESSENCE_HOLE')) +
         q('regrowth', 'Essence Regrowth', rule('ESSENCE_REGROWTH')) +
+        q('novice', 'Cyberadept Novice', rule('CYBERADEPT_NOVICE')) +
+        q('maxjack', 'Cyberjack Maximization', rule('ADD_2_TWO_LOWEST_CYBERJACK_ATTRIBUTES')) +
         '<quality id="x.feathers" source="CRB" page="1" kind="negative" karma="4"><name>Feathers</name></quality>',
     ),
   },
@@ -41,7 +45,8 @@ const EXTRA = [
         '<augmentation id="x.leg" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="1" avail="1" cost="10"><name>Cyberleg (obvious)</name></augmentation>' +
         '<augmentation id="x.hand" source="CRB" page="1" type="cyberware" category="Cyberlimb" essence="0.5" avail="1" cost="10"><name>Cyberhand</name></augmentation>' +
         '<augmentation id="x.spurs" source="CRB" page="1" type="bioware" category="Bodyware" essence="0.1" avail="1" cost="10"><name>Spurs</name><modifier kind="valmod" type="PRICEMOD" ref="EVERYTHING" value="0.05"/></augmentation>' +
-        '<augmentation id="x.cosmetic" source="CRB" page="1" type="cyberware" category="Cosmetic" essence="*" avail="4" cost="*"><name>Metagenic cosmetic alteration</name><flag>NUYEN_COST_KARMA1000</flag></augmentation>',
+        '<augmentation id="x.cosmetic" source="CRB" page="1" type="cyberware" category="Cosmetic" essence="*" avail="4" cost="*"><name>Metagenic cosmetic alteration</name><flag>NUYEN_COST_KARMA1000</flag></augmentation>' +
+        '<augmentation id="x.jack" source="CRB" page="283" type="cyberware" category="Cyberjack" essence="1" avail="3" cost="45000"><name>Cyberjack (Rating 1)</name><text>**Attributes (d/f):** 4/3 **Matrix init bonus:** +1</text></augmentation>',
     ),
   },
   {
@@ -200,4 +205,35 @@ test('owner ruling 4: Essence Regrowth can’t be taken at character creation (B
   expect(s.codes()).toContain('quality.essenceRegrowth')
   s.ch.finalizedAt = '2026-10-31T00:00:00Z'
   expect(s.codes()).not.toContain('quality.essenceRegrowth')
+})
+
+test('owner ruling 4: Cyberjack Maximization adds 1 to the lower of the cyberjack’s printed Data Processing / Firewall (SWC p. 133)', () => {
+  const s = setup()
+  s.b.purchases.push({ uid: 'j', kind: 'augmentations', id: 'x.jack', qty: 1, accessories: [] })
+  const jack = () => deriveSr6(s.data, s.cr, s.ch).hosts.find(h => h.uid === 'j')?.text
+  expect(jack()).toBe('DATA PROCESSING 4, FIREWALL 3')
+  s.quality('maxjack')
+  expect(jack()).toBe('DATA PROCESSING 4, FIREWALL 4')
+})
+
+test('order: each action stamps the next order number on a new line and quality', () => {
+  const s = setup()
+  expect(s.act({ op: 'quality', id: 'x.badluck' })).toMatchObject({ ok: true })
+  s.b.purchases.push({ uid: 'a', kind: 'augmentations', id: 'x.arm', qty: 1, accessories: [] })
+  stampOrder(s.b)
+  const q = s.b.qualities.find(x => x.id === 'x.badluck')!
+  expect(s.b.purchases[0].seq).toBeGreaterThan(q.seq!)
+})
+
+test('owner ruling 4: Cyberadept Novice raises earlier ware a grade into an Essence hole; later ware must be alpha (H&S p. 86)', () => {
+  const s = setup()
+  const alpha = gradeFactor(s.cr, s.data, 'alpha', 'essence')!
+  s.b.purchases.push({ uid: 'a', kind: 'augmentations', id: 'x.arm', qty: 1, seq: 1, accessories: [] }) // 1 Essence
+  s.b.qualities.push({ uid: 'n', id: 'x.novice', level: 1, seq: 2 })
+  s.b.purchases.push({ uid: 'h', kind: 'augmentations', id: 'x.hand', qty: 1, seq: 3, accessories: [] }) // 0.5 Essence
+  const spent = allBudgets(s.b, s.data, s.cr, s.p).essence.spent
+  expect(spent).toBeCloseTo(1 + Math.max(0, 0.5 - (1 - alpha)), 2)
+  expect(s.codes()).toContain('grade.cyberadept')
+  s.b.purchases[1].grade = 'alpha'
+  expect(s.codes()).not.toContain('grade.cyberadept')
 })

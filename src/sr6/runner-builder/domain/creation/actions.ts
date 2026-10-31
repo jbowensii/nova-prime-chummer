@@ -37,6 +37,7 @@ import {
   type Sr6ItemFlag,
 } from '../../../formats/domain/character'
 import { structureOf } from '../../../catalog/domain/structure'
+import { stampOrder } from './cyberadept'
 import { flag, num, str, TRANSHUMAN_MAX, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, pickMaxLevel, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
@@ -342,6 +343,12 @@ const unlicense = (b: Sr6Build, gone: Sr6Purchase[]) => {
 
 /** Apply one editor step to the build. */
 export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
+  const r = applyOp(b, op, data, cr)
+  stampOrder(b) // (the order lines are taken in: cyberadept.ts)
+  return r
+}
+
+function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result {
   switch (op.op) {
     case 'attribute': {
       const a = b.attributes[op.target]

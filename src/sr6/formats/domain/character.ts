@@ -179,6 +179,8 @@ export interface Sr6Purchase {
   worn?: true
   /** Commlink6's user-selectable item flags (AddUpPricesStep): custom-fitted or cheap knockoff armor */
   flags?: Sr6ItemFlag[]
+  /** the order the line was taken in (creation actions and career advances stamp it: cyberadept.ts stampOrder) */
+  seq?: number
   bonuses?: Bonus[]
   sit?: Sr6Situational
   note?: string
@@ -322,6 +324,8 @@ export interface Sr6Quality {
   boughtOff?: number
   /** the sub-options picked (catalog structure.ts subChoices: Allergy's allergen and severity): pick ref -> option id(s) */
   options?: Record<string, string>
+  /** the order the quality was taken in (cyberadept.ts stampOrder) */
+  seq?: number
 }
 /** note: the skill or attribute a power naming its choice is for (`Improved Ability (Skill)`: its note `Firearms`) */
 export interface Sr6Pick {
