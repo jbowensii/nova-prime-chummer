@@ -209,6 +209,10 @@
         <xs:complexType>
           <xs:attribute name="id" type="xs:string" use="required"/>
           <xs:attribute name="months" type="c:Count" use="required"/>
+          <!-- the starter pack that brought it (free; taken away with the pack) -->
+          <xs:attribute name="pack" type="xs:string"/>
+          <!-- (a pack entry's lifestyle: the SIN it goes onto) -->
+          <xs:attribute name="sin" type="xs:string"/>
         </xs:complexType>
       </xs:element>
       <xs:element name="sin" type="c:Sin" minOccurs="0" maxOccurs="unbounded"/>
@@ -398,17 +402,26 @@
     <!-- an unnamed stand-in (name "", kind real, no rating, free) holding an older file's lifestyle when the runner had no
          SIN; naming it or setting its kind or rating makes it a normal SIN -->
     <xs:attribute name="placeholder" type="xs:boolean"/>
+    <!-- the starter pack that brought it (free) -->
+    <xs:attribute name="pack" type="xs:string"/>
   </xs:complexType>
 
   <!-- the career ledger, append-only (src/sr6/engine/career.ts): finalize sets both balances, earn adds, an advance spends
        (negative: gained), a void undoes the entry named by event. The text is the run, note or void reason; an advance's
        one child is the line it adds (or, buyoff and drop, the line it removed), the same element as the build's. -->
+  <xs:complexType name="PackLifestyle">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="months" type="c:Count" use="required"/>
+    <xs:attribute name="pack" type="xs:string"/>
+    <xs:attribute name="sin" type="xs:string" use="required"/>
+  </xs:complexType>
   <xs:complexType name="Ledger">
     <xs:sequence><xs:element name="entry" type="c:Entry" minOccurs="0" maxOccurs="unbounded"/></xs:sequence>
   </xs:complexType>
   <xs:complexType name="Entry" mixed="true">
     <!-- (two: a bond's quality and the negative taken with it) -->
-    <xs:choice minOccurs="0" maxOccurs="2">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
       <xs:element name="knowledge" type="c:Knowledge"/>
       <xs:element name="quality" type="c:Quality"/>
       <xs:element name="pick" type="c:Pick"/>
@@ -418,6 +431,8 @@
       <xs:element name="contact" type="c:Contact"/>
       <xs:element name="sin" type="c:Sin"/>
       <xs:element name="trained" type="c:Trained"/>
+      <!-- pack: the lifestyles it brings, each onto its SIN (sin) -->
+      <xs:element name="lifestyle" type="c:PackLifestyle"/>
     </xs:choice>
     <xs:attribute name="id" type="xs:string" use="required"/>
     <xs:attribute name="at" type="xs:string" use="required"/>
@@ -455,9 +470,15 @@
         <xs:enumeration value="bond"/><xs:enumeration value="contact"/><xs:enumeration value="lifestyle"/><xs:enumeration value="convert"/>
         <xs:enumeration value="other"/><xs:enumeration value="martialart"/><xs:enumeration value="technique"/>
         <xs:enumeration value="sin"/><xs:enumeration value="awakened"/><xs:enumeration value="licensed"/><xs:enumeration value="quantity"/>
-        <xs:enumeration value="teach"/><xs:enumeration value="part"/>
+        <xs:enumeration value="teach"/><xs:enumeration value="part"/><xs:enumeration value="pack"/>
       </xs:restriction></xs:simpleType>
     </xs:attribute>
+    <!-- pack: a starter pack expanded into its <purchase>s, <sin>s and <lifestyle>s at the pack's price (cost; the entry's nuyen);
+         packId the catalog pack, packUid the uid its lines carry as `pack`; voiding the entry takes them all away -->
+    <xs:attribute name="packId" type="xs:string"/>
+    <xs:attribute name="packUid" type="xs:string"/>
+    <xs:attribute name="packName" type="xs:string"/>
+    <xs:attribute name="cost" type="xs:decimal"/>
     <xs:attribute name="target" type="xs:string"/>
     <xs:attribute name="from" type="c:SlotKind"/>
     <xs:attribute name="to" type="c:SlotKind"/>
@@ -693,6 +714,8 @@
     <xs:attribute name="design" type="xs:string"/>
     <!-- a weapon or cyberware line bought from a saved design a GM made or approved (the item builders): Review asks nothing -->
     <xs:attribute name="approved" type="xs:boolean"/>
+    <!-- a starter pack's line (the pack's uid): free; the pack's header line (its own uid) carries the price -->
+    <xs:attribute name="pack" type="xs:string"/>
     <!-- the identity (SIN) the line is assigned to: its uid -->
     <xs:attribute name="sin" type="xs:string"/>
     <!-- a vehicle's or drone's mod slots shifted between categories (Double Clutch p. 120), in the order made: `from>to`

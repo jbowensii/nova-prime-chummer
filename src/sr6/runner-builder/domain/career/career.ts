@@ -64,6 +64,7 @@ import {
   runnerInfected,
 } from '../creation/infected'
 import { accessoryProblem, deep, infectedTo, sameChoice, setPart, unfit } from '../creation/actions'
+import { applyPack } from '../creation/packs'
 import { limbSnapshot } from '../assets/limbs'
 import { mountsOf, partsOf, shiftProblem, type Mount } from '../assets/vehiclemods'
 import { isSignature, learned } from '../creation/martial'
@@ -178,6 +179,9 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     }
     case 'purchase':
       b.purchases.push(structuredClone(a.line))
+      return
+    case 'pack':
+      applyPack(b, a)
       return
     case 'drop':
       b.purchases = b.purchases.filter(x => x.uid !== a.target)
@@ -633,6 +637,11 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         label: `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
         nuyen: x.gmPrice !== undefined && x.kind === 'vehicles' && Number.isFinite(x.gmPrice) && x.gmPrice >= 0 ? x.gmPrice : pr.cost,
       }
+    }
+    case 'pack': {
+      // a starter pack: its lines free, the pack's price the entry's nuyen (packs.ts)
+      if (!(a.cost >= 0) || !Number.isFinite(a.cost)) no('book-value')
+      return { label: `Pack: ${a.name}`, nuyen: a.cost }
     }
     case 'quantity': {
       // a stacking line bought again or sold down: the price difference (more costs, fewer credits it back at full price)
