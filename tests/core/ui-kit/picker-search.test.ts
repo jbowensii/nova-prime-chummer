@@ -10,7 +10,7 @@ const it = (name: string, search = ''): PickItem => ({ id: name, name, search })
 const names = (el: Element) => [...el.querySelectorAll('li b')].map(b => b.textContent)
 
 test('multi-word, any order, any case, mid-word, A-Z', async () => {
-  const items = [it('Plastic Explosives', 'Explosive Package | CRB p.264'), it('Conventional Explosives', 'Explosive Package'), it('Zap Gun', 'Firearm')]
+  const items = [it('Conventional Explosives', 'Explosive Package'), it('Plastic Explosives', 'Explosive Package | CRB p.264'), it('Zap Gun', 'Firearm')]
   const { el } = await mount(createElement(Picker, { items, onPick: () => {} }))
   expect(names(el)).toEqual(['Conventional Explosives', 'Plastic Explosives', 'Zap Gun'])
   const box = el.querySelector('input')!
@@ -29,8 +29,8 @@ test('multi-word, any order, any case, mid-word, A-Z', async () => {
 test('a word in the book name does not drown the items named for it', async () => {
   const items = [
     it('CCL-100', 'Shadowrun: Explosive Decompression'),
-    it('Plastic Explosives', 'Explosive Package'),
     it('Caltrops', 'Explosive and scatter weapon'),
+    it('Plastic Explosives', 'Explosive Package'),
   ]
   const { el } = await mount(
     createElement(Picker, { items: items.map(i => ({ ...i, meta: i.name === 'Caltrops' ? 'Explosive and scatter weapon' : undefined })), onPick: () => {} }),

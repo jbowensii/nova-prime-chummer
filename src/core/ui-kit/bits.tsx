@@ -143,7 +143,7 @@ export function Picker({
     }
     const strong = inGroup.filter(i => has([i.name, i.group, i.meta]))
     const hits = !words.length || strong.length ? strong : inGroup.filter(i => has([i.name, i.group, i.meta, i.text, i.search]))
-    return hits.sort((a, z) => a.name.localeCompare(z.name))
+    return hits // (callers hand the items in A-Z; search keeps that order)
   }, [items, q, group])
   const shown = matches.slice(0, 300)
   return (

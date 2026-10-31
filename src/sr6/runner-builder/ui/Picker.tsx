@@ -319,7 +319,7 @@ export function CatalogPicker({
                 </>
               ),
               search: `${entrySearch(e)} ${pickerGroup(e, kinds.length > 1)} ${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
-              price: p.cost ? `${r.length > 1 ? 'from ' : ''}${p.cost}` : formula, // (a price for the first rating, else the book's formula)
+              price: formula && !/tier\(/.test(formula) ? formula : p.cost ? `${r.length > 1 ? 'from ' : ''}${p.cost}` : formula, // (a short formula as printed; a tier table as the price for the first rating)
               ...(blocked?.(e) ? { disabled: true } : {}),
             }
           })}
