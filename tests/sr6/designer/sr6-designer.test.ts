@@ -236,10 +236,9 @@ test('the list: a GM’s new design is approved; Copy and Delete (to the design 
   expect(copy.design!.approved).toBe(true) // (copied by a GM)
   await click(button('New design'))
   await change(field('Name'), 'Gnat Mk II')
-  await change(field<HTMLSelectElement>('A vehicle or a drone'), 'drone')
   await click(button('Create design'))
   const made = [...store.rows.values()].map(r => read(r.xml)).find(ch => ch.identity.streetName === 'Gnat Mk II')!
-  expect(made.design).toEqual({ kind: 'drone', options: [], mods: [], approved: true })
+  expect(made.design).toEqual({ kind: 'vehicle', options: [], mods: [], approved: true }) // (the Vehicle designer's tab fixes the kind)
   expect(location.hash).toBe(`#/sr6/designs/${made.id}`)
   await click(button('Delete Red Zip'))
   await click(button('Delete design'))

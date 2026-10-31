@@ -20,9 +20,29 @@ const P: Record<string, ReactNode> = {
     </>
   ),
   compendiums: <path d="M4 4v16M8 8v12M12 6v14M16 6l4 14" />,
-  // a wrench: the Designer (SR6's vehicle and drone designs)
+  // a wrench: the Vehicle designer (SR6's vehicle designs)
   designs: (
     <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9l-3.8 3.8z" />
+  ),
+  // a quadcopter: the Drone designer (SR6's drone designs)
+  drones: (
+    <>
+      <rect x="9" y="9" width="6" height="6" rx="1" />
+      <path d="M9 9 6 6M15 9l3-3M9 15l-3 3M15 15l3 3" />
+      <circle cx="5" cy="5" r="3" />
+      <circle cx="19" cy="5" r="3" />
+      <circle cx="5" cy="19" r="3" />
+      <circle cx="19" cy="19" r="3" />
+    </>
+  ),
+  // a pistol: the Weapon designer (SR6's weapon designs)
+  weapons: <path d="M2 7h18l1 3h-6l-1 2h-3l-2 7H5l2-7H3z M11 12v2" />,
+  // a chip on a circuit: the Cyberware designer (SR6's cyberware designs)
+  cyberware: (
+    <>
+      <rect x="7" y="7" width="10" height="10" rx="1" />
+      <path d="M10 2v5M14 2v5M10 17v5M14 17v5M2 10h5M2 14h5M17 10h5M17 14h5" />
+    </>
   ),
   campaigns: (
     <>

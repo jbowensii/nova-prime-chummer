@@ -131,20 +131,21 @@ export function Picker({
   const [group, setGroup] = useState('')
   const [focused, setFocused] = useState('')
   const list = useRef<HTMLUListElement>(null)
-  const shown = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    return items
-      .filter(
-        i =>
-          (!group || i.group === group) &&
-          (!t ||
-            i.name.toLowerCase().includes(t) ||
-            i.text?.toLowerCase().includes(t) ||
-            i.meta?.toLowerCase().includes(t) ||
-            i.search?.toLowerCase().includes(t)),
-      )
-      .slice(0, 300)
+  const matches = useMemo(() => {
+    // every word of the query must appear (any order, any case, mid-word). Name, group and meta are the strong text; the
+    // rest (book name, aliases, description) counts only when nothing matches the strong text, so "explosive" lists the
+    // explosives, not every item from the book "Explosive Decompression".
+    const words = q.toLowerCase().split(/\s+/).filter(Boolean)
+    const inGroup = items.filter(i => !group || i.group === group)
+    const has = (parts: (string | undefined)[]) => {
+      const hay = parts.filter(Boolean).join(' | ').toLowerCase()
+      return words.every(w => hay.includes(w))
+    }
+    const strong = inGroup.filter(i => has([i.name, i.group, i.meta]))
+    const hits = !words.length || strong.length ? strong : inGroup.filter(i => has([i.name, i.group, i.meta, i.text, i.search]))
+    return hits // (callers hand the items in A-Z; search keeps that order)
   }, [items, q, group])
+  const shown = matches.slice(0, 300)
   return (
     <div className="picker">
       <div className="row">
@@ -205,6 +206,11 @@ export function Picker({
             {i.text && <span className="t">{i.text}</span>}
           </li>
         ))}
+        {matches.length > shown.length && (
+          <li role="option" aria-selected={false} aria-disabled className="muted">
+            Showing the first {shown.length} of {matches.length}: type or pick a category to narrow.
+          </li>
+        )}
         {!shown.length && (
           <li role="option" aria-selected={false} aria-disabled className="muted">
             Nothing matches “{q}”.

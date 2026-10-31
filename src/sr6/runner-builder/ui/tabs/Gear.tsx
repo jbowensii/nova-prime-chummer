@@ -10,7 +10,7 @@ import { ratingEdge } from '../../domain/creation/derive'
 import { n, useSr6Editor } from '../editor'
 import { BuyItemDesign } from '../Builder'
 import { Accessories, ACCESSORY_KINDS, isAccessory, MaterialPick, packChoices, PurchaseSection, social } from '../Picker'
-import { entryLabel, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
+import { entryLabel, isAmmoGear, isAmmoType, isExplosive } from '../../../catalog/domain/categories'
 
 const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['gear', 'Other gear'],
@@ -19,6 +19,44 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [
   ['armor', 'Armor'],
 ]
 const band = (v: number | null) => (v === null ? '—' : String(v))
+
+/** Career: the Gear tab is read only, so this sits beside it (EditorView, outside the disabled fieldset): every owned line
+ *  with an Identity picker that records a free `assign` ledger entry (a fieldset's disabled can't be undone inside it). */
+export function CareerIdentities() {
+  const { ch, data, record } = useSr6Editor()
+  const [err, setErr] = useState<string | null>(null)
+  const sins = ch.build.sins,
+    lines = ch.build.purchases.flatMap(x => [x, ...x.accessories])
+  if (!sins.length || !lines.length) return null
+  const label = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
+  return (
+    <section className="stack" aria-label="Identities">
+      <h3>Identities (free)</h3>
+      {err && (
+        <p className="banner err" role="alert">
+          {err}
+        </p>
+      )}
+      {lines.map(x => (
+        <label key={x.uid} className="inline">
+          {label(x)}{' '}
+          <select
+            aria-label={`${label(x)} identity`}
+            value={x.sin ?? ''}
+            onChange={e => setErr(record({ op: 'assign', target: x.uid, ...(e.target.value ? { sin: e.target.value } : {}) }))}
+          >
+            <option value="">Unassigned</option>
+            {sins.map(s => (
+              <option key={s.uid} value={s.uid}>
+                {sinName(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </section>
+  )
+}
 
 export function GearTab() {
   const { c, d, ch, data, cr, act, edit } = useSr6Editor()
@@ -170,9 +208,27 @@ export function GearTab() {
         kind="weapons"
         title="Weapons"
         one="a weapon"
+        offer={e => !isExplosive(e)}
+        show={x => !isExplosive(entryOf(x, data))}
         detail={withIdentity(x => [ar(x.uid), ...statusesOf(entryOf(x, data)).map(s => `applies ${s}`)].filter(Boolean).join(' · '))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         hint={`Unarmed: AR ${d.attackRatings.unarmed}${u ? `, DV ${u.dv}${u.physical ? 'P' : 'S'}` : ''}${edgeAt([d.attackRatings.unarmed])}.`}
+      />
+      <PurchaseSection
+        kind="weapons"
+        title="Explosives and grenades"
+        one="an explosive or grenade"
+        offer={isExplosive}
+        show={x => isExplosive(entryOf(x, data))}
+        detail={withIdentity()}
+      />
+      <PurchaseSection
+        kind="gear"
+        title="Detonators and rockets"
+        one="a detonator or rocket"
+        offer={isExplosive}
+        show={x => isExplosive(entryOf(x, data))}
+        detail={withIdentity()}
       />
       <label className="inline">
         Target’s DR <input type="number" min={0} value={dr} aria-label="Target’s DR" onChange={e => setDr(e.target.value)} />{' '}
@@ -224,8 +280,8 @@ export function GearTab() {
         kind="gear"
         title="Other gear"
         one="other gear"
-        offer={e => !isAmmoGear(e) && !isFocus(e)}
-        show={x => !isAmmoGear(entryOf(x, data)) && !isFocus(entryOf(x, data))}
+        offer={e => !isAmmoGear(e) && !isFocus(e) && !isExplosive(e)}
+        show={x => !isAmmoGear(entryOf(x, data)) && !isFocus(entryOf(x, data)) && !isExplosive(entryOf(x, data))}
         accessories={{ kinds: ACCESSORY_KINDS, filter: isAccessory }}
         bonuses
         detail={withIdentity(material)}

@@ -47,7 +47,7 @@ import { gradeName, gradeProblem } from '../creation/grades'
 import { makeProvider, type Provider } from '../creation/providers'
 import { CAREER_KEEP, validateSr6 } from '../review/rules'
 import { bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
-import { entryLabel, STACKING } from '../../../catalog/domain/categories'
+import { entryLabel, stacks } from '../../../catalog/domain/categories'
 import { critterOnly, infectedOff, infectedQuality } from '../assets/critterware'
 import { critterQualityKarma, isCritterQuality, taughtPrice, TRAINED_LABELS, trainedWhat } from '../assets/critters'
 import type { Sr6QualityView } from '../../../catalog/domain/types'
@@ -299,6 +299,12 @@ function advance(b: Sr6Build, a: Sr6Advance): void {
       const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target),
         s = b.sins.find(y => y.uid === a.sin)
       if (x && s && !s.licences.some(l => l.item === x.uid)) s.licences.push(itemLicence(x, s, a.name))
+      return
+    }
+    case 'assign': {
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target)
+      if (x && a.sin) x.sin = a.sin
+      else if (x) delete x.sin
       return
     }
     case 'convert':
@@ -626,7 +632,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
-      if (x.qty > 1 && !STACKING.has(x.kind)) no('own-line') // (only stacking kinds take a count)
+      if (x.qty > 1 && !stacks(x.kind, data.entry(x.kind, x.id ?? ''))) no('own-line') // (only stackable items take a count)
       // (a design's line: its snapshot, the vehicle the design worked out to; a builders' custom limb: its own)
       const e = x.id
         ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry'))
@@ -652,7 +658,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'quantity': {
       // a stacking line bought again or sold down: the price difference (more costs, fewer credits it back at full price)
       const x = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
-      if (!STACKING.has(x.kind)) no('own-line')
+      if (!stacks(x.kind, data.entry(x.kind, x.id ?? ''))) no('own-line')
       if (!Number.isInteger(a.qty) || a.qty < 1) no('below-one')
       if (a.qty === x.qty) no('unchanged')
       const now = priced({ ...x, qty: a.qty }, data, cr),
@@ -865,6 +871,14 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
       if (sin.kind === 'real') return { label: what, nuyen: fee }
       const r = licenceRating(sin)
       return { label: `${what} (fake licence, rating ${r})`, nuyen: r * need('licencePerRating') }
+    }
+    case 'assign': {
+      // free, always allowed (owner 2026-10-31): which SIN an owned line is registered to costs nothing
+      const x = b.purchases.flatMap(y => [y, ...y.accessories]).find(y => y.uid === a.target) ?? no('unknown-line')
+      const sin = a.sin ? (b.sins.find(s => s.uid === a.sin) ?? no('unknown-line')) : undefined
+      if (x.sin === sin?.uid) no('unchanged')
+      const e = entryOf(x, data)
+      return { label: `Identity: ${e ? entryLabel(e) : (x.name ?? 'Custom item')} ${sin ? `registered to ${sinName(sin)}` : 'unassigned'}` }
     }
     case 'other':
       return { label: typed.label?.trim() || 'Other', karma: typed.karma, nuyen: typed.nuyen }

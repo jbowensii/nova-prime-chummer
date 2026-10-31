@@ -559,6 +559,8 @@ export type Sr6Advance =
    *  fake SIN one of its fake licences (rated as the SIN), on a real one at the fee its Availability prints; name: the
    *  licence's as recorded (the licence type covering the item) */
   | { op: 'licensed'; target: string; sin: string; name?: string }
+  /** register an owned line (an accessory too) to one of the runner's SINs, or none; free, never charged */
+  | { op: 'assign'; target: string; sin?: string }
   | { op: 'other' }
 export type Sr6AdvanceOp = Sr6Advance['op']
 export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
@@ -592,6 +594,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'convert',
   'awakened',
   'licensed',
+  'assign',
   'other',
 ]
 /** One career ledger line (append-only; a void entry undoes another). Advance amounts are spent; negative is gained. */
