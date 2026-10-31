@@ -111,6 +111,7 @@ export const OPS = [
   ['teach', 'Teach your critter a command or special training'],
   ['sin', 'SIN'],
   ['licensed', 'Licence on a SIN'],
+  ['assign', 'Register an item to a SIN (free)'],
   ['lifestyle', 'Lifestyle'],
   ['contact', 'Contact'],
   ['k2n', 'Karma to nuyen'],
@@ -462,6 +463,8 @@ export function LedgerTab() {
         return f.target && sin ? { op, id: f.target, months: whole(f.months), sin } : null
       case 'licensed':
         return f.target && sin ? { op, target: f.target, sin } : null
+      case 'assign':
+        return f.target ? { op, target: f.target, ...(f.sin ? { sin: f.sin } : {}) } : null
       case 'contact':
         return f.name.trim() || f.target
           ? { op, line: { uid: f.target, name: f.name.trim(), archetype: f.archetype.trim(), connection: whole(f.connection), loyalty: whole(f.loyalty) } }
@@ -1425,6 +1428,42 @@ export function LedgerTab() {
                       {l}
                     </option>
                   ))}
+              </select>
+            </label>
+          </>
+        )}
+        {/* (which SIN an owned line is registered to: free, any time; an item can be unassigned) */}
+        {op === 'assign' && (
+          <>
+            <label>
+              Item
+              <select
+                aria-label="Item to register"
+                value={f.target}
+                onChange={e =>
+                  set({ target: e.target.value, sin: b.purchases.flatMap(x => [x, ...x.accessories]).find(x => x.uid === e.target.value)?.sin ?? '' })
+                }
+              >
+                <option value="">Pick one</option>
+                {b.purchases
+                  .flatMap(x => [x, ...x.accessories])
+                  .sort((a, z) => itemName(a).localeCompare(itemName(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {itemName(x)}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <label>
+              Identity
+              <select aria-label="Register to" value={f.sin} onChange={e => set({ sin: e.target.value })}>
+                <option value="">Unassigned</option>
+                {b.sins.map((s, i) => (
+                  <option key={s.uid} value={s.uid}>
+                    {sinName(s, `SIN ${i + 1}`)}
+                  </option>
+                ))}
               </select>
             </label>
           </>

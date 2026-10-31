@@ -380,6 +380,8 @@ test('every advance op and entry type round-trips and validates', async () => {
     { op: 'awakened', value: false },
     { op: 'awakened' },
     { op: 'licensed', target: 'g4', sin: 's2' },
+    { op: 'assign', target: 'g4', sin: 's2' },
+    { op: 'assign', target: 'g4' },
     { op: 'licensed', target: 'g4', sin: 's1', name: 'Made-up Gun Permit' },
     { op: 'martialart', line: { uid: 'lma', id: 'crb.glow-fist', name: 'Glow Fist', techniques: [{ uid: 'lmt', id: 'crb.glow-jab' }] } },
     { op: 'technique', target: 'lma', line: { uid: 'lmt2', id: 'crb.glow-jab', name: 'Glow Jab' } },

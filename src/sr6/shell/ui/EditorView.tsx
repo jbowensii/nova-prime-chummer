@@ -35,7 +35,7 @@ import { AttributesTab } from '../../runner-builder/ui/tabs/Attributes'
 import { AugmentationsTab } from '../../runner-builder/ui/tabs/Augmentations'
 import { ConceptTab } from '../../runner-builder/ui/tabs/Concept'
 import { ContactsTab } from '../../runner-builder/ui/tabs/Contacts'
-import { GearTab } from '../../runner-builder/ui/tabs/Gear'
+import { CareerIdentities, GearTab } from '../../runner-builder/ui/tabs/Gear'
 import { LedgerTab } from '../../runner-builder/ui/tabs/Ledger'
 import { MagicTab } from '../../runner-builder/ui/tabs/Magic'
 import { MartialArtsTab } from '../../runner-builder/ui/tabs/MartialArts'
@@ -333,6 +333,7 @@ export function Sr6EditorView({
               {shown === 'build' && <ItemBuilder path={sub!} />}
             </TabBoundary>
           </fieldset>
+          {career && !theirs && shown === 'gear' && <CareerIdentities />}
         </main>
         {!npc && <Budgets />}
       </div>

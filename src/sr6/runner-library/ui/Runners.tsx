@@ -21,6 +21,7 @@ import type { CreationRules } from '../../table-setup/domain/creation'
 import type { Sr6Data } from '../../catalog/domain/data'
 import { ExportRunnersDialog } from '../../../features/foundry-kit/foundryKit'
 import { validateSr6 } from '../../runner-builder/domain/review/rules'
+import { validateCareer } from '../../runner-builder/domain/career/career'
 import { newId } from '../../../core/shared/types'
 import { xmlToSr6 } from '../../formats/domain/charxml'
 import { blankSr6, SR6_METHOD_LABELS, SR6_METHODS, type Sr6Character, type Sr6Method } from '../../formats/domain/character'
@@ -34,6 +35,10 @@ import { exportSr6, readSr6Import, repairSr6, sr6Repo } from '../../runner-build
 
 const SORT_KEY = 'ca2.sr6.library.sort'
 /** The legacy server's answer (an account called sr6 from before holds the SR6 folder). */
+/** The unapproved errors the list badges: as the editor counts them (EditorView): a finalized runner by its career checks, a draft by creation's. */
+export const errorCount = (data: Sr6Data, cr: CreationRules, c: Parameters<typeof withSampleFixes>[0], ch: Sr6Character) =>
+  (ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, withSampleFixes(c, ch).ch)).filter(v => v.severity === 'error' && !v.approved).length
+
 export const LEGACY = 'An account called sr6 is in the way: the admin renames it on the Users page.'
 const shownName = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed runner'
 
@@ -135,7 +140,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const campaignOf = (ch: Sr6Character) => campaigns.find(x => x.id === ch.campaign)
   // a runner in a campaign with its own creation settings is checked and exported with those
   const rulesOf = (ch: Sr6Character) => rulesForRunner(cr, campaignOf(ch), ch)
-  const errorsOf = (ch: Sr6Character) => validateSr6(data, rulesOf(ch), withSampleFixes(c, ch).ch).filter(v => v.severity === 'error' && !v.approved).length
+  const errorsOf = (ch: Sr6Character) => errorCount(data, rulesOf(ch), c, ch)
 
   const open = campaigns.filter(x => !x.archived && joined(x, me)) // the ones a runner of yours can join
   const assign = async (ch: Sr6Character, cid: string | null) => {

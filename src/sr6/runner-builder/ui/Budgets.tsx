@@ -3,7 +3,7 @@
 // buy's character points and lifepath's modules show only for their method; pools a method doesn't use are left out.
 // In career only the ledger's karma and nuyen (linking to the Ledger tab) and the current build's Essence.
 import { balances } from '../domain/career/career'
-import { num } from '../../table-setup/domain/creation'
+import { flag, num } from '../../table-setup/domain/creation'
 import { MAGIC_KINDS } from '../../catalog/domain/data'
 import type { Budget } from '../domain/creation/budgets'
 import { MAGIC_KIND_LABELS, SR6_METHOD_LABELS } from '../../formats/domain/character'
@@ -43,7 +43,11 @@ export function Budgets() {
     ['spellSlots', kind.resonance ? 'Free complex forms' : 'Free spells', kind.spells || kind.resonance ? B.spellSlots : undefined],
   ]
   // karma, nuyen and Essence always; a pool only when the method gives it or something is spent from it
-  const shown = rows.filter(([k, , x]) => x && (['karma', 'nuyen', 'essence'].includes(k) || x.max || x.spent) && (!career || k === 'essence'))
+  // spells past the free ones are bought with Karma (its own line) in a Karma build or under karmaSpellsAtCreation: no overspend
+  const karmaSpells = b.method === 'karma' || !!flag(cr, 'karmaSpellsAtCreation')
+  const shown = rows
+    .filter(([k, , x]) => x && (['karma', 'nuyen', 'essence'].includes(k) || x.max || x.spent) && (!career || k === 'essence'))
+    .map(([k, l, x, u]): (typeof rows)[number] => [k, l, k === 'spellSlots' && karmaSpells && x ? { ...x, left: Math.max(0, x.left) } : x, u])
   const bal = balances(ch),
     karmaLeft = career ? bal.karma : B.karma.left
   const modules = num(cr, 'lifepath.moduleCount')
@@ -90,10 +94,7 @@ export function Budgets() {
         ['Nuyen', bal.nuyen, '¥'],
         ['Karma', bal.karma, ''],
       ]
-    : shown
-        .filter(([k]) => !(k === 'spellSlots' && b.method === 'karma')) // (a Karma build buys spells past the free ones)
-        .sort(([a], [b]) => urgency(a) - urgency(b))
-        .map(([, label, x, unit]) => [label, x!.left, unit ?? ''])
+    : shown.sort(([a], [b]) => urgency(a) - urgency(b)).map(([, label, x, unit]) => [label, x!.left, unit ?? ''])
   const [peekLabel, peekLeft, peekUnit] = pools.find(([, left]) => left < 0) ?? ['Karma', karmaLeft, '']
   return (
     <SidePanel
