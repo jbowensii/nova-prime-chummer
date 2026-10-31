@@ -4,6 +4,7 @@
 import { useState } from 'react'
 import { Modal, Picker, Stepper } from '../../../../core/ui-kit/bits'
 import {
+  choiceCtx,
   choiceOptions,
   choiceSelectOptions,
   noteAttr,
@@ -66,7 +67,7 @@ export function QualitiesTab() {
             {rows.map(q => {
               const v = data.qualities[q.id],
                 want = qualityChoice(v?.name),
-                co = choiceOptions(data, data.entry('qualities', q.id))
+                co = choiceOptions(data, data.entry('qualities', q.id), choiceCtx(data, b))
               const named =
                 want === 'attribute' ? noteAttr(q.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, q.note) ?? '']?.name : undefined
               return (
