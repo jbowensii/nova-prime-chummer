@@ -46,6 +46,17 @@ export interface ChoiceSpec {
   /** how many picks the book asks for (Natural Venom: 4 vectors); the note holds them joined by `; ` */
   count?: number
 }
+// Commlink6's skill types (core skills.xml): a SKILL choice's `ref` (Skill Hardwires: PHYSICAL) lists only that type
+const SKILL_TYPES: Record<string, string[]> = {
+  COMBAT: ['close combat', 'exotic weapons', 'firearms'],
+  PHYSICAL: ['athletics', 'outdoors', 'perception', 'stealth'],
+  SOCIAL: ['con', 'influence'],
+  TECHNICAL: ['biotech', 'cracking', 'electronics', 'engineering', 'piloting'],
+  MAGIC: ['astral', 'conjuring', 'enchanting', 'sorcery'],
+  RESONANCE: ['tasking'],
+}
+/** How many picks a selection asks for: `count`, else `distr`'s points (`1 1 1`: three different ones). */
+const picks = (a: Record<string, string> = {}) => Math.max(Number(a.count) || 0, (a.distr ?? '').trim() ? a.distr.trim().split(/\s+/).length : 0)
 const CORE_ATTRS = ['body', 'agility', 'reaction', 'strength', 'willpower', 'logic', 'intuition', 'charisma']
 const cap = (w: string) => w[0].toUpperCase() + w.slice(1)
 const titleCase = (t: string) =>
@@ -175,10 +186,15 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, ctx: Choic
   } else if (kind === 'skill') {
     // tokens are skill ids (`biotech`) or names; resolve to the catalog skill name
     const picked = tokens.map(t => data.skills[t]?.name ?? data.skills[noteSkill(data, t) ?? '']?.name).filter((s): s is string => !!s)
+    const typed = SKILL_TYPES[(sel?.attrs.ref ?? '').toUpperCase()]
+    // an adept power that also takes combat skills at a higher cost (Improved Ability: `costCombat`, CRB p. 157)
+    const combat =
+      picked.length && e.attrs.costCombat ? SKILL_TYPES.COMBAT.map(c => data.skills[noteSkill(data, c) ?? '']?.name).filter((s): s is string => !!s) : []
     names = picked.length
-      ? picked
+      ? [...picked, ...combat]
       : Object.values(data.skills)
           .map(s => s.name)
+          .filter(s => !typed || typed.includes(normName(s)))
           .sort((a, b) => a.localeCompare(b))
   } else if (kind === 'specialization') {
     // one of a skill's specializations (Grease Monkey: <selection type="SKILLSPECIALIZATION" ref="engineering">)
@@ -205,7 +221,7 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, ctx: Choic
   const options = [...new Set(names)].map(v => ({ value: v, label: v }))
   // a non-Matrix ITEM_ATTRIBUTE choice (Shock Shield, Attribute Overclocking): an ordinary list, not "Which Matrix attribute"
   if (kind === 'matrix' && tokens.some(t => !MATRIX_ATTRS[t])) return options.length ? { kind: 'list', options } : undefined
-  const n = Number(sel?.attrs.count) > 1 ? { count: Number(sel!.attrs.count) } : {}
+  const n = picks(sel?.attrs) > 1 ? { count: picks(sel?.attrs) } : {}
   return options.length ? { kind, options, ...n } : sel ? { kind: 'text', options: [], ...n } : undefined // a selection nothing can list: a text box
 }
 function otherChoice(data: Sr6Data, a: Record<string, string>, ctx: ChoiceCtx): ChoiceSpec {
@@ -217,7 +233,7 @@ function otherChoice(data: Sr6Data, a: Record<string, string>, ctx: ChoiceCtx): 
   const cat = CATALOG_LISTS[type]
   const names = listed.length ? listed.map(t => MATRIX_ATTRS[t] ?? titleCase(t)) : (STATIC_LISTS[type] ?? cat?.(data, a.ref ?? '', ctx) ?? [])
   const options = [...new Set(names)].sort((x, y) => x.localeCompare(y)).map(v => ({ value: v, label: v }))
-  const count = Number(a.count) > 1 ? { count: Number(a.count) } : {}
+  const count = picks(a) > 1 ? { count: picks(a) } : {}
   return options.length ? { kind: 'list', options, ...count } : { kind: 'text', options: [], ...count }
 }
 /** choiceOptions' values plus the current note when it isn't one of them (an older free-text note, `AGI`): so a stored,

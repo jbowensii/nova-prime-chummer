@@ -2,8 +2,9 @@
 // (dronePools). Made-up fixture entries, patched with the effects the importer writes.
 import { expect, test } from 'vitest'
 import { sr6Data } from '../../../src/sr6/catalog/domain/data'
-import { ammoLoads, ammoLoadText } from '../../../src/sr6/runner-builder/domain/assets/weapons'
+import { ammoFits, ammoLoads, ammoLoadText, meleeAlternate } from '../../../src/sr6/runner-builder/domain/assets/weapons'
 import { dronePools } from '../../../src/sr6/runner-builder/domain/assets/vehiclemods'
+import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 import type { Sr6Purchase } from '../../../src/sr6/formats/domain/character'
 import { fixtureCatalog } from '../catalog/fixture'
 
@@ -35,6 +36,37 @@ test('a drone running autosofts rolls Pilot + rating; a vehicle that is not a dr
     fixtureCatalog((file, xml) => (file.endsWith('programs.xml') ? xml.replace(`<name>${sw.name}</name>`, '<name>Maneuvering</name>') : xml)),
   )
   const soft = line('programs', sw.id, { rating: 4 })
-  expect(dronePools(line('vehicles', 'crb.hover-buzzer', { accessories: [soft] }), patched)).toEqual([{ test: 'Piloting', autosoft: 'Maneuvering', pool: 7 }])
+  expect(dronePools(line('vehicles', 'crb.hover-buzzer', { accessories: [soft] }), patched)).toEqual([
+    { mode: 'autonomous', test: 'Piloting', autosoft: 'Maneuvering', pool: 7 },
+    { mode: 'autonomous', test: 'Attack', autosoft: 'no Targeting autosoft', pool: 2 },
+  ])
+  // slaved to an RCC running a better Maneuvering: the RCC's wins
+  const rcc = line('electronics', 'x.rcc', { accessories: [line('programs', sw.id, { rating: 6 })] })
+  expect(
+    dronePools(line('vehicles', 'crb.hover-buzzer', { accessories: [soft] }), patched, [rcc]).find(p => p.mode === 'rcc' && p.test === 'Piloting')?.pool,
+  ).toBe(9)
   expect(dronePools(line('vehicles', 'crb.putt-putt', { accessories: [soft] }), patched)).toEqual([])
+})
+
+test('ammunition fits a weapon by its type; Melee Hardening gives a club alternate', () => {
+  const e = (name: string, attrs: Record<string, string>) => ({ id: name, kind: 'gear', name, attrs, parts: [] }) as unknown as Sr6Entry
+  expect(ammoFits(e('Heavy Pistol/SMG', {}), e('Ares Predator', { category: 'Heavy pistol' }))).toBe(true)
+  expect(ammoFits(e('Heavy Pistol/SMG', {}), e('Uzi', { category: 'Submachine gun' }))).toBe(true)
+  expect(ammoFits(e('Rifles', {}), e('AK-97', { category: 'Assault-rifle' }))).toBe(true)
+  expect(ammoFits(e('Rifles', {}), e('Ares Predator', { category: 'Heavy pistol' }))).toBe(false)
+  // an ammo line for another weapon type doesn't offer its ammo type
+  const gun = line('weapons', 'crb.zap-gun')
+  const rifleAmmo = line('gear', 'x.rifles', { accessories: [line('ammotypes', 'crb.fizz-rounds')] })
+  const d2 = { ...data, entry: (k: string, id: string) => (id === 'x.rifles' ? e('Rifles', {}) : data.entry(k as never, id)) } as typeof data
+  expect(ammoLoads(gun, d2, [gun, rifleAmmo])).toEqual([])
+  expect(meleeAlternate(gun, data)).toBeUndefined()
+  const mh = line('weapons', 'x.mh')
+  const d3 = {
+    ...data,
+    entry: (k: string, id: string) =>
+      id === 'x.mh'
+        ? { ...e('Melee Hardening', {}), parts: [{ tag: 'modifier', text: '', attrs: { ref: 'MELEE_HARDENING_ALTERNATE' } }] }
+        : data.entry(k as never, id),
+  } as typeof data
+  expect(meleeAlternate({ ...gun, accessories: [mh] }, d3)).toEqual({ dv: '3S', ar: [4, null, null, null, null], skill: 'Close Combat', spec: 'Clubs' })
 })

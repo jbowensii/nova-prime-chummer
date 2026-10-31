@@ -204,3 +204,22 @@ test('a non-Matrix item-attribute choice is an ordinary list', () => {
   )
   expect(choiceOptions(data, entry('X', [part('selection', { type: 'ITEM_ATTRIBUTE', options: 'ATTACK,SLEAZE' })]))!.kind).toBe('matrix')
 })
+
+test('a skill choice’s type ref lists only that type; costCombat adds the combat skills; distr asks for several picks', () => {
+  const { data } = made()
+  const sk = (id: string, name: string) => ({ id, name, attr: 'agi', untrained: true, specs: [], page: 1 })
+  data.skills = Object.fromEntries(
+    [sk('athletics', 'Athletics'), sk('stealth', 'Stealth'), sk('firearms', 'Firearms'), sk('con', 'Con'), sk('close_combat', 'Close Combat')].map(s => [
+      s.id,
+      s,
+    ]),
+  ) as typeof data.skills
+  const phys = choiceOptions(data, entry('Skill Hardwires', [part('selection', { type: 'SKILL', ref: 'PHYSICAL' })]))!.options.map(o => o.value)
+  expect(phys).toEqual(['Athletics', 'Stealth'])
+  const ia = {
+    ...entry('Improved Ability (Skill)', [part('selection', { type: 'SKILL', ref: 'CHOICE', options: 'athletics' })]),
+    attrs: { costCombat: '1' },
+  } as Sr6Entry
+  expect(choiceOptions(data, ia)!.options.map(o => o.value)).toEqual(['Athletics', 'Close Combat', 'Firearms'])
+  expect(choiceOptions(data, entry('X', [part('selection', { type: 'SKILL', options: 'athletics,stealth,con', distr: '1 1' })]))!.count).toBe(2)
+})

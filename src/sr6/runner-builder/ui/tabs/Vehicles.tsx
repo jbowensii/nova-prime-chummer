@@ -10,7 +10,7 @@ import { cargoFactor, estimatedDp, diyAllowed, entryOf, isDrone, modKind, priced
 import { boughtDesign, designOf } from '../../domain/assets/design'
 import { entryLabel } from '../../../catalog/domain/categories'
 import { flag } from '../../../table-setup/domain/creation'
-import { builtinText, dronePools, modsOf, mountsOf, shiftProblem, type Meter } from '../../domain/assets/vehiclemods'
+import { builtinText, dronePools, modsOf, rccsOf, mountsOf, shiftProblem, type Meter } from '../../domain/assets/vehiclemods'
 import { SHIFT_KINDS, type ShiftKind, type SlotKind, type Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { n, reasonText, useSr6Editor } from '../editor'
@@ -149,7 +149,7 @@ const meter = (label: string, m: Meter) => (
 /** One vehicle's or drone's Modify panel: its meters, the mods built in, a do-it-yourself box on each mod, a mount for
  *  each weapon, and the pickers for a mod, a weapon or (a drone) an autosoft. Each fitted line comes off by its × above. */
 function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
-  const { data, cr, act } = useSr6Editor()
+  const { data, cr, act, ch, d } = useSr6Editor()
   const [adding, setAdding] = useState<keyof typeof ADD | null>(null)
   const [shift, setShift] = useState<{ from: ShiftKind; to: ShiftKind }>({ from: 'chassis', to: 'powertrain' })
   const [slot, setSlot] = useState<{ id: string; value: string }>({ id: 'vehicle-chassis', value: '' })
@@ -230,14 +230,19 @@ function Modify({ x, name }: { x: Sr6Purchase; name: string }) {
           ...(m.autosofts ? [meter('Autosofts', m.autosofts)] : []),
         ].flatMap((el, i) => (i ? [' · ', el] : [el]))}
       </span>
-      {dronePools(x, data).length > 0 && (
-        <span>
-          Autonomous (Pilot + autosoft, p. 201):{' '}
-          {dronePools(x, data)
-            .map(p => `${p.test} ${p.pool} (${p.autosoft})`)
-            .join(' · ')}
-        </span>
-      )}
+      {(['autonomous', 'rcc'] as const).map(mode => {
+        const ps = dronePools(x, data, rccsOf(ch.build.purchases, data)).filter(p => p.mode === mode)
+        return ps.length ? (
+          <span key={mode}>
+            {mode === 'autonomous' ? 'Autonomous' : 'Slaved to your RCC'} (autosoft + Pilot or Sensor, p. 201):{' '}
+            {ps.map(p => `${p.test} ${p.pool} (${p.autosoft})`).join(' · ')}
+          </span>
+        ) : null
+      })}
+      <span>
+        Your pools, by hand: {d.rigging.driving.map(p => `${p.test} ${p.pool}`).join(' · ') || '—'}; jumped in (p. 197):{' '}
+        {d.rigging.jumpedIn.map(p => `${p.test} ${p.pool}`).join(' · ') || '—'}
+      </span>
       {m.slots && (
         <span className="row">
           Shift slots (p. 120): two

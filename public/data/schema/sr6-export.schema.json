@@ -289,13 +289,14 @@
           }
         },
         "dronePools": {
-          "description": "A drone line's dice pools when it acts on its own: Pilot + each autosoft's rating (CRB p. 201).",
+          "description": "A drone line's dice pools when it acts on its own (autonomous) or slaved to the runner's RCC (rcc): each autosoft's rating + Pilot or Sensor (CRB p. 201).",
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["test", "autosoft", "pool"],
+            "required": ["mode", "test", "autosoft", "pool"],
             "properties": {
+              "mode": { "enum": ["autonomous", "rcc"] },
               "test": { "type": "string" },
               "autosoft": { "type": "string" },
               "pool": { "type": "number" }
@@ -2139,6 +2140,14 @@
                 "$ref": "#/$defs/pool"
               }
             },
+            "rigging": {
+              "description": "The rigger's own pools for a vehicle or drone (CRB pp. 197-201): by hand and jumped in.",
+              "type": "object",
+              "properties": {
+                "driving": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } },
+                "jumpedIn": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } }
+              }
+            },
             "monitorBonus": {
               "description": "The boxes the monitors have beyond base + attribute / divisor (Built Tough's Physical boxes): what the module writes as Eden's physical.mod and stun.mod.",
               "type": "object",
@@ -2309,6 +2318,14 @@
               "type": "array",
               "items": {
                 "$ref": "#/$defs/pool"
+              }
+            },
+            "rigging": {
+              "description": "The rigger's own pools for a vehicle or drone (CRB pp. 197-201): by hand and jumped in.",
+              "type": "object",
+              "properties": {
+                "driving": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } },
+                "jumpedIn": { "type": "array", "items": { "type": "object", "properties": { "test": { "type": "string" }, "pool": { "type": "number" } } } }
               }
             },
             "monitorBonus": {

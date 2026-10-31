@@ -28,7 +28,7 @@ import { sr6CompendiumSource } from '../../formats/domain/compendium'
 import { num as ruleNum, type CreationRules } from '../../table-setup/domain/creation'
 import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
 import { deriveSr6, type Sr6Derived, weaponSkill } from '../../runner-builder/domain/creation/derive'
-import { dronePools } from '../../runner-builder/domain/assets/vehiclemods'
+import { dronePools, rccsOf } from '../../runner-builder/domain/assets/vehiclemods'
 import { ammoLoads, weaponOf, type WeaponStats } from '../../runner-builder/domain/assets/weapons'
 import { withSampleFixes } from '../../runner-builder/domain/creation/samplefix'
 import { withSr6House } from '../../runner-builder/domain/career/house'
@@ -107,7 +107,7 @@ export interface Sr6Values {
     seats?: number
   }
   /** a drone line's dice pools when it acts on its own: Pilot + each autosoft's rating (vehiclemods.ts dronePools) */
-  dronePools?: { test: string; autosoft: string; pool: number }[]
+  dronePools?: { mode: 'autonomous' | 'rcc'; test: string; autosoft: string; pool: number }[]
 }
 /** evaluated: × rating when perRating, × qty. defense: Defense Rating (dermal plating); skill: that skill's dice pool, by
  *  its catalog id and name (a reader keys its own skills by name). An accessory's bonuses are its host's, never the
@@ -348,6 +348,7 @@ export type Sr6ExportDerived = Pick<
   | 'spellAttackRating'
   | 'matrixInit'
   | 'movement'
+  | 'rigging'
 >
 export interface Sr6ExportRule {
   key: string
@@ -561,6 +562,7 @@ const derivedOf = (d: Omit<Sr6Derived, 'on'>): Sr6ExportDerived =>
     spellAttackRating: d.spellAttackRating,
     matrixInit: d.matrixInit,
     movement: d.movement,
+    rigging: d.rigging,
   })
 
 /** The entry as printed plus its values; its text when `text` and there is some. */
@@ -668,7 +670,7 @@ function purchase(
     )
     if (loads.length) values.ammoTypes = loads
   }
-  const pools = x.kind === 'vehicles' && top ? dronePools(x, data) : []
+  const pools = x.kind === 'vehicles' && top ? dronePools(x, data, rccsOf(owned, data)) : []
   if (pools.length) values.dronePools = pools
   if (x.seatsRemoved && values.vehicle?.seats !== undefined) values.vehicle = { ...values.vehicle, seats: Math.max(0, values.vehicle.seats - x.seatsRemoved) }
   return defined({
