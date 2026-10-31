@@ -100,9 +100,20 @@ export function ItemBuilder({ path }: { path: string }) {
         <span className="spacer" />
         <SaveDesign x={x} name={name} />
       </div>
-      {x.kind === 'weapons' ? <WeaponStatBlock x={x} /> : <CyberPanel x={x} name={name} />}
-      <Mounts x={x} name={name} path={path} />
+      <ItemFitting x={x} name={name} path={path} subHref={sub => sr6EditHref(ch.id, `build/${sub}`)} />
     </div>
+  )
+}
+
+/** The builder's body (its stats and its mounts): the runner's Customise page and the Designer's weapon and cyberware
+ *  designs (sr6/designer, over a one-line scratch runner) both draw it, so the rules live once. `subHref`: where a weapon
+ *  built into an implant opens (its uid path). */
+export function ItemFitting({ x, name, path, subHref }: { x: Sr6Purchase; name: string; path: string; subHref: (path: string) => string }) {
+  return (
+    <>
+      {x.kind === 'weapons' ? <WeaponStatBlock x={x} /> : <CyberPanel x={x} name={name} />}
+      <Mounts x={x} name={name} path={path} subHref={subHref} />
+    </>
   )
 }
 
@@ -263,8 +274,8 @@ function CyberPanel({ x, name }: { x: Sr6Purchase; name: string }) {
 }
 
 /** The mounts (a weapon's hooks; an implant's Capacity), what is in each, and what more fits. */
-function Mounts({ x, name, path }: { x: Sr6Purchase; name: string; path: string }) {
-  const { data, ch } = useSr6Editor()
+function Mounts({ x, name, path, subHref }: { x: Sr6Purchase; name: string; path: string; subHref: (path: string) => string }) {
+  const { data } = useSr6Editor()
   const steps = useSteps()
   const [picking, setPicking] = useState<string | null>(null)
   const [making, setMaking] = useState(false)
@@ -286,7 +297,7 @@ function Mounts({ x, name, path }: { x: Sr6Purchase; name: string; path: string 
         {label}
         {a.id?.startsWith('custom.addon-') && <span className="noncanon"> Custom</span>}
         {a.kind === 'weapons' && x.kind === 'augmentations' && (
-          <a className="btn small quiet" href={sr6EditHref(ch.id, `build/${path}/${a.uid}`)} aria-label={`Customise ${own} in ${name}`}>
+          <a className="btn small quiet" href={subHref(`${path}/${a.uid}`)} aria-label={`Customise ${own} in ${name}`}>
             Customise
           </a>
         )}

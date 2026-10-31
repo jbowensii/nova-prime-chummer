@@ -1,4 +1,4 @@
-// The Designer (#/sr6/designs[/<id>]; owner 2026-10-16, BUILDER): vehicle and drone designs by Double Clutch's "Build
+// The Vehicle and Drone designers (#/sr6/designs[/<id>]: vehicles, #/sr6/drones[/<id>]: drones; owner 2026-10-16, BUILDER; one tab per kind 2026-10-31): designs by Double Clutch's "Build
 // Your Dream" (pp. 150-155), every account its own (the server's /api/sr6/designs). The list: New design (a vehicle or a
 // drone), Import, Export, Copy, Delete (to the design trash, restorable). The editor follows the book's steps: chassis,
 // powertrain and console; options by level (negative: in reverse; Improved Handling for on-road or off-road only), design
@@ -50,7 +50,11 @@ import { ACCESSORY_KINDS, CatalogPicker, isAccessory } from '../../runner-builde
 import { exportSr6, readSr6DesignImport, sr6DesignRepo } from '../../runner-builder/ui/repo'
 
 const designName = (ch: Sr6Character) => ch.identity.streetName || ch.identity.name || 'Unnamed design'
-const href = (id: string) => `#/sr6/designs/${id}`
+/** Each kind its own tab (owner 2026-10-31): vehicles under the wrench (#/sr6/designs), drones beside it (#/sr6/drones). */
+const PAGE: Record<Sr6Design['kind'], string> = { vehicle: 'designs', drone: 'drones' }
+const NOUN: Record<Sr6Design['kind'], string> = { vehicle: 'Vehicle', drone: 'Drone' }
+const listHref = (kind: Sr6Design['kind']) => `#/sr6/${PAGE[kind]}`
+const href = (id: string, kind: Sr6Design['kind'] = 'vehicle') => `${listHref(kind)}/${id}`
 /** The design parts of one kind, by name. An option the catalog lists one entry per level (`Improved Body 1` … `4`, the
  *  one-item-per-level rule) is its family's one row again, taken in levels with its stepper. */
 const partsOf = (c: Sr6Catalog, p: DesignPart) =>
@@ -96,8 +100,8 @@ const customKey = { chassis: 'customChassis', powertrain: 'customPowertrain' } a
 /** A drone chassis (`Drone, Small`). */
 const droneChassis = (e: Sr6Entry) => /drone/i.test(e.name)
 
-/** The design list (#/sr6/designs). */
-export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules }) {
+/** The design list of one kind (#/sr6/designs: vehicles, #/sr6/drones: drones). */
+export function Sr6Designs({ c, data, cr, kind = 'vehicle' }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; kind?: Sr6Design['kind'] }) {
   const repo = useMemo(() => sr6DesignRepo(), [])
   const me = useMe(),
     gm = canEdit(me)
@@ -107,7 +111,6 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   const [trashed, setTrashed] = useState<number | null>(null)
   const [creating, setCreating] = useState(false)
   const [name, setName] = useState('')
-  const [kind, setKind] = useState<Sr6Design['kind']>('vehicle')
   const [baseVeh, setBaseVeh] = useState<Sr6Entry | null>(null)
   const [pickingBase, setPickingBase] = useState(false)
   const [toDelete, setToDelete] = useState<Sr6Character | null>(null)
@@ -131,11 +134,12 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     void refresh()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // (weapon and cyberware designs, the item builders': their own list below, shared with everyone)
-  const items = (list ?? []).filter(s => s.ch.itemDesign)
-  const mine = (list ?? []).filter(s => !s.ch.itemDesign && (!me || !s.owner || s.owner === me.username))
+  // (weapon and cyberware designs share the store: their own tabs list them, ItemDesigner.tsx)
+  // (a design saved before the split without a kind is a vehicle, as the old selector defaulted)
+  const ofKind = (list ?? []).filter(s => s.ch.design && !s.ch.itemDesign && (s.ch.design.kind ?? 'vehicle') === kind)
+  const mine = ofKind.filter(s => !me || !s.owner || s.owner === me.username)
   const others = ownerGroups(
-    (list ?? []).filter(s => !s.ch.itemDesign && !mine.includes(s)),
+    ofKind.filter(s => !mine.includes(s)),
     unreadable.filter(u => u.owner && u.owner !== me?.username),
     'az',
     '',
@@ -154,7 +158,7 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
     const err = await store(ch)
     if (err) return setMsg(err)
     setCreating(false)
-    location.hash = href(ch.id)
+    location.hash = href(ch.id, kind)
   }
   const copy = async (ch: Sr6Character) => {
     const x = own({
@@ -194,7 +198,7 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
           {designName(ch)[0]}
         </span>
         <div>
-          <a className="title" href={href(ch.id)}>
+          <a className="title" href={href(ch.id, kind)}>
             {designName(ch)}
           </a>
           <div className="meta">
@@ -230,14 +234,13 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
 
   return (
     <main className="lib">
-      <PageHeader title="Designer">
+      <PageHeader title={`${NOUN[kind]} designer`}>
         <IconButton
           className="primary"
           icon="plus"
           label="New design"
           onClick={() => {
             setName('')
-            setKind('vehicle')
             setBaseVeh(null)
             setCreating(true)
           }}
@@ -257,7 +260,8 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
         {trashed !== null && <IconLink icon="trash" label={`Trash (${trashed})`} href="#/sr6/designs/trash" badge={trashed || undefined} />}
       </PageHeader>
       <p className="muted">
-        Vehicles and drones of your own design (Double Clutch pp. 150-155), saved on the server. A runner buys one on the Vehicles or Drones tab.
+        {kind === 'drone' ? 'Drones' : 'Vehicles'} of your own design (Double Clutch pp. 150-155), saved on the server. A runner buys one on the{' '}
+        {kind === 'drone' ? 'Drones' : 'Vehicles'} tab.
       </p>
       {msg && (
         <p className="banner" role="status">
@@ -279,54 +283,10 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
           {rows.map(s => row(s, false))}
         </section>
       ))}
-      <section aria-label="Weapon and cyberware designs">
-        <h2>Weapon and cyberware designs</h2>
-        <p className="muted">
-          Saved from a runner’s weapon or cyberware builder (Customise on a weapon or an implant). Everyone sees them and any runner can buy one on the Gear or
-          Augmentations tab; Review asks a GM to approve one a player made.
-        </p>
-        {items.length === 0 ? (
-          <p className="muted">None yet.</p>
-        ) : (
-          arrange(items, 'az', '').map(({ ch, owner, ownerName }) => {
-            const x = ch.itemDesign!.line,
-              e = entryOf(x, data),
-              mineToo = !me || !owner || owner === me.username
-            return (
-              <div className="dossier" key={ch.id}>
-                <span className="face" aria-hidden>
-                  {designName(ch)[0]}
-                </span>
-                <div>
-                  <span className="title">{designName(ch)}</span>
-                  <div className="meta">
-                    {[
-                      ch.itemDesign!.kind === 'weapon' ? 'Weapon' : 'Cyberware',
-                      e ? entryLabel(e) : x.name,
-                      `${x.accessories.length} add-ons`,
-                      !mineToo && `by ${ownerName ?? owner}`,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
-                    {ch.itemDesign!.approved && <span className="noncanon"> GM approved</span>}
-                  </div>
-                </div>
-                {mineToo && (
-                  <div className="row">
-                    <button className="btn small quiet" aria-label={`Delete ${designName(ch)}`} onClick={() => setToDelete(ch)}>
-                      Delete
-                    </button>
-                  </div>
-                )}
-              </div>
-            )
-          })
-        )}
-      </section>
       <Modal
         open={creating}
         onClose={() => setCreating(false)}
-        title="New design"
+        title={`New ${NOUN[kind].toLowerCase()} design`}
         actions={
           <>
             <button className="btn" onClick={() => setCreating(false)}>
@@ -343,29 +303,22 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
             Name
             <input value={name} onChange={e => setName(e.target.value)} autoFocus />
           </label>
-          <label>
-            A vehicle or a drone
-            <select value={kind} onChange={e => setKind(e.target.value as Sr6Design['kind'])}>
-              <option value="vehicle">Vehicle</option>
-              <option value="drone">Drone</option>
-            </select>
-          </label>
         </div>
         <div className="row" style={{ marginTop: '0.6rem', alignItems: 'center', gap: '0.5rem' }}>
-          <span className="muted">Start from a known vehicle (optional):</span>
+          <span className="muted">Start from a known {NOUN[kind].toLowerCase()} (optional):</span>
           {baseVeh ? (
             <>
               <b>{entryLabel(baseVeh)}</b>
               <button className="btn small quiet" onClick={() => setPickingBase(true)}>
                 Change…
               </button>
-              <button className="btn small quiet" aria-label="Clear the starting vehicle" onClick={() => setBaseVeh(null)}>
+              <button className="btn small quiet" aria-label={`Clear the starting ${NOUN[kind].toLowerCase()}`} onClick={() => setBaseVeh(null)}>
                 Clear
               </button>
             </>
           ) : (
             <button className="btn small" onClick={() => setPickingBase(true)}>
-              Pick a vehicle…
+              Pick a {NOUN[kind].toLowerCase()}…
             </button>
           )}
         </div>
@@ -376,14 +329,14 @@ export function Sr6Designs({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
       </Modal>
       {pickingBase && (
         <CatalogPicker
-          title="Start from a known vehicle"
+          title={`Start from a known ${NOUN[kind].toLowerCase()}`}
           open
           onClose={() => setPickingBase(false)}
           kinds={['vehicles']}
+          filter={e => /drone/i.test(e.attrs.category ?? e.name) === (kind === 'drone')}
           from={{ c, cr, data }}
           onAdd={p => {
             setBaseVeh(p.e)
-            setKind(/drone/i.test(p.e.attrs.category ?? p.e.name) ? 'drone' : 'vehicle')
             if (!name.trim()) setName(entryLabel(p.e))
             setPickingBase(false)
             return null
@@ -526,16 +479,28 @@ function FacingCircle({ drone, set }: { drone: boolean; set: FacingSet }) {
   )
 }
 
-/** One design's editor (#/sr6/designs/<id>). */
-export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6Data; cr: CreationRules; id: string }) {
+/** One design's editor (#/sr6/designs/<id>, #/sr6/drones/<id>: `kind`, the tab it opened under). */
+export function Sr6DesignEditor({
+  c,
+  data,
+  cr,
+  id,
+  kind = 'vehicle',
+}: {
+  c: Sr6Catalog
+  data: Sr6Data
+  cr: CreationRules
+  id: string
+  kind?: Sr6Design['kind']
+}) {
   const repo = useMemo(() => sr6DesignRepo(), [])
   const save = useAutosave(repo, id, {
     noun: 'design',
     tab: '',
     prepare: x => x,
-    editHref: d => href(d.id),
-    home: () => '#/sr6/designs',
-    inEditor: h => h.startsWith(href(id)),
+    editHref: d => href(d.id, d.design?.kind),
+    home: () => listHref(kind),
+    inEditor: h => h.startsWith(href(id, kind)),
   })
   const { doc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
   const gm = canEdit(useMe())
@@ -548,7 +513,7 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
   const [hpPick, setHpPick] = useState<number | null>(null)
   const [makingC, setMakingC] = useState<{ what: CustomPart; f: Record<string, string> } | null>(null)
   const [making, setMaking] = useState<Record<'name' | 'cost' | 'slots' | 'rating' | 'avail', string> | null>(null)
-  const back = <a href="#/sr6/designs">Back to the Designer</a>
+  const back = <a href={listHref(kind)}>Back to the {NOUN[kind]} designer</a>
   if (!loaded)
     return (
       <main className="lib">
@@ -828,22 +793,6 @@ export function Sr6DesignEditor({ c, data, cr, id }: { c: Sr6Catalog; data: Sr6D
               <label>
                 Name
                 <input value={doc.identity.streetName} onChange={e => update((_, ch) => void (ch.identity.streetName = e.target.value))} />
-              </label>
-              <label>
-                A vehicle or a drone
-                <select
-                  value={d.kind}
-                  onChange={e =>
-                    update(x => {
-                      x.kind = e.target.value as Sr6Design['kind']
-                      delete x.chassis // (a vehicle's chassis isn't a drone's)
-                      delete x.customChassis
-                    })
-                  }
-                >
-                  <option value="vehicle">Vehicle</option>
-                  <option value="drone">Drone</option>
-                </select>
               </label>
               <div className="dsn-flags">
                 <label className="inline">

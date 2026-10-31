@@ -76,6 +76,7 @@ import { deriveMod } from '../../domain/assets/derive'
 import { accessoryProblem } from '../../domain/creation/actions'
 import { expandPack } from '../../domain/creation/packs'
 import { packChoices } from '../Picker'
+import { BuyItemDesign } from '../Builder'
 
 export const OPS = [
   ['attribute', 'Raise attribute'],
@@ -648,6 +649,9 @@ export function LedgerTab() {
       </div>
 
       <h3>Spend</h3>
+      {/* a saved weapon or cyberware design (the Weapon and Cyberware designers): bought as built, a recorded spend */}
+      <BuyItemDesign kind="weapon" />
+      <BuyItemDesign kind="cyberware" />
       <div className="row">
         <label>
           What
@@ -895,14 +899,14 @@ export function LedgerTab() {
           <label>
             Custom (from your Designer)
             <select aria-label="Design" value={f.target} onChange={e => set({ target: e.target.value })}>
-              <option value="">{kindDesigns.length ? 'Pick one' : 'None yet: make one in the Designer'}</option>
+              <option value="">{kindDesigns.length ? 'Pick one' : `None yet: make one in the ${op === 'drone' ? 'Drone' : 'Vehicle'} designer`}</option>
               {kindDesigns.map(d => (
                 <option key={d.id} value={d.id}>
                   {d.identity.streetName || 'Unnamed design'}
                 </option>
               ))}
             </select>{' '}
-            <a href="#/sr6/designs">Open the Designer</a>
+            <a href={op === 'drone' ? '#/sr6/drones' : '#/sr6/designs'}>Open the {op === 'drone' ? 'Drone' : 'Vehicle'} designer</a>
           </label>
         )}
         {(op === 'vehicle' || op === 'drone') && (

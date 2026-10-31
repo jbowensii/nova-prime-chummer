@@ -1,6 +1,6 @@
 # sr6/designer
 
-Design vehicles and drones. Shadowrun 6 only.
+Four designer tabs: vehicles and drones (Designer.tsx, one tab each by kind), weapons and cyberware (ItemDesigner.tsx, editing over the runner builder's ItemFitting). Shadowrun 6 only.
 
 - **Owns:** `src/sr6/designer/` (1 files, ~6k tokens); tests `tests/sr6/designer/`.
 - **Public interface** (names other modules import; 2 in all, most used first): `Sr6DesignEditor`, `Sr6Designs`. Used by: `sr6/shell`.

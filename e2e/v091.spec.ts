@@ -65,8 +65,8 @@ const menuLabels = (page: Page) =>
     .evaluateAll(as => as.map(a => a.getAttribute('aria-label')))
 const actions = (page: Page) => page.getByRole('group', { name: 'Page actions' })
 const MENU = ['Your runners', 'NPCs & Critters', 'Compendiums', 'Campaigns', 'Books', 'Rules', 'Game data', 'Table setup']
-// SR6 adds the Designer after Your runners (Sr6App.tsx)
-const SR6_MENU = ['Your runners', 'Designer', ...MENU.slice(1)]
+// SR6 adds the four designers after Your runners (Sr6App.tsx)
+const SR6_MENU = ['Your runners', 'Vehicle designer', 'Drone designer', 'Weapon designer', 'Cyberware designer', ...MENU.slice(1)]
 
 /** Row 1 then (when `acts`) row 2 under it, from the left; the game switch, Settings and the account in row 1. */
 async function rows(page: Page, what: string, sr6: boolean, acts: string[] | null) {
