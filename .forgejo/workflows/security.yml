@@ -1,4 +1,4 @@
-# Replaces GitHub CodeQL on Forgejo: Semgrep (code) + OSV-Scanner (dependency lockfiles). Report-only for now
+# Replaces GitHub CodeQL on Forgejo: Semgrep (code) + Trivy (dependencies, secrets, Dockerfile). Report-only for now
 # (continue-on-error); make blocking by removing continue-on-error once the baseline is triaged.
 name: security
 on:
@@ -14,10 +14,10 @@ jobs:
       - uses: https://data.forgejo.org/actions/checkout@v4
       - run: pip install --quiet semgrep
       - run: semgrep scan --config p/default --error --exclude node_modules
-  osv:
+  trivy:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
       - uses: https://data.forgejo.org/actions/checkout@v4
-      - run: curl -fsSL -o /usr/local/bin/osv-scanner https://github.com/google/osv-scanner/releases/download/v2.2.4/osv-scanner_linux_amd64 && chmod +x /usr/local/bin/osv-scanner
-      - run: osv-scanner scan source -L package-lock.json -L importer/requirements.lock
+      - run: curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/v0.58.1/contrib/install.sh | sh -s -- -b /usr/local/bin v0.58.1
+      - run: trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --exit-code 1 .

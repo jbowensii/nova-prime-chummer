@@ -12,6 +12,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # the job container needs the host Docker daemon (runner config must allow this volume: container.valid_volumes)
+    container:
+      image: ghcr.io/catthehacker/ubuntu:act-latest
+      options: -v /var/run/docker.sock:/var/run/docker.sock
     timeout-minutes: 60
     steps:
       - uses: https://data.forgejo.org/actions/checkout@v4
