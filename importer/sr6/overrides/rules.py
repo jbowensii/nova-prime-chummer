@@ -28,6 +28,8 @@ KID_TAGS = {
     "modifier",
     "prerequisite",
     "selection",  # (a "gen": "family" row's "kids": Commlink6's item structure)
+    "option",  # (a SUBSELECT's sub-option, and an effect scoped to one or to a variant: tools/cl6check/options.py)
+    "effect",
     "status",  # (an errata row's: a status the item applies, the No Future errata's Molotov Burning 4)
     "power",
 }  # (an owner row's: an Infected type's gained power, corrected)
@@ -101,6 +103,7 @@ def check(rows):
                 k
                 for k in r.get("kids", [])
                 if k.get("tag") not in KID_TAGS | ({"link"} if r.get("gen") in ("book", "owner") else set())
+                or (k["tag"] == "effect" and not {"option", "variant"} & set(k.get("attrs", {})))
             ]:
                 raise ValueError(
                     f"override of {r.get('id')}: kids are {sorted(KID_TAGS)} only (a book or owner row's also a link)"
