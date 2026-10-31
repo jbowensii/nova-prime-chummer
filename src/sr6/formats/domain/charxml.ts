@@ -45,6 +45,7 @@ import {
   type Sr6Printed,
   type Sr6Purchase,
   type Sr6Quality,
+  type Sr6Lifestyle,
   type Sr6Sin,
 } from './character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from './types'
@@ -112,6 +113,7 @@ function purchaseXml(p: Sr6Purchase): string {
       options: optionsText(p.options),
       design: p.design,
       approved: p.approved,
+      pack: p.pack,
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
       addedSlots: p.addedSlots?.length ? p.addedSlots.map(s => (s.value ? `${s.id}:${s.value}` : s.id)).join(' ') : undefined,
       removedBuiltins: p.removedBuiltins?.length ? p.removedBuiltins.join(' ') : undefined,
@@ -163,10 +165,11 @@ const contactXml = (c: Sr6Contact) =>
     loyalty: c.loyalty,
     types: c.types?.length ? c.types.join(' ') : undefined,
   })
+const lifestyleXml = (l: Sr6Lifestyle, sin?: string) => el('lifestyle', { uid: l.uid, id: l.id, months: l.months, pack: l.pack, sin })
 const sinXml = (s: Sr6Sin) =>
   el(
     'sin',
-    { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder },
+    { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder, pack: s.pack },
     s.licences.map(l => el('licence', { ...l })).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''),
   )
 
@@ -246,6 +249,11 @@ function advanceXml(a: Sr6Advance): [Record<string, unknown>, string] {
       return [{ target: a.target }, a.line ? pickXml(a.line) : '']
     case 'purchase':
       return [{}, purchaseXml(a.line)]
+    case 'pack':
+      return [
+        { packId: a.id, packUid: a.uid, packName: a.name, cost: a.cost },
+        a.lines.map(purchaseXml).join('') + a.sins.map(sinXml).join('') + a.lifestyles.map(l => lifestyleXml(l.line, l.sin)).join(''),
+      ]
     case 'drop':
       return [{ target: a.target, refund: a.refund }, a.line ? purchaseXml(a.line) : '']
     case 'quantity':
@@ -521,6 +529,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     options: readOptions(e),
     design: str(e, 'design'),
     approved: yes(e, 'approved'),
+    pack: str(e, 'pack'),
     slotShifts: readShifts(e, fix),
     addedSlots: readAddedSlots(e),
     removedBuiltins: (u => (u.length ? u : undefined))(
@@ -792,10 +801,12 @@ function readSin(e: Element): Sr6Sin {
       licences: kids(e, 'licence').map(l => def({ name: l.getAttribute('name') ?? '', rating: num(l, 'rating', 0), item: str(l, 'item') })),
       lifestyles: lifestyles.length ? lifestyles : undefined,
       placeholder: yes(e, 'placeholder'),
+      pack: str(e, 'pack'),
     }),
   )
 }
-const readLifestyle = (e: Element) => ({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', months: num(e, 'months', 0) })
+const readLifestyle = (e: Element): Sr6Lifestyle =>
+  def({ uid: e.getAttribute('uid') ?? '', id: e.getAttribute('id') ?? '', months: num(e, 'months', 0), pack: str(e, 'pack') })
 
 /** An older file's one lifestyle (<build><lifestyle>) goes on the first SIN, and its ledger's lifestyle spends naming no
  *  SIN replay there (career.ts); a runner with either and no SIN gets an unnamed placeholder SIN (free; Review asks the
@@ -860,6 +871,17 @@ function readAdvance(e: Element, karma: number, fix?: string[]): Sr6Advance {
       return def({ op, line: line(e, 'pick', readPick), target: str(e, 'target') })
     case 'purchase':
       return { op, line: line(e, 'purchase', purchase, true) }
+    case 'pack':
+      return {
+        op,
+        id: req(e, 'packId'),
+        uid: req(e, 'packUid'),
+        name: e.getAttribute('packName') ?? '',
+        cost: num(e, 'cost', 0),
+        lines: kids(e, 'purchase').map(purchase),
+        sins: kids(e, 'sin').map(readSin),
+        lifestyles: kids(e, 'lifestyle').map(l => ({ sin: req(l, 'sin'), line: readLifestyle(l) })),
+      }
     case 'drop':
       return def({ op, target: req(e, 'target'), line: line(e, 'purchase', purchase), refund: num(e, 'refund') })
     case 'quantity':

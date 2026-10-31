@@ -55,6 +55,7 @@ import {
   takesMaterial,
   toNuyenMax,
 } from './budgets'
+import { applyPack, expandPack, isPackHeader, packHeader, removePack } from './packs'
 import { deriveMod } from '../assets/derive'
 import { fittedParts, modsOf, mountsOf, partsOf, shiftProblem, type VehicleMods } from '../assets/vehiclemods'
 import { critterOnly, infectedOff } from '../assets/critterware'
@@ -98,6 +99,8 @@ export type Op =
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
+  /** a starter pack bought: expanded into its lines at its price (packs.ts); taken away whole with `purchase remove` of its header */
+  | { op: 'pack'; id: string }
   /** a vehicle or drone bought from a design (design.ts boughtDesign); taken away as any line (purchase remove) */
   | { op: 'design'; line: Sr6Purchase }
   /** a custom line the item builders made (a custom cyberlimb, assets/builders.ts customLimb) or, with `host`, a player's own
@@ -601,6 +604,12 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
       if ('remove' in op) {
         const x = b.purchases.find(x => x.uid === op.remove)
         if (!x) return no('unknown-line')
+        // a pack's header takes all its contents with it (packs.ts)
+        if (isPackHeader(x)) {
+          unlicense(b, deep(b.purchases.filter(y => y.pack === x.uid)))
+          removePack(b, x.uid)
+          return OK
+        }
         b.purchases = b.purchases.filter(y => y !== x)
         unlicense(b, deep([x]))
         return OK
@@ -616,6 +625,7 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         !line.grade &&
         b.purchases.find(
           x =>
+            !x.pack &&
             x.id &&
             x.id === line.id &&
             x.kind === line.kind &&
@@ -626,6 +636,13 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         )
       if (same) same.qty += line.qty
       else b.purchases.push(line)
+      return OK
+    }
+    case 'pack': {
+      const x = expandPack(data, op.id, b, (h, a) => accessoryProblem(h, a, data))
+      if (!x) return no('unknown-entry')
+      applyPack(b, x)
+      b.purchases.push(packHeader(x))
       return OK
     }
     case 'design': {

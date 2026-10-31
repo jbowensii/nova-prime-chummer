@@ -670,6 +670,14 @@ const AMMO: [RegExp, string, RegExp][] = [
   [/launcher/, 'AMMUNITION/GRENADES', /fragmentation/i],
   [/flamethrower/, 'AMMUNITION/AMMUNITION_SPECIAL', /^fuel tank \(small\)/i],
 ]
+/** The ammunition class and the name of its regular kind for a weapon entry (AMMO); undefined for melee, natural and energy weapons. */
+export function ammoRowOf(e: Sr6Entry): [string, RegExp] | undefined {
+  const what = [e.attrs.class, e.attrs.category, e.name].filter(Boolean).join(' ').toLowerCase().replace(/_/g, ' ')
+  if (/close combat|melee|blade|club|unarmed|natural|laser|energy|accessory\/|ammunition\//.test(what) || (/throwing/.test(what) && !/bow/.test(what)))
+    return undefined
+  const row = AMMO.find(([re]) => re.test(what))
+  return row && [row[1], row[2]]
+}
 /** a weapon's ammo as printed or catalogued: `15(c)`, `6(cy)`, `100(belt)`, `1(br-3)`; the letters are its type (not the `(e)` of a DV) */
 const LOAD = /(\d+)\s*\(\s*(c|m|cy|b|br|d|ml|belt|drum|tanks?)(?:-\d+)?\s*\)/i
 /** a stat block that prints its own ammunition or spare clips for a weapon: a count and an ammunition noun (`30 rounds regular ammo`,
