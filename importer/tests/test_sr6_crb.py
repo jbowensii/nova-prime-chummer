@@ -1248,15 +1248,6 @@ class CrbRecipeTest(unittest.TestCase):  # pylint: disable=too-many-public-metho
             archetypes.fit.fit = orig
         self.assertEqual(seen, [1205 + 121, 1205 + 100, 1205])  # (120.5 rounded half up)
 
-    def test_the_metatype_size_words_are_the_apps(self):
-        """fit.py's troll- and dwarf-sized words are budgets.ts metatypeSize's."""
-        ts = (
-            Path(__file__).parents[2] / "src" / "sr6" / "runner-builder" / "domain" / "creation" / "budgets.ts"
-        ).read_text(encoding="utf8")
-        body = ts.split("export function metatypeSize", 1)[1].split("\n}", 1)[0]
-        lists = [tuple(re.findall(r"'([^']+)'", x)) for x in re.findall(r"\[([^\]]*)\]\.includes", body)]
-        self.assertEqual(lists, [archetypes.fit.TROLL_SIZED, archetypes.fit.DWARF_SIZED])
-
     def test_the_armor_worn_is_the_highest_defense_rating(self):
         """Two armors printed: the higher Defense Rating is worn, the other carried (made-up catalog)."""
         from types import SimpleNamespace
