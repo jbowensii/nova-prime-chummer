@@ -435,6 +435,10 @@ export interface Sr6Build {
   submersion: number
   /** the Sixth World Companion's optional Transhumanism (p. 146): a mundane's transhumanist grades, each an Essence hole of 1.0 */
   transhuman: number
+  /** the Sixth World Companion's SURGE collective (a catalog qualitysets id; Commlink6's surge collective): its qualities
+   *  are the runner's free ones (src/sr6/runner-builder/domain/creation/surge.ts); surgeChoice, its choice (a Commlink6 quality id) */
+  surgeCollective?: string
+  surgeChoice?: string
   attributes: Record<Sr6Attr, Sr6AttrSpend>
   skills: Sr6Skill[]
   knowledge: Sr6Knowledge[]

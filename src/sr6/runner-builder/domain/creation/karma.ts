@@ -13,6 +13,7 @@ import { dataStructureLevels, extraMagic } from './magic'
 import { contactPoints } from './contacts'
 import { boughtKind, freePick, infectedFit, infectedOf, priceAwakened } from './infected'
 import { bondKarma } from '../assets/critters'
+import { collectiveKarma } from './surge'
 
 /** One quality's karma before positiveQualityFactor: |karma| × level, or, for one priced in a range, the karma it was
  *  taken for (kept within the range; the lowest when it isn't set). */
@@ -131,6 +132,8 @@ export function karmaBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
     'skills',
   )
   add('qualityPos', 'Positive qualities', q.pos, 'qualities')
+  // the SURGE collective's own Karma (Commlink6: paid once, its qualities free)
+  add('surgeCollective', `SURGE collective ${data.entry('qualitysets', b.surgeCollective ?? '')?.name ?? ''}`.trim(), collectiveKarma(b, data), 'qualities')
   add('martialArts', 'Martial arts styles and techniques', martialKarma(b, data, cr), 'martial')
   // the Critter Bond path's Permanent Improvement (SWC p. 139): a critter's qualities bought with the runner's Karma
   add(

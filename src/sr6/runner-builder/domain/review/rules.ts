@@ -61,6 +61,7 @@ import {
   str,
   type CreationRules,
 } from '../../../table-setup/domain/creation'
+import { collectiveFits, collectiveGrants, collectiveOptions, SURGE_CAP, surgeKarma } from '../creation/surge'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { languageCap } from '../creation/skills'
@@ -542,6 +543,34 @@ const RULES: Rule[] = [
       const { pos, neg } = qualityKarma(c.b, c.data, c.cr),
         cap = n0(c.cr, 'qualityNetBonusCap')
       return neg - pos <= cap ? null : { message: `Negative qualities give ${neg - pos} karma more than positive ones cost; the most is ${cap}.` }
+    },
+  },
+  // SURGE as Commlink6 handles it (CommonQualityGenerator): at most 30 Karma on metagenic qualities picked (a collective's free
+  // ones not counted); a collective only for the metatypes it lists, with its choice made; a collective quality the catalog
+  // lacks is said
+  {
+    code: 'quality.surgeCap',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      const k = surgeKarma(c.b, c.data)
+      return k <= SURGE_CAP ? null : { message: `${k} Karma on metagenic qualities; the most is ${SURGE_CAP}.` }
+    },
+  },
+  {
+    code: 'quality.surgeCollective',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => {
+      if (!c.b.surgeCollective) return null
+      const set = c.data.entry('qualitysets', c.b.surgeCollective)
+      if (!set) return { message: 'The SURGE collective is no longer in the catalog.' }
+      const out: { message: string }[] = []
+      if (!collectiveFits(c.b, c.data)) out.push({ message: `The ${set.name} collective is for ${set.attrs.metatypes}, not this metatype.` })
+      if (collectiveOptions(set).length && !c.b.surgeChoice) out.push({ message: `The ${set.name} collective: make its choice.` })
+      const lost = collectiveGrants(c.data, set, c.b.surgeChoice).filter(g => !g.id)
+      if (lost.length) out.push({ message: `The ${set.name} collective's ${lost.map(g => g.ref).join(', ')} is not in the catalog.` })
+      return out
     },
   },
   {
