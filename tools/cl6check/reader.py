@@ -201,6 +201,12 @@ def read(jar, listing=None):
                         for k, v in t.items()
                         if k.startswith("variant.") and "." not in k.split(".", 1)[1]
                     }
+                    # (a SUBSELECT's option names, `choice.<ref>.<option id>`, and its own label, `choice.<ref>`)
+                    options = {
+                        k.split(".", 1)[1]: v
+                        for k, v in t.items()
+                        if k.startswith("choice.") and k.count(".") in (1, 2)
+                    }
                     recs.append(
                         {
                             "book": book,
@@ -211,6 +217,7 @@ def read(jar, listing=None):
                             "page": t.get("page", "").strip(),
                             "wifi": bool(t.get("wifi")),
                             "variants": variants,
+                            "options": options,
                             "attrs": dict(normalise(el).attrib),
                             "el": el,
                         }

@@ -109,6 +109,7 @@ function purchaseXml(p: Sr6Purchase): string {
       mount: p.mount,
       diy: p.diy,
       material: p.material,
+      options: optionsText(p.options),
       design: p.design,
       approved: p.approved,
       slotShifts: p.slotShifts?.length ? p.slotShifts.map(t => `${t.from}>${t.to}`).join(' ') : undefined,
@@ -137,7 +138,18 @@ const trainedXml = (t: Sr6CritterTrained) => el('trained', { uid: t.uid, what: t
 const knowledgeXml = (k: Sr6Knowledge) =>
   `<knowledge${attrs({ uid: k.uid, kind: k.kind, native: k.native, points: k.points, karma: k.karma, payment: k.payment })}>${esc(k.name)}</knowledge>`
 const qualityXml = (q: Sr6Quality) =>
-  el('quality', { uid: q.uid, id: q.id, level: q.level, karma: q.karma, free: q.free, note: q.note, name: q.name, boughtOff: q.boughtOff, sit: sitText(q.sit) })
+  el('quality', {
+    uid: q.uid,
+    id: q.id,
+    level: q.level,
+    karma: q.karma,
+    free: q.free,
+    note: q.note,
+    name: q.name,
+    boughtOff: q.boughtOff,
+    options: optionsText(q.options),
+    sit: sitText(q.sit),
+  })
 const pickXml = (p: Sr6Pick) =>
   el('pick', { uid: p.uid, kind: p.kind, id: p.id, level: p.level, name: p.name, note: p.note, sit: sitText(p.sit) }, bonusesXml(p.bonuses))
 const techniqueXml = (t: Sr6MartialArt['techniques'][number]) => el('technique', { uid: t.uid, id: t.id, name: t.name })
@@ -422,6 +434,20 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
 const def = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
 const listOrNone = <T>(xs: T[]) => (xs.length ? xs : undefined)
 const str = (e: Element, a: string) => e.getAttribute(a) ?? undefined
+// a line's sub-option picks: `<pick>=<id>[,<id>]` joined by `;`
+const optionsText = (o?: Record<string, string>) =>
+  o && Object.keys(o).length
+    ? Object.entries(o)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(';')
+    : undefined
+const readOptions = (e: Element): Record<string, string> | undefined => {
+  const pairs = (e.getAttribute('options') ?? '')
+    .split(';')
+    .map(t => t.split('='))
+    .filter(([k, v]) => k && v)
+  return pairs.length ? Object.fromEntries(pairs.map(([k, v]) => [k.trim(), v.trim()])) : undefined
+}
 const yes = (e: Element, a: string) => (e.getAttribute(a) === 'true' ? (true as const) : undefined)
 /** A number attribute: absent → `absent`; not a number → throws naming it. */
 function num(e: Element, a: string): number | undefined
@@ -494,6 +520,7 @@ function readPurchase(e: Element, fix?: string[], licensed?: (x: Sr6Purchase, si
     mount: str(e, 'mount'),
     diy: yes(e, 'diy'),
     material: str(e, 'material'),
+    options: readOptions(e),
     design: str(e, 'design'),
     approved: yes(e, 'approved'),
     slotShifts: readShifts(e, fix),
@@ -618,6 +645,7 @@ const readQuality = (e: Element): Sr6Quality =>
     note: str(e, 'note'),
     name: str(e, 'name'),
     boughtOff: num(e, 'boughtOff'),
+    options: readOptions(e),
     sit: readSit(e),
   })
 const readPick = (e: Element): Sr6Pick =>

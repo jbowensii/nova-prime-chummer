@@ -1,6 +1,6 @@
 // Catalog structure: slots offered and occupied, variants, flags and source rule data; the one fit engine (fit plan
 // Stages 3-4, docs/analysis/sr6-item-classification-fit.md): a host's hooks, an item's usages and its host requirements.
-import type { Sr6Entry } from '../../formats/domain/types'
+import type { Sr6Entry, Sr6Part } from '../../formats/domain/types'
 import { rated } from './values'
 
 /** A hook a host offers. unit `capacity`: fitted items' costs sum up to value (99 or more: no limit); `one`: one item
@@ -241,6 +241,110 @@ export function requirementsOf(item: Sr6Entry, host: Sr6Entry | undefined, every
 /** Whether a Commlink6 item enhancement (`usage="enhancement"`: a barrel extension, accessory rails) applies to a host:
  *  its requirements' item type/subtype tests hold (Commlink6 has it modify the host, through no hook). Owner 2026-10-29. */
 export const enhancementFits = (item: Sr6Entry, host: Sr6Entry) => !requirementsOf(item, host, true).failed.length
+
+/** One sub-option of a pick (a Commlink6 SUBSELECT's `<option>`) or one variant: cost is karma on a quality, nuyen on an
+ *  item, added to the entry's; a variant's price, essence and availability replace the entry's. */
+export interface SubOption {
+  id: string
+  label: string
+  cost?: number
+  price?: number
+  essence?: number
+  avail?: string
+}
+/** A pick of sub-options, or the entry's variants (ref VARIANT): how many may be taken, and whether one must be. */
+export interface SubChoice {
+  ref: string
+  options: SubOption[]
+  count: number
+  required: boolean
+}
+/** A line's picks (Sr6Purchase/Sr6Quality.options): pick ref -> the option id, several joined by `,`. */
+export type SubPicks = Record<string, string>
+export const VARIANT = '@variant'
+const optNum = (v?: string) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : undefined)
+const def = <T>(k: string, v: T | undefined) => (v === undefined ? {} : { [k]: v })
+
+/** The entry's sub-option picks (in the data's order) and, when it has priced or required variants, its variant pick. */
+export function subChoices(e?: Sr6Entry): SubChoice[] {
+  const out = new Map<string, SubChoice>()
+  for (const p of e?.parts ?? []) {
+    if (p.tag !== 'option' || !p.attrs.choice || !p.attrs.id) continue
+    const c = out.get(p.attrs.choice) ?? { ref: p.attrs.choice, options: [], count: Number(p.attrs.count) || 1, required: true }
+    c.options.push({
+      id: p.attrs.id,
+      label: p.attrs.name || p.attrs.id,
+      ...def('cost', optNum(p.attrs.cost)),
+      ...def('price', optNum(p.attrs.price)),
+      ...def('avail', p.attrs.avail),
+    })
+    out.set(c.ref, c)
+  }
+  const vs = (e?.parts ?? []).filter(p => p.tag === 'variant' && p.attrs.name)
+  // (a variant list with nothing of its own, name only, stays a label: nothing to price or pick)
+  if (vs.some(p => p.attrs.price || p.attrs.essence || p.attrs.avail || p.attrs.required === 'true'))
+    out.set(VARIANT, {
+      ref: VARIANT,
+      count: 1,
+      required: vs.some(p => p.attrs.required === 'true'),
+      options: vs.map(p => ({
+        id: p.attrs.name,
+        label: p.attrs.name,
+        ...def('price', optNum(p.attrs.price)),
+        ...def('essence', optNum(p.attrs.essence)),
+        ...def('avail', p.attrs.avail),
+      })),
+    })
+  return [...out.values()]
+}
+/** The options of a line's picks that are taken (unknown ids dropped). */
+export function pickedOptions(e: Sr6Entry | undefined, picks?: SubPicks): { choice: SubChoice; option: SubOption }[] {
+  if (!picks) return []
+  return subChoices(e).flatMap(choice =>
+    (picks[choice.ref] ?? '')
+      .split(',')
+      .flatMap(id => choice.options.filter(o => o.id === id.trim()).map(option => ({ choice, option })))
+      .slice(0, choice.count),
+  )
+}
+/** The karma a quality line's sub-options add to the entry's (Allergy's allergen and severity). */
+export const optionKarma = (e: Sr6Entry | undefined, picks?: SubPicks) => pickedOptions(e, picks).reduce((s, x) => s + (x.option.cost ?? 0), 0)
+/** The entry as a line with these picks has it: a variant's price, essence and availability in place of the entry's, the
+ *  options' nuyen added to its cost, their availability; an effect scoped to a picked option or variant (`option`,
+ *  `variant`) in place of the entry's own on the same target, and every scoped effect of an unpicked one gone. */
+export function withOptions(e: Sr6Entry, picks?: SubPicks): Sr6Entry
+export function withOptions(e: Sr6Entry | undefined, picks?: SubPicks): Sr6Entry | undefined
+export function withOptions(e: Sr6Entry | undefined, picks?: SubPicks): Sr6Entry | undefined {
+  if (!e?.parts?.some(p => p.tag === 'option' || p.attrs.option || p.attrs.variant || (p.tag === 'variant' && p.attrs.price))) return e
+  const taken = pickedOptions(e, picks)
+  const on = new Set(taken.map(x => (x.choice.ref === VARIANT ? `v:${x.option.id}` : `o:${x.choice.ref}.${x.option.id}`)))
+  const scoped = (p: Sr6Part) => (p.attrs.option ? `o:${p.attrs.option}` : p.attrs.variant ? `v:${p.attrs.variant}` : undefined)
+  const live = e.parts.filter(p => p.tag === 'effect' && scoped(p) && on.has(scoped(p)!))
+  const replaced = new Set(live.map(p => p.attrs.target))
+  const parts = e.parts.flatMap(p => {
+    const s = p.tag === 'effect' ? scoped(p) : undefined
+    if (s) {
+      if (!on.has(s)) return []
+      const { option: _o, variant: _v, ...attrs } = p.attrs
+      return [{ ...p, attrs }]
+    }
+    return p.tag === 'effect' && replaced.has(p.attrs.target) ? [] : [p]
+  })
+  const attrs = { ...e.attrs }
+  const variant = taken.find(x => x.choice.ref === VARIANT)?.option
+  if (variant?.price !== undefined) attrs.cost = String(variant.price)
+  if (variant?.essence !== undefined) attrs.essence = String(variant.essence)
+  if (variant?.avail) attrs.avail = variant.avail
+  const nuyen = e.kind === 'qualities' ? 0 : taken.reduce((s, x) => s + (x.choice.ref === VARIANT ? 0 : (x.option.cost ?? 0) + (x.option.price ?? 0)), 0)
+  const base = optNum(attrs.cost)
+  if (nuyen && base !== undefined) attrs.cost = String(base + nuyen)
+  const avail = taken.filter(x => x.choice.ref !== VARIANT && x.option.avail).pop()?.option.avail
+  if (avail) attrs.avail = avail
+  return { ...e, attrs, parts }
+}
+/** The picks a line still needs: a required pick (a sub-option pick, a reqVariant item's variant) with nothing taken. */
+export const missingPicks = (e: Sr6Entry | undefined, picks?: SubPicks) =>
+  subChoices(e).filter(c => c.required && !pickedOptions(e, { [c.ref]: picks?.[c.ref] ?? '' }).length)
 
 export const slotLabel = (id: string) =>
   id

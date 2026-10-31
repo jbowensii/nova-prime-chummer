@@ -10,7 +10,7 @@ import { gradeFactor, type GradeFactor } from './grades'
 import { fieldName } from '../../../../core/shared/formula'
 import { availability, bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
 import { capacityUsed, isMaterial } from '../../../catalog/domain/categories'
-import { structureOf } from '../../../catalog/domain/structure'
+import { structureOf, withOptions } from '../../../catalog/domain/structure'
 import { qualityChoice } from './choices'
 import { critterPrice, critterStat, critterValue } from '../assets/critters'
 
@@ -29,7 +29,10 @@ export const PURCHASE_TAB: Record<PurchaseKind, string> = {
 export const round2 = (x: number) => Math.round(x * 100) / 100
 
 /** The catalog entry a purchase is priced from: the live one, else a builders' custom limb re-derived from its table, else the snapshot it was exported with. */
-export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined => (x.id ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? x.snapshot) : undefined)
+/** A line's catalog entry as its picks have it (structure.ts withOptions: a variant's price and essence, the options' cost
+ *  and effects). */
+export const entryOf = (x: Sr6Purchase, data: Sr6Data): Sr6Entry | undefined =>
+  x.id ? withOptions(data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? x.snapshot, x.options) : undefined
 /** The rating a purchase is priced at and its per-rating effects count at: its own, else the lowest its entry comes in
  *  (one row of a book's per-rating split, `Wired Reflexes 3`, or a level's entry, levels.ts, comes in that rating only), else 1. */
 export const ratingOf = (x: Sr6Purchase, e?: Sr6Entry) => x.rating ?? ratingRange(e?.attrs.rating)[0] ?? 1

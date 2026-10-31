@@ -21,6 +21,7 @@ import {
 import { MAGIC_KINDS } from '../../../catalog/domain/data'
 import { baseMetatype, metatypeName } from './infected'
 import { entryOf, ratingOf } from './purchases'
+import { withOptions } from '../../../catalog/domain/structure'
 import { partsOf } from '../assets/vehiclemods'
 import { noteAttr, noteSkill } from './choices'
 
@@ -72,7 +73,7 @@ function decided(bs: Bonus[], f: () => WhenFacts, sit?: Sr6Situational): Bonus[]
 export function effectsOf(data: Sr6Data, x: Sr6Purchase | Sr6Pick | Sr6Quality): Bonus[] {
   if ('accessories' in x) return lineBonuses(data, x.bonuses, entryOf(x, data))
   if ('kind' in x) return lineBonuses(data, x.bonuses, data.entry(x.kind, x.id), choiceOf(data, x.note))
-  return entryBonuses(data, data.entry('qualities', x.id), choiceOf(data, x.note))
+  return entryBonuses(data, withOptions(data.entry('qualities', x.id), x.options), choiceOf(data, x.note))
 }
 /** The effects of a line (its bonuses as lineBonuses has them) that only the player can decide, a situation in words (`in
  *  animal form`, `per additional barrel`): where in the line's effects each is (the key of its `sit`) and whether it
@@ -95,7 +96,7 @@ function eachLine(b: Sr6Build, data: Sr6Data, g: (bs: Bonus[], rating: number, t
     f(lineBonuses(data, x.bonuses, e), ratingOf(x, e), x.qty, e?.name ?? x.name ?? 'Custom item', x.sit)
   }
   for (const q of b.qualities) {
-    const e = data.entry('qualities', q.id)
+    const e = withOptions(data.entry('qualities', q.id), q.options)
     f(entryBonuses(data, e, choiceOf(data, q.note)), 1, q.level, e?.name ?? q.name ?? q.id, q.sit)
   }
 }
@@ -200,7 +201,7 @@ export function bonusSources(
     add(bonusOf(bs, k, ratingOf(x, e), skill) * x.qty, e, x.kind, x.id, x.name, bs, ratingOf(x, e))
   }
   for (const q of b.qualities) {
-    const e = data.entry('qualities', q.id)
+    const e = withOptions(data.entry('qualities', q.id), q.options)
     const bs = decided(entryBonuses(data, e, choiceOf(data, q.note)), fx, q.sit)
     add(bonusOf(bs, k, 1, skill) * q.level, e, 'qualities', q.id, q.name, bs, 1)
   }

@@ -282,6 +282,8 @@
     <xs:attribute name="name" type="xs:string"/>
     <!-- Stolen Gear (No Future errata, NF p. 162): the karma converted at creation bought off so far, a part at a time -->
     <xs:attribute name="boughtOff" type="c:Count"/>
+    <!-- the sub-options picked (Commlink6 SUBSELECT: Allergy's allergen and severity), `<pick>=<id>[,<id>]` joined by `;` -->
+    <xs:attribute name="options" type="xs:string"/>
     <!-- the player's situational switches: `index:times` words, the index of an effect in the line's effects (1 on, a number for a per-... one) -->
     <xs:attribute name="sit" type="xs:string"/>
     <!-- an owned critter's companion quality only (Wild Life pp. 184-186): tamed, the Wild Soul and the negative balancing
@@ -681,6 +683,8 @@
     <!-- an ammunition line's material: the catalog id of a material (an ammunition type priced H*N, Bestial Nature p. 36);
          the line costs that many times as much -->
     <xs:attribute name="material" type="xs:string"/>
+    <!-- the sub-options and variant picked (`<pick>=<id>[,<id>]` joined by `;`, the variant's pick `@variant`) -->
+    <xs:attribute name="options" type="xs:string"/>
     <!-- a vehicle or drone bought from a design (the Designer): the design's id; the line's id is design.<that id> and its
          snapshot the vehicle as the design worked out when bought (with dp, its Design Point Value, and approved="true"
          when a GM made or approved the design) -->
