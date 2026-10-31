@@ -167,7 +167,8 @@ export interface PriceMods {
 }
 /** The runner's PRICEMOD shares by kind, from the `<modifier type="PRICEMOD" ref value>` of its metatype, its qualities
  *  (times the level, a levelled one: Shiva Arms) and its ware. LIFESTYLE_NECESSITIES is left out: Commlink6 declares it
- *  but no code applies it. */
+ *  but no code applies it (owner ruling 3, 2026-10-31: lifestyle price modifiers follow Commlink6, shown in the effects
+ *  list, never charged). */
 export function priceMods(b: Sr6Build, data: Sr6Data): PriceMods {
   const m: PriceMods = { everything: 0, armor: 0, clothing: 0 }
   const take = (e: Sr6Entry | undefined, times = 1) => {
