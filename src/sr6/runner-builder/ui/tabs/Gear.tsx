@@ -20,6 +20,44 @@ const CUSTOM_KINDS: [PurchaseKind, string][] = [
 ]
 const band = (v: number | null) => (v === null ? '—' : String(v))
 
+/** Career: the Gear tab is read only, so this sits beside it (EditorView, outside the disabled fieldset): every owned line
+ *  with an Identity picker that records a free `assign` ledger entry (a fieldset's disabled can't be undone inside it). */
+export function CareerIdentities() {
+  const { ch, data, record } = useSr6Editor()
+  const [err, setErr] = useState<string | null>(null)
+  const sins = ch.build.sins,
+    lines = ch.build.purchases.flatMap(x => [x, ...x.accessories])
+  if (!sins.length || !lines.length) return null
+  const label = (x: Sr6Purchase) => (e => (e ? entryLabel(e) : (x.name ?? 'Custom item')))(entryOf(x, data))
+  return (
+    <section className="stack" aria-label="Identities">
+      <h3>Identities (free)</h3>
+      {err && (
+        <p className="banner err" role="alert">
+          {err}
+        </p>
+      )}
+      {lines.map(x => (
+        <label key={x.uid} className="inline">
+          {label(x)}{' '}
+          <select
+            aria-label={`${label(x)} identity`}
+            value={x.sin ?? ''}
+            onChange={e => setErr(record({ op: 'assign', target: x.uid, ...(e.target.value ? { sin: e.target.value } : {}) }))}
+          >
+            <option value="">Unassigned</option>
+            {sins.map(s => (
+              <option key={s.uid} value={s.uid}>
+                {sinName(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
+    </section>
+  )
+}
+
 export function GearTab() {
   const { c, d, ch, data, cr, act, edit } = useSr6Editor()
   const [custom, setCustom] = useState(false)
