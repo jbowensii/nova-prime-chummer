@@ -140,6 +140,8 @@ test('SR6: a player buys a table-shared entry, marked House; once deleted the ru
   await expect(picker.locator('.picker li', { hasText: 'Secret Torch' })).toHaveCount(0)
   const done = saved(page, 'skit.torch')
   await picker.locator('.picker li', { hasText: 'Kit Torch' }).click()
+  // (the picker's quantity step: confirm it)
+  if (await picker.getByRole('button', { name: 'Add', exact: true }).count()) await picker.getByRole('button', { name: 'Add', exact: true }).click()
   expect((await done).status()).toBeLessThan(300)
   const row = page.locator('section', { has: page.getByRole('heading', { name: 'Other gear' }) }).locator('tr', { hasText: 'Kit Torch' })
   await expect(row).toContainText('25¥')

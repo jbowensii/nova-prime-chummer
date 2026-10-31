@@ -97,6 +97,7 @@ export type Op =
       rating?: number
       qty?: number
       grade?: string
+      note?: string
       custom?: { name: string; cost: number; avail: number; essence: number }
     }
   | { op: 'purchase'; remove: string }
@@ -622,7 +623,16 @@ export function apply(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Re
         !OWN_LINE.has(op.kind) &&
         !isAmmoGear(entryOf(line, data)) && // each ammo line carries its own fitted ammo type, so adding again makes a new line
         !line.grade &&
-        b.purchases.find(x => x.id && x.id === line.id && x.kind === line.kind && x.rating === line.rating && !x.grade && !x.accessories.length)
+        b.purchases.find(
+          x =>
+            x.id &&
+            x.id === line.id &&
+            x.kind === line.kind &&
+            x.rating === line.rating &&
+            (x.note ?? '') === (line.note ?? '') &&
+            !x.grade &&
+            !x.accessories.length,
+        )
       if (same) same.qty += line.qty
       else b.purchases.push(line)
       return OK
@@ -1333,6 +1343,7 @@ function newLine(
     rating?: number
     qty?: number
     grade?: string
+    note?: string
     custom?: { name: string; cost: number; avail: number; essence: number }
   },
   data: Sr6Data,
@@ -1341,7 +1352,14 @@ function newLine(
   const qty = op.qty ?? 1
   if (qty < 1) return { ok: false, reason: 'below-one' }
   if (op.grade && !gradeKnown(cr, data, op.grade)) return { ok: false, reason: 'unknown-grade' }
-  const base = { uid: newId(), kind: op.kind, qty, accessories: [], ...(op.grade ? { grade: op.grade } : {}) }
+  const base = {
+    uid: newId(),
+    kind: op.kind,
+    qty,
+    accessories: [],
+    ...(op.grade ? { grade: op.grade } : {}),
+    ...(op.note?.trim() ? { note: op.note.trim().slice(0, 200) } : {}),
+  }
   if (!op.id) {
     const c = op.custom ?? { name: '', cost: 0, avail: 0, essence: 0 }
     if (c.cost < 0 || c.avail < 0 || c.essence < 0) return { ok: false, reason: 'below-zero' } // Review's hard value.negative would block it for good

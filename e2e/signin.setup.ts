@@ -6,5 +6,5 @@ import { anarchyState, signIn, STATE } from './session'
 setup('sign in as the e2e admin', async ({ request }) => {
   await signIn(request)
   const state = await request.storageState()
-  writeFileSync(STATE, JSON.stringify({ ...state, origins: anarchyState('http://localhost:4173').origins }))
+  writeFileSync(STATE, JSON.stringify({ ...state, origins: anarchyState(`http://localhost:${process.env.E2E_PORT ?? 4173}`).origins }))
 })
