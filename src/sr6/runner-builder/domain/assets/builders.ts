@@ -6,8 +6,8 @@ import type { Sr6Build, Sr6Character, Sr6Purchase } from '../../../formats/domai
 import type { Sr6Entry, Sr6Part } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import type { Sr6Advance } from '../../../formats/domain/character'
-import { capacityRemaining, offeredOn } from '../../../catalog/domain/categories'
-import { mountSlots, requirementsOf } from '../../../catalog/domain/structure'
+import { capacityRemaining, capacityUsed, offeredOn } from '../../../catalog/domain/categories'
+import { fit, mountSlots, requirementsOf } from '../../../catalog/domain/structure'
 import { newId } from '../../../../core/shared/types'
 import { entryOf, ratingOf } from '../creation/purchases'
 import { fittedParts, modsOf } from './vehiclemods'
@@ -44,6 +44,18 @@ export function accessoryState(
     return failed.length ? `needs ${failed.join('; ')}` : undefined
   }
   return { he, items, remaining, slots, full, fits, blocked }
+}
+
+/** Why the add-on picker greys `e` for `host` (the builders' and the Designer's weapon customiser's): a failed host
+ *  requirement, past the Capacity left, or the fit engine's too big / no room on its hook. undefined: it fits. */
+export function addonBlocked(host: Sr6Purchase, data: Sr6Data, st: ReturnType<typeof accessoryState>) {
+  return (e: Sr6Entry): string | undefined => {
+    const why = st.blocked(e)
+    if (why) return why
+    if (st.remaining !== null) return capacityUsed(e, 1) > st.remaining ? 'not enough Capacity left' : undefined
+    const f = fit(st.he, e, [...fittedParts(host, data), ...st.items], ratingOf(host, st.he), host.addedSlots)
+    return f.ok === false ? (f.reason === 'size' ? 'too big for this mount' : f.reason === 'room' ? 'no room left on that mount' : undefined) : undefined
+  }
 }
 
 /** A line anywhere in the build by its uid path (`host/weapon`: a weapon built into a cyberarm), or by a bare uid at any depth. */

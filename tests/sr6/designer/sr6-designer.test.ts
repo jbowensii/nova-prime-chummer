@@ -349,12 +349,43 @@ test('a mount built into a design takes a weapon and its accessories, which save
   const store = fakeStore('sr6/designs', { d1: sr6ToXml(d) })
   stubFetch([store.route])
   await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
-  await click(button('Put a weapon in Zip Weapon Mount'))
+  expect(pageText()).toMatch(/Zip Weapon Mount.*Empty/)
+  await click(button('Place a weapon in Zip Weapon Mount'))
   await click(option('Fizz Rifle 70'))
+  // placing opens the customiser straight away
   await click(button('Add an accessory to Fizz Rifle 70'))
   await click(option('Zap Scope'))
-  expect(pageText()).toMatch(/holds Fizz Rifle 70.*Zap Scope/)
+  expect(pageText()).toMatch(/Customise Fizz Rifle 70[\s\S]*Zap Scope/)
+  await click(button('Done'))
+  expect(pageText()).toMatch(/Fizz Rifle 70 · [\d,]+¥ · 1 accessory/)
   await click(button('Save'))
   const w = read(store.rows.get('d1')!.xml).design!.mods.find(x => x.kind === 'weapons')
   expect(w).toMatchObject({ id: 'crb.fizz-rifle-70', mount: 'm1', accessories: [{ id: 'crb.zap-scope' }] })
+})
+
+test('the weapon customiser removes an accessory, and a hardpoint takes its weapon from a picker', async () => {
+  const d = redZip()
+  d.design!.mods = [
+    { uid: 'm1', kind: 'gear', id: 'zz.zip-mount', qty: 1, accessories: [] },
+    {
+      uid: 'w1',
+      kind: 'weapons',
+      id: 'crb.fizz-rifle-70',
+      qty: 1,
+      mount: 'm1',
+      accessories: [{ uid: 's1', kind: 'gear', id: 'crb.zap-scope', qty: 1, accessories: [] }],
+    },
+  ]
+  const store = fakeStore('sr6/designs', { d1: sr6ToXml(d) })
+  stubFetch([store.route])
+  await mount(asPlayer(createElement(Sr6DesignEditor, { c, data, cr, id: 'd1' })))
+  await click(button('Customise Fizz Rifle 70'))
+  await click(button('Remove Zap Scope from Fizz Rifle 70'))
+  expect(pageText()).toMatch(/No accessories or modifications yet/)
+  await click(button('Done'))
+  await click(button('Add a hardpoint'))
+  await click(button('Place a weapon on hardpoint 1'))
+  expect(pageText()).toMatch(/Pick the weapon on hardpoint 1/)
+  await click(button('Save'))
+  expect(read(store.rows.get('d1')!.xml).design!.mods.find(x => x.uid === 'w1')!.accessories).toEqual([])
 })
