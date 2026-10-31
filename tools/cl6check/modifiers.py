@@ -744,10 +744,10 @@ def per_effect(pairs, misses=False):
     rows = []  # (misses=True: the modifications not reproduced, for working through them)
     # (a `grant` effect names an entry of ours by its id, `critter-power:armor`: the record the matcher paired with that
     # entry is what it grants, `drake_armor`; Commlink6 files a gained power under critter power, quality or metaecho)
-    paired = {(oo["src"], oo["id"].split(".", 1)[-1]): _norm(cc.get("id")) for cc, oo in pairs}
+    paired = {(oo.get("src"), (oo.get("id") or "").split(".", 1)[-1]): _norm(cc.get("id")) for cc, oo in pairs}
     for c, o in pairs:
         own = o["families"].get("effects_own", o["families"].get("effects", ()))
-        mine = [_grant_keys(x, o["src"], paired) if (x[3:] or [""])[0] == "grant" else _our_keys(x) for x in own]
+        mine = [_grant_keys(x, o.get("src"), paired) if (x[3:] or [""])[0] == "grant" else _our_keys(x) for x in own]
         used = set()
         for m in _cl6_rows(c):
             total += 1
