@@ -124,3 +124,11 @@ test('a player’s item design is saved without the inner purchase’s approved 
   expect((await call('eve', 'PUT', '/api/sr6/designs/i4', file('i4', 'GM Gun', item))).status).toBe(201)
   expect(readFileSync(join(designs, 'eve', 'GM-Gun.xml'), 'utf8')).toContain('id="zz.rifle" approved="true"')
 })
+
+test('a cyberware design (the Cyberware designer) is stripped the same way for a player, kept for a GM', async () => {
+  const item = `<itemDesign kind="cyberware" approved="true"><purchase uid="u" kind="augmentations" id="custom.limb-arm-obvious" approved="true" qty="1"/></itemDesign>`
+  expect((await call('pat', 'PUT', '/api/sr6/designs/i5', file('i5', 'Pat Arm', item))).status).toBe(201)
+  expect(readFileSync(join(designs, 'pat', 'Pat-Arm.xml'), 'utf8')).not.toMatch(/approved/)
+  expect((await call('eve', 'PUT', '/api/sr6/designs/i6', file('i6', 'GM Arm', item))).status).toBe(201)
+  expect(readFileSync(join(designs, 'eve', 'GM-Arm.xml'), 'utf8')).toContain('<itemDesign kind="cyberware" approved="true">')
+})

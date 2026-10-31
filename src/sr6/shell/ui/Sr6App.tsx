@@ -26,6 +26,7 @@ import { Sr6Compendiums } from '../../compendiums/ui/Compendiums'
 import { CampaignCreation, ServerCreation, type Loaded } from '../../table-setup/ui/Creation'
 import { Sr6Data } from '../../game-data/ui/Data'
 import { Sr6DesignEditor, Sr6Designs } from '../../designer/ui/Designer'
+import { Sr6ItemDesignEditor, Sr6ItemDesigns } from '../../designer/ui/ItemDesigner'
 import { Sr6EditorView } from './EditorView'
 import { NPC_TABS, SR6_TABS } from '../../runner-builder/ui/tabList'
 import { Sr6Npcs } from '../../npcs/ui/Npcs'
@@ -35,7 +36,10 @@ import { Sr6Runners } from '../../runner-library/ui/Runners'
 
 const FOLIO: Record<string, string> = {
   '': 'Your runners',
-  designs: 'Designer',
+  designs: 'Vehicle designer',
+  drones: 'Drone designer',
+  weapons: 'Weapon designer',
+  cyberware: 'Cyberware designer',
   npcs: 'NPCs & Critters',
   compendiums: 'Compendiums',
   campaigns: 'Campaigns',
@@ -165,10 +169,22 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
     ) : c && data ? (
       page === 'npcs' ? (
         <Sr6Npcs c={c} data={data} cr={cr.rules} section={route[1] === 'critters' ? 'critters' : 'npcs'} reload={refresh} />
-      ) : page === 'designs' && route[1] ? (
-        <Sr6DesignEditor key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} />
-      ) : page === 'designs' ? (
-        <Sr6Designs c={c} data={data} cr={cr.rules} />
+      ) : (page === 'designs' || page === 'drones') && route[1] ? (
+        <Sr6DesignEditor key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} kind={page === 'drones' ? 'drone' : 'vehicle'} />
+      ) : page === 'designs' || page === 'drones' ? (
+        <Sr6Designs key={page} c={c} data={data} cr={cr.rules} kind={page === 'drones' ? 'drone' : 'vehicle'} />
+      ) : (page === 'weapons' || page === 'cyberware') && route[1] ? (
+        <Sr6ItemDesignEditor
+          key={route[1]}
+          c={c}
+          data={data}
+          cr={cr.rules}
+          kind={page === 'weapons' ? 'weapon' : 'cyberware'}
+          id={route[1]}
+          sub={route.slice(2).join('/') || undefined}
+        />
+      ) : page === 'weapons' || page === 'cyberware' ? (
+        <Sr6ItemDesigns key={page} c={c} data={data} cr={cr.rules} kind={page === 'weapons' ? 'weapon' : 'cyberware'} />
       ) : page === 'n' && route[1] ? (
         <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
       ) : page === 'c' && route[1] ? (
