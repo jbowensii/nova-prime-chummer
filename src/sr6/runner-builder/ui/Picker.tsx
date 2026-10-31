@@ -20,7 +20,7 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { entryLabel, entrySearch, isAmmoType } from '../../catalog/domain/categories'
+import { entryLabel, entrySearch, isAmmoGear, isAmmoType, STACKING } from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -100,6 +100,7 @@ export interface PickedItem {
   e: Sr6Entry
   rating?: number
   grade?: string
+  qty?: number
 }
 // (the stepper's top for a rating the player picks: the book's rules bound it elsewhere, chosenRating)
 const MAX_CHOSEN = 99
@@ -122,6 +123,7 @@ export function CatalogPicker({
   onAdd,
   from,
   critter,
+  quantity,
 }: {
   title: string
   open: boolean
@@ -137,6 +139,8 @@ export function CatalogPicker({
   from?: Pick<Sr6Ctx, 'c' | 'cr' | 'data'>
   /** for an owned critter: the critter-only entries (critterware, critter gear, companion qualities) are offered too */
   critter?: boolean
+  /** offer a quantity (stacking kinds only): N of one item is one line with a count */
+  quantity?: boolean
 }) {
   const ctx = useContext(Sr6Editor)
   const { c, cr, data } = from ?? ctx!
@@ -164,7 +168,9 @@ export function CatalogPicker({
     const range = ratingRange(e.attrs.rating),
       free = chosenRating(e)
     const gs = offered(e)
-    if (range.length > 1 || free || gs.length) setChosen({ e, rating: range.length > 1 || free ? (range[0] ?? 1) : undefined, grade: gs[0] })
+    const stacks = quantity && STACKING.has(e.kind)
+    if (range.length > 1 || free || gs.length || stacks)
+      setChosen({ e, rating: range.length > 1 || free ? (range[0] ?? 1) : undefined, grade: gs[0], ...(stacks ? { qty: 1 } : {}) })
     else add({ e })
   }
   const range = chosen ? ratingRange(chosen.e.attrs.rating) : [],
@@ -215,6 +221,12 @@ export function CatalogPicker({
                 {free} <Stepper label={free} value={chosen.rating ?? 1} min={1} max={MAX_CHOSEN} onChange={v => setChosen({ ...chosen, rating: v })} />
               </label>
             )}
+            {chosen.qty !== undefined && (
+              <label className="inline">
+                Quantity <Stepper label="Quantity" value={chosen.qty} min={1} max={999} onChange={v => setChosen({ ...chosen, qty: v })} />
+                {isAmmoGear(chosen.e) && <span className="muted"> (each is one printed unit, e.g. 10 rounds)</span>}
+              </label>
+            )}
             {grades && gradeOptions(cr, data, chosen.e).length > 0 && (
               <label className="inline">
                 Grade
@@ -231,8 +243,14 @@ export function CatalogPicker({
           </div>
           {price && (
             <p>
-              Cost <b title={formulaShown(chosen.e, 'cost', dataFind(data))}>{price.cost || '—'}</b> · Availability{' '}
-              <b title={formulaShown(chosen.e, 'avail', dataFind(data))}>{price.avail || '—'}</b>
+              Cost <b title={formulaShown(chosen.e, 'cost', dataFind(data))}>{price.cost || '—'}</b>
+              {chosen.qty && chosen.qty > 1 && price.cost ? (
+                <>
+                  {' '}
+                  (× {chosen.qty} = {Number(price.cost) * chosen.qty})
+                </>
+              ) : null}{' '}
+              · Availability <b title={formulaShown(chosen.e, 'avail', dataFind(data))}>{price.avail || '—'}</b>
               {availWarn && (
                 <span className="warn" title={availWarn}>
                   {' '}
@@ -705,7 +723,7 @@ function RatingGrade({ x, name, grades }: { x: Sr6Purchase; name: string; grades
   )
 }
 
-const STACKS = new Set<PurchaseKind>(['electronics', 'programs', 'gear', 'ammotypes'])
+const STACKS = STACKING
 
 /** One kind of purchase as a table: name (rating, grade, source), what `detail` adds, accessories and bonuses; quantity
  *  where lines stack, worn for armor, Essence for augmentations, Availability, cost; and its picker. */
@@ -942,7 +960,8 @@ export function PurchaseSection({
         kinds={[kind]}
         grades={grades}
         filter={offer}
-        onAdd={p => act({ op: 'purchase', kind, id: p.e.id, rating: p.rating, grade: p.grade })}
+        quantity
+        onAdd={p => act({ op: 'purchase', kind, id: p.e.id, rating: p.rating, grade: p.grade, qty: p.qty })}
       />
     </section>
   )

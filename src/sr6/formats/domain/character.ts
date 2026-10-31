@@ -476,6 +476,8 @@ export type Sr6Advance =
   /** refund: nuyen credited back for selling the item (an adjustable sellback; the UI defaults it to 30% of value, SR
    *  Missions). Absent or 0 is a plain drop with no credit. */
   | { op: 'drop'; target: string; line?: Sr6Purchase; refund?: number }
+  /** a stacking line (target: its uid) changed to qty of the item; the nuyen difference is paid (or credited back) */
+  | { op: 'quantity'; target: string; qty: number }
   /** a bought item (target: its uid) replaced by a higher level of its family (levels.ts), its accessories and grade
    *  kept, at the new level's full price (the core rulebook prints no trade-in rule) */
   | { op: 'upgrade'; target: string; line: Sr6Purchase }
@@ -533,6 +535,7 @@ export const SR6_ADVANCE_OPS: Sr6AdvanceOp[] = [
   'initiate',
   'purchase',
   'drop',
+  'quantity',
   'upgrade',
   'fit',
   'unfit',

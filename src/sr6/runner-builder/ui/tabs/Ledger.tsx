@@ -47,7 +47,7 @@ import {
 import type { Sr6Entry, Sr6Kind } from '../../../formats/domain/types'
 import { ATTR_NAMES, n, reasonText, useSr6Editor } from '../editor'
 import { ACCESSORY_KINDS, CatalogPicker, ChoiceField, isAccessory, type PickedItem } from '../Picker'
-import { capacityOf, isAmmoGear, isAmmoType, offeredOn } from '../../../catalog/domain/categories'
+import { capacityOf, isAmmoGear, isAmmoType, offeredOn, STACKING } from '../../../catalog/domain/categories'
 import { deep } from '../../domain/creation/actions'
 import { newId } from '../../../../core/shared/types'
 import { structureOf } from '../../../catalog/domain/structure'
@@ -84,6 +84,7 @@ export const OPS = [
   ['drone', 'Buy a drone'],
   ['critter', 'Buy a critter'],
   ['upgrade', 'Upgrade an item I own (grade or level)'],
+  ['quantity', 'Change how many of an item I own'],
   ['drop', 'Sell or drop gear'],
   ['fit', 'Fit an accessory, mod, weapon or autosoft (cyberware, gear, vehicle, drone or critter)'],
   ['unfit', 'Remove or sell an accessory (cyberware, gear, vehicle, drone or critter)'],
@@ -158,6 +159,7 @@ export function LedgerTab() {
     grade: '',
     price: '', // a vehicle/drone's GM-adjusted nuyen price (blank: the catalog/design price)
     ammo: '', // an ammunition line's ammunition type (blank: Regular)
+    qty: '1', // how many of a stacking item (gear, ammunition, electronics, programs) a buy is for
     note: '', // the attribute/skill a chosen power or spell names (Attribute Boost, Improved Ability)
   })
   // (a critter bought: the commands and special training it comes with, catalog ids)
@@ -215,6 +217,7 @@ export function LedgerTab() {
       grade: '',
       price: '',
       ammo: '',
+      qty: '1',
       note: '',
     }))
   }
@@ -315,7 +318,7 @@ export function LedgerTab() {
                 uid: '',
                 kind: e.kind as PurchaseKind,
                 id: e.id,
-                qty: 1,
+                qty: STACKING.has(e.kind) ? Math.max(1, whole(f.qty) || 1) : 1,
                 ...(choiceOptions(data, e, contactNames) && f.note.trim() ? { note: f.note.trim() } : {}),
                 accessories: f.ammo && isAmmoGear(e) ? [{ uid: newId(), kind: 'ammotypes', id: f.ammo, qty: 1, accessories: [] }] : [],
                 ...(picked!.rating ? { rating: picked!.rating } : {}),
@@ -355,6 +358,10 @@ export function LedgerTab() {
       case 'teach': {
         const w = trainedWhat(data.entry('actions', f.name))
         return f.target && w ? { op, target: f.target, line: { uid: '', what: w, id: f.name, taught: true } } : null
+      }
+      case 'quantity': {
+        const q = whole(f.qty)
+        return f.target && q >= 1 ? { op, target: f.target, qty: q } : null
       }
       case 'drop': {
         if (!f.target) return null
@@ -1054,6 +1061,47 @@ export function LedgerTab() {
                 ))}
             </select>
           </label>
+        )}
+        {op === 'purchase' && picked && STACKING.has(picked.e.kind) && (
+          <label>
+            Quantity{isAmmoGear(picked.e) ? ' (printed units, e.g. 10 rounds each)' : ''}
+            <input type="number" min={1} step={1} aria-label="Quantity" value={f.qty} onChange={e => set({ qty: e.target.value })} style={{ width: '6rem' }} />
+          </label>
+        )}
+        {op === 'quantity' && (
+          <>
+            <label>
+              Item
+              <select
+                value={f.target}
+                onChange={ev => set({ target: ev.target.value, qty: String(b.purchases.find(x => x.uid === ev.target.value)?.qty ?? 1) })}
+              >
+                <option value="">Pick one</option>
+                {b.purchases
+                  .filter(x => STACKING.has(x.kind))
+                  .sort((a, z) => dropLabel(a).localeCompare(dropLabel(z)))
+                  .map(x => (
+                    <option key={x.uid} value={x.uid}>
+                      {dropLabel(x)} × {x.qty}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            {f.target && (
+              <label>
+                New quantity
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  aria-label="New quantity"
+                  value={f.qty}
+                  onChange={e => set({ qty: e.target.value })}
+                  style={{ width: '6rem' }}
+                />
+              </label>
+            )}
+          </>
         )}
         {op === 'fit' && picked && diyAllowed(picked.e) && (
           <label className="inline" style={{ alignSelf: 'end' }}>
