@@ -181,3 +181,15 @@ test('an unset constant leaves its value empty and is listed; nothing is NaN', (
   expect(d.pools).toEqual([{ skill: 'crb.gab', label: 'Gab', rank: 2, attr: 'cha', dp: 4, spec: 'Haggling' }])
   expect(d.unset.sort()).toEqual(['initiativeDice', 'magicMax', 'monitorBase', 'specDice', 'untrainedPenalty'])
 })
+
+test('exoware: a Physical box per full point of its Essence and −4 Social Rating (Body Shop p. 28); rigger pools by hand and jumped in', () => {
+  const ch = runner()
+  const before = derive(ch).d
+  buy(ch, 'augmentations', undefined, { name: 'Exo arm', essence: 2.3, cost: 100, grade: 'exo' })
+  const after = derive(ch).d
+  expect(after.monitors.physical! - before.monitors.physical!).toBe(2)
+  expect(after.socialRating - before.socialRating).toBe(-4)
+  // a jumped-in pool swaps the physical attribute for its mental one (CRB p. 197): never more tests than by hand allows
+  for (const p of after.rigging.jumpedIn) expect(p.pool).toBeGreaterThanOrEqual(0)
+  expect(after.rigging.driving.map(p => p.test)).toEqual(after.rigging.driving.map(p => p.test).filter(t => ['Piloting', 'Gunnery', 'Perception'].includes(t)))
+})

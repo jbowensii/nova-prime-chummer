@@ -123,6 +123,10 @@
         <xs:element name="slot" type="sr6:Slot"/>
         <xs:element name="fits" type="sr6:Fits"/>
         <xs:element name="variant" type="sr6:Variant"/>
+        <!-- a sub-option of a Commlink6 SUBSELECT pick (tools/cl6check/options.py): the pick it belongs to (choice), its
+             id and name, the karma (a quality) or nuyen (an item) it adds (cost), its own price and availability, and how
+             many of the pick's options may be taken (count). The builder prices and applies the picked ones -->
+        <xs:element name="option" type="sr6:Option"/>
         <xs:element name="relevance" type="sr6:Relevance"/>
         <xs:element name="flag" type="xs:string"/>
         <!-- Commlink6's own rule data for the item, kept as it gives it and never applied: a modification it makes
@@ -277,8 +281,23 @@
     <xs:attribute name="mode" type="xs:string"/>
     <xs:attribute name="rule" type="xs:string"/>
   </xs:complexType>
+  <!-- price, essence and avail replace the entry's while the variant is picked; required: one variant must be picked
+       (Commlink6's reqVariant) -->
   <xs:complexType name="Variant">
     <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="price" type="xs:string"/>
+    <xs:attribute name="essence" type="xs:string"/>
+    <xs:attribute name="avail" type="xs:string"/>
+    <xs:attribute name="required" type="xs:boolean"/>
+  </xs:complexType>
+  <xs:complexType name="Option">
+    <xs:attribute name="choice" type="xs:string" use="required"/>
+    <xs:attribute name="id" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="cost" type="xs:string"/>
+    <xs:attribute name="price" type="xs:string"/>
+    <xs:attribute name="avail" type="xs:string"/>
+    <xs:attribute name="count" type="xs:positiveInteger"/>
   </xs:complexType>
   <xs:complexType name="Relevance">
     <xs:attribute name="topic" type="xs:string" use="required"/>
@@ -490,6 +509,10 @@
          the importer gives it to the entries of the same class in other books, each `from` "<source>:<heading>"
          (import bookkeeping) -->
     <xs:attribute name="rule" type="xs:string"/>
+    <!-- holds only while that sub-option (`<choice>.<id>` of an <option>) or variant (its name) is picked; while it does,
+         it replaces the entry's own unscoped effect on the same target (tools/cl6check/options.py) -->
+    <xs:attribute name="option" type="xs:string"/>
+    <xs:attribute name="variant" type="xs:string"/>
     <!-- book: the effect is a hand-written correction of what the book's text says that no reader rule expresses (the same file, "gen": "book") -->
     <!-- cl6: the effect is a hand-written Commlink6 override (importer/sr6/overrides/<book>.json, "gen": "cl6"), not the book
          reader's: shown as such, a rare exception to the owner's rule that our reader is the primary source -->
