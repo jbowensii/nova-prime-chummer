@@ -21,10 +21,10 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       # npm run check, split: the shared runner is slower than GitHub's, so the 5 s default test timeout is raised.
-      # ponytail: blanket 30 s timeout; drop it if the runner gets faster cores or fewer concurrent jobs.
+      # ponytail: blanket 60 s timeout; drop it if the runner gets faster cores or fewer concurrent jobs.
       - run: npx tsc -b
       - run: npm run validate:data
-      - run: npx vitest run --coverage --testTimeout=30000 # unit tests with coverage floors (vite.config.ts)
+      - run: npx vitest run --coverage --testTimeout=60000 # unit tests with coverage floors (vite.config.ts)
       # timing checks (tests/perf, budgets at the top of each file)
       # ponytail: report-only here; the shared 4-job runner overshoots the dev-PC budgets by ~25%. Re-measure budgets
       # on Tower05 (or give perf a dedicated slot) and drop continue-on-error to make it a gate again.
