@@ -114,6 +114,7 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           img=github.local.owenshomeonline.com/jbowensii/nova-prime-chummer
+          [ -n "$REGISTRY_TOKEN" ] || { echo "::warning::REGISTRY_TOKEN secret not set: image not pushed"; exit 0; }
           echo "$REGISTRY_TOKEN" | docker login github.local.owenshomeonline.com -u jbowensii --password-stdin
           docker build -t "$img:latest" -t "$img:sha-${SHA::7}" .
           docker push "$img:latest" && docker push "$img:sha-${SHA::7}"
