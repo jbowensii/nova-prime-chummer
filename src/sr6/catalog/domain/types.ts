@@ -49,6 +49,8 @@ export interface Sr6QualityView {
   karma: number | null
   karmaMax: number | null
   karmaSteps?: number[]
+  /** the karma each sub-option adds (`<option>`, structure.ts subChoices), keyed `<pick>.<option id>` */
+  optionKarma?: Record<string, number>
   perLevel: boolean
   /** none printed: no limit */
   maxLevel: number | null

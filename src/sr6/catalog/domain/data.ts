@@ -46,6 +46,11 @@ const karmaIf = (e: Sr6Entry) => {
   const k = e.parts.find(p => p.tag === 'karmaif' && p.attrs.flag === 'awakened')
   return k && /^-?\d+$/.test(k.attrs.value ?? '') ? { karmaIf: { value: Number(k.attrs.value), ...(k.attrs.note ? { note: k.attrs.note } : {}) } } : {}
 }
+/** A quality's sub-options' karma (`<option choice id cost>`), as the view's optionKarma. */
+const optionKarma = (e: Sr6Entry) => {
+  const o = e.parts.filter(p => p.tag === 'option' && p.attrs.choice && Number(p.attrs.cost))
+  return o.length ? { optionKarma: Object.fromEntries(o.map(p => [`${p.attrs.choice}.${p.attrs.id}`, Number(p.attrs.cost)])) } : {}
+}
 
 /** Who may take a metamagic (its catalog `user`): an adept's only an adept or mystic adept, a magician's only a magician
  *  (full or aspected) or mystic adept; none set: any initiate. */
@@ -107,6 +112,14 @@ export function qualityMetatypes(name: string, text: string): string[] | undefin
     .map(w => METATYPE_WORDS[w])
     .filter((w): w is string => !!w && w !== like)
   return words.length ? [...new Set(words)] : undefined
+}
+/** The metatypes a quality is for: its Commlink6 METATYPE character prerequisites (the book's own list), else the
+ *  description heuristic (qualityMetatypes; ponytail: kept for catalogs imported without prerequisites). */
+const metatypesOf = (e: Sr6Entry) => {
+  const ps = e.parts.filter(
+    p => p.tag === 'prerequisite' && p.attrs.apply === 'CHARACTER' && p.attrs.type === 'METATYPE' && p.attrs.negate !== 'true' && p.attrs.ref,
+  )
+  return ps.length ? ps.map(p => normName(p.attrs.ref.replace(/_/g, ' '))) : qualityMetatypes(e.name, e.text)
 }
 /** Whether the runner's metatype may take quality `id` (qualityMetatypes; none picked: no metatype-bound quality). */
 export const qualityFitsMetatype = (data: Pick<Sr6Data, 'qualities' | 'metatypes'>, metatype: string, id: string) => {
@@ -262,11 +275,12 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         ...levels(e),
         ...(e.attrs.multi === 'true' ? { multi: true } : {}),
         page: e.page,
+        ...optionKarma(e),
         ...(e.attrs.karmaSteps ? { karmaSteps: e.attrs.karmaSteps.split(/\s+/).map(Number).filter(Number.isFinite) } : {}),
         ...(e.attrs.category ? { category: e.attrs.category } : {}),
         ...(e.attrs.granted === 'true' ? { granted: true } : {}),
         ...(e.attrs.uncounted === 'true' ? { uncounted: true } : {}),
-        ...(qualityMetatypes(e.name, e.text) ? { metatypes: qualityMetatypes(e.name, e.text) } : {}),
+        ...(metatypesOf(e) ? { metatypes: metatypesOf(e) } : {}),
         ...karmaIf(e),
         ...(parts(e, 'choice').length
           ? {
