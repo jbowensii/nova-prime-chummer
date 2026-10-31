@@ -360,6 +360,7 @@ export interface Sr6Contact {
   loyalty: number
   types?: ContactType[]
 }
+export type Sr6BoundSpirit = { uid: string; name: string; force: number; services: number; note?: string }
 export type ContactType = 'academic' | 'corporate' | 'criminal' | 'engineering' | 'government' | 'magic' | 'matrix' | 'media' | 'medical' | 'street'
 export const CONTACT_TYPES: ContactType[] = ['academic', 'corporate', 'criminal', 'engineering', 'government', 'magic', 'matrix', 'media', 'medical', 'street']
 /** A lifestyle always belongs to a SIN (the one it's paid under); id: the catalog lifestyle. */
@@ -479,6 +480,8 @@ export interface Sr6Build {
   martialArts: Sr6MartialArt[]
   purchases: Sr6Purchase[]
   contacts: Sr6Contact[]
+  /** spirits (sprites) bound in play: recorded, never bought (no Karma or nuyen) */
+  boundSpirits: Sr6BoundSpirit[]
   /** each with its lifestyles (an older file's single build lifestyle loads onto its first SIN: charxml.ts) */
   sins: Sr6Sin[]
   karmaToNuyen: number
@@ -695,6 +698,7 @@ export const blankBuild = (method: Sr6Method = 'priority'): Sr6Build => ({
   martialArts: [],
   purchases: [],
   contacts: [],
+  boundSpirits: [],
   sins: [],
   karmaToNuyen: 0,
   karmaToDeck: 0,

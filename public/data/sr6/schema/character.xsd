@@ -203,6 +203,7 @@
       <xs:element name="martialart" type="c:MartialArt" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="purchase" type="c:Purchase" minOccurs="0" maxOccurs="unbounded"/>
       <xs:element name="contact" type="c:Contact" minOccurs="0" maxOccurs="unbounded"/>
+      <xs:element name="spirit" type="c:BoundSpirit" minOccurs="0" maxOccurs="unbounded"/>
       <!-- an older file's one lifestyle, never written now: it loads onto the first <sin> (a runner with none gets a
            placeholder SIN) -->
       <xs:element name="lifestyle" minOccurs="0">
@@ -350,6 +351,13 @@
     <xs:attribute name="name" type="xs:string"/>
   </xs:complexType>
 
+  <xs:complexType name="BoundSpirit">
+    <xs:attribute name="uid" type="xs:string" use="required"/>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="force" type="c:Count" use="required"/>
+    <xs:attribute name="services" type="c:Count" use="required"/>
+    <xs:attribute name="note" type="xs:string"/>
+  </xs:complexType>
   <xs:complexType name="Contact">
     <xs:attribute name="uid" type="xs:string" use="required"/>
     <xs:attribute name="name" type="xs:string" use="required"/>
