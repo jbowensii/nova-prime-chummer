@@ -112,7 +112,8 @@ export function choiceOptions(data: Sr6Data, e: Sr6Entry | undefined, contacts: 
   const target = parts.find(p => p.tag === 'effect' && /^(attr|attr-max|skill|skill-max):choice$/.test(p.attrs.target ?? ''))
   const sel = parts.find(p => p.tag === 'selection' && /^(ATTRIBUTE|SKILL|QUALITY|ITEM_ATTRIBUTE|SPELL|SKILLSPECIALIZATION)$/.test(p.attrs.type ?? ''))
   // any other selection part: a list or free text, never nothing
-  const other = typed || target || sel ? undefined : parts.find(p => p.tag === 'selection')
+  const listed = parts.some(p => p.tag === 'option') // (its SUBSELECTs are listed as <option>s: ui OptionFields)
+  const other = typed || target || sel ? undefined : parts.find(p => p.tag === 'selection' && !(listed && p.attrs.type === 'SUBSELECT'))
   const kind: ChoiceSpec['kind'] | undefined = typed
     ? typed.attrs.type === 'ATTRIBUTE'
       ? 'attribute'

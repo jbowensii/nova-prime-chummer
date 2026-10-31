@@ -73,7 +73,7 @@ import { fittedParts, modsOf } from '../assets/vehiclemods'
 import { critterView } from '../assets/critters'
 import { gradeFits, gradeKnown, gradeName } from '../creation/grades'
 import { capacityOf, capacityUsed, entryLabel, hostsOf, fitsHost } from '../../../catalog/domain/categories'
-import { fit, mountSlots, requirementsOf, slotLabel, structureOf } from '../../../catalog/domain/structure'
+import { fit, missingPicks, mountSlots, requirementsOf, slotLabel, structureOf, VARIANT } from '../../../catalog/domain/structure'
 import { awakenedFlag, boughtKind, freePick, infectedFit, optionalPower, powerRefusal, runnerInfected } from '../creation/infected'
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
@@ -666,6 +666,31 @@ const RULES: Rule[] = [
             ]
           : []
       }),
+  },
+
+  // a required sub-option or variant left unpicked (Commlink6's SUBSELECT and reqVariant, behaviour-gap plan Stage 2):
+  // the line's price and effects depend on it
+  {
+    code: 'choice.option',
+    severity: 'warning',
+    tab: 'gear',
+    check: c => {
+      const lines: [string, Sr6Entry | undefined, Record<string, string> | undefined][] = [
+        ...c.b.qualities.map(
+          q => [`qualities.${q.uid}`, c.data.entry('qualities', q.id), q.options] as [string, Sr6Entry | undefined, Record<string, string> | undefined],
+        ),
+        ...c.b.purchases.flatMap(function all(x: Sr6Purchase): [string, Sr6Entry | undefined, Record<string, string> | undefined][] {
+          return [[`purchases.${x.uid}`, x.id ? c.data.entry(x.kind, x.id) : undefined, x.options], ...x.accessories.flatMap(all)]
+        }),
+      ]
+      return lines.flatMap(([path, e, o]) =>
+        missingPicks(e, o).map(ch => ({
+          path,
+          message: `${e!.name}: pick its ${ch.ref === VARIANT ? 'variant' : ch.ref.replace(/_/g, ' ')} (${ch.options.map(x => x.label).join(', ')}).`,
+          ...entryCite(e),
+        })),
+      )
+    },
   },
 
   // the Awakened flag overridden by the player (owner, 2026-10-16: always allowed, shown with what it overrides): also

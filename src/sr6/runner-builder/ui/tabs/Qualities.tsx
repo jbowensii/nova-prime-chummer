@@ -21,7 +21,7 @@ import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domai
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../domain/creation/infected'
 import { infectedOff } from '../../domain/assets/critterware'
 import { n, useSr6Editor } from '../editor'
-import { House, Situational } from '../Picker'
+import { House, OptionFields, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 
 export function QualitiesTab() {
@@ -115,6 +115,7 @@ export function QualitiesTab() {
                         }}
                       />
                     )}
+                    <OptionFields line={q} e={data.entry('qualities', q.id)} name={v?.name ?? q.id} />
                     {want && <div className={named ? 'muted small' : 'err small'}>{named ? `For ${named}` : `Name the ${want}`}</div>}
                   </td>
                   <td>
@@ -143,7 +144,7 @@ export function QualitiesTab() {
                       'free'
                     ) : v?.karma == null ? (
                       '?'
-                    ) : v.karmaSteps?.length ? (
+                    ) : v.karmaSteps?.length && !v.optionKarma ? (
                       <select
                         aria-label={`${v.name} karma`}
                         value={qualityCost(q, v) / (v.perLevel ? q.level : 1)}
@@ -155,7 +156,7 @@ export function QualitiesTab() {
                           </option>
                         ))}
                       </select>
-                    ) : v.karmaMax != null ? (
+                    ) : v.karmaMax != null && !v.optionKarma ? (
                       <Stepper
                         label={`${v.name} karma`}
                         value={qualityCost(q, v) / (v.perLevel ? q.level : 1)}

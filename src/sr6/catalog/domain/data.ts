@@ -46,6 +46,11 @@ const karmaIf = (e: Sr6Entry) => {
   const k = e.parts.find(p => p.tag === 'karmaif' && p.attrs.flag === 'awakened')
   return k && /^-?\d+$/.test(k.attrs.value ?? '') ? { karmaIf: { value: Number(k.attrs.value), ...(k.attrs.note ? { note: k.attrs.note } : {}) } } : {}
 }
+/** A quality's sub-options' karma (`<option choice id cost>`), as the view's optionKarma. */
+const optionKarma = (e: Sr6Entry) => {
+  const o = e.parts.filter(p => p.tag === 'option' && p.attrs.choice && Number(p.attrs.cost))
+  return o.length ? { optionKarma: Object.fromEntries(o.map(p => [`${p.attrs.choice}.${p.attrs.id}`, Number(p.attrs.cost)])) } : {}
+}
 
 /** Who may take a metamagic (its catalog `user`): an adept's only an adept or mystic adept, a magician's only a magician
  *  (full or aspected) or mystic adept; none set: any initiate. */
@@ -261,6 +266,7 @@ export function sr6Data(c: Sr6Catalog): Sr6Data {
         ...levels(e),
         ...(e.attrs.multi === 'true' ? { multi: true } : {}),
         page: e.page,
+        ...optionKarma(e),
         ...(e.attrs.karmaSteps ? { karmaSteps: e.attrs.karmaSteps.split(/\s+/).map(Number).filter(Number.isFinite) } : {}),
         ...(e.attrs.category ? { category: e.attrs.category } : {}),
         ...(e.attrs.granted === 'true' ? { granted: true } : {}),
