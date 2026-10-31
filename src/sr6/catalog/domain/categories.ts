@@ -167,6 +167,30 @@ export function stacks(kind: string, e?: Sr6Entry): boolean {
 export const isExplosive = (e?: Sr6Entry) =>
   (e?.kind === 'weapons' || e?.kind === 'gear') && /^AMMUNITION\/(EXPLOSIVES|GRENADES|ROCKETS)$/i.test(e.attrs.class ?? '')
 export const EXPLOSIVES_GROUP = 'Explosives & demolitions'
+
+/** The major category of a gear entry (~130 vendor-named categories fold into ten): first matching rule wins. */
+const GEAR_GROUPS: [string, RegExp][] = [
+  ['Ammunition', /ammo|ammunition|arrow|bolt shaft|mortar bomb/i],
+  [
+    'Vehicle & drone parts',
+    /vehicle|chassis|powertrain|propulsion|skin mod|trailer|drone|weapon mount|naval|cannon|mortar|laser|grapple|facility|rack|storage|mechanical arm/i,
+  ],
+  ['Software & Matrix', /software|app$|\bapp\b|codemod|\bic\b|hack|tag abuse|bbs|library|agent|coding|relay|formula|ripjack|btl/i],
+  [
+    'Electronics & commlinks',
+    /electronic|commlink|sensor|cyberdeck|data tap|visual|audio|optical|rfid|credstick|badgecam|internal component|case |faraday|identification|id and credit|communication|scanner|printing|cyberkit/i,
+  ],
+  ['Medical, drugs & chemicals', /drug|toxin|poison|medical|chemical|dmso|perfume|rescue/i],
+  ['Biotech & nanotech', /biotech|nano|colony|bacteria|chimera|cyberette|critter|cybertech/i],
+  ['Magic supplies & foci', /foci|focus|prepar|awakened|magic|alchem|astral|shifter|inhibitor/i],
+  ['Security, B&E & espionage', /security|restraint|breaking|disguise|espionage|interrogation|brick/i],
+  [
+    'Survival, tools & clothing',
+    /survival|supply|standard equipment|outfitting|clothing|tool|kit|equipment|instrument|spare|tent|fashion|accessory|spacesuit|ceramic/i,
+  ],
+]
+export const gearGroupOf = (e: Sr6Entry): string =>
+  isExplosive(e) ? EXPLOSIVES_GROUP : (GEAR_GROUPS.find(([, r]) => r.test(e.attrs.category ?? ''))?.[0] ?? 'Miscellaneous gear')
 export const isAmmoGear = (e?: Sr6Entry) => e?.kind === 'gear' && /ammo by weapon/i.test(e.attrs.category ?? '')
 
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other

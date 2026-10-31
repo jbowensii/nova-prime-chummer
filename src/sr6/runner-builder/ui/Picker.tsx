@@ -21,7 +21,16 @@ import { SR6_KINDS, type Sr6Catalog, type Sr6Entry, type Sr6Kind } from '../../f
 import type { Sr6Data } from '../../catalog/domain/data'
 import { gradeFactor, gradeName, gradeOptions, gradesFor, type GradeFactor } from '../domain/creation/grades'
 import { critterOnly, infectedOff } from '../domain/assets/critterware'
-import { entryLabel, entrySearch, EXPLOSIVES_GROUP, isAmmoGear, isExplosive, isAmmoType, stacks as itemStacks } from '../../catalog/domain/categories'
+import {
+  entryLabel,
+  entrySearch,
+  EXPLOSIVES_GROUP,
+  gearGroupOf,
+  isAmmoGear,
+  isExplosive,
+  isAmmoType,
+  stacks as itemStacks,
+} from '../../catalog/domain/categories'
 import { ATTR_NAMES, n, sr6EditHref, Sr6Editor, useSr6Editor, type Sr6Ctx } from './editor'
 import { formulaShown, Sr6Ref, sr6Row } from './EntryRef'
 
@@ -65,6 +74,9 @@ export const groupOf = (e: Sr6Entry) =>
  *  often vendor-named, category. */
 export const majorGroupOf = (e: Sr6Entry): string =>
   isExplosive(e) ? EXPLOSIVES_GROUP : e.kind === 'augmentations' ? e.attrs.type || 'Augmentations' : SR6_KINDS[e.kind].label
+
+/** The group a catalog picker files an entry under: gear by its major category (gearGroupOf), the rest by kind or category. */
+const pickerGroup = (e: Sr6Entry, multi: boolean) => (e.kind === 'gear' ? gearGroupOf(e) : multi ? majorGroupOf(e) : groupOf(e))
 
 /** House and the compendium's name for a GM compendium's entry (nothing for a book's). */
 export function House({ c, source }: { c: Sr6Catalog; source: string }) {
@@ -274,7 +286,7 @@ export function CatalogPicker({
         <Picker
           placeholder="Search"
           onPick={pick}
-          groups={[...new Set(entries.map(e => (kinds.length > 1 ? majorGroupOf : groupOf)(e) ?? ''))].filter(Boolean).sort()}
+          groups={[...new Set(entries.map(e => pickerGroup(e, kinds.length > 1) ?? ''))].filter(Boolean).sort()}
           items={entries.map(e => {
             const r = ratingRange(e.attrs.rating),
               p = priceAt(e, r[0] ?? 1, cr, undefined, data, from ? undefined : ctx?.ch.build),
@@ -282,7 +294,7 @@ export function CatalogPicker({
             return {
               id: `${e.kind}:${e.id}`,
               name: entryLabel(e),
-              group: (kinds.length > 1 ? majorGroupOf : groupOf)(e),
+              group: pickerGroup(e, kinds.length > 1),
               card: () => sr6Row(c, e),
               cardKind: SR6_KINDS[e.kind].label,
               meta: [
@@ -306,8 +318,8 @@ export function CatalogPicker({
                   <House c={c} source={e.source} /> <IssueBadges issues={e.issues} source={e.source} />
                 </>
               ),
-              search: `${entrySearch(e)} ${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
-              price: formula ?? (p.cost && `${r.length > 1 ? 'from ' : ''}${p.cost}`),
+              search: `${entrySearch(e)} ${pickerGroup(e, kinds.length > 1)} ${e.source} p.${e.page} ${c.sources.get(e.source)?.name ?? ''}`,
+              price: p.cost ? `${r.length > 1 ? 'from ' : ''}${p.cost}` : formula, // (a price for the first rating, else the book's formula)
               ...(blocked?.(e) ? { disabled: true } : {}),
             }
           })}

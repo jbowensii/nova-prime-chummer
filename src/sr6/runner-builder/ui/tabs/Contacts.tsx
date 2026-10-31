@@ -49,16 +49,19 @@ export function ContactsTab() {
   return (
     <div className="stack">
       <h2>Contacts</h2>
-      <p className="muted">
-        Contact points: <Left x={cp} />.{cp.ratingCap > 0 && ` Connection and loyalty go up to ${cp.ratingCap}.`}
-        {typed && ' Each life module’s points go to contacts of its types.'}
-        {!!cp.karma && (
-          <>
-            {' '}
-            Ratings past the points: <b>{n(cp.karma)} karma</b>.
-          </>
-        )}
-      </p>
+      {/* (career raises are paid in Karma on the Ledger, so the creation pool isn't shown: it would read "over by N") */}
+      {!career && (
+        <p className="muted">
+          Contact points: <Left x={cp} />.{cp.ratingCap > 0 && ` Connection and loyalty go up to ${cp.ratingCap}.`}
+          {typed && ' Each life module’s points go to contacts of its types.'}
+          {!!cp.karma && (
+            <>
+              {' '}
+              Ratings past the points: <b>{n(cp.karma)} karma</b>.
+            </>
+          )}
+        </p>
+      )}
       {b.contacts.length > 0 && (
         <div className="contacts-wrap">
           <table className="data contacts">
