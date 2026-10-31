@@ -1,0 +1,28 @@
+name: publish
+
+# Forgejo port of .github/workflows/publish.yml. main's :latest is published by ci.yml's publish job (Forgejo has no
+# workflow_run). This file handles release tags (v* -> <version>) and manual runs (branch -> :<branch>, main -> :latest).
+# ponytail: no "tag is on main and passed ci" gate (GitHub version used gh api); add when releases are cut on Forgejo.
+# Windows desktop job dropped: no windows runner. CodeQL dropped.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: https://data.forgejo.org/actions/checkout@v4
+      - env:
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          img=github.local.owenshomeonline.com/jbowensii/nova-prime-chummer
+          if [ "$EVENT" = push ]; then tag=${REF#v}; elif [ "$REF" = main ]; then tag=latest; else tag=$(echo "$REF" | tr / -); fi
+          echo "$REGISTRY_TOKEN" | docker login github.local.owenshomeonline.com -u jbowensii --password-stdin
+          docker build -t "$img:$tag" -t "$img:sha-${SHA::7}" .
+          docker push "$img:$tag" && docker push "$img:sha-${SHA::7}"
