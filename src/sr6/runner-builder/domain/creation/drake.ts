@@ -6,7 +6,7 @@
 // - Shifter (Bestial Nature): the Shifter quality; add-ons only with it (canBeSelected: FALSE without it), kept apart from
 //   the qualities (CL6's shifterAddOns: never one of the six, never in the negative-quality cap), all of them costing
 //   max(0, their Karma added up, the negative ones taking off); and a shifter can't use Resonance (todo.shifter_must_have_magic).
-import type { Sr6Build, Sr6Quality } from '../../../formats/domain/character'
+import type { Sr6Attr, Sr6Build, Sr6Quality } from '../../../formats/domain/character'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { MAGIC_KINDS, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
@@ -50,3 +50,38 @@ export function shifterAddOnKarma(b: Sr6Build, data: Sr6Data): number {
 }
 /** A shifter using Resonance (a technomancer), which Commlink6 stops. */
 export const shifterResonance = (b: Sr6Build, data: Sr6Data) => isShifter(b, data) && MAGIC_KINDS[b.magic].resonance
+
+/** The runner's drake type: its granted quality of the Drake type list (Lofwyr's Legions p. 16, the Drake quality's pick). */
+export const drakeType = (b: Sr6Build, data: Sr6Data): Sr6Entry | undefined =>
+  b.qualities.map(q => data.entry('qualities', q.id)).find(e => e?.attrs.category === 'Drake type')
+/** A drake type's dracoform adjustment points: the attributes they may raise (its `dracoform` effects) and the pool. */
+export function dracoformPool(e: Sr6Entry | undefined): { attrs: Sr6Attr[]; points: number } {
+  const fx = (e?.parts ?? []).filter(p => p.tag === 'effect' && p.attrs.op === 'dracoform' && p.attrs.target?.startsWith('attr:'))
+  return { attrs: fx.map(p => p.attrs.target.slice(5) as Sr6Attr), points: Math.max(0, ...fx.map(p => Number(p.attrs.value) || 0)) }
+}
+/** What a drake type gives (its `grant` effects: critter powers and its downsides, the dracoform-only ones with `when`),
+ *  each resolved to the catalog entry it names (the type's own book first, else by name), the name when none. */
+export function drakeGrants(data: Sr6Data, e: Sr6Entry | undefined): { kind: 'critterpowers' | 'qualities'; name: string; entry?: Sr6Entry; when?: string }[] {
+  return (e?.parts ?? [])
+    .filter(p => p.tag === 'effect' && p.attrs.op === 'grant')
+    .map(p => {
+      const [k, ref = ''] = (p.attrs.target ?? '').split(':')
+      const kind = k === 'quality' ? ('qualities' as const) : ('critterpowers' as const)
+      const entry = data.entry(kind, `${e!.source.toLowerCase()}.${ref}`) ?? data.named?.(ref.replace(/-/g, ' '), kind)
+      return { kind, name: entry?.name ?? ref.replace(/-/g, ' '), ...(entry ? { entry } : {}), ...(p.attrs.when ? { when: p.attrs.when } : {}) }
+    })
+}
+/** What is wrong with the dracoform points spent: no drake type, more than the pool, or on an attribute the type doesn't
+ *  name. */
+export function dracoformProblems(b: Sr6Build, data: Sr6Data): string[] {
+  const spent = Object.entries(b.dracoform ?? {}).filter(([, v]) => (v ?? 0) > 0)
+  if (!spent.length) return []
+  const t = drakeType(b, data)
+  if (!t) return ['Dracoform adjustment points need a drake type (the Drake quality’s pick).']
+  const { attrs, points } = dracoformPool(t)
+  const out: string[] = []
+  const total = spent.reduce((s, [, v]) => s + (v ?? 0), 0)
+  if (total > points) out.push(`${total} dracoform adjustment points spent; ${t.name} has ${points}.`)
+  for (const [a] of spent) if (!attrs.includes(a as Sr6Attr)) out.push(`${t.name}’s dracoform points can’t go to ${a.toUpperCase()}.`)
+  return out
+}

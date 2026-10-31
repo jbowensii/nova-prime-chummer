@@ -838,5 +838,17 @@
   {"cl6": "Affinity for Transit", "kind": "qualities", "id": "affinity-for-transit-source", "set": {"cl6": "affinity_for_transit"}, "gen": "marker"},
   {"cl6": "Grease Monkey", "kind": "qualities", "id": "grease-monkey-engineering-spec", "set": {"cl6": "grease_monkey"}, "gen": "marker"},
   {"cl6": "The Motorpool", "kind": "qualities", "id": "the-motorpool", "set": {"cl6": "motorpool"}, "gen": "marker"},
-  {"cl6": "Vehicle Empathy", "kind": "qualities", "id": "vehicle-empathy-pilot-specialization", "set": {"cl6": "vehicle_empathy"}, "gen": "marker"}
+  {"cl6": "Vehicle Empathy", "kind": "qualities", "id": "vehicle-empathy-pilot-specialization", "set": {"cl6": "vehicle_empathy"}, "gen": "marker"},
+  {"cl6": "Gecko Tips", "kind": "gear", "id": "gecko-tips-size-class-2", "set": {"cl6": "gecko_tips"}, "gen": "marker"},
+  {"cl6": "Gecko Tips", "kind": "gear", "id": "gecko-tips-size-class-3", "set": {"cl6": "gecko_tips"}, "gen": "marker"},
+  {"cl6": "Gecko Tips", "kind": "gear", "id": "gecko-tips-size-class-4", "set": {"cl6": "gecko_tips"}, "gen": "marker"},
+  {"cl6": "Drone rack", "kind": "gear", "id": "drone-rack-small", "set": {"cl6": "drone_rack"}, "gen": "marker"},
+  {"cl6": "Drone rack", "kind": "gear", "id": "drone-rack-medium", "set": {"cl6": "drone_rack"}, "gen": "marker"},
+  {"cl6": "Drone rack", "kind": "gear", "id": "drone-rack-large", "set": {"cl6": "drone_rack"}, "gen": "marker"},
+  {"cl6": "Expanded Drone Storage", "kind": "gear", "id": "expanded-drone-storage-small", "set": {"cl6": "expanded_drone_storage"}, "gen": "marker"},
+  {"cl6": "Expanded Drone Storage", "kind": "gear", "id": "expanded-drone-storage-medium", "set": {"cl6": "expanded_drone_storage"}, "gen": "marker"},
+  {"cl6": "Expanded Drone Storage", "kind": "gear", "id": "expanded-drone-storage-large", "set": {"cl6": "expanded_drone_storage"}, "gen": "marker"},
+  {"cl6": "Mechanical Arm", "kind": "gear", "id": "mechanical-arm-medium", "set": {"cl6": "mechanical_arm"}, "gen": "marker"},
+  {"cl6": "Mechanical Arm", "kind": "gear", "id": "mechanical-arm-large", "set": {"cl6": "mechanical_arm"}, "gen": "marker"},
+  {"cl6": "Mechanical Arm", "kind": "gear", "id": "mechanical-arm-huge", "set": {"cl6": "mechanical_arm"}, "gen": "marker"}
 ]

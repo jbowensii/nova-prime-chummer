@@ -19,7 +19,7 @@ from collections import defaultdict
 
 from importer.sr6.overrides import fit
 from tools.cl6check import canon, familymap, ours, reader
-from tools.cl6check.options import split
+from tools.cl6check.options import book_split, pick_names, split
 from tools.cl6check.valuemap import OVERRIDES
 
 MARKERS = {"METAGENIC", "ANIMALISM", "DRACOGENESIS_POWER"}
@@ -119,6 +119,18 @@ def main(argv):
                     stats[k] += 1
         if fl := variant_flags(rec, o):
             flags[src][kind, oid[len(src) + 1 :]] = (rec["name"], fl)
+    # (an item the book split under a shorter name than Commlink6's, AV Rapid Transit: each split entry is the record)
+    for rec in recs:
+        kind = canon.canonical(rec)["kind"]
+        for key in book_split(rec, idx, kind) if pick_names(rec) else ():
+            if key in seen or key[0] not in tables:
+                continue
+            seen.add(key)
+            if s := marker(rec, idx[key], allowed(kind) or set()):
+                rows[key[0]].append(
+                    {"cl6": rec["name"], "kind": kind, "id": key[2][len(key[0]) + 1 :], "set": s, "gen": "marker"}
+                )
+                stats["book split"] += 1
     for src, table in tables.items():
         out = [r for r in table if r.get("gen") != "marker"]
         for (kind, bare), (name, fl) in flags.get(src, {}).items():

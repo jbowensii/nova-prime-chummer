@@ -646,5 +646,17 @@
   {"cl6": "Records on File", "kind": "qualities", "id": "records-on-file", "set": {"cl6": "sinners_path_record"}, "gen": "marker"},
   {"cl6": "Criminal SIN", "kind": "qualities", "id": "criminal-sin", "set": {"cl6": "sinners_path_criminal"}, "gen": "marker"},
   {"cl6": "Into the Shadows", "kind": "qualities", "id": "into-the-shadows", "set": {"cl6": "sinners_path_shadows"}, "gen": "marker"},
-  {"cl6": "SINner’s path", "kind": "qualitypaths", "id": "sinners-path", "set": {"cl6": "sinners_path"}, "gen": "marker"}
+  {"cl6": "SINner’s path", "kind": "qualitypaths", "id": "sinners-path", "set": {"cl6": "sinners_path"}, "gen": "marker"},
+  {"cl6": "Gills", "kind": "qualities", "id": "infected-optional-powers.gills-freshwater", "set": {"cl6": "gills"}, "gen": "marker"},
+  {"cl6": "Gills", "kind": "qualities", "id": "infected-optional-powers.gills-saltwater", "set": {"cl6": "gills"}, "gen": "marker"},
+  {"cl6": "Gills", "kind": "qualities", "id": "gills-freshwater", "set": {"class": "METAGENIC", "cl6": "gills"}, "gen": "marker"},
+  {"cl6": "Gills", "kind": "qualities", "id": "gills-saltwater", "set": {"class": "METAGENIC", "cl6": "gills"}, "gen": "marker"},
+  {"cl6": "Claws", "kind": "qualities", "id": "claws-razor", "set": {"class": "METAGENIC", "cl6": "claws"}, "gen": "marker"},
+  {"cl6": "Claws", "kind": "qualities", "id": "claws-retractable", "set": {"class": "METAGENIC", "cl6": "claws"}, "gen": "marker"},
+  {"cl6": "Functional Tail", "kind": "qualities", "id": "functional-tail-paddle", "set": {"class": "METAGENIC", "cl6": "functional_tail"}, "gen": "marker"},
+  {"cl6": "Functional Tail", "kind": "qualities", "id": "functional-tail-prehensile", "set": {"class": "METAGENIC", "cl6": "functional_tail"}, "gen": "marker"},
+  {"cl6": "Functional Tail", "kind": "qualities", "id": "functional-tail-thagomizer", "set": {"class": "METAGENIC", "cl6": "functional_tail"}, "gen": "marker"},
+  {"cl6": "Functional Tail", "kind": "qualities", "id": "functional-tail-whip", "set": {"class": "METAGENIC", "cl6": "functional_tail"}, "gen": "marker"},
+  {"cl6": "Functional Wings", "kind": "qualities", "id": "functional-wings-type-2", "set": {"class": "METAGENIC", "cl6": "functional_wings"}, "gen": "marker"},
+  {"cl6": "Asymmetric Deformity", "kind": "qualities", "id": "asymmetric-deformity-quasimodo-severe", "set": {"class": "METAGENIC", "cl6": "asymmetric_deformity"}, "gen": "marker"}
 ]

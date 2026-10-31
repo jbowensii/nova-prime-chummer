@@ -128,5 +128,8 @@
   {"cl6": "Shifter Modesty", "kind": "qualities", "id": "shifter-modesty-shifter-add-on", "set": {"cl6": "shifter_modesty"}, "gen": "marker"},
   {"cl6": "Shifter Naivety", "kind": "qualities", "id": "shifter-naivety-shifter-add-on", "set": {"cl6": "shifter_naivety"}, "gen": "marker"},
   {"cl6": "Shifter Preference", "kind": "qualities", "id": "shifter-preference-shifter-add-on", "set": {"cl6": "shifter_preference"}, "gen": "marker"},
-  {"cl6": "Shifter Tell", "kind": "qualities", "id": "shifter-tell-shifter-add-on", "set": {"cl6": "shifter_tell"}, "gen": "marker"}
+  {"cl6": "Shifter Tell", "kind": "qualities", "id": "shifter-tell-shifter-add-on", "set": {"cl6": "shifter_tell"}, "gen": "marker"},
+  {"cl6": "Shifter", "kind": "qualities", "id": "shifter-scaly", "set": {"cl6": "shifter"}, "gen": "marker"},
+  {"cl6": "Shifter", "kind": "qualities", "id": "shifter-feathery", "set": {"cl6": "shifter"}, "gen": "marker"},
+  {"cl6": "Shifter", "kind": "qualities", "id": "shifter-fins", "set": {"cl6": "shifter"}, "gen": "marker"}
 ]

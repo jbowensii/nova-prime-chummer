@@ -481,7 +481,11 @@
       <xs:enumeration value="add"/><xs:enumeration value="set"/><xs:enumeration value="edge"/>
       <xs:enumeration value="edge-cost"/><xs:enumeration value="edge-cost-set"/><xs:enumeration value="no-edge"/>
       <xs:enumeration value="no-edge-gain"/><xs:enumeration value="wild-die"/><xs:enumeration value="hits"/>
-      <xs:enumeration value="threshold"/><xs:enumeration value="threshold-set"/></xs:restriction></xs:simpleType></xs:attribute>
+      <xs:enumeration value="threshold"/><xs:enumeration value="threshold-set"/>
+      <!-- a drake type's (Lofwyr's Legions p. 16): grant, the entry the target names is gained (`critter-power:armor`,
+           `quality:misshapen`, the id or name of the entry); dracoform, the attribute (attr:x) its dracoform adjustment
+           points (value: the pool) may raise -->
+      <xs:enumeration value="grant"/><xs:enumeration value="dracoform"/></xs:restriction></xs:simpleType></xs:attribute>
     <xs:attribute name="value" type="xs:string" use="required"/>
     <!-- low: read from a sentence the importer isn't sure of (a condition with no words, a formula per point of
          something): shown, never applied -->

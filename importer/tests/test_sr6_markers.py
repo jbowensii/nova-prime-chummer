@@ -72,6 +72,27 @@ class ImporterTest(unittest.TestCase):
             ["Remington Roomsweeper (w/ x)", "Ford"],
         )
 
+    def test_drake_types_from_the_table_with_grants(self):
+        from types import SimpleNamespace
+
+        from importer.sr6.recipes import ll
+
+        table = (
+            "| TYPE | DRACOFORM ADJUSTMENT POINTS (6) | BASIC POWERS | SPECIAL POWER |\n|---|---|---|---|\n"
+            "| Zed Drake | Body, Logic | Natural Armor, Dual Natured | Zap (Zed Drake) |\n"
+        )
+        rule = "you gain the downsides Memorable and Misshapen when in dracoform, and Most Wanted in both forms"
+        bs = [SimpleNamespace(text=table, page=16), SimpleNamespace(text=rule, page=16)]
+        cat = ll.drake_types(bs, [("armor", "Armor"), ("zap-zed-drake", "Zap (Zed Drake)")], [])
+        e = cat.entries["qualities"][0]
+        fx = [(c[1]["target"], c[1]["op"], c[1].get("when")) for c in e["children"] if c[0] == "effect"]
+        self.assertEqual(e["attrs"]["dracoform"], "bod log")
+        self.assertIn(("attr:bod", "dracoform", None), fx)
+        self.assertIn(("critter-power:armor", "grant", None), fx)  # (Natural Armor: the book's Armor)
+        self.assertIn(("critter-power:zap-zed-drake", "grant", None), fx)
+        self.assertIn(("quality:misshapen", "grant", "dracoform"), fx)
+        self.assertIn(("quality:most-wanted", "grant", None), fx)
+
     def test_shifter_only_add_on_granted(self):
         self.assertEqual(
             flags.specified("Natural weapon is only available when specified by the Shifter quality."),

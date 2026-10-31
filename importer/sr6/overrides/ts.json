@@ -136,5 +136,6 @@
   {"cl6": "Foamtek Refill Cannon", "kind": "gear", "id": "foamtek-cannon-tank-refill", "set": {"cl6": "ammo_foam_cannon"}, "gen": "marker"},
   {"cl6": "Battery Zapgun", "kind": "gear", "id": "parashield-zapgun-battery-pack-magazine", "set": {"cl6": "ammo_battery_zapgun"}, "gen": "marker"},
   {"cl6": "Foamtek Anti-Personnel Grenade", "kind": "weapons", "id": "foamtek-anti-personnel-grenade", "set": {"cl6": "foamtek_grenade_ap"}, "gen": "marker"},
-  {"cl6": "Foamtek Anti-Vehicle Grenade", "kind": "weapons", "id": "foamtek-anti-vehicle-grenade", "set": {"cl6": "foamtek_grenade_av"}, "gen": "marker"}
+  {"cl6": "Foamtek Anti-Vehicle Grenade", "kind": "weapons", "id": "foamtek-anti-vehicle-grenade", "set": {"cl6": "foamtek_grenade_av"}, "gen": "marker"},
+  {"cl6": "Trauma Response System", "kind": "gear", "id": "trauma-response-system-trauma-response-system-advanced", "set": {"cl6": "trauma_response_system"}, "gen": "marker"}
 ]

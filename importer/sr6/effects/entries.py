@@ -45,8 +45,8 @@ ENTRY = re.compile(
     r'^(\s*)<([\w]+) id="([^"]+)"(.*?)><name>(.*?)</name>(.*)</\2>(?:</sr6:data>)?\s*$'
 )  # (the file's last entry may close the root on its line: an override's)
 _KEEP = re.compile(
-    r'<effect [^>]*target="item:[^"]*"[^>]*/>'
-)  # (an add-on's effect read from its host's text: prose_items.add_ons)
+    r'<effect [^>]*target="item:[^"]*"[^>]*/>|<effect [^>]*op="(?:grant|dracoform)"[^>]*/>'
+)  # (an add-on's effect read from its host's text: prose_items.add_ons; a drake type's, from its table: recipes/ll.py)
 _DROP = re.compile(r"<(?:effect|test|link|incompatible|compatible) [^>]*/>")
 
 

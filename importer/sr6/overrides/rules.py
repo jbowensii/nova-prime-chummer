@@ -18,6 +18,8 @@ EFFECT_OPS = {
     "hits",
     "threshold",
     "threshold-set",
+    "grant",
+    "dracoform",
 }  # (docs/sr6-data-format.md)
 KID_TAGS = {
     "slot",

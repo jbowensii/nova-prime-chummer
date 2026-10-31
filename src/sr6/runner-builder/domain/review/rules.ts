@@ -61,7 +61,7 @@ import {
   str,
   type CreationRules,
 } from '../../../table-setup/domain/creation'
-import { drakeKind, isShifter, isShifterAddOn, shifterResonance } from '../creation/drake'
+import { dracoformProblems, drakeKind, isShifter, isShifterAddOn, shifterResonance } from '../creation/drake'
 import { collectiveFits, collectiveGrants, collectiveOptions, SURGE_CAP, surgeKarma } from '../creation/surge'
 import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnimalism } from '../creation/animalism'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
@@ -768,6 +768,14 @@ const RULES: Rule[] = [
         })),
       )
     },
+  },
+
+  // a drake's dracoform adjustment points (Lofwyr's Legions p. 16): within its drake type's pool, on the attributes it names
+  {
+    code: 'drake.dracoform',
+    severity: 'error',
+    tab: 'qualities',
+    check: c => dracoformProblems(c.b, c.data).map(message => ({ message })),
   },
 
   // the Awakened flag overridden by the player (owner, 2026-10-16: always allowed, shown with what it overrides): also

@@ -483,6 +483,9 @@ export function effectText(p: Sr6Part): string {
     .filter(Boolean)
     .join(', ')
   const how = `${a.affects === 'target' ? 'on the target: ' : a.affects === 'others' ? 'others get: ' : ''}${a.switch && a.switch !== 'conditional' ? `${a.switch}: ` : ''}`
+  // (a drake type's: the entry it gives, `critter-power:armor`; an attribute its dracoform adjustment points may raise)
+  if (a.op === 'grant') return `gains ${(a.target ?? '').split(':').pop()!.replace(/-/g, ' ')}${a.when ? ` (${a.when})` : ''}`
+  if (a.op === 'dracoform') return `dracoform adjustment points (${v}) may go to ${t}`
   const text =
     a.op === 'set'
       ? `${t} ${(a.target === 'item:damage-type' || a.target === 'derived:unarmed-damage') && /^[PS](\(e\))?$/.test(v) ? `${v[0] === 'S' ? 'Stun' : 'Physical'}${v.endsWith('(e)') ? ' (electrical)' : ''}` : valueText(v)}`

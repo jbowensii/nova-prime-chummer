@@ -726,5 +726,10 @@
   {"cl6": "Smart Materials (Melee weapons)", "kind": "weapons", "id": "smart-materials", "set": {"cl6": "smart_materials_melee"}, "gen": "marker"},
   {"cl6": "Underbarrel Weapon Mount", "kind": "weapons", "id": "underbarrel-weapon-attachment-mount", "set": {"cl6": "underbarrel_weapon_mount_attach"}, "gen": "marker"},
   {"cl6": "Underbarrel Weight", "kind": "weapons", "id": "underbarrel-weight-heavy-barrel", "set": {"cl6": "underbarrel_weight"}, "gen": "marker"},
-  {"cl6": "Landmine Modification", "kind": "weapons", "id": "landmine-modification", "set": {"cl6": "land_mine_modification"}, "gen": "marker"}
+  {"cl6": "Landmine Modification", "kind": "weapons", "id": "landmine-modification", "set": {"cl6": "land_mine_modification"}, "gen": "marker"},
+  {"cl6": "AV Rapid Transit", "kind": "armor", "id": "rapid-transit-basic", "set": {"cl6": "av_rapid_transit"}, "gen": "marker"},
+  {"cl6": "AV Rapid Transit", "kind": "armor", "id": "rapid-transit-elite", "set": {"cl6": "av_rapid_transit"}, "gen": "marker"},
+  {"cl6": "AV Rapid Transit", "kind": "armor", "id": "rapid-transit-platinum", "set": {"cl6": "av_rapid_transit"}, "gen": "marker"},
+  {"cl6": "AV Rapid Transit", "kind": "armor", "id": "rapid-transit-diamond", "set": {"cl6": "av_rapid_transit"}, "gen": "marker"},
+  {"cl6": "Tactical Hammer", "kind": "weapons", "id": "tactical-hammer-long", "set": {"cl6": "tactical_hammer"}, "gen": "marker"}
 ]

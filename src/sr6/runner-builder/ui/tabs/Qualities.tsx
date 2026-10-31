@@ -21,9 +21,9 @@ import { flag, num } from '../../../table-setup/domain/creation'
 import { qualityFitsMetatype, type Sr6QualityView } from '../../../catalog/domain/data'
 import { infectedOf, optionalPower, powerRefusal, priceAwakened } from '../../domain/creation/infected'
 import { infectedOff } from '../../domain/assets/critterware'
-import { dracogenesisRank, drakeKind, isDracogenesis } from '../../domain/creation/drake'
+import { dracoformPool, dracogenesisRank, drakeGrants, drakeKind, drakeType, isDracogenesis } from '../../domain/creation/drake'
 import { collectiveOptions, collectives, SURGE_CAP, surgeKarma } from '../../domain/creation/surge'
-import { n, useSr6Editor } from '../editor'
+import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { House, OptionFields, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
 
@@ -216,6 +216,33 @@ export function QualitiesTab() {
       <button className="btn" onClick={() => setPicking('negative')}>
         Add a negative quality…
       </button>
+      {/* a drake's type (the Drake quality's pick, a granted quality) and its dracoform adjustment points (LL p. 16; drake.ts) */}
+      {drakeType(b, data) && (
+        <>
+          <h3>Dracoform: {drakeType(b, data)!.name}</h3>
+          <p className="muted">
+            Gains{' '}
+            {drakeGrants(data, drakeType(b, data))
+              .map(g => `${g.name}${g.when ? ` (${g.when})` : ''}`)
+              .join(', ')}
+          </p>
+          <p>
+            Adjustment points: {Object.values(b.dracoform ?? {}).reduce((s, v) => s + (v ?? 0), 0)} of {dracoformPool(drakeType(b, data)).points}{' '}
+            {dracoformPool(drakeType(b, data)).attrs.map(a => (
+              <label key={a} className="inline">
+                {ATTR_NAMES[a]}{' '}
+                <Stepper
+                  label={`Dracoform ${ATTR_NAMES[a]}`}
+                  value={b.dracoform?.[a] ?? 0}
+                  min={0}
+                  max={dracoformPool(drakeType(b, data)).points}
+                  onChange={v => act({ op: 'dracoform', attr: a, points: v })}
+                />
+              </label>
+            ))}
+          </p>
+        </>
+      )}
       {/* an aware drake's dracogenesis powers (Commlink6's Dracoform page: 5 + n Karma for the nth; drake.ts) */}
       {(drakeKind(b, data) === 'aware' || powers.length > 0) && (
         <>

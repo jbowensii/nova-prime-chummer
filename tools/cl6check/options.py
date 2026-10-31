@@ -154,6 +154,40 @@ def variant_kids(rec, name, level, siblings=()):
     return kids
 
 
+def pick_names(rec):
+    """Every option and variant name the record gives (its picks' and its variants')."""
+    names = rec.get("variants") or {}
+    vs = canon._own(rec["el"], "variant")  # pylint: disable=protected-access  # (canon's own-children reader)
+    out = [names.get(v.get("id"), v.get("id")) for v in vs]
+    for ch in rec["el"].iter("choice"):
+        if ch.get("type") == "SUBSELECT":
+            ref = ch.get("ref") or "option"
+            out += [rec.get("options", {}).get(f"{ref}.{s.get('id')}", s.get("id")) for s in ch if s.tag == "subOption"]
+    return [x for x in out if x]
+
+
+def book_split(rec, idx, kind):
+    """The entries a book printed one per option or variant of the record under its own shorter name (`Rapid Transit
+    (basic)` … `(diamond)` of Commlink6's `AV Rapid Transit`): of the record's source and kind, an entry whose name less
+    its bracket ends the record's name and whose bracket is one of the record's option or variant names. [] else."""
+    words, names = _words(rec["name"]), pick_names(rec)
+    src = canon.canonical(rec)["src"]
+    out = []
+    for (s, k, oid), e in idx.items():
+        m = re.fullmatch(r"(.+?)\s*\(([^()]*)\)\s*", e["name"])
+        if s != src or k != kind or not m or not names:
+            continue
+        base = re.findall(r"[a-z0-9]+", m.group(1).casefold())
+        if (
+            base
+            and rec["name"].casefold().split()[-len(base) :] == base
+            and base[0] in words
+            and split(e["name"], names)
+        ):
+            out.append((s, k, oid))
+    return out
+
+
 def matches(recs, runs):
     """{(src, kind, cl6 id lower): {(kind, our id)}}: the checker's matcher (markers.pairs: every matched record) and
     the report of the import (`<runs>-report/cl6-diffs.csv`, when there is one)."""
@@ -211,6 +245,7 @@ def main(argv):
             found.get((c["src"], c["kind"], rec["id"].lower()))
             or {t for t in by_name.get((c["src"], rec["name"].casefold()), []) if t[0] == c["kind"]}
             or {t for t in named.get((c["src"], rec["name"].casefold()), []) if t[0] == c["kind"]}
+            or {(k, oid) for _s, k, oid in book_split(rec, idx, c["kind"])}
         )  # (a name fallback only in Commlink6's own kind: a program Armor is no critter power)
         priced = any(True for _ in el.iter("subOption")) or (rec["attrs"].get("reqVariant") or "").casefold() in YES
         if not targets:

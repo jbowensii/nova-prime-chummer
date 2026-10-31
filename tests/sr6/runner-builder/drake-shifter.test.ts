@@ -3,7 +3,15 @@
 // outside the six and the negative cap, only with the Shifter quality; no shifter technomancer; the pick round-trips.
 import { expect, test } from 'vitest'
 import { apply } from '../../../src/sr6/runner-builder/domain/creation/actions'
-import { dracogenesisKarma, drakeKind, isShifter, shifterAddOnKarma } from '../../../src/sr6/runner-builder/domain/creation/drake'
+import {
+  dracoformPool,
+  dracogenesisKarma,
+  drakeGrants,
+  drakeKind,
+  drakeType,
+  isShifter,
+  shifterAddOnKarma,
+} from '../../../src/sr6/runner-builder/domain/creation/drake'
 import { karmaBudget, qualityKarma } from '../../../src/sr6/runner-builder/domain/creation/karma'
 import { makeProvider } from '../../../src/sr6/runner-builder/domain/creation/providers'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/rules'
@@ -20,6 +28,9 @@ const FILES = [
     xml:
       '<sr6:data xmlns:sr6="urn:chummer-sr6:data:1" kind="qualities" version="1">' +
       Q('drake', 'Drake', 50, 'positive', ' uncounted="true"') +
+      '<quality id="zz.eastern-drake" source="ZZ" page="1" kind="positive" karma="0" granted="true" category="Drake type" dracoform="bod str"><name>Eastern Drake</name>' +
+      '<effect target="attr:bod" op="dracoform" value="6"/><effect target="attr:str" op="dracoform" value="6"/>' +
+      '<effect target="critter-power:fear" op="grant" value="1"/><effect target="quality:misshapen" op="grant" value="1" when="dracoform"/></quality>' +
       Q('latent-drake', 'Latent Drake', 25, 'positive', ' uncounted="true"') +
       Q('shifter-furry', 'Shifter (Furry)', 20) +
       Q('claws', 'Claws (Shifter add-on)', 6) +
@@ -86,4 +97,27 @@ test('a shifter technomancer is stopped', () => {
   apply(ch.build, { op: 'quality', id: 'zz.shifter-furry' }, w.data, w.cr)
   expect(codes(w, ch)).toContain('shifter.resonance')
   expect(codes(w, runner('technomancer'))).not.toContain('shifter.resonance')
+})
+
+test('a drake type: its grants, and dracoform points within its pool on the attributes it names (LL p. 16)', () => {
+  const w = world(),
+    ch = runner(),
+    b = ch.build
+  apply(b, { op: 'quality', id: 'zz.drake' }, w.data, w.cr)
+  apply(b, { op: 'quality', id: 'zz.eastern-drake' }, w.data, w.cr)
+  expect(drakeType(b, w.data)?.name).toBe('Eastern Drake')
+  expect(dracoformPool(drakeType(b, w.data))).toEqual({ attrs: ['bod', 'str'], points: 6 })
+  expect(drakeGrants(w.data, drakeType(b, w.data)).map(g => [g.name, g.when])).toEqual([
+    ['Fear', undefined],
+    ['misshapen', 'dracoform'],
+  ])
+  expect(apply(b, { op: 'dracoform', attr: 'agi', points: 1 }, w.data, w.cr)).toEqual({ ok: false, reason: 'not-dracoform' })
+  expect(apply(b, { op: 'dracoform', attr: 'bod', points: 4 }, w.data, w.cr)).toEqual({ ok: true })
+  expect(apply(b, { op: 'dracoform', attr: 'str', points: 3 }, w.data, w.cr)).toEqual({ ok: false, reason: 'over-pool' })
+  expect(apply(b, { op: 'dracoform', attr: 'str', points: 2 }, w.data, w.cr)).toEqual({ ok: true })
+  expect(codes(w, ch)).not.toContain('drake.dracoform')
+  const back = xmlToSr6(sr6ToXml(ch))
+  expect(back.ok && back.character.build.dracoform).toEqual({ bod: 4, str: 2 })
+  b.qualities = b.qualities.filter(q => q.id !== 'zz.eastern-drake')
+  expect(codes(w, ch)).toContain('drake.dracoform')
 })

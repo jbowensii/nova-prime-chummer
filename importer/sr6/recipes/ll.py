@@ -8,6 +8,7 @@ import sys
 from dataclasses import replace
 
 from importer.sr6 import catalog
+from importer.sr6.ids import slug
 from importer.xmlio import HEAD
 from importer.sr6.regroup import blocks, md_tables, norm
 
@@ -104,17 +105,65 @@ _ATTR = {
 }
 
 
-def drake_types(bs):
+_DOWNSIDES = re.compile(r"gain the downsides (.+?) when in dracoform, and (.+?) in both forms", re.I)
+
+
+def _named(entries, name):
+    """The id of the entry of this book `name` names: the same name, or one whose words open or close the other's
+    (`Natural Armor` is the drake powers' `Armor`; `Magical Defenses` is `Magical Defenses (Eastern Drake)`), else
+    the name as an id."""
+    n = norm(re.sub(r"\s*\([^()]*\)\s*$", "", name))
+    for i, other in entries:
+        o = norm(re.sub(r"\s*\([^()]*\)\s*$", "", other))
+        if n == o:
+            return slug(name)  # (the power itself: `Elemental Attack (Fire)` is one of its kinds)
+        if o and (n.endswith(" " + o) or n.startswith(o + " ") or o.startswith(n + " ")):
+            return i
+    return slug(name)
+
+
+def drake_types(bs, powers=(), qualities=()):
     """The four drake types (`basic dracoform bonuses`, p. 16; Commlink6's draketypes) as granted qualities a Drake
-    picks: `dracoform` the attributes its dracoform adjustment points go to, a <power> (what it gains, as an Infected
-    type's) for each basic and special power. A catalog of them, else None."""
+    picks, each with a `dracoform` effect on the attributes its adjustment points (the header's pool) may raise and a
+    `grant` effect for each basic and special power (powers: this book's critter powers, (id, name)) and for the
+    downsides the Drake quality names (`gain the downsides Unsteady Hands, Memorable, and Misshapen when in dracoform,
+    and Most Wanted in both forms`; qualities: this book's, (id, name)). A catalog of them, else None."""
     cat = catalog.Catalog(ID, ID.lower(), BOOK)
+    down = []
+    for b in bs:
+        if m := _DOWNSIDES.search(" ".join(b.text.split())):
+            for part, when in ((m.group(1), "dracoform"), (m.group(2), "")):
+                down += [(x.strip(), when) for x in re.split(r",\s*(?:and\s+)?|\s+and\s+", part) if x.strip()]
     for b in bs:
         for header, rows in md_tables(b.text):
             if len(header) < 4 or norm(header[0]) != "type" or "dracoform" not in norm(header[1]):
                 continue
+            pool = (re.search(r"\((\d+)\)", header[1]) or [None, "6"])[1]
             for r in rows:
-                powers = [p.strip() for p in f"{r[2]},{r[3]}".split(",") if p.strip()]
+                attrs = [_ATTR[w] for w in re.findall(r"[a-z]+", r[1].lower()) if w in _ATTR]
+                effects = [("effect", {"target": f"attr:{a}", "op": "dracoform", "value": pool}, None) for a in attrs]
+                effects += [
+                    (
+                        "effect",
+                        {"target": f"critter-power:{_named(powers, p.strip())}", "op": "grant", "value": "1"},
+                        None,
+                    )
+                    for p in f"{r[2]},{r[3]}".split(",")
+                    if p.strip()
+                ]
+                effects += [
+                    (
+                        "effect",
+                        {
+                            "target": f"quality:{_named(qualities, q)}",
+                            "op": "grant",
+                            "value": "1",
+                            **({"when": when} if when else {}),
+                        },
+                        None,
+                    )
+                    for q, when in down
+                ]
                 cat.add(
                     "qualities",
                     r[0].strip(),
@@ -124,13 +173,18 @@ def drake_types(bs):
                         "karma": "0",
                         "granted": "true",
                         "category": "Drake type",
-                        "dracoform": " ".join(_ATTR[w] for w in re.findall(r"[a-z]+", r[1].lower()) if w in _ATTR),
+                        "dracoform": " ".join(attrs),
                     },
-                    [("power", {"name": p}, None) for p in powers],
+                    effects,
                     "",
                     split=False,
                 )
     return cat if cat.entries["qualities"] else None
+
+
+def _entries(xml):
+    """(id, name) of a catalog file's entries."""
+    return re.findall(r'<\w+ id="([^"]+)"[^>]*><name>([^<]*)</name>', xml or "")
 
 
 def extract(regrouped, ctx=None):
@@ -140,7 +194,7 @@ def extract(regrouped, ctx=None):
 
     bs = prepare(blocks(regrouped))
     res = catalog.read(bs, ctx, sys.modules[__name__])
-    types = drake_types(bs)
+    types = drake_types(bs, _entries(res.files.get("critterpowers.xml")), _entries(res.files.get("qualities.xml")))
     if types and res.files.get("qualities.xml"):
         root = etree.fromstring(re.sub(r"^<\?xml[^>]*\?>\s*", "", res.files["qualities.xml"]).encode("utf8"))
         have = {e.get("id") for e in root if isinstance(e.tag, str)}

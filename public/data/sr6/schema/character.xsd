@@ -233,6 +233,8 @@
     <!-- the SURGE collective (a qualitysets id) and its choice (a Commlink6 quality id): its qualities are free ones -->
     <xs:attribute name="surgeCollective" type="xs:string"/>
     <xs:attribute name="surgeChoice" type="xs:string"/>
+    <!-- a drake's dracoform adjustment points by attribute (`bod:2 str:4`, Lofwyr's Legions p. 16) -->
+    <xs:attribute name="dracoform" type="xs:string"/>
     <xs:attribute name="tradition" type="xs:string"/>
     <xs:attribute name="drainAttr">
       <xs:simpleType><xs:restriction base="xs:string">

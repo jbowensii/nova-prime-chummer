@@ -1355,5 +1355,6 @@
   {"cl6": "Fault Sprite", "kind": "sprites", "id": "fault-sprite", "set": {"cl6": "fault"}, "gen": "marker"},
   {"cl6": "Machine Sprite", "kind": "sprites", "id": "machine-sprite", "set": {"cl6": "machine"}, "gen": "marker"},
   {"cl6": "Hermeticism", "kind": "traditions", "id": "hermeticism", "set": {"cl6": "hermetic"}, "gen": "marker"},
-  {"cl6": "Shamanism", "kind": "traditions", "id": "shamanism", "set": {"cl6": "shaman"}, "gen": "marker"}
+  {"cl6": "Shamanism", "kind": "traditions", "id": "shamanism", "set": {"cl6": "shaman"}, "gen": "marker"},
+  {"cl6": "Bone lacing", "kind": "augmentations", "id": "bone-lacing-titanium", "set": {"cl6": "bone_lacing"}, "gen": "marker"}
 ]

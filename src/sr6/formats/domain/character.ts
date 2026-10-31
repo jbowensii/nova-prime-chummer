@@ -444,6 +444,9 @@ export interface Sr6Build {
    *  are the runner's free ones (src/sr6/runner-builder/domain/creation/surge.ts); surgeChoice, its choice (a Commlink6 quality id) */
   surgeCollective?: string
   surgeChoice?: string
+  /** a drake's dracoform adjustment points (Lofwyr's Legions p. 16: six, on the attributes its drake type names), by
+   *  attribute; src/sr6/runner-builder/domain/creation/drake.ts */
+  dracoform?: Partial<Record<Sr6Attr, number>>
   attributes: Record<Sr6Attr, Sr6AttrSpend>
   skills: Sr6Skill[]
   knowledge: Sr6Knowledge[]

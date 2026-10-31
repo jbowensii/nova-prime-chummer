@@ -31,6 +31,7 @@ import {
   type MagicKind,
   type SlotShift,
   type Sr6Advance,
+  type Sr6Attr,
   type Sr6Build,
   type Sr6Character,
   type Sr6Contact,
@@ -214,6 +215,12 @@ function buildXml(b: Sr6Build): string {
       ...(b.transhuman ? { transhuman: b.transhuman } : {}),
       surgeCollective: b.surgeCollective,
       surgeChoice: b.surgeChoice,
+      dracoform:
+        b.dracoform && Object.keys(b.dracoform).length
+          ? Object.entries(b.dracoform)
+              .map(([k, v]) => `${k}:${v}`)
+              .join(' ')
+          : undefined,
       karmaToNuyen: b.karmaToNuyen,
       ...(b.karmaToDeck ? { karmaToDeck: b.karmaToDeck } : {}),
       bestAttr: b.bestAttr,
@@ -434,6 +441,14 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
 const def = <T extends object>(o: T): T => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as T
 const listOrNone = <T>(xs: T[]) => (xs.length ? xs : undefined)
 const str = (e: Element, a: string) => e.getAttribute(a) ?? undefined
+// a drake's dracoform points: `bod:2 str:4`
+const readDracoform = (t?: string): Partial<Record<Sr6Attr, number>> | undefined => {
+  const pairs = (t ?? '')
+    .split(/\s+/)
+    .map(x => x.split(':'))
+    .filter(([k, v]) => (SR6_ATTRS as string[]).includes(k) && Number(v) > 0)
+  return pairs.length ? Object.fromEntries(pairs.map(([k, v]) => [k, Number(v)])) : undefined
+}
 // a line's sub-option picks: `<pick>=<id>[,<id>]` joined by `;`
 const optionsText = (o?: Record<string, string>) =>
   o && Object.keys(o).length
@@ -697,6 +712,7 @@ function readBuild(b: Element, fix?: string[]): Sr6Build {
       tradition: str(b, 'tradition'),
       surgeCollective: str(b, 'surgeCollective'),
       surgeChoice: str(b, 'surgeChoice'),
+      dracoform: readDracoform(str(b, 'dracoform')),
       mentorSpirit: str(b, 'mentorSpirit'),
       mentorAdvantage: adv == null ? undefined : oneOf(adv, ['magician', 'adept'] as const, 'mentor advantage', undefined, fix),
       drainAttr: drain == null ? undefined : oneOf(drain, ['log', 'int', 'cha'] as const, 'drain attribute', undefined, fix),
