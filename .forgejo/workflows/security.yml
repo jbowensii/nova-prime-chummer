@@ -1,0 +1,23 @@
+# Replaces GitHub CodeQL on Forgejo: Semgrep (code) + OSV-Scanner (dependency lockfiles). Report-only for now
+# (continue-on-error); make blocking by removing continue-on-error once the baseline is triaged.
+name: security
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+  schedule: [{ cron: '23 5 * * 1' }]
+  workflow_dispatch:
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: https://data.forgejo.org/actions/checkout@v4
+      - run: pip install --quiet semgrep
+      - run: semgrep scan --config p/default --error --exclude node_modules
+  osv:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: https://data.forgejo.org/actions/checkout@v4
+      - run: curl -fsSL -o /usr/local/bin/osv-scanner https://github.com/google/osv-scanner/releases/download/v2.2.4/osv-scanner_linux_amd64 && chmod +x /usr/local/bin/osv-scanner
+      - run: osv-scanner scan source -L package-lock.json -L importer/requirements.lock

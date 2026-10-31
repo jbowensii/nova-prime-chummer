@@ -23,8 +23,8 @@ jobs:
   publish:
     # a ci run of this repository's own push to main that passed (never a pull request's, which may be a fork's)
     if: >-
-      github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success'
-      && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository)
+      github.server_url == 'https://github.com' && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -89,7 +89,7 @@ jobs:
   # UNVERIFIED: never run on a real runner. Secrets (set by the owner in the repo settings, referenced only): CSC_LINK (the .pfx,
   # base64 or URL), CSC_KEY_PASSWORD. Nothing here prints them. A tag containing "-" (e.g. v0.21.0-beta.1) must be marked a prerelease.
   desktop:
-    if: github.event_name == 'push'
+    if: github.server_url == 'https://github.com' && github.event_name == 'push'
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:

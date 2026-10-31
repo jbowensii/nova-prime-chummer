@@ -1,0 +1,15 @@
+# Forgejo port of .github/workflows/distribution.yml: cheap syntax checks for the distribution scripts.
+name: Distribution
+on:
+  push: { branches: [main] }
+  pull_request: { branches: [main] }
+jobs:
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: https://data.forgejo.org/actions/checkout@v4
+      - run: sh -n docker-entrypoint.sh
+      - run: bash -n distribution/ubuntu/install.sh
+      # ponytail: apt-get when the runner image lacks shellcheck; bake it into the runner image if runs get slow
+      - run: command -v shellcheck || { apt-get update -qq && apt-get install -y -qq shellcheck; }
+      - run: shellcheck docker-entrypoint.sh distribution/ubuntu/install.sh
