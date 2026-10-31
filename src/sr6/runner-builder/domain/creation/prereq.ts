@@ -9,6 +9,7 @@ import type { Sr6Attr, Sr6Build, Sr6Purchase } from '../../../formats/domain/cha
 import type { Sr6Entry } from '../../../formats/domain/types'
 import type { CreationRules } from '../../../table-setup/domain/creation'
 import { augmentedRating } from './attributes'
+import { augmentBonus } from './bonuses'
 import { essenceBudget } from './essence'
 import { entryOf } from './purchases'
 import type { Provider } from './providers'
@@ -55,10 +56,10 @@ const pretty = (ref: string) => ref.replace(/_/g, ' ')
  *  a choice, a skill specialization, an item attribute). Semantics as Commlink6: ungrouped tests all hold; the tests of
  *  one `group` hold when any does; negate turns a test round. ponytail: several ungrouped METATYPE / MAGIC_RESO tests
  *  read as alternatives (a runner has one of each; Commlink6 prints them as a list), not as all-required. */
-export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1): { failed: string[]; unchecked: string[] } {
+export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1, skip: string[] = []): { failed: string[]; unchecked: string[] } {
   const failed: string[] = [],
     unchecked: string[] = []
-  const tests = structureOf(item).prerequisites.filter(t => t.apply === 'CHARACTER' && t.remove !== 'true')
+  const tests = structureOf(item).prerequisites.filter(t => t.apply === 'CHARACTER' && t.remove !== 'true' && !skip.includes(t.type))
   if (!tests.length) return { failed, unchecked }
   const { data, b } = c
   const nameOf = (kind: string, id: string, fallback?: string) => data.entry(kind as never, id)?.name ?? fallback
@@ -72,8 +73,28 @@ export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1):
   }
   const skillRank = (ref: string) => {
     const s = b.skills.find(x => normName(x.id.split('.').pop() ?? x.id) === key(ref) || named(data.skills[x.id]?.name, ref))
-    return s ? s.points + s.karma : 0
+    // rank plus the bonuses the build already computes (augmentations, qualities); ponytail: before the table's augmented-skill cap
+    return s ? s.points + s.karma + augmentBonus(b, data, 'skill', s.id) : 0
   }
+  const powerLevel = (ref: string) =>
+    Math.max(0, ...b.picks.filter(x => x.kind === 'adeptpowers' && named(nameOf(x.kind, x.id, x.name), ref)).map(x => x.level ?? 1))
+  const gearCount = (ref: string) => {
+    const walk = (x: Sr6Purchase): number =>
+      (named(x.name ?? entryOf(x, data)?.name, ref) ? (x.rating ?? x.qty) : 0) + x.accessories.reduce((n, a) => Math.max(n, walk(a)), 0)
+    return Math.max(0, ...b.purchases.map(walk))
+  }
+  // a reference naming nothing in the catalog (a book not imported, a localized or renamed item) can't be told: never a false error
+  const KIND_OF: Record<string, string[]> = {
+    QUALITY: ['qualities'],
+    METAECHO: ['metamagics', 'echoes'],
+    ADEPT_POWER: ['adeptpowers'],
+    COMPLEX_FORM: ['complexforms'],
+    GEAR: ['weapons', 'armor', 'augmentations', 'electronics', 'programs', 'gear', 'vehicles', 'ammotypes'],
+  }
+  const known = (t: P) =>
+    t.type === 'METATYPE'
+      ? Object.values(data.metatypes).some(m => named(m.name, t.ref))
+      : !KIND_OF[t.type] || KIND_OF[t.type].some(k => data.named?.(pretty(t.ref), k as never))
   const want = (t: P) => (t.value.trim() === '$RATING' ? rating : Number(t.value))
   /** whether one test holds; undefined: can't be told */
   const holds = (t: P): boolean | undefined => {
@@ -83,9 +104,9 @@ export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1):
     if (t.type === 'METATYPE') r = named(data.metatypes[b.metatype]?.name, ref)
     else if (t.type === 'QUALITY') r = t.kind === 'valuereq' && t.value ? level(ref) >= want(t) : held(['qualities'], ref)
     else if (t.type === 'METAECHO') r = held(['metamagics', 'echoes'], ref)
-    else if (t.type === 'ADEPT_POWER') r = held(['adeptpowers'], ref)
+    else if (t.type === 'ADEPT_POWER') r = t.kind === 'valuereq' && t.value ? powerLevel(ref) >= want(t) : held(['adeptpowers'], ref)
     else if (t.type === 'COMPLEX_FORM') r = held(['complexforms'], ref)
-    else if (t.type === 'GEAR') r = owned(ref)
+    else if (t.type === 'GEAR') r = t.kind === 'valuereq' && t.value ? gearCount(ref) >= want(t) : owned(ref)
     else if (t.type === 'MAGIC_RESO') r = KINDS[key(ref).replace(/ /g, '')]?.includes(b.magic) ?? undefined
     else if (t.type === 'SKILL' && !t.what) r = t.kind === 'valuereq' && t.value ? skillRank(ref) >= want(t) : skillRank(ref) > 0
     else if (t.type === 'ATTRIBUTE' && !t.what) {
@@ -103,6 +124,8 @@ export function characterRequirements(item: Sr6Entry, c: PrereqCtx, rating = 1):
         max = t.max ? Number(t.max) / (up === 'ESSENCE' ? 1000 : 1) : undefined
       if (have !== undefined && !Number.isNaN(min ?? 0) && !Number.isNaN(max ?? 0)) r = (min === undefined || have >= min) && (max === undefined || have <= max)
     }
+    // (a reference naming nothing exact in the catalog is believed only when the runner plainly has it)
+    if (r === false && !known(t)) return undefined
     return r === undefined ? undefined : t.negate === 'true' ? !r : r
   }
   const words = (t: P) => {

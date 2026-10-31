@@ -657,12 +657,13 @@ const RULES: Rule[] = [
     tab: 'qualities',
     check: c => {
       const out: Hit[] = []
-      const say = (e: Sr6Entry | undefined, path: string, rating?: number) => {
+      const say = (e: Sr6Entry | undefined, path: string, rating?: number, skip?: string[]) => {
         if (!e) return
-        const { failed } = characterRequirements(e, c, rating)
+        const { failed } = characterRequirements(e, c, rating, skip)
         if (failed.length) out.push({ path, message: `${entryLabel(e)} requires ${failed.join('; ')}, which the runner doesn’t have.`, ...entryCite(e) })
       }
-      for (const q of c.b.qualities) if (!q.free) say(c.data.entry('qualities', q.id), `qualities.${q.uid}`, q.level)
+      for (const q of c.b.qualities)
+        if (!q.free) say(c.data.entry('qualities', q.id), `qualities.${q.uid}`, q.level, c.data.qualities[q.id]?.metatypes ? ['METATYPE'] : []) // (a metatype list is quality.metatype's)
       for (const x of c.b.picks) say(c.data.entry(x.kind, x.id), `magic.${x.uid}`, x.level)
       for (const { x, path } of lines(c.b)) say(entryOf(x, c.data), path, x.rating)
       return out
