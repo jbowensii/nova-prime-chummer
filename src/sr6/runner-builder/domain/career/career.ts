@@ -46,7 +46,7 @@ import { gradeName, gradeProblem } from '../creation/grades'
 import { makeProvider, type Provider } from '../creation/providers'
 import { CAREER_KEEP, validateSr6 } from '../review/rules'
 import { bookValue, dataFind, ratingRange } from '../../../catalog/domain/values'
-import { entryLabel } from '../../../catalog/domain/categories'
+import { entryLabel, STACKING } from '../../../catalog/domain/categories'
 import { critterOnly, infectedOff, infectedQuality } from '../assets/critterware'
 import { critterQualityKarma, isCritterQuality, taughtPrice, TRAINED_LABELS, trainedWhat } from '../assets/critters'
 import type { Sr6QualityView } from '../../../catalog/domain/types'
@@ -182,6 +182,11 @@ export function applyAdvance(b: Sr6Build, a: Sr6Advance): void {
     case 'drop':
       b.purchases = b.purchases.filter(x => x.uid !== a.target)
       return
+    case 'quantity': {
+      const x = b.purchases.find(y => y.uid === a.target)
+      if (x) x.qty = a.qty
+      return
+    }
     case 'upgrade': {
       // (an add-on changed in place, e.g. a cyberlimb's Attribute increase to another rating: it keeps its place and uid)
       const host = b.purchases.find(x => x.accessories.some(y => y.uid === a.target))
@@ -611,6 +616,7 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
     case 'purchase': {
       const x = a.line
       if (!(x.qty >= 1)) no('below-one')
+      if (x.qty > 1 && !STACKING.has(x.kind)) no('own-line') // (only stacking kinds take a count)
       // (a design's line: its snapshot, the vehicle the design worked out to; a builders' custom limb: its own)
       const e = x.id
         ? (data.entry(x.kind, x.id) ?? limbSnapshot(x) ?? (x.design || x.id.startsWith('custom.') ? x.snapshot : undefined) ?? no('unknown-entry'))
@@ -627,6 +633,17 @@ function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRules, typ
         label: `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
         nuyen: x.gmPrice !== undefined && x.kind === 'vehicles' && Number.isFinite(x.gmPrice) && x.gmPrice >= 0 ? x.gmPrice : pr.cost,
       }
+    }
+    case 'quantity': {
+      // a stacking line bought again or sold down: the price difference (more costs, fewer credits it back at full price)
+      const x = b.purchases.find(y => y.uid === a.target) ?? no('unknown-line')
+      if (!STACKING.has(x.kind)) no('own-line')
+      if (!Number.isInteger(a.qty) || a.qty < 1) no('below-one')
+      if (a.qty === x.qty) no('unchanged')
+      const now = priced({ ...x, qty: a.qty }, data, cr),
+        was = priced(x, data, cr)
+      if (!now.ok || !was.ok) no('book-value')
+      return { label: `Quantity: ${lineLabel(x)} × ${x.qty} → × ${a.qty}`, nuyen: now.cost - was.cost }
     }
     case 'drop': {
       // selling credits an adjustable nuyen sellback (SR Missions: 30% of value by default, the owner sets it); a plain
