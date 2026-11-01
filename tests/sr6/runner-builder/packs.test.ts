@@ -64,3 +64,14 @@ test('career: one ledger entry at the pack price; void removes it all; survives 
   expect(currentBuild(v.ch).purchases).toEqual([])
   expect(currentBuild(v.ch).sins).toEqual([])
 })
+
+test('two packs at creation, each undone on its own', () => {
+  const b = buildOf('priority', { letters: 'CABDA', metatype: GLIM })
+  const spent = () => nuyenBudget(b, data, cr, makeProvider(b.method, data, cr)).spent
+  apply(b, { op: 'pack', id: 'tst.kit' }, data, cr)
+  apply(b, { op: 'pack', id: 'tst.kit' }, data, cr)
+  expect(spent()).toBe(2000)
+  const heads = b.purchases.filter(x => x.pack === x.uid)
+  apply(b, { op: 'purchase', remove: heads[0].uid }, data, cr)
+  expect(spent()).toBe(1000)
+})
