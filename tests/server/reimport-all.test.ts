@@ -2,7 +2,7 @@
 // Books → Re-import all (POST /api/books/reimport-all, /api/sr6/books/reimport-all) with the stub worker: every book
 // folder with its PDF is queued as a single re-import would be, a folder holding only original.pdf and its upload record
 // imports from scratch, and a book read by AI, one without its PDF and a busy one are left out, saying why. Made-up files.
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
@@ -83,4 +83,21 @@ test('Shadowrun 6: its own books only, the same way', async () => {
   expect((await done('sr6/books', 's1-only-pdf')).source).toBe('CRB')
   expect((await fetch(`${base}/api/books/reimport-all`, { method: 'PUT' })).status).toBe(405)
   expect(await (await fetch(`${base}/api/books/reimport-all`)).json()).toEqual({ queued: [], skipped: [] }) // nothing running
+})
+
+test('GM creation settings survive Re-import all: the toggle set before is still set after, the file untouched', async () => {
+  const put = await fetch(`${base}/api/sr6/creation`, {
+    method: 'PUT',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ settings: [{ key: 'karmaSpellsAtCreation', value: 'true' }] }),
+  })
+  expect(put.status).toBe(204)
+  const file = join(custom, 'sr6', 'creation.xml'),
+    before = readFileSync(file, 'utf8')
+  folder(join(library, 'sr6'), 's2-only-pdf')
+  const r = await fetch(`${base}/api/sr6/books/reimport-all`, { method: 'POST' })
+  expect(((await r.json()) as { queued: string[] }).queued).toContain('s2-only-pdf')
+  await done('sr6/books', 's2-only-pdf')
+  expect(readFileSync(file, 'utf8')).toBe(before)
+  expect(await (await fetch(`${base}/api/sr6/creation`)).json()).toContainEqual(expect.objectContaining({ key: 'karmaSpellsAtCreation', value: 'true' }))
 })

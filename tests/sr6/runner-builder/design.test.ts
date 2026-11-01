@@ -140,6 +140,8 @@ test('a walker loses no Top Speed; Integrated Armor counts half the Armor; a sma
   const me = designOf(design({ options: [opt('multi-engine')] }), data, cr).stats
   expect([me.accel, me.topSpeed]).toEqual([20, 320]) // speed modifier 5 + 4 = 9: (15 - 4.5, rounded down) × 2, (250 - 90) × 2
   expect(designOf(design({ options: [opt('underpowered')] }), data, cr).stats.topSpeed).toBe(80)
+  // owner ruling B: halve first (160 → 80), then the mod adds: Racing +100 → 180 (not (160 + 100) / 2 = 130)
+  expect(designOf(design({ options: [opt('underpowered'), opt('racing')] }), data, cr).stats.topSpeed).toBe(180)
   // a powertrain's printed special: -2 handling; a chassis's extra cargo (size class 7: 4 CF + 4)
   expect(designOf(design({ powertrain: 'zz.floater' }), data, cr).stats.handling).toBe(1)
   expect(designOf(design({ chassis: 'zz.lug-frame' }), data, cr).stats.cargoText).toBe('8 CF')

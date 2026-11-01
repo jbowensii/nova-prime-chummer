@@ -320,6 +320,8 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     dp += v ?? 0
   }
   if (swapDp) addDp(swapDp)
+  // owner ruling B: Underpowered halves the vehicle's Top Speed first; every option / mod then adds to the halved figure
+  if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
   for (const { e, level, k, road } of picked) {
     const p = designPart(e)
     if (p === 'quality') {
@@ -370,7 +372,6 @@ function baseDesignOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): DesignShe
     stats.accel *= 2
     stats.topSpeed *= 2
   }
-  if (has('underpowered')) stats.topSpeed = Math.floor(stats.topSpeed / 2)
   applyModEffects(stats, d, data, notes)
   clampHandling(stats, warnings)
   const ms = milspec(d, picked, stats, num(a.body), data, (message, page, source = 'DC') => warnings.push({ message, source, page }), notes)
@@ -595,7 +596,9 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
   // Speed", owner Q3), a walker none
   const sm = Math.floor(s.body / 2 + (hauler || has('integrated armor') ? s.armor / 2 : s.armor))
   s.accel = Math.floor(base.accel - sm / 2) + (s.accel - base.accel)
-  s.topSpeed = (walker ? base.topSpeed : base.topSpeed - 10 * sm) + (s.topSpeed - base.topSpeed)
+  // owner ruling B: Underpowered halves the base Top Speed first; options / engines / chassis then add to the halved figure
+  const baseTop = walker ? base.topSpeed : base.topSpeed - 10 * sm
+  s.topSpeed = (has('underpowered') ? Math.floor(baseTop / 2) : baseTop) + (s.topSpeed - base.topSpeed)
   // engines (p. 152; a Cargo Hauler only half the High Performance bonus) and the off-road chassis's Top Speed
   const engine: [string, number, number][] = [
     ['high performance', hauler ? 1 : 3, hauler ? 25 : 50],
@@ -618,7 +621,6 @@ export function designOf(d: Sr6Design, data: Sr6Data, cr: CreationRules): Design
     s.accel = Math.floor(s.accel * f)
     s.topSpeed = Math.floor(s.topSpeed * f)
   }
-  if (has('underpowered')) s.topSpeed = Math.floor(s.topSpeed / 2)
   applyModEffects(s, d, data, notes)
   clampHandling(s, warnings)
   const ms = milspec(d, picked, s, base.body, data, warn, notes)
