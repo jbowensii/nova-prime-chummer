@@ -1,4 +1,4 @@
-import { capacityRemaining, capacityUsed, isAmmoGear, isAmmoType } from '../../../catalog/domain/categories'
+import { capacityRemaining, capacityUsed, isAmmoGear, isAmmoType, stacks } from '../../../catalog/domain/categories'
 import { fit, subChoices } from '../../../catalog/domain/structure'
 import { ratingOf } from './purchases'
 import { activeRules } from './rule-markers'
@@ -669,7 +669,7 @@ function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result 
       // owner's decision 9: each augmentation once a runner, a paired body part once a side
       if (op.kind === 'augmentations' && augmentationRoom(b, data, entryOf(line, data)) < 1) return no('once-per-runner')
       const same =
-        !OWN_LINE.has(op.kind) &&
+        (!OWN_LINE.has(op.kind) || stacks(op.kind, entryOf(line, data))) &&
         !isAmmoGear(entryOf(line, data)) && // each ammo line carries its own fitted ammo type, so adding again makes a new line
         !line.grade &&
         b.purchases.find(
@@ -725,7 +725,7 @@ function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result 
     case 'quantity': {
       const x = b.purchases.find(p => p.uid === op.uid)
       if (!x) return no('unknown-line')
-      if (OWN_LINE.has(x.kind)) return no('own-line')
+      if (OWN_LINE.has(x.kind) && !stacks(x.kind, entryOf(x, data))) return no('own-line') // (an expendable weapon -- grenade, explosive, rocket -- counts like gear)
       if (op.qty < 1) return no('below-one')
       x.qty = op.qty
       return OK
