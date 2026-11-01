@@ -24,7 +24,7 @@ import { critterOnly, infectedOff } from '../domain/assets/critterware'
 import {
   entryLabel,
   entrySearch,
-  EXPLOSIVES_GROUP,
+  explosiveGroup,
   gearGroupOf,
   isAmmoGear,
   isExplosive,
@@ -68,12 +68,12 @@ export const social = (s: string | undefined) => {
 
 /** The picker's and Game data's sub-category: an augmentation's type and category, else its category. */
 export const groupOf = (e: Sr6Entry) =>
-  isExplosive(e) ? EXPLOSIVES_GROUP : e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category
+  isExplosive(e) ? explosiveGroup(e) : e.kind === 'augmentations' ? [e.attrs.type, e.attrs.category].filter(Boolean).join(': ') : e.attrs.category
 /** A coarse major category for a picker that spans many kinds (Buy gear): breaks out by weapons, cyberware, bioware,
  *  geneware, ammunition, armour, software, … — the item's kind (or, for an augmentation, its type) — instead of the fine,
  *  often vendor-named, category. */
 export const majorGroupOf = (e: Sr6Entry): string =>
-  isExplosive(e) ? EXPLOSIVES_GROUP : e.kind === 'augmentations' ? e.attrs.type || 'Augmentations' : SR6_KINDS[e.kind].label
+  isExplosive(e) ? explosiveGroup(e) : e.kind === 'augmentations' ? e.attrs.type || 'Augmentations' : SR6_KINDS[e.kind].label
 
 /** The group a catalog picker files an entry under: gear by its major category (gearGroupOf), the rest by kind or category. */
 const pickerGroup = (e: Sr6Entry, multi: boolean) => (e.kind === 'gear' ? gearGroupOf(e) : multi ? majorGroupOf(e) : groupOf(e))

@@ -166,7 +166,16 @@ export function stacks(kind: string, e?: Sr6Entry): boolean {
  *  kind they are catalogued as (weapons, gear), from every book. Not the base ammunition lines (isAmmoGear). */
 export const isExplosive = (e?: Sr6Entry) =>
   (e?.kind === 'weapons' || e?.kind === 'gear') && /^AMMUNITION\/(EXPLOSIVES|GRENADES|ROCKETS)$/i.test(e.attrs.class ?? '')
-export const EXPLOSIVES_GROUP = 'Explosives & demolitions'
+/** Where an explosive is filed in a picker: explosive packages (by type, at a rating), detonators and triggers, grenades,
+ *  rockets and missiles. */
+export const explosiveGroup = (e: Sr6Entry) =>
+  /GRENADES$/i.test(e.attrs.class ?? '')
+    ? 'Grenades'
+    : /ROCKETS$/i.test(e.attrs.class ?? '')
+      ? 'Rockets & missiles'
+      : /detonator|trigger/i.test(`${e.name} ${e.attrs.category ?? ''}`)
+        ? 'Detonators & triggers'
+        : 'Explosives'
 
 /** The major category of a gear entry (~130 vendor-named categories fold into ten): first matching rule wins. */
 const GEAR_GROUPS: [string, RegExp][] = [
@@ -190,7 +199,7 @@ const GEAR_GROUPS: [string, RegExp][] = [
   ],
 ]
 export const gearGroupOf = (e: Sr6Entry): string =>
-  isExplosive(e) ? EXPLOSIVES_GROUP : (GEAR_GROUPS.find(([, r]) => r.test(e.attrs.category ?? ''))?.[0] ?? 'Miscellaneous gear')
+  isExplosive(e) ? explosiveGroup(e) : (GEAR_GROUPS.find(([, r]) => r.test(e.attrs.category ?? ''))?.[0] ?? 'Miscellaneous gear')
 export const isAmmoGear = (e?: Sr6Entry) => e?.kind === 'gear' && /ammo by weapon/i.test(e.attrs.category ?? '')
 
 /** An ammunition material (Bestial Nature p. 36: `x2 for copper or other common materials, x5 for silver or other
