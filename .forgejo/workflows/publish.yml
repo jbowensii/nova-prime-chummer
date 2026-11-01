@@ -19,15 +19,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: https://data.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # release tags (v*) go to the Forgejo registry only: GitHub's own publish.yml puts releases on GHCR
       - env:
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
           SHA: ${{ github.sha }}
           REF: ${{ github.ref_name }}
           EVENT: ${{ github.event_name }}
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_TOKEN: ${{ github.event_name != 'push' && secrets.GHCR_TOKEN || '' }}
         run: |
-          img=github.local.owenshomeonline.com/jbowensii/nova-prime-chummer
           if [ "$EVENT" = push ]; then tag=${REF#v}; elif [ "$REF" = main ]; then tag=latest; else tag=$(echo "$REF" | tr / -); fi
-          [ -n "$REGISTRY_TOKEN" ] || { echo "::warning::REGISTRY_TOKEN secret not set: image not pushed"; exit 0; }
-          echo "$REGISTRY_TOKEN" | docker login github.local.owenshomeonline.com -u jbowensii --password-stdin
-          docker build -t "$img:$tag" -t "$img:sha-${SHA::7}" .
-          docker push "$img:$tag" && docker push "$img:sha-${SHA::7}"
+          sh .forgejo/push-image.sh "$tag"

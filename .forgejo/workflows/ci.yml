@@ -110,12 +110,9 @@ jobs:
       options: -v /var/run/docker.sock:/var/run/docker.sock
     steps:
       - uses: https://data.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - env:
-          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+      - run: sh .forgejo/push-image.sh latest
+        env:
           SHA: ${{ github.sha }}
-        run: |
-          img=github.local.owenshomeonline.com/jbowensii/nova-prime-chummer
-          [ -n "$REGISTRY_TOKEN" ] || { echo "::warning::REGISTRY_TOKEN secret not set: image not pushed"; exit 0; }
-          echo "$REGISTRY_TOKEN" | docker login github.local.owenshomeonline.com -u jbowensii --password-stdin
-          docker build -t "$img:latest" -t "$img:sha-${SHA::7}" .
-          docker push "$img:latest" && docker push "$img:sha-${SHA::7}"
+          REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+          GHCR_USER: ${{ secrets.GHCR_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}

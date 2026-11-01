@@ -13,4 +13,4 @@ jobs:
       - run: bash -n distribution/ubuntu/install.sh
       # ponytail: apt-get when the runner image lacks shellcheck; bake it into the runner image if runs get slow
       - run: command -v shellcheck || { apt-get update -qq && apt-get install -y -qq shellcheck; }
-      - run: shellcheck docker-entrypoint.sh distribution/ubuntu/install.sh
+      - run: shellcheck docker-entrypoint.sh distribution/ubuntu/install.sh .forgejo/push-image.sh
