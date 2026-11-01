@@ -58,10 +58,39 @@ export function CareerIdentities() {
   )
 }
 
+/** Buy starter packs (any number; each is one undoable pack line). Shown at the top of the creation builder; career buys on the Ledger. */
+export function StarterPacks() {
+  const { c, act } = useSr6Editor()
+  const [pack, setPack] = useState('')
+  if (c.entries.packs.size === 0) return null
+  return (
+    <div className="row">
+      <label className="inline">
+        Starter pack{' '}
+        <select aria-label="Starter pack" value={pack} onChange={e => setPack(e.target.value)}>
+          <option value="">Pick one</option>
+          {packChoices(c.entries.packs.values())}
+        </select>
+      </label>
+      <button
+        className="btn small"
+        disabled={!pack}
+        onClick={() => {
+          if (!act({ op: 'pack', id: pack })) setPack('')
+        }}
+      >
+        Buy pack
+      </button>
+      <span className="muted">
+        Expands into its items as separate lines, charged at the pack price. Buy as many as you like; remove a pack line (Gear tab) to undo it all.
+      </span>
+    </div>
+  )
+}
+
 export function GearTab() {
   const { c, d, ch, data, cr, act, edit } = useSr6Editor()
   const [custom, setCustom] = useState(false)
-  const [pack, setPack] = useState('')
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
     [cost, setCost] = useState(''),
@@ -182,27 +211,6 @@ export function GearTab() {
           Custom item…
         </button>
       </div>
-      {c.entries.packs.size > 0 && (
-        <div className="row">
-          <label className="inline">
-            Starter pack{' '}
-            <select aria-label="Starter pack" value={pack} onChange={e => setPack(e.target.value)}>
-              <option value="">Pick one</option>
-              {packChoices(c.entries.packs.values())}
-            </select>
-          </label>
-          <button
-            className="btn small"
-            disabled={!pack}
-            onClick={() => {
-              if (!act({ op: 'pack', id: pack })) setPack('')
-            }}
-          >
-            Buy pack
-          </button>
-          <span className="muted">Expands into its items as separate lines, charged at the pack price. Remove the pack line to undo it all.</span>
-        </div>
-      )}
       <BuyItemDesign kind="weapon" />
       <PurchaseSection
         kind="weapons"
