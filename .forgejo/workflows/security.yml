@@ -11,15 +11,29 @@ jobs:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: https://data.forgejo.org/actions/checkout@v4
+      - uses: https://data.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: python3 -m venv /tmp/sg && /tmp/sg/bin/pip install --quiet semgrep
-      - run: /tmp/sg/bin/semgrep scan --config p/default --error --exclude node_modules
+      # Rule excludes, each a reviewed false positive (2026-10-31 triage of 105 findings):
+      #  avoid-query-set-extra: a Django rule; there is no Django here (it matched recipe.extra()/our own .extra helpers)
+      #  detect-non-literal-regexp: server regexps are built from code constants (tag/attribute/cookie names) or the
+      #    admin's own config, never request input
+      #  use-defused-xml-parse: stdlib ElementTree on Python 3.12+ (expat 2.6+) fetches no external entities and guards
+      #    entity expansion; lxml parsing of outside XML already uses resolve_entities=False/no_network (datapack.PARSER)
+      #  missing-user / missing-user-entrypoint: by design, the entrypoint starts as root only to chown data to
+      #    PUID:PGID and then drops to it (docker-entrypoint.sh)
+      - run: >-
+          /tmp/sg/bin/semgrep scan --config p/default --error
+          --exclude-rule python.django.security.audit.query-set-extra.avoid-query-set-extra
+          --exclude-rule javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
+          --exclude-rule python.lang.security.use-defused-xml-parse.use-defused-xml-parse
+          --exclude-rule dockerfile.security.missing-user.missing-user
+          --exclude-rule dockerfile.security.missing-user-entrypoint.missing-user-entrypoint
         continue-on-error: true # report-only
   trivy:
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
-      - uses: https://data.forgejo.org/actions/checkout@v4
+      - uses: https://data.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: curl -fsSL https://github.com/aquasecurity/trivy/releases/download/v0.76.1/trivy_0.76.1_Linux-64bit.tar.gz | tar -xz -C /usr/local/bin trivy
       - run: trivy fs --scanners vuln,secret,misconfig --skip-dirs node_modules --exit-code 1 .
         continue-on-error: true # report-only

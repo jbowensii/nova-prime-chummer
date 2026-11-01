@@ -8,7 +8,7 @@ jobs:
   scripts:
     runs-on: ubuntu-latest
     steps:
-      - uses: https://data.forgejo.org/actions/checkout@v4
+      - uses: https://data.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: sh -n docker-entrypoint.sh
       - run: bash -n distribution/ubuntu/install.sh
       # ponytail: apt-get when the runner image lacks shellcheck; bake it into the runner image if runs get slow

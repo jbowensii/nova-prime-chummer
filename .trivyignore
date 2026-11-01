@@ -1,0 +1,2 @@
+# Dockerfile has no USER: by design, docker-entrypoint.sh starts as root to chown data to PUID:PGID, then drops to it
+AVD-DS-0002

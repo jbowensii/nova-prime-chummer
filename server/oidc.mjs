@@ -162,7 +162,7 @@ export function oidcApi({
   const unseal = text => {
     try {
       const b = Buffer.from(text, 'base64url'),
-        d = createDecipheriv('aes-256-gcm', sealKey(), b.subarray(0, 12)).setAAD(AAD)
+        d = createDecipheriv('aes-256-gcm', sealKey(), b.subarray(0, 12), { authTagLength: 16 }).setAAD(AAD) // a short tag is refused, not trusted
       d.setAuthTag(b.subarray(12, 28))
       const v = JSON.parse(Buffer.concat([d.update(b.subarray(28)), d.final()]).toString('utf8'))
       return v && typeof v === 'object' ? v : null

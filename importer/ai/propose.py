@@ -216,7 +216,8 @@ def schema_notes(table, xml):
 
     try:
         root = etree.fromstring(
-            f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{table}" version="1">{xml}</ca2:data>'.encode("utf8")
+            f'<ca2:data xmlns:ca2="{xmlio.NS}" kind="{table}" version="1">{xml}</ca2:data>'.encode("utf8"),
+            datapack.PARSER,  # no entities, DTDs or network: the XML comes from an AI model
         )
     except etree.XMLSyntaxError as e:
         return [f"isn’t readable XML ({e})"]

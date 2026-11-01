@@ -1,0 +1,9 @@
+# Paths Semgrep skips (Forgejo security.yml). Each line has its reason.
+node_modules/
+dist/
+# GitHub-only workflows/config: CodeQL scans them on GitHub; findings were dependabot cooldown and a workflow_run checkout already limited to this repo's own pushes
+.github/
+# Claude Code hooks: local developer tooling, never shipped (finding: IFS save/restore in a shell hook)
+.claude/
+# end-to-end tests: test code driving a local test server (findings: regexps built from test constants)
+e2e/
