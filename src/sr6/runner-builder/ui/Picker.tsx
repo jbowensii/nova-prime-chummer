@@ -851,15 +851,24 @@ function ChoiceNote({ x, e, name }: { x: Sr6Purchase; e: Sr6Entry | undefined; n
     </label>
   )
 }
-/** The <option>s of the catalog's starter packs, A to Z, each with its price. */
+/** The starter packs as <option>s, grouped (<optgroup>) by the book's own section (Complete Character PACKs, Rifles, Cars, ...), A to Z, each with its price. */
 export function packChoices(packs: Iterable<Sr6Entry>): ReactNode {
-  return [...packs]
-    .sort((a, z) => a.name.localeCompare(z.name))
-    .map(e => (
-      <option key={e.id} value={e.id}>
-        {e.name}
-        {e.attrs.cost ? ` · ${e.attrs.cost}¥` : ''}
-      </option>
+  const groups = new Map<string, Sr6Entry[]>()
+  for (const e of [...packs].sort((a, z) => a.name.localeCompare(z.name))) {
+    const g = e.attrs.category || 'Other'
+    groups.set(g, [...(groups.get(g) ?? []), e])
+  }
+  return [...groups]
+    .sort(([a], [z]) => a.localeCompare(z))
+    .map(([g, es]) => (
+      <optgroup key={g} label={g}>
+        {es.map(e => (
+          <option key={e.id} value={e.id}>
+            {e.name}
+            {e.attrs.cost ? ` · ${e.attrs.cost}¥` : ''}
+          </option>
+        ))}
+      </optgroup>
     ))
 }
 export function PurchaseSection({
