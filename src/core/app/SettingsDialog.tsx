@@ -110,9 +110,12 @@ export function SettingsButton() {
           {/* not isAdmin(): that is true without a server, where AI settings can't work */}
           {me?.role === 'admin' && (
             <fieldset>
-              <legend>AI settings</legend>
-              <p className="muted">The AI provider and keys the importer uses for books its recipes can’t read.</p>
-              <a className="btn" href="#/books/ai" onClick={() => setOpen(false)}>
+              <legend>AI for Ask the rules / Search the rules</legend>
+              <p className="muted">
+                The AI provider for {sr6 ? 'Shadowrun 6' : 'Shadowrun Anarchy'} (its own settings): hosted (Anthropic, OpenAI, Gemini, Mistral, OpenRouter) or
+                self-hosted (Ollama, LM Studio, any OpenAI-compatible server, AnythingLLM), and its key.
+              </p>
+              <a className="btn" href={sr6 ? '#/sr6/books/ai' : '#/books/ai'} onClick={() => setOpen(false)}>
                 Open AI settings
               </a>
             </fieldset>

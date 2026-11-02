@@ -51,7 +51,17 @@ REVIEW_FILES = {
     "complex-form": ("complexforms.xml", "complexforms"),
 }
 SOURCE_ID = re.compile(r"[A-Z][A-Z0-9-]{0,19}")
-PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm")
+PROVIDER_IDS = (
+    "anthropic",
+    "openai",
+    "gemini",
+    "anythingllm",
+    "ollama",
+    "lmstudio",
+    "compatible",
+    "openrouter",
+    "mistral",
+)
 
 
 # what the sample runners are read with besides their own book (statblock.load_rules): the core and these, as books add
