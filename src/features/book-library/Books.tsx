@@ -1,6 +1,7 @@
 // Books: upload PDFs, see what each import produced, re-import or remove, and send unknown books to the AI
 // (server/books.mjs). Progress comes from each book's status.xml, polled every 2 s while anything runs. game="sr6": the
 // Shadowrun 6 area's books (/api/sr6/books*), with no AI, review, data pack or dupes.
+import { PageLink } from '../../core/ui-kit/PageLink'
 import { IconLink } from '../../core/ui-kit/icons'
 import { PageHeader } from '../../core/chrome/nav'
 import { useEffect, useRef, useState } from 'react'
@@ -819,7 +820,7 @@ export function BooksScreen({
                             <td key={e.id}>
                               <b>{'name' in e ? e.name : e.title}</b>{' '}
                               <span className="src">
-                                {e.source} p.{e.page}
+                                <PageLink source={e.source} page={e.page} />
                               </span>
                               {'printedRating' in e && e.printedRating != null && <> · rating {e.printedRating}</>}
                             </td>

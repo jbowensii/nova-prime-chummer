@@ -5,6 +5,7 @@
 //      with the same canon status. A 'badge' duplicate needs nothing more: step 2 already tells it apart.
 //   4. "Edited" when the catalog entry comes from the edits layer (EditEntry.tsx).
 // Entries built in the Amp Builder or as custom items have no book: "Built by you".
+import { PageLink } from '../../../core/ui-kit/PageLink'
 import type { Catalog } from '../../formats/domain/types'
 import { isCanonSource } from '../../formats/domain/canon'
 import { dupeLabel } from '../../catalog/domain/dupes'
@@ -23,7 +24,7 @@ export function SourceLabel(p: Props) {
   return (
     <span className="srcline">
       <span className="src" title={title}>
-        {source} p.{page}
+        <PageLink source={source} page={page} />
       </span>
       {s?.compendium ? <HouseChip name={s.name} /> : !isCanonSource(c, source) && <NonCanon source={source} />}
       {dupe?.kind === 'book' && (

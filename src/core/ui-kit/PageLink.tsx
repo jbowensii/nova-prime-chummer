@@ -1,19 +1,13 @@
-import { openPdfAtPage, getOffset, setOffset, unlink, pdfLinksSupported } from './pdfLinks'
+import { openPdfAtPage, pdfLinksSupported } from './pdfLinks'
+
+/** SettingsButton listens for this and opens Settings (its Linked rulebooks list). */
+export const OPEN_LINKED_BOOKS = 'nova:open-linked-books'
 
 /** "SR6 p.123": a link that opens the owner's own PDF at that page; plain text where the browser can't. */
 export function PageLink({ source, page }: { source: string; page: number | string }) {
   const text = `${source} p.${page}`
   const n = Number(page)
   if (!pdfLinksSupported() || !source || !Number.isFinite(n)) return <>{text}</>
-  const settings = () => {
-    const v = window.prompt(
-      `${source}: printed page 10 is PDF page ___ (enter a number; 10 means no offset). Type "unlink" to forget this PDF.`,
-      String(10 + getOffset(source)),
-    )
-    if (v === null) return
-    if (v.trim().toLowerCase() === 'unlink') void unlink(source)
-    else if (Number.isFinite(Number(v))) setOffset(source, Number(v) - 10)
-  }
   return (
     <>
       <a
@@ -26,7 +20,13 @@ export function PageLink({ source, page }: { source: string; page: number | stri
       >
         {text}
       </a>
-      <button type="button" className="linkish" title={`PDF page offset / unlink for ${source}`} aria-label={`PDF settings for ${source}`} onClick={settings}>
+      <button
+        type="button"
+        className="linkish"
+        title={`Linked rulebooks: page offset / unlink (${source})`}
+        aria-label={`PDF settings for ${source}`}
+        onClick={() => window.dispatchEvent(new Event(OPEN_LINKED_BOOKS))}
+      >
         ⚙
       </button>
     </>

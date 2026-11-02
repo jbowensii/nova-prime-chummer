@@ -34,6 +34,22 @@ async function idb<T>(mode: IDBTransactionMode, f: (s: IDBObjectStore) => IDBReq
 }
 const getHandle = (src: string) => idb<PermHandle | undefined>('readonly', s => s.get(src)).catch(() => undefined)
 
+/** Every linked book: its source id and the PDF's file name. */
+export async function linkedBooks(): Promise<{ src: string; file: string }[]> {
+  const d = await db().catch(() => undefined)
+  if (!d) return []
+  return new Promise(res => {
+    const out: { src: string; file: string }[] = [],
+      r = d.transaction(STORE).objectStore(STORE).openCursor()
+    r.onsuccess = () => {
+      const c = r.result
+      if (!c) return res(out)
+      out.push({ src: String(c.key), file: (c.value as PermHandle).name ?? '' })
+      c.continue()
+    }
+    r.onerror = () => res(out)
+  })
+}
 export const isLinked = async (src: string) => !!(await getHandle(src))
 export const unlink = (src: string) =>
   idb('readwrite', s => s.delete(src)).then(

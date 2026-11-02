@@ -3,6 +3,7 @@
 // form (Compendiums.tsx) shares, with a being's and a sprite's lines editable there. Saves go to the SR6 edits layer
 // (PUT /api/sr6/edits/<kind>/<id> → `importer sr6 edit set`, checked against the kind's XSD); Restore book version
 // deletes the edit. An empty Description, or the book's text unchanged, keeps the book's text.
+import { PageLink } from '../../../core/ui-kit/PageLink'
 import { useState, type ReactNode } from 'react'
 import { because } from '../../../core/ui-kit/auth'
 import { Modal } from '../../../core/ui-kit/bits'
@@ -99,7 +100,7 @@ function Form({ c, kind, id, onClose, onSaved }: Props & { kind: Sr6Kind; id: st
         <p className="muted">The book this entry came from was removed, so the edit can’t be saved again. Remove it, or re-import the book.</p>
       )}
       <p className="muted">
-        {e.source} p.{e.page} · {id}
+        <PageLink source={e.source} page={e.page} /> · {id}
       </p>
       <Sr6EntryFields
         entry={draft}

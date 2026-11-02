@@ -1,7 +1,9 @@
 // The settings dialog: theme, texture level, print style, background art; for the admin also AI settings (a link to the page
 // under Books), Background art, Sign-in and Backup. It composes feature panels, so it lives in the app shell; App.tsx hands it
 // to the header (nav.tsx HeaderBarsContext). The per-browser store is settings.tsx.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { LinkedBooks } from '../ui-kit/LinkedBooks'
+import { OPEN_LINKED_BOOKS } from '../ui-kit/PageLink'
 import { isAdmin, useMe } from '../ui-kit/auth'
 import { BackupSettings } from '../../features/backup/Backup'
 import { BackgroundSettings } from '../../features/appearance/Background'
@@ -53,6 +55,11 @@ export function SettingsButton() {
     setS(next)
     saveSettings(next)
   }
+  useEffect(() => {
+    const f = () => setOpen(true)
+    window.addEventListener(OPEN_LINKED_BOOKS, f)
+    return () => window.removeEventListener(OPEN_LINKED_BOOKS, f)
+  }, [])
   return (
     <>
       <IconButton
@@ -103,6 +110,7 @@ export function SettingsButton() {
                 )}
               </fieldset>
             ))}
+          <LinkedBooks />
           <p className="muted">Saved in this browser only.</p>
           <button className="btn" onClick={() => setNews(true)}>
             What’s new

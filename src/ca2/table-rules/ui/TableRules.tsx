@@ -2,6 +2,7 @@
 // sheet="optional", e.g. the core rulebook's); the GM adds house rules of their own. The GM switches them on and off on the
 // Table setup page (#/table; admin and editors; server/books.mjs PUT /api/table-rules, the server enforces the role);
 // everyone reads custom/table-rules.xml (tablerules.xsd) and players see the ones switched on there, read only.
+import { PageLink } from '../../../core/ui-kit/PageLink'
 import { PageHeader } from '../../../core/chrome/nav'
 import { useEffect, useRef, useState } from 'react'
 import { FREE_SINNER, newId, type Catalog, type Rule, type TableFlags } from '../../formats/domain/types'
@@ -147,7 +148,8 @@ const Text = ({ row }: { row: Row }) =>
     <p>{row.text}</p>
   ) : row.rule ? (
     <p className="muted">
-      The description is in the book ({row.rule.source} p.{row.rule.page}).
+      The description is in the book (<PageLink source={row.rule.source} page={row.rule.page} />
+      ).
     </p>
   ) : null
 

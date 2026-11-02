@@ -5,6 +5,7 @@
 // Nothing is kept: no history, no browser storage; asking again or closing clears the answer.
 // The answer and sources are model output: rendered as plain text only (React text nodes), never HTML or markdown. A
 // search's links are made by its page from a source's kind and id, only for an entry its catalog holds.
+import { PageLink } from '../../core/ui-kit/PageLink'
 import { IconButton } from '../../core/ui-kit/icons'
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { because, sentence, UNREACHABLE, useMe } from '../../core/ui-kit/auth'
@@ -163,7 +164,10 @@ function AskForm({
                 <ul className="ask-hits" aria-label="Found">
                   {st.a.sources.map((s, i) => (
                     <li key={i}>
-                      {search.link(s) ?? s.title} <span className="src">{[s.source, s.page && `p.${s.page}`].filter(Boolean).join(' ')}</span>
+                      {search.link(s) ?? s.title}{' '}
+                      <span className="src">
+                        {s.source && s.page ? <PageLink source={s.source} page={s.page} /> : [s.source, s.page && `p.${s.page}`].filter(Boolean).join(' ')}
+                      </span>
                     </li>
                   ))}
                 </ul>

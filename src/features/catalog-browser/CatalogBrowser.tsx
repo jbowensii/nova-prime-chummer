@@ -6,6 +6,7 @@
 // attention shows only the entries with an issue (a value the book leaves out or the importer
 // couldn't read, src/core/shared/formula.ts), each with its badge. Each game maps its catalog to BrowseKind rows
 // (src/ca2/game-data/ui/tabs/Data.tsx, src/sr6/game-data/ui/Data.tsx).
+import { PageLink } from '../../core/ui-kit/PageLink'
 import { useState } from 'react'
 import { AskSearch, type AskGame } from '../ai-assist/AskRules'
 import type { BrowseRow } from '../../core/ui-kit/types'
@@ -70,7 +71,7 @@ function Rows({ rows, className }: { rows: BrowseRow[]; className?: string }) {
                 <b>{r.name}</b>{' '}
                 <span className="srcline">
                   <span className="src">
-                    {r.source} p.{r.page}
+                    <PageLink source={r.source} page={r.page} />
                   </span>
                   {r.marks}
                   <IssueBadges issues={r.issues} source={r.source} />

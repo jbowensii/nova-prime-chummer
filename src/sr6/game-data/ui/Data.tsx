@@ -2,6 +2,7 @@
 // a filter (CatalogBrowser), the sources, the Foundry export, the catalog edits (editors:
 // each entry's Edit button opens Sr6EditEntry; a compendium entry's is a link to it in its compendium, for its owner only), a pointer to the creation rules (on Table setup) and the files that didn't load. Kept apart from Anarchy's page, which is
 // bound to its own catalog type.
+import { PageLink } from '../../../core/ui-kit/PageLink'
 import { useMemo, useState } from 'react'
 import { canEdit, isAdmin, useMe } from '../../../core/ui-kit/auth'
 import { NonCanon } from '../../../core/ui-kit/bits'
@@ -156,7 +157,7 @@ export function Sr6Data({ c, data, reload }: { c: Sr6Catalog; data: Sr6DataView;
                 state: c.original.has(entryKey(e.kind, e.id)) ? 'changed' : 'orphan',
                 source: (
                   <span className="src">
-                    {e.source} p.{e.page}
+                    <PageLink source={e.source} page={e.page} />
                   </span>
                 ),
               })),

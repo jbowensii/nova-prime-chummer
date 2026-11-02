@@ -65,7 +65,7 @@ export function sr6Row(c: Sr6Catalog, e: Sr6Entry, find: Find = catalogFind(c)):
     source: e.source,
     page: e.page,
     details: details(e, find),
-    text: e.text,
+    text: e.text || lifeModuleText(e),
     issues: e.issues,
     effects: effectsOf(e),
     marks: (
@@ -75,6 +75,40 @@ export function sr6Row(c: Sr6Catalog, e: Sr6Entry, find: Find = catalogFind(c)):
       </>
     ),
   }
+}
+
+const GRANT_LABEL: Record<string, string> = {
+  attributePoints: 'attribute points',
+  skillPoints: 'skill points',
+  adjustmentPoints: 'adjustment points',
+  contactPoints: 'contact points',
+  knowledgeSkills: 'knowledge skills',
+}
+/** A life module prints no description of its own, so say what it grants from its data (no book text invented). */
+export function lifeModuleText(e: Sr6Entry): string {
+  if (e.kind !== 'lifemodules') return ''
+  const a = e.attrs
+  const grants = Object.entries(GRANT_LABEL)
+    .filter(([k]) => a[k])
+    .map(([k, l]) => `${a[k]} ${l}`)
+  if (a.nuyen) grants.push(`${a.nuyen}¥`)
+  const lines = [
+    `${a.stage === 'opening' ? 'Opening' : 'Adult'} life module.`,
+    grants.length ? `Grants: ${grants.join(', ')}.` : 'Grants no points of its own.',
+    a.contactTypes ? `Contacts: ${a.contactTypes.split(' ').join(', ')}.` : '',
+    a.requires ? `Requires: ${a.requires}.` : '',
+    ...e.parts
+      .filter(p => p.tag === 'choice')
+      .map(
+        p =>
+          `Choose where ${p.attrs.points ?? 1} point(s) go: ${(p.attrs.options ?? '')
+            .split(/\s+/)
+            .filter(Boolean)
+            .map(o => o.split(':').pop()!.split('.').pop())
+            .join(', ')}.`,
+      ),
+  ]
+  return lines.filter(Boolean).join('\n\n')
 }
 
 /** `children` naming an entry of the runner's catalog, with its card on hover, focus or tap (none when it's gone). */

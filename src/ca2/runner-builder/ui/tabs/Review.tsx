@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { PageLink } from '../../../../core/ui-kit/PageLink'
 import { sinnerFree } from '../../domain/amps'
 import { activeEvents, finalize, reopen } from '../../domain/career'
 import { effectLines, optionOn } from '../../domain/derive'
@@ -138,7 +139,7 @@ export function ReviewTab() {
                 {x.message}{' '}
                 {x.page && (
                   <span className="cite">
-                    {x.source} p.{x.page}
+                    <PageLink source={x.source ?? ''} page={x.page} />
                   </span>
                 )}
                 {at && (

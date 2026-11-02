@@ -2,6 +2,7 @@
 // its parent, with its text from the private texts file. Searchable by title and text. The page is a table of contents; a
 // title opens the rule in a drawer at its own address (#/sr6/rules/<id>). The creation rules are on Table setup (Creation.tsx).
 // Above the contents, SR6’s AI search (AskSearch, the rules only): its finds link to their rules.
+import { PageLink } from '../../../core/ui-kit/PageLink'
 import { useMemo, useState } from 'react'
 import { isAdmin, useMe } from '../../../core/ui-kit/auth'
 import { AskSearch } from '../../../features/ai-assist/AskRules'
@@ -70,7 +71,7 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
                     <strong className="drain">Drain: {g.attr}</strong> <a href={`#/sr6/rules/${encodeURIComponent(`traditions/${trd.id}`)}`}>{trd.name}</a>
                     {tradRule && <> · {link(tradRule)}</>}{' '}
                     <span className="muted">
-                      {trd.source} p.{trd.page}
+                      <PageLink source={trd.source} page={trd.page} />
                     </span>
                   </li>
                 ))}
@@ -141,7 +142,7 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
                     <li key={r.id} className={`lvl${r.attrs.level ?? 1}`}>
                       {link(r)}{' '}
                       <span className="muted">
-                        {r.source} p.{r.page}
+                        <PageLink source={r.source} page={r.page} />
                       </span>
                     </li>
                   ))}
@@ -161,7 +162,8 @@ export function Sr6Rules({ c, open }: { c: Sr6Catalog; open?: string }) {
         {tradition && (
           <>
             <p className="muted">
-              Drain: {groups.find(g => g.drain === tradition.attrs.drain?.trim().toLowerCase())?.attr ?? 'not stated'} · {tradition.source} p.{tradition.page}
+              Drain: {groups.find(g => g.drain === tradition.attrs.drain?.trim().toLowerCase())?.attr ?? 'not stated'} ·{' '}
+              <PageLink source={tradition.source} page={tradition.page} />
             </p>
             {tradition.text ? <Prose text={tradition.text} /> : <p className="muted">The tradition text isn’t installed.</p>}
           </>

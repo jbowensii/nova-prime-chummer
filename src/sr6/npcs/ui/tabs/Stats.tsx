@@ -2,6 +2,7 @@
 // printed, editable, and the value at the rating; a mark when it can't be read), an Add stat for a missing standard key,
 // one box per line part the kind uses (a designed critter's skills, powers and weaknesses read only: the Design tab writes
 // them), and the NPC block as it prints.
+import { PageLink } from '../../../../core/ui-kit/PageLink'
 import { useState } from 'react'
 import { Stepper } from '../../../../core/ui-kit/bits'
 import { NPC_KINDS, NPC_STATS, npcParts, npcValues } from '../../../runner-builder/domain/creation/npc'
@@ -56,7 +57,8 @@ export function StatsTab() {
             <Sr6Ref kind={from.kind} id={from.id}>
               <b>{from.name}</b>
             </Sr6Ref>{' '}
-            ({from.source} p.{from.page}).
+            (<PageLink source={from.source} page={from.page} />
+            ).
           </>
         ) : (
           'Blank.'
