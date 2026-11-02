@@ -50,7 +50,11 @@ test('metatype and magic legality: a missing metatype, one the letter does not o
   expect(messages(mage, 'prio.magicAllowed')).toEqual(['Full magician isn’t available at magic priority D.'])
   const nomagic = runner({ magic: 'full' })
   nomagic.build.priorities.magic = null
-  expect(messages(nomagic, 'prio.magicAllowed')).toEqual(['Full magician isn’t available at magic priority (none).'])
+  expect(messages(nomagic, 'prio.magicAllowed')).toEqual(['Set the Magic priority on Creation method: Full magician needs one.'])
+  // shows on Magic, fixed on Method
+  expect(hits(nomagic, 'prio.magicAllowed').map(v => [v.path, v.fixAt])).toEqual([['magic', { tab: 'method' }]])
+  // a rule without one carries no fixAt (the UI defaults it to where it shows)
+  expect(hits(low, 'prio.metatypeAllowed')[0].fixAt).toBeUndefined()
 })
 
 test('attribute caps: Magic above the highest one, with the grade’s extra cited; one attribute at its maximum, two with Many Talents', () => {

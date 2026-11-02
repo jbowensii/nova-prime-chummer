@@ -186,7 +186,7 @@ export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
       ) : page === 'weapons' || page === 'cyberware' ? (
         <Sr6ItemDesigns key={page} c={c} data={data} cr={cr.rules} kind={page === 'weapons' ? 'weapon' : 'cyberware'} />
       ) : page === 'n' && route[1] ? (
-        <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} />
+        <Sr6EditorView key={`n/${route[1]}`} npc c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'stats'} sub={route[3]} />
       ) : page === 'c' && route[1] ? (
         <Sr6EditorView key={route[1]} c={c} data={data} cr={cr.rules} id={route[1]} tab={route[2] ?? 'concept'} sub={route.slice(3).join('/') || undefined} />
       ) : (

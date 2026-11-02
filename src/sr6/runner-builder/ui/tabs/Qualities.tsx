@@ -87,7 +87,7 @@ export function QualitiesTab() {
               const named =
                 want === 'attribute' ? noteAttr(q.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, q.note) ?? '']?.name : undefined
               return (
-                <tr key={q.uid}>
+                <tr key={q.uid} data-target={q.uid}>
                   <td>
                     <Sr6Ref kind="qualities" id={q.id}>
                       <b>{v?.name ?? q.name ?? q.id}</b>

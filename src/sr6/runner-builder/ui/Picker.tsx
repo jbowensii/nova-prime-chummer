@@ -945,7 +945,7 @@ export function PurchaseSection({
                   ),
                   licence = note.text
                 return (
-                  <tr key={x.uid}>
+                  <tr key={x.uid} data-target={x.uid}>
                     <td>
                       <LineName x={x} />
                       {customisable(x, data) && (

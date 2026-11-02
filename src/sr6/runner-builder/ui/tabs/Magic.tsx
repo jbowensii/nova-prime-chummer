@@ -109,7 +109,7 @@ export function MagicTab() {
                   const chosen =
                     want === 'attribute' ? noteAttr(x.note)?.toUpperCase() : want === 'skill' ? data.skills[noteSkill(data, x.note) ?? '']?.name : undefined
                   return (
-                    <tr key={x.uid}>
+                    <tr key={x.uid} data-target={x.uid}>
                       <td>
                         <Sr6Ref kind={kind} id={e?.id}>
                           <b>{name}</b>
@@ -345,7 +345,7 @@ export function MagicTab() {
           b.boundSpirits.map((s, i) => {
             const set = (f: (x: Sr6BoundSpirit) => void) => edit((x: Sr6Build) => f(x.boundSpirits[i]))
             return (
-              <div key={s.uid} className="row">
+              <div key={s.uid} className="row" data-target={s.uid}>
                 <input aria-label="Name" placeholder="Name" value={s.name} disabled={ro} onChange={e => set(x => void (x.name = e.target.value))} />
                 <label className="inline">
                   {k.resonance ? 'Level' : 'Force'}{' '}

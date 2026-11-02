@@ -128,7 +128,7 @@ test('Review: a drone’s weapon in no mount is a warning (not an error) linking
   ch.build.purchases[1].accessories = [{ uid: 'w1', kind: 'weapons', id: 'crb.fizz-rifle-70', qty: 1, accessories: [] }]
   await open(ch, 'review')
   const link = [...document.querySelectorAll('a')].find(a => /Fizz Rifle 70 isn’t in a weapon mount/.test(a.textContent ?? ''))
-  expect(link?.getAttribute('href')).toBe('#/sr6/c/made-up-v/drones')
+  expect(link?.getAttribute('href')).toBe('#/sr6/c/made-up-v/drones/d1')
   expect(link?.closest('.viol')?.querySelector('.sev.warn')).not.toBeNull()
 })
 

@@ -1,5 +1,5 @@
-// Review: every broken creation rule and note with its page, each linked to the tab where it's fixed (a violation's path
-// starts with the tab id), GM approval as Anarchy's, the derived values, and Finalize. In career: the career checks
+// Review: every broken creation rule and note with its page (opening the owner's PDF), each linked to where it's fixed
+// (its fixAt, else the tab and row its path names: FixAt.tsx), GM approval as Anarchy's, the derived values, and Finalize. In career: the career checks
 // (validateCareer, already in the context), the derived values of the runner as it stands, the ledger's balances, and Back
 // to draft only while the ledger holds nothing live to undo.
 import { useRef, useState } from 'react'
@@ -7,12 +7,13 @@ import { resolveEntry } from '../../../catalog/domain/load'
 import type { Violation } from '../../../../core/shared/types'
 import { Modal } from '../../../../core/ui-kit/bits'
 import { balances, canDraft } from '../../domain/career/career'
-import { purchaseTab } from '../../domain/creation/purchases'
 import { draftAgain, finalizeSr6 } from '../../domain/career/finalize'
 import { canFinalizeSr6, GM_APPROVALS } from '../../domain/review/rules'
 import { sr6Tabs } from '../tabList'
 import { adeptDrainLabel, ATTR_NAMES, n, sr6EditHref, useSr6Editor } from '../editor'
 import { entryOfPath, Sr6Ref } from '../EntryRef'
+import { fixAtOf, fixHref } from '../FixAt'
+import { PageLink } from '../../../../core/ui-kit/PageLink'
 import { attrShown, br, effectNotes } from '../view'
 import type { Sr6Derived } from '../../domain/creation/derive'
 
@@ -33,13 +34,6 @@ export function ReviewTab() {
   const tabs = sr6Tabs(ch.build.magic, career)
   const bal = balances(ch),
     drafting = canDraft(ch)
-  // a pick left on a runner that's no longer awakened is fixed on Creation method (its Magic tab is gone)
-  // (a drone's line keeps its `vehicles.<uid>` path and links to Drones)
-  const tabOf = (path: string) => {
-    const [head, uid] = path.split('.'),
-      x = head === 'vehicles' ? ch.build.purchases.find(y => y.uid === uid) : undefined
-    return x ? purchaseTab(x, data) : tabs.some(([k]) => k === head) ? head : head === 'magic' ? 'method' : undefined
-  }
   const ready = canFinalizeSr6(v)
   const name = ch.identity.streetName || ch.identity.name || 'this runner'
 
@@ -108,7 +102,7 @@ export function ReviewTab() {
       {sorted.length === 0 && <p className="ok">No rule problems and nothing to note.</p>}
       <div>
         {sorted.map(x => {
-          const tab = tabOf(x.path),
+          const fix = fixAtOf(ch, data, tabs, x),
             o = ch.overrides.find(o => o.code === x.code && o.path === x.path)
           // the entry the line names, with its card (to check the book's numbers against the problem)
           const at = entryOfPath(ch, x.path),
@@ -119,10 +113,10 @@ export function ReviewTab() {
                 {x.approved ? 'Approved' : x.severity === 'error' ? 'Problem' : 'Note'}
               </span>
               <span className="msg">
-                {tab ? <a href={sr6EditHref(ch.id, tab)}>{x.message}</a> : x.message}{' '}
+                {fix ? <a href={fixHref(ch, fix)}>{x.message}</a> : x.message}{' '}
                 {x.page && (
                   <span className="cite">
-                    {x.source} p.{x.page}
+                    <PageLink source={x.source ?? ''} page={x.page} />
                   </span>
                 )}
                 {e && (

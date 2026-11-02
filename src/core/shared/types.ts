@@ -34,6 +34,13 @@ export interface Violation {
   page?: number
   approved?: boolean
   hard?: true
+  /** SR6: where it's fixed when that isn't where it shows (default: the tab and row its path names) */
+  fixAt?: FixAt
+}
+/** A tab and, optionally, the row (an item uid) or section id on it: #/sr6/c/<id>/<tab>/<target> */
+export interface FixAt {
+  tab: string
+  target?: string
 }
 
 /** crypto.randomUUID only exists in secure contexts; plain-http LAN hosting needs a fallback. */
