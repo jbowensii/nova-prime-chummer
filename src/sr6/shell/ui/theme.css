@@ -612,6 +612,13 @@ details.fold.sub[open] > summary h3::after {
   color: inherit;
   font-weight: inherit;
 }
+.cr-desc {
+  margin-top: 0.15rem;
+}
+.cr-desc cite {
+  font-style: normal;
+  color: var(--text-3);
+}
 .cr-name .hint {
   color: var(--text-3);
 }

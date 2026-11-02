@@ -3,7 +3,7 @@
 // costs nothing to draw), and each section can be reset to the standard values. The caller draws a row.
 import { Fragment, useMemo, useState, type ReactNode } from 'react'
 import { CREATION_GROUPS, nested } from '../domain/creation'
-import { SECTION_ABOUT, SECTIONS, sectionOf, type Section } from './creationLayout'
+import { ALPHA_SECTIONS, RULE_META, SECTION_ABOUT, SECTIONS, sectionOf, splitLabel, type Section } from './creationLayout'
 
 export interface RuleItem {
   key: string
@@ -64,7 +64,11 @@ export function RuleSections<T extends RuleItem>({
       const s = sectionOf(item.key, item.group)
       map.set(s, [...(map.get(s) ?? []), item])
     }
-    return SECTIONS.flatMap(s => (map.has(s) ? [[s, nested(map.get(s)!)] as const] : []))
+    // the rule sections A–Z by their top-level rule, a nested one still right under its parent
+    const title = (i: T) => splitLabel(i.label).title
+    const order = (s: Section, rows: ReturnType<typeof nested<T>>) =>
+      ALPHA_SECTIONS.has(s) ? [...rows].sort((a, b) => title(a.root).localeCompare(title(b.root))) : rows
+    return SECTIONS.flatMap(s => (map.has(s) ? [[s, order(s, nested(map.get(s)!))] as const] : []))
   }, [items])
   const [open, setOpen] = useState<Set<Section>>(new Set())
   const want = q.trim().toLowerCase()
@@ -144,6 +148,18 @@ export function RuleSections<T extends RuleItem>({
       {want && !by.some(([, rows]) => rows.some(r => r.item.label.toLowerCase().includes(want))) && (
         <p className="muted">No setting’s name contains “{q.trim()}”.</p>
       )}
+    </div>
+  )
+}
+
+/** A rule's plain-English line and, for a book's optional rule, its book and page (RULE_META), under its name. */
+export function RuleDesc({ k }: { k: string }) {
+  const meta = RULE_META[k]
+  if (!meta) return null
+  return (
+    <div className="muted small cr-desc">
+      {meta.about}
+      {meta.book && <cite> ({meta.book})</cite>}
     </div>
   )
 }
