@@ -157,7 +157,7 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
   await expect(gemini.getByRole('button', { name: 'Load models' })).toBeEnabled()
 
   await page.setViewportSize({ width: 375, height: 800 })
-  const openai = page.locator('fieldset', { hasText: 'OpenAI' })
+  const openai = page.locator('fieldset', { has: page.locator('legend', { hasText: /^OpenAI$/ }) })
   await openai.getByLabel('API key').fill('sk-bad-e2e-key')
   await openai.getByRole('button', { name: 'Save key' }).click()
   await openai.getByRole('button', { name: 'Load models' }).click()
@@ -173,11 +173,11 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
 test('Test asks the saved provider and says whether it answered', async ({ page }) => {
   await page.goto('/#/books/ai')
   const gemini = page.locator('fieldset', { hasText: 'Gemini' }),
-    openai = page.locator('fieldset', { hasText: 'OpenAI' })
+    openai = page.locator('fieldset', { has: page.locator('legend', { hasText: /^OpenAI$/ }) })
   await gemini.getByRole('button', { name: 'Test Google Gemini' }).click()
   await expect(gemini.getByRole('status')).toContainText('Connected — gemini-2.5-flash replied “OK !!!')
   await expect(gemini.getByRole('status')).toContainText('” in 1.2 s.')
-  await openai.getByRole('button', { name: 'Test OpenAI-compatible' }).click()
+  await openai.getByRole('button', { name: 'Test OpenAI' }).click()
   await expect(openai.getByRole('alert')).toHaveText('Couldn’t connect: the provider didn’t accept the API key (HTTP 401) [key].')
   await expect(page.locator('body')).not.toContainText('sk-bad-e2e')
   // unsaved changes: the test would use the saved settings, so it waits for Save settings

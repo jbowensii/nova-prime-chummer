@@ -267,10 +267,12 @@ test('ask the rules: the bar in the builder, answers with sources, not covered, 
   await expect(page.getByText('No questions left today.')).toBeVisible()
   await bar.getByRole('button', { name: 'Ask' }).click()
   await expect(page.getByRole('alert')).toHaveText('You’ve used all 2 of today’s questions. Ask again tomorrow.')
-  expect(await page.evaluate(() => [Object.keys(localStorage).filter(k => k !== 'ca2.settings.v1' && k !== 'chummer.game'), sessionStorage.length])).toEqual([
-    [],
-    0,
-  ])
+  expect(
+    await page.evaluate(() => [
+      Object.keys(localStorage).filter(k => k !== 'ca2.settings.v1' && k !== 'chummer.game' && k !== 'whatsNewSeen'),
+      sessionStorage.length,
+    ]),
+  ).toEqual([[], 0])
 })
 
 test('ask the rules: the header’s drawer keeps focus, closes with Esc and forgets the answer', async ({ page }) => {

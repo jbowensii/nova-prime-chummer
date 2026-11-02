@@ -602,7 +602,7 @@ test('Review: each problem links to its tab; GM approval; Finalize makes the bui
   await expect(page).toHaveURL(/\/gear$/)
   await tabs.filter({ hasText: 'Review' }).click()
   await eyes.getByRole('link', { name: /Glow Eyes 2’s Availability 6 is above 5/ }).click()
-  await expect(page).toHaveURL(/\/augmentations$/)
+  await expect(page).toHaveURL(/\/augmentations(\/[^/]+)?$/)
   await tabs.filter({ hasText: 'Review' }).click()
   // fixed on Contacts & lifestyle: Cozy for one month, one more karma into nuyen, the contact's connection back to 1
   await tabs.filter({ hasText: 'Contacts' }).click()

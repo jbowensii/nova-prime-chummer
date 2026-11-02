@@ -177,6 +177,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
     'Levels of play',
     'Optional rules (book)',
     'House rules',
+    'App conveniences',
   ])
   await expect(page.locator('.sr6-creation .cr-row')).toHaveCount(0)
   await page.getByLabel('Search the settings').fill('highest skill rank')
