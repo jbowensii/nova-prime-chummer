@@ -58,7 +58,7 @@ export function CareerIdentities() {
   )
 }
 
-/** Buy starter packs (any number; each is one undoable pack line). Shown at the top of the creation builder; career buys on the Ledger. */
+/** Buy starter packs (any number; each is one undoable pack line). Shown at the top of the creation Gear tab; career buys on the Ledger. */
 export function StarterPacks() {
   const { c, act } = useSr6Editor()
   const [pack, setPack] = useState('')
@@ -89,7 +89,7 @@ export function StarterPacks() {
 }
 
 export function GearTab() {
-  const { c, d, ch, data, cr, act, edit } = useSr6Editor()
+  const { c, d, ch, data, cr, act, edit, career } = useSr6Editor()
   const [custom, setCustom] = useState(false)
   const [name, setName] = useState(''),
     [kind, setKind] = useState<PurchaseKind>('gear'),
@@ -211,6 +211,7 @@ export function GearTab() {
           Custom item…
         </button>
       </div>
+      {!career && <StarterPacks />}
       <BuyItemDesign kind="weapon" />
       <PurchaseSection
         kind="weapons"

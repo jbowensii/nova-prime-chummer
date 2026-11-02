@@ -560,31 +560,36 @@ function LifeModules() {
       {b.lifepath.map((t, at) => {
         const m = data.lifemodules[t.id]
         return (
-          <div key={at} className="row">
-            <span>
-              <Sr6Ref kind="lifemodules" id={m?.id}>
-                <b>{m?.name ?? t.id}</b>
-              </Sr6Ref>{' '}
-              <span className="muted">{m ? grants(m) : 'no longer in the catalog'}</span>
-            </span>
-            {m?.choices.map((c, i) => (
-              <label key={i} className="inline">
-                {c.kind === 'knowledge' ? 'Knowledge skill' : `Choice ${i + 1} (${c.points})`}
-                <select value={t.choices[i] ?? ''} onChange={e => act({ op: 'lifemodule', id: t.id, choice: i, pick: e.target.value, at })}>
-                  <option value="" disabled>
-                    Pick one
-                  </option>
-                  {c.options.map(o => (
-                    <option key={o} value={o}>
-                      {option(o)}
+          <div key={at} className="stack">
+            <div className="row">
+              <span>
+                <Sr6Ref kind="lifemodules" id={m?.id}>
+                  <b>{m?.name ?? t.id}</b>
+                </Sr6Ref>{' '}
+                <span className="muted">{m ? grants(m) : 'no longer in the catalog'}</span>
+              </span>
+              <span className="spacer" />
+              <button className="btn small quiet" aria-label={`Remove ${m?.name ?? t.id}`} onClick={() => act({ op: 'lifemodule', remove: t.id, at })}>
+                Remove
+              </button>
+            </div>
+            <div className="row" data-testid="lifemodule-choices">
+              {m?.choices.map((c, i) => (
+                <label key={i} className="inline">
+                  {c.kind === 'knowledge' ? 'Knowledge skill' : `Choice ${i + 1} (${c.points})`}
+                  <select value={t.choices[i] ?? ''} onChange={e => act({ op: 'lifemodule', id: t.id, choice: i, pick: e.target.value, at })}>
+                    <option value="" disabled>
+                      Pick one
                     </option>
-                  ))}
-                </select>
-              </label>
-            ))}
-            <button className="btn small quiet" aria-label={`Remove ${m?.name ?? t.id}`} onClick={() => act({ op: 'lifemodule', remove: t.id, at })}>
-              Remove
-            </button>
+                    {c.options.map(o => (
+                      <option key={o} value={o}>
+                        {option(o)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+            </div>
           </div>
         )
       })}

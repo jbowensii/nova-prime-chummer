@@ -1,6 +1,7 @@
 // SR6 admin "Move imported NPCs & Critters to trash" / "Move example characters to trash": the button, its confirm (how
 // many loaded book copies GET /api/sr6/books/clear/:kind would move, per user) and the move (POST, server/sr6clear.mjs). Admins only: renders
 // nothing for anyone else. Used on the SR6 Books, NPCs & Critters and runners pages; `onDone` refreshes that page's list.
+import { Icon } from '../../core/ui-kit/icons'
 import { useState } from 'react'
 import { api } from '../../core/ui-kit/api'
 import { because, isAdmin, useMe } from '../../core/ui-kit/auth'
@@ -37,7 +38,7 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
   return (
     <>
       <button className="btn small" disabled={disabled} onClick={() => void open()}>
-        {TITLE[kind]}
+        <Icon name="trash" /> {TITLE[kind]}
       </button>
       {msg && (
         <span className="muted" role="status">
