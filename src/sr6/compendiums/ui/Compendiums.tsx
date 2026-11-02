@@ -4,6 +4,7 @@
 // which fills what common.xsd requires, so the file always validates, and moves an NPC back out to NPCs & Critters. A
 // book (#/sr6/compendiums/<book source id>) and another GM's compendium are read only, with Copy to… into one of yours
 // (copySr6Entry: the stats, no description). Never Anarchy's: the adapter lists, saves and checks only SR6 compendiums, campaigns and sources.
+import { PageLink } from '../../../features/pdf-links/PageLink'
 import { useEffect, useMemo, useState } from 'react'
 import { because } from '../../../core/ui-kit/auth'
 import { Modal } from '../../../core/ui-kit/bits'
@@ -78,7 +79,7 @@ export function sr6Rows(list: Sr6Entry[], npcs: Sr6Character[]): Map<string, Sr6
 const Cite = ({ c, source, page }: { c: Sr6Catalog; source: string; page: number }) => (
   <span className="srcline">
     <span className="src">
-      {source} p.{page}
+      <PageLink source={source} page={page} />
     </span>
     {c.sources.get(source)?.origin === 'user' && <span className="noncanon">House</span>}
   </span>
