@@ -20,7 +20,7 @@ export interface Provider {
 }
 type Field = 'baseUrl' | 'model' | 'workspace'
 const NS = 'urn:chummer-anarchy2:config:1'
-const IDS = ['anthropic', 'openai', 'gemini', 'anythingllm']
+const IDS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral']
 const FIELDS: Record<string, { hint: string; fields: [Field, string, string][] }> = {
   anthropic: {
     hint: 'Claude models, with an API key from console.anthropic.com.',
@@ -30,10 +30,45 @@ const FIELDS: Record<string, { hint: string; fields: [Field, string, string][] }
     ],
   },
   openai: {
-    hint: 'OpenAI, OpenRouter, LiteLLM, Ollama or LM Studio: anything that speaks the OpenAI chat API.',
+    hint: 'OpenAI itself, with a key from platform.openai.com. For other servers use the entries below.',
     fields: [
       ['baseUrl', 'Address', 'https://api.openai.com/v1'],
       ['model', 'Model', 'gpt-5'],
+    ],
+  },
+  ollama: {
+    hint: 'Ollama running on your own machine; it needs no key. Pull a model first (ollama pull llama3.1).',
+    fields: [
+      ['baseUrl', 'Address (optional)', 'http://localhost:11434/v1'],
+      ['model', 'Model', 'llama3.1'],
+    ],
+  },
+  lmstudio: {
+    hint: 'The local server in LM Studio; it needs no key. Start the server and load a model there.',
+    fields: [
+      ['baseUrl', 'Address (optional)', 'http://localhost:1234/v1'],
+      ['model', 'Model', 'qwen2.5-7b-instruct'],
+    ],
+  },
+  compatible: {
+    hint: 'Any server that speaks the OpenAI chat API, such as vLLM, llama.cpp, LiteLLM or OmniRoute. Give its address up to /v1; a key only if it asks for one.',
+    fields: [
+      ['baseUrl', 'Address', 'http://myserver:8000/v1'],
+      ['model', 'Model', 'my-model'],
+    ],
+  },
+  openrouter: {
+    hint: 'OpenRouter, one key for many hosted models (openrouter.ai).',
+    fields: [
+      ['baseUrl', 'Address (optional)', 'https://openrouter.ai/api/v1'],
+      ['model', 'Model', 'anthropic/claude-sonnet-4.5'],
+    ],
+  },
+  mistral: {
+    hint: 'Mistral hosted models, with a key from console.mistral.ai.',
+    fields: [
+      ['baseUrl', 'Address (optional)', 'https://api.mistral.ai/v1'],
+      ['model', 'Model', 'mistral-large-latest'],
     ],
   },
   gemini: {
@@ -61,7 +96,7 @@ export interface Tested {
 }
 export const connected = (t: Tested) => `Connected — ${t.model} replied “${t.reply}” in ${(t.ms / 1000).toFixed(1)} s.`
 const blank = (): Provider => ({ enabled: false, baseUrl: '', model: '', workspace: '' })
-const KEY_NEEDED = ['anthropic', 'gemini', 'anythingllm'] // a local OpenAI-compatible server may need none
+const KEY_NEEDED = ['anthropic', 'gemini', 'anythingllm', 'openrouter', 'mistral'] // OpenAI and local servers may need none
 /** The fields a provider's test uses, trimmed as they are saved: a stale attribute it ignores (a model on AnythingLLM) never counts. */
 const used = (id: string, p: Provider) => FIELDS[id].fields.map(([k]) => p[k].trim()).join('\n')
 /** Why Test is disabled, said beside it; null when it can run. */
@@ -231,7 +266,11 @@ export function AiSettings({ game = 'ca2' }: { game?: 'ca2' | 'sr6' }) {
             <input value={p[k]} placeholder={ph} autoComplete="off" onChange={e => setP(id, { [k]: e.target.value })} />
           )}
         </label>
-        <button className="btn quiet" disabled={!state.keys[id] || list === 'loading' || p.baseUrl.trim() !== savedUrl[id]} onClick={() => void loadModels(id)}>
+        <button
+          className="btn quiet"
+          disabled={(!state.keys[id] && KEY_NEEDED.includes(id)) || list === 'loading' || p.baseUrl.trim() !== savedUrl[id]}
+          onClick={() => void loadModels(id)}
+        >
           {list === 'loading' ? 'Loading…' : `Load ${k}s`}
         </button>
         <p className="muted wide">{p.baseUrl.trim() !== savedUrl[id] ? 'Save settings first: the list' : 'The list'} uses the saved address and key.</p>

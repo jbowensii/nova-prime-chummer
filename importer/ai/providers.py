@@ -55,7 +55,25 @@ def read_providers(config_dir):
     return root.get("use"), {p.get("id"): dict(p.attrib) for p in root.findall("provider")}
 
 
-PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm")
+# providers that speak the OpenAI chat API, with the address each starts at (none: the admin types one). Ollama and
+# LM Studio run on the admin's own machine and need no key; "compatible" is any other server (vLLM, llama.cpp, LiteLLM).
+OPENAI_LIKE = {
+    "openai": "",
+    "ollama": "http://localhost:11434/v1",
+    "lmstudio": "http://localhost:1234/v1",
+    "compatible": "",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "mistral": "https://api.mistral.ai/v1",
+}
+KEYLESS = ("openai", "ollama", "lmstudio", "compatible")  # a local server may need no key
+PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm", *(i for i in OPENAI_LIKE if i != "openai"))
+
+
+def _base(p):
+    """The address of an OpenAI-compatible provider: the saved one, else its usual one."""
+    return (p.get("baseUrl") or OPENAI_LIKE.get(p.get("id"), "")).rstrip("/")
+
+
 PROVIDER_ATTRS = {"id", "enabled", "baseUrl", "model", "workspace"}
 
 
@@ -199,7 +217,7 @@ def call(config_dir, system, user, schema=None, max_tokens=None, timeout=None):
     if not p or p.get("enabled") != "true":
         raise ProviderError(f"the AI provider “{use}” isn’t enabled")
     key = read_key(config_dir, use) or ""
-    if not key and use in ("anthropic", "gemini"):
+    if not key and use in ("anthropic", "gemini", "openrouter", "mistral"):
         raise ProviderError(f"no API key is set for {use}")
     return complete(p, key, system, user, schema, max_tokens, timeout)
 
@@ -214,16 +232,14 @@ def complete(provider, key, system, user, schema=None, max_tokens=None, timeout=
     try:
         if pid == "anthropic":
             return _anthropic(provider, key, model, system, user, schema, max_tokens or 16000, timeout)
-        if pid == "openai":
+        if pid in OPENAI_LIKE:
             body = {
                 "model": model,
                 "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                 "response_format": {"type": "json_object"},
                 **({"max_completion_tokens": max_tokens * OPENAI_CAP} if max_tokens else {}),
             }  # servers without JSON mode ignore it; propose tolerates prose
-            out = _request(
-                provider["baseUrl"].rstrip("/") + "/chat/completions", _bearer(key), body, timeout=timeout or TIMEOUT
-            )
+            out = _request(_base(provider) + "/chat/completions", _bearer(key), body, timeout=timeout or TIMEOUT)
             if out["choices"][0].get("finish_reason") == "length":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return out["choices"][0]["message"]["content"]
@@ -270,20 +286,18 @@ def list_models(provider_id, library_dir):
     saved = read_providers(config)[1] if os.path.exists(os.path.join(config, "ai-providers.xml")) else {}
     p = saved.get(provider_id) or {}
     key = read_key(config, provider_id) or ""
-    if not key and provider_id != "openai":  # a local OpenAI-compatible server may need none
+    if not key and provider_id not in KEYLESS:  # a local OpenAI-compatible server may need none
         raise ProviderError(f"no API key is set for {provider_id}")
     try:
         if provider_id == "anthropic":
             client = _anthropic_client(key, p.get("baseUrl"), timeout=LIST_TIMEOUT, max_retries=0)
             with _anthropic_errors():
                 ids = [m.id for m in client.models.list()]  # the SDK pages through all of them
-        elif provider_id == "openai":
-            if not p.get("baseUrl"):
+        elif provider_id in OPENAI_LIKE:
+            base = _base({**p, "id": provider_id})
+            if not base:
                 raise ProviderError("save the address first")
-            ids = [
-                m["id"]
-                for m in _request(p["baseUrl"].rstrip("/") + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]
-            ]
+            ids = [m["id"] for m in _request(base + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]]
         elif provider_id == "anythingllm":
             if not p.get("baseUrl"):
                 raise ProviderError("save the address first")
@@ -316,7 +330,7 @@ def ping(provider_id, library_dir):
     if not p:
         raise ProviderError("save this provider’s settings first")
     key = read_key(config, provider_id) or ""
-    if not key and provider_id in ("anthropic", "gemini"):
+    if not key and provider_id not in KEYLESS and provider_id != "anythingllm":
         raise ProviderError(f"no API key is set for {provider_id}")
     model = p.get("model") or DEFAULT_MODEL.get(provider_id, "")
     try:
@@ -325,15 +339,15 @@ def ping(provider_id, library_dir):
             with _anthropic_errors():
                 resp = client.messages.create(model=model, max_tokens=16, messages=[{"role": "user", "content": PING}])
             return model, next((b.text for b in resp.content if b.type == "text"), "")
-        if not p.get("baseUrl") and provider_id != "gemini":
+        if not p.get("baseUrl") and provider_id != "gemini" and not OPENAI_LIKE.get(provider_id):
             raise ProviderError("save the address first")
-        if provider_id == "openai":
+        if provider_id in OPENAI_LIKE:
             if not model:
                 raise ProviderError("choose a model first")
             # ponytail: no output cap: OpenAI's reasoning models refuse max_tokens and spend a small cap on thinking;
             # the prompt keeps it short
             out = _request(
-                p["baseUrl"].rstrip("/") + "/chat/completions",
+                _base({**p, "id": provider_id}) + "/chat/completions",
                 _bearer(key),
                 {"model": model, "messages": [{"role": "user", "content": PING}]},
                 timeout=PING_TIMEOUT,

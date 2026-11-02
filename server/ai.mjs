@@ -5,7 +5,9 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { CONFIG_NS, attr, body, clean, fail, readOr, rootTag, serializer, unesc, writeAtomic } from './common.mjs'
 
-const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm']
+const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral']
+const KEYLESS = ['openai', 'ollama', 'lmstudio', 'compatible'] // importer/ai/providers.py KEYLESS: a local server may need no key
+const DEFAULT_ADDRESS = ['ollama', 'lmstudio'] // they have a usual address, so none typed is fine
 /** The 429 when an account's daily questions are used up (limit 0: it has none). */
 export const limitReached = n =>
   n === 0 ? 'You have no questions today.' : `${n === 1 ? 'You’ve used today’s question.' : `You’ve used all ${n} of today’s questions.`} Ask again tomorrow.`
@@ -149,7 +151,7 @@ export function aiApi(ctx) {
     const p = use && [...xml.matchAll(/<provider\b[^>]*>/g)].map(m => m[0]).find(t => attr(t, 'id') === use)
     if (!p || attr(p, 'enabled') !== 'true') return false
     const key = new RegExp(`<key\\s+provider="${use}"\\s*>\\s*[^<\\s]`).test(await readOr(join(aiConfig(game), 'ai-keys.xml'), ''))
-    return key || (use === 'openai' && !!attr(p, 'baseUrl'))
+    return key || (KEYLESS.includes(use) && (!!attr(p, 'baseUrl') || DEFAULT_ADDRESS.includes(use)))
   }
 
   async function ask(req, who, game = 'ca2') {

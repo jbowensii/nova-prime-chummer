@@ -30,3 +30,14 @@ test('a disabled Test says why', () => {
   expect(testBlocked('anythingllm', p, p, false, false)).toBe('No key saved. Save a key first:')
   expect(testBlocked('openai', p, p, false, false)).toBeNull() // a local OpenAI-compatible server may need no key
 })
+
+test('local providers need no key to be tested; hosted ones do; the new ids round-trip', () => {
+  const p = { enabled: true, baseUrl: '', model: 'llama3.1', workspace: '' }
+  expect(testBlocked('ollama', p, p, false, false)).toBeNull()
+  expect(testBlocked('compatible', p, p, false, false)).toBeNull()
+  expect(testBlocked('openrouter', p, p, false, false)).toBe('No key saved. Save a key first:')
+  expect(testBlocked('mistral', p, p, true, false)).toBeNull()
+  const s = parse(toXml('ollama', { ...parse(SAVED).providers, ollama: p }))
+  expect(s.use).toBe('ollama')
+  expect(s.providers.ollama.model).toBe('llama3.1')
+})

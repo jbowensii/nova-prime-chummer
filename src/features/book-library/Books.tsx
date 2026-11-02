@@ -57,9 +57,14 @@ const STATE: Record<string, string> = {
 const LIVE = ['queued', 'importing', 'removing', 'converting', 'identifying', 'extracting', 'proposing', 'applying']
 export const PROVIDER_NAMES: Record<string, string> = {
   anthropic: 'Anthropic',
-  openai: 'OpenAI-compatible',
+  openai: 'OpenAI',
   gemini: 'Google Gemini',
   anythingllm: 'AnythingLLM',
+  ollama: 'Ollama (self-hosted)',
+  lmstudio: 'LM Studio (self-hosted)',
+  compatible: 'OpenAI-compatible endpoint (self-hosted)',
+  openrouter: 'OpenRouter',
+  mistral: 'Mistral',
 }
 const KINDS: [RegExp, string, string][] = [
   [/^amps/, 'amp', 'amps'],

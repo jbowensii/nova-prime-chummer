@@ -111,6 +111,39 @@ class ProvidersTest(unittest.TestCase):
         AI.complete({"id": "openai", "baseUrl": s.url + "/v1", "model": "m"}, "", "s", "u")
         self.assertNotIn("authorization", s.requests[0]["headers"])
 
+    def test_openai_like_providers_use_their_own_address_and_need_no_key_when_local(self):
+        s = self.stub(lambda p: (200, {"choices": [{"message": {"content": "x"}}]}))
+        for pid in ("ollama", "lmstudio", "compatible", "openrouter", "mistral"):
+            AI.complete({"id": pid, "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u")
+            self.assertEqual(s.requests[-1]["path"], "/v1/chat/completions", pid)
+            self.assertEqual(s.requests[-1]["headers"]["authorization"], f"Bearer {KEY}")
+        AI.complete({"id": "ollama", "baseUrl": s.url + "/v1", "model": "m"}, "", "s", "u")
+        self.assertNotIn("authorization", s.requests[-1]["headers"])
+        self.assertEqual(AI._base({"id": "ollama"}), "http://localhost:11434/v1")  # pylint: disable=protected-access
+        self.assertEqual(AI._base({"id": "lmstudio"}), "http://localhost:1234/v1")  # pylint: disable=protected-access
+        self.assertEqual(AI._base({"id": "compatible"}), "")  # pylint: disable=protected-access
+        self.assertEqual(AI._base({"id": "mistral"}), "https://api.mistral.ai/v1")  # pylint: disable=protected-access
+
+    def test_new_providers_are_known_and_hosted_ones_need_a_key(self):
+        for pid in ("ollama", "lmstudio", "compatible", "openrouter", "mistral"):
+            self.assertIn(pid, AI.PROVIDER_IDS)
+        with self.assertRaisesRegex(AI.ProviderError, "no API key is set for mistral"):
+            AI.list_models("mistral", tempfile.mkdtemp())
+
+    def test_settings_refuse_a_non_web_address_for_a_new_provider(self):
+        doc = (
+            '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="ollama">'
+            '<provider id="ollama" enabled="true" baseUrl="file:///etc/passwd"/></ca2:aiproviders>'
+        )
+        with self.assertRaisesRegex(AI.SettingsError, "http:// or https://"):
+            AI.set_settings(tempfile.mkdtemp(), doc)
+
+    def test_key_never_appears_in_an_openai_like_error(self):
+        s = self.stub(lambda p: (500, {"error": f"bad {KEY}"}))
+        with self.assertRaises(AI.ProviderError) as cm:
+            AI.complete({"id": "openrouter", "baseUrl": s.url + "/v1", "model": "m"}, KEY, "s", "u")
+        self.assertNotIn(KEY, str(cm.exception))
+
     def test_gemini_request(self):
         s = self.stub(lambda p: (200, {"candidates": [{"content": {"parts": [{"text": '{"a"'}, {"text": ": 1}"}]}}]}))
         out = AI.complete({"id": "gemini", "baseUrl": s.url, "model": "gemini-2.5-pro"}, KEY, "sys", "usr")
@@ -291,7 +324,7 @@ class ListModelsTest(unittest.TestCase):
             f'<provider id="gemini" enabled="true" baseUrl="{stub_url}"/>'
             f'<provider id="anythingllm" enabled="true" baseUrl="{stub_url}" workspace="w"/></ca2:aiproviders>',
         )
-        for p in AI.PROVIDER_IDS:
+        for p in AI.PROVIDER_IDS[:4]:
             if key:
                 AI.set_key(config, p, key)
         return lib
@@ -434,7 +467,7 @@ class PingTest(unittest.TestCase):
             f'<provider id="gemini" enabled="true" baseUrl="{url}"{model}/>'
             f'<provider id="anythingllm" enabled="true" baseUrl="{url}" workspace="{workspace}"/></ca2:aiproviders>',
         )
-        for p in AI.PROVIDER_IDS:
+        for p in AI.PROVIDER_IDS[:4]:
             if key:
                 AI.set_key(config, p, key)
         return lib
@@ -466,7 +499,7 @@ class PingTest(unittest.TestCase):
         }
         s = self.stub(lambda p: (200, replies[p]))
         lib = self.library(s.url)
-        got = {p: AI.ping(p, lib) for p in AI.PROVIDER_IDS}
+        got = {p: AI.ping(p, lib) for p in AI.PROVIDER_IDS[:4]}
         self.assertEqual(
             got,
             {
@@ -503,7 +536,7 @@ class PingTest(unittest.TestCase):
         ):
             s = self.stub(lambda p, code=code: (code, {"error": {"type": "x", "message": f"nope {KEY}"}}))
             lib = self.library(s.url)
-            for p in AI.PROVIDER_IDS:
+            for p in AI.PROVIDER_IDS[:4]:
                 with self.assertRaises(AI.ProviderError, msg=f"{p} {code}") as cm:
                     AI.ping(p, lib)
                 self.assertNotIn(KEY, str(cm.exception), p)
@@ -534,7 +567,7 @@ class PingTest(unittest.TestCase):
         elsewhere = self.stub(lambda p: (200, ANTHROPIC_MSG))
         s = self.stub(lambda p: (307, {}, {"Location": elsewhere.url + p}))
         lib = self.library(s.url)
-        for p in AI.PROVIDER_IDS:
+        for p in AI.PROVIDER_IDS[:4]:
             with self.assertRaisesRegex(AI.ProviderError, "redirected to another address", msg=p):
                 AI.ping(p, lib)
         with self.assertRaisesRegex(AI.ProviderError, "redirected to another address"):

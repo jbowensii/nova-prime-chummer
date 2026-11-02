@@ -8,6 +8,8 @@
     <xs:restriction base="xs:string">
       <xs:enumeration value="anthropic"/><xs:enumeration value="openai"/>
       <xs:enumeration value="gemini"/><xs:enumeration value="anythingllm"/>
+      <xs:enumeration value="ollama"/><xs:enumeration value="lmstudio"/><xs:enumeration value="compatible"/>
+      <xs:enumeration value="openrouter"/><xs:enumeration value="mistral"/>
     </xs:restriction>
   </xs:simpleType>
   <xs:element name="aikeys">
