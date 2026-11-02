@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { openPdfAtPage, setOffset, getOffset, pdfLinksSupported } from '../src/features/pdf-links/pdfLinks'
+import { openPdfAtPage, setOffset, getOffset, pdfLinksSupported } from '../src/core/ui-kit/pdfLinks'
 
 describe('pdf links', () => {
   beforeEach(() => {
