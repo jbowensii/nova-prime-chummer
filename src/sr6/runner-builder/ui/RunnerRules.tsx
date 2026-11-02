@@ -6,7 +6,7 @@ import { useState } from 'react'
 import { aboutOf, blockedBy, CREATION_KEYS, isOn, keyType, RUNNER_RULE_KEYS, type CreationRules, type CreationSetting } from '../../table-setup/domain/creation'
 import { RuleWhy } from '../../table-setup/ui/Creation'
 import { ruleKind, splitLabel } from '../../table-setup/ui/creationLayout'
-import { RuleSearch, RuleSections, type RuleItem } from '../../table-setup/ui/RuleSections'
+import { RuleDesc, RuleSearch, RuleSections, type RuleItem } from '../../table-setup/ui/RuleSections'
 import type { Sr6Character } from '../../formats/domain/character'
 import { useSr6Editor } from './editor'
 
@@ -103,6 +103,7 @@ export function RunnerRules() {
             <div className={['cr-row', bool ? 'bool' : '', depth ? 'nested' : '', off ? 'blocked' : '', mine && !lock ? 'changed' : 'at-std'].join(' ')}>
               <div className="cr-name" title={aboutOf(key) || undefined}>
                 {bool ? <label htmlFor={id}>{name}</label> : <span>{name}</span>}
+                {!depth && <RuleDesc k={key} />}
                 <RuleWhy k={key} eff={cr} label={labelOf} />
                 <div className="muted small">{from}</div>
               </div>

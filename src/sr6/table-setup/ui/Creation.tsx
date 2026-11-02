@@ -28,7 +28,7 @@ import {
 import type { Sr6Character } from '../../formats/domain/character'
 import type { Sr6Catalog } from '../../formats/domain/types'
 import { ruleKind, splitLabel } from './creationLayout'
-import { RuleSearch, RuleSections } from './RuleSections'
+import { RuleDesc, RuleSearch, RuleSections } from './RuleSections'
 
 /** std: the shipped standard settings (loadCreation), which rules are overlaid on. */
 export type Loaded = { rules: CreationRules; errors: string[]; std?: CreationRules }
@@ -151,6 +151,7 @@ const RuleRow = memo(function RuleRow({
     >
       <div className="cr-name" title={aboutOf(k.key) || undefined}>
         {k.type === 'bool' ? <label htmlFor={id}>{name}</label> : <span>{name}</span>}
+        {!depth && <RuleDesc k={k.key} />}
         {why && <div className="muted small rule-why">{why}</div>}
       </div>
       <div className="cr-val">
