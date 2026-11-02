@@ -8,6 +8,7 @@ import { BackgroundSettings } from '../../features/appearance/Background'
 import { Modal } from '../ui-kit/bits'
 import { IconButton } from '../ui-kit/icons'
 import { SignInSettings } from '../../features/accounts/SignInSettings'
+import { WhatsNew } from './WhatsNew'
 import { loadSettings, PRINT_STYLES, saveSettings, SR6_PRINT_STYLES, type Settings } from '../ui-kit/settings'
 
 const GROUPS: { key: keyof Settings; label: string; options: [string, string, string][] }[] = [
@@ -42,6 +43,7 @@ const GROUPS: { key: keyof Settings; label: string; options: [string, string, st
 
 export function SettingsButton() {
   const [open, setOpen] = useState(false)
+  const [news, setNews] = useState(false)
   const [s, setS] = useState(loadSettings)
   const me = useMe(),
     admin = isAdmin(me),
@@ -102,6 +104,9 @@ export function SettingsButton() {
               </fieldset>
             ))}
           <p className="muted">Saved in this browser only.</p>
+          <button className="btn" onClick={() => setNews(true)}>
+            What’s new
+          </button>
           {/* not isAdmin(): that is true without a server, where AI settings can't work */}
           {me?.role === 'admin' && (
             <fieldset>
@@ -118,6 +123,7 @@ export function SettingsButton() {
           {admin && <BackupSettings />}
         </div>
       </Modal>
+      <WhatsNew openNow={news} onClose={() => setNews(false)} />
     </>
   )
 }

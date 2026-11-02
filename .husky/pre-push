@@ -1,0 +1,2 @@
+npx tsc -b || exit 1
+node tools/hook-py.mjs pylint

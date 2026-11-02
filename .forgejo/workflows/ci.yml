@@ -102,7 +102,7 @@ jobs:
   # Secret REGISTRY_TOKEN (repo Settings > Actions > Secrets): a Forgejo token with write:package for jbowensii.
   publish:
     needs: [check, importer, docker]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.repository == 'jbowensii/nova-prime-chummer' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # the job container needs the host Docker daemon (runner config must allow this volume: container.valid_volumes)
     container:

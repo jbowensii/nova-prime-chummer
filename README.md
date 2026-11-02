@@ -217,10 +217,24 @@ short `CLAUDE.md`: what it owns, its public names, what it imports, its test com
 then read only that module and the public interface of what it imports. The importer and the CommLink6 tools have theirs
 in `importer/CLAUDE.md`, `importer/sr6/CLAUDE.md` and `tools/cl6check/CLAUDE.md`.
 
+### Git hooks (husky)
+
+`npm ci` installs them (the `prepare` script; it does nothing without a `.git` folder, as in CI containers). Commit: Prettier + ESLint on
+staged JS/TS, `black --check` on staged `importer/` and `tools/` Python, and the message must be a conventional commit
+(`feat(sr6): ...`, `fix: ...`, `chore(ci): ...`; any scope). Push: `tsc -b`, then pylint on the changed Python files. A missing
+Python, black or pylint is a warning, not a failure. Emergencies only: `git commit --no-verify` / `git push --no-verify` (CI still checks).
+
 ### Releases
 
-A feature PR does not bump the version in `package.json` or edit `CHANGELOG.md`. One release PR does both and is tagged
-after merge (`docs/architecture/README.md`, "Release ownership").
+A feature PR does not bump the version in `package.json` or edit `CHANGELOG.md`. On GitHub, release-please
+(`.github/workflows/release-please.yml`) keeps one release PR open from the conventional commits on `main`; merging it bumps
+`package.json`, prepends the section to `CHANGELOG.md`, and creates the tag (`v0.45.0`) and GitHub Release, which starts
+`publish.yml`. It needs the repo secret `RELEASE_PLEASE_TOKEN` (a PAT), because a tag made with the default token starts no
+workflow. For plain-English notes on top: as the last step before merging, edit `CHANGELOG.md` on the release PR's branch (a later
+push to `main` regenerates the PR and drops the edit). The newest section is shown in the app (Settings, "What's new"; once
+after each upgrade). Forgejo builds stay untagged. See also `docs/architecture/README.md`, "Release ownership".
+
+Coverage thresholds (`vite.config.ts`) are unchanged for now; raise them a few points at a time once the current batch of work lands.
 
 ### Code map
 

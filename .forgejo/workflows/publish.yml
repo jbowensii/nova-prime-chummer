@@ -11,6 +11,7 @@ on:
 
 jobs:
   publish:
+    if: github.repository == 'jbowensii/nova-prime-chummer'
     runs-on: ubuntu-latest
     # the job container needs the host Docker daemon (runner config must allow this volume: container.valid_volumes)
     container:
