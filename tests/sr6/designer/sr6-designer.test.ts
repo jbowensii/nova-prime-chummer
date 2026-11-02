@@ -291,7 +291,7 @@ test('a runner buys a player’s design on Vehicles: its line and built-in mod; 
   await m.rerender(view('review'))
   const warn = [...document.querySelectorAll('.viol')].find(v => /Custom design: needs GM approval \(Red Zip\)\./.test(v.textContent ?? ''))!
   expect(warn.querySelector('.sev.warn')).not.toBeNull()
-  expect(warn.querySelector('a')?.getAttribute('href')).toBe('#/sr6/c/r1/vehicles')
+  expect(warn.querySelector('a')?.getAttribute('href')).toMatch(/^#\/sr6\/c\/r1\/vehicles\/[0-9a-f-]+$/)
   expect(warn.querySelector<HTMLInputElement>('input[type=checkbox]')?.disabled).toBe(true) // a player sees it, read only
 })
 

@@ -149,7 +149,7 @@ test('Review: a critter past its limits is a warning (not an error) linking to C
   ]
   await open(ch, 'review')
   const link = [...document.querySelectorAll('a')].find(a => /Fuzzbeast: 3 commands; it can learn 2/.test(a.textContent ?? ''))
-  expect(link?.getAttribute('href')).toBe('#/sr6/c/made-up-c/critters')
+  expect(link?.getAttribute('href')).toBe('#/sr6/c/made-up-c/critters/c1')
   expect(link?.closest('.viol')?.querySelector('.sev.warn')).not.toBeNull()
 })
 

@@ -6,7 +6,7 @@
 // and the Ledger let it be taken, and the error stands until it's met or a GM approves it.
 import { limbSnapshot } from '../assets/limbs'
 import { canFinalize } from '../../../../core/shared/rules'
-import type { Severity, Violation } from '../../../../core/shared/types'
+import type { FixAt, Severity, Violation } from '../../../../core/shared/types'
 import {
   CORE_ATTRS,
   CP_POOLS,
@@ -93,18 +93,23 @@ interface Ctx {
   p: Provider
   budgets: Sr6Budgets
 }
+const fixOf = (h: Hit, r: Rule) => (h.fixAt ? { fixAt: h.fixAt } : r.fixAt ? { fixAt: { tab: r.fixAt } } : {})
 /** A broken rule: where (default: the rule's tab), what, and its citation when it isn't the setting's. */
 interface Hit {
   path?: string
   message: string
   source?: string
   page?: number
+  /** where it's fixed, when not where it shows */
+  fixAt?: FixAt
 }
 interface Rule {
   /** hard: no GM approval (owner's decision 19, 2026-10-11: negative Karma or nuyen blocks Finalize) */
   code: string
   severity: Severity
   tab: string
+  /** the tab it's fixed on, when not the one it shows on (a hit's own fixAt wins) */
+  fixAt?: string
   hard?: true
   /** the settings the rule needs; with one unset it's skipped. The first one's cite goes on the violation. */
   setting?: string[] | ((c: Ctx) => string[])
@@ -198,12 +203,16 @@ const RULES: Rule[] = [
   {
     code: 'prio.magicAllowed',
     severity: 'error',
-    tab: 'method',
+    // shows on Magic (Method once the Magic tab is gone), fixed on Method
+    tab: 'magic',
+    fixAt: 'method',
     // (the kind the method bought: one an Infected type gave isn't the method's, infected.ts boughtKind)
     check: c =>
       c.p.legalMagic(c.b).some(m => m.kind === boughtKind(c.b))
         ? null
-        : { message: `${MAGIC_KIND_LABELS[boughtKind(c.b)]} isn’t available at magic priority ${c.b.priorities.magic ?? '(none)'}.` },
+        : usesLetters(c.p) && !c.b.priorities.magic
+          ? { message: `Set the Magic priority on Creation method: ${MAGIC_KIND_LABELS[boughtKind(c.b)]} needs one.` }
+          : { message: `${MAGIC_KIND_LABELS[boughtKind(c.b)]} isn’t available at magic priority ${c.b.priorities.magic ?? '(none)'}.` },
   },
 
   { code: 'attr.overspent', severity: 'error', tab: 'attributes', check: c => over(c.budgets.attributePoints, 'Attribute points') },
@@ -1378,6 +1387,7 @@ const RULES: Rule[] = [
     code: 'magic.gradeCap',
     severity: 'error',
     tab: 'magic',
+    fixAt: 'attributes',
     check: c => {
       const loss = c.budgets.essence.magicLoss,
         hits: Hit[] = []
@@ -1393,6 +1403,7 @@ const RULES: Rule[] = [
     code: 'magic.transhuman',
     severity: 'error',
     tab: 'magic',
+    fixAt: 'method',
     setting: () => ['transhumanism'],
     check: c => {
       if (c.b.transhuman <= 0) return null
@@ -1498,6 +1509,7 @@ const RULES: Rule[] = [
     code: 'adept.ppCap',
     severity: 'error',
     tab: 'magic',
+    fixAt: 'attributes',
     check: c => {
       const cap = c.budgets.powerPoints.cap
       return !MAGIC_KINDS[c.b.magic].paysPowers || c.b.method === 'pointbuy' || c.b.powerPointsBought <= cap
@@ -2248,7 +2260,15 @@ export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character):
         seen.add(key)
       }
       const at = h.page ? { source: h.source, page: h.page } : keys[0] ? cite(cr, keys[0]) : {}
-      out.push({ code: r.code, severity: r.severity, path: h.path ?? r.tab, message: h.message, ...at, ...(r.hard ? { hard: true as const } : {}) })
+      out.push({
+        code: r.code,
+        severity: r.severity,
+        path: h.path ?? r.tab,
+        message: h.message,
+        ...at,
+        ...(r.hard ? { hard: true as const } : {}),
+        ...fixOf(h, r),
+      })
     }
   }
   out.push(...runnerRuleNotes(cr, ch, labels))

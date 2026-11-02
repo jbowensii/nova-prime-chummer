@@ -79,7 +79,7 @@ export function ContactsTab() {
               {b.contacts.map((x, i) => {
                 const who = `Contact ${i + 1}`
                 return (
-                  <tr key={x.uid}>
+                  <tr key={x.uid} data-target={x.uid}>
                     <td data-label="Name">
                       <NameField label={`${who} name`} value={x.name} onCommit={name => act({ op: 'contact', uid: x.uid, name })} />
                     </td>

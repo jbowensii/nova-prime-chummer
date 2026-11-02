@@ -57,7 +57,7 @@ export function MartialArtsTab() {
         b.martialArts.map(m => {
           const e = data.entry('martialarts', m.id)
           return (
-            <section key={m.uid} className="stack">
+            <section key={m.uid} className="stack" data-target={m.uid}>
               <div className="row">
                 <h3>
                   <Sr6Ref kind="martialarts" id={e?.id}>
@@ -84,7 +84,7 @@ export function MartialArtsTab() {
                           karma = techniqueKarma(data, cr, m, t, b),
                           pre = prerequisites(data, b, te)
                         return (
-                          <tr key={t.uid}>
+                          <tr key={t.uid} data-target={t.uid}>
                             <td>
                               <Sr6Ref kind="martialtechniques" id={te?.id}>
                                 <b>{techniqueName(data, t)}</b>

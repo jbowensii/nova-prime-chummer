@@ -310,7 +310,7 @@ export function GearTab() {
               const e = entryOf(x, data)
               const name = e ? entryLabel(e) : (x.name ?? 'Ammunition type')
               return (
-                <div key={x.uid} className="row">
+                <div key={x.uid} className="row" data-target={x.uid}>
                   <span>{name}</span>
                   <span className="spacer" />
                   <button className="btn small quiet" aria-label={`Remove ${name}`} onClick={() => act({ op: 'purchase', remove: x.uid })}>

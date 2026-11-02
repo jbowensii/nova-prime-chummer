@@ -4,7 +4,8 @@
 // read only but Concept, Review and Ledger: spends are recorded on the Ledger tab. A refused step shows its reason under
 // the tabs. The Print tab shows the SR6 sheet instead (src/sr6/print/ui/Sheet.tsx). An NPC (#/sr6/n/<id>/<tab>, GMs only)
 // opens from the NPC store with tabs Concept, Stat block (a critter's Design too) and Print, and its kind chip where a
-// runner's state badge is.
+// runner's state badge is. A last route segment names the row or section to scroll to (#/sr6/c/<id>/<tab>/<target>,
+// FixAt.tsx); on Builder (build/<uid>[/<uid>]) it's the item's uid path.
 import { useEffect, useMemo, useState } from 'react'
 import { canEdit, useMe } from '../../../core/ui-kit/auth'
 import { Brand, StateBadge } from '../../../core/ui-kit/bits'
@@ -51,6 +52,7 @@ import { ItemBuilder } from '../../runner-builder/ui/Builder'
 import { Sr6Sheet } from '../../print/ui/Sheet'
 import { TabBoundary } from '../../../core/shared/ui'
 import { npcTabs, sr6Tabs } from '../../runner-builder/ui/tabList'
+import { ProblemsPanel, useScrollToTarget } from '../../runner-builder/ui/FixAt'
 
 // (the item builders, #/sr6/c/<id>/build/<uid path>: career changes there are recorded spends, as the Ledger's)
 const OPEN_IN_CAREER = new Set(['concept', 'review', 'ledger', 'build'])
@@ -70,7 +72,7 @@ export function Sr6EditorView({
   cr: CreationRules
   id: string
   tab: string
-  /** the builders' line (`build/<uid>[/<uid>]`): its uid path */
+  /** on Builder its uid path (`build/<uid>[/<uid>]`); on any other tab the row or section to scroll to */
   sub?: string
   npc?: boolean
 }) {
@@ -122,6 +124,8 @@ export function Sr6EditorView({
       v: [...(ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, withSampleFixes(c, ch).ch)), ...houseNotes(c, kept.gone)],
     }
   }, [ch, data, cr, c, kept.gone])
+
+  useScrollToTarget(tab === 'build' ? undefined : sub, !!calc)
 
   const back = npc ? <a href={sr6NpcsHref(ch?.npc)}>Back to NPCs & Critters</a> : <a href="#/sr6">Back to your runners</a>
   if (!loaded || camp === undefined)
@@ -312,6 +316,7 @@ export function Sr6EditorView({
         </div>
         <main className="work">
           <fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}>
+            {shown !== 'review' && shown !== 'build' && <ProblemsPanel tab={shown} tabs={tabs} />}
             <TabBoundary key={shown}>
               {shown === 'concept' && <ConceptTab />}
               {shown === 'method' && <MethodTab />}
