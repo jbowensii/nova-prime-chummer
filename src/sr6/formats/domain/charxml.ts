@@ -53,9 +53,10 @@ import {
 } from './character'
 import { SR6_KINDS, type Sr6Entry, type Sr6Kind } from './types'
 import { sr6EntryXml, toEntry } from './entryxml'
+import { SR6_MIGRATIONS, upgradeSr6 } from './migrations'
 
 export const SR6_CHAR_NS = 'urn:chummer-sr6:character:1'
-const FORMAT_VERSION = 1
+const FORMAT_VERSION = 1 + SR6_MIGRATIONS.length
 const MAGIC_KINDS = Object.keys(MAGIC_KIND_LABELS) as MagicKind[]
 
 // ---- writing ----
@@ -1138,6 +1139,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
   const v = Number(r.getAttribute('formatVersion'))
   if (!v) return { ok: false, reason: 'The <character> element has no formatVersion.' }
   if (v > FORMAT_VERSION) return { ok: false, reason: `This file is from a newer version of the app (format ${v}).` }
+  upgradeSr6(r, v)
   if (!r.getAttribute('id')) return { ok: false, reason: 'The <character> element has no id.' }
   const b = kid(r, 'build')
   if (!b) return { ok: false, reason: 'The file has no <build> element.' }
