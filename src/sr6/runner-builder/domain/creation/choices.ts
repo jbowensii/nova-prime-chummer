@@ -83,14 +83,21 @@ export interface ChoiceCtx {
   owned?: Sr6Entry[]
 }
 /** The runner's contacts and owned entries (nested lines too: a weapon in a mount, an implant in a cyberlimb). */
+// one per build and catalog: the editor asks once per purchase line, and each answer walks every line (the editor's builds
+// are replaced, never changed in place, on an edit)
+const ctxs = new WeakMap<object, { data: Sr6Data; ctx: ChoiceCtx }>()
 export function choiceCtx(data: Sr6Data, b: Pick<Sr6Build, 'contacts' | 'purchases'>): ChoiceCtx {
+  const hit = ctxs.get(b)
+  if (hit?.data === data) return hit.ctx
   const flat = (xs: Sr6Build['purchases']): Sr6Build['purchases'] => xs.flatMap(x => [x, ...flat(x.accessories ?? [])])
-  return {
+  const ctx = {
     contacts: b.contacts.map(c => c.name).filter(Boolean),
     owned: flat(b.purchases)
       .map(x => (x.id ? data.entry(x.kind, x.id) : undefined))
       .filter((e): e is Sr6Entry => !!e),
   }
+  ctxs.set(b, { data, ctx })
+  return ctx
 }
 /** Does a catalog entry belong to a GEAR/CARRIED choice's `ref` (Commlink6's item type: CHEMICALS, WEAPON, MELEE,
  *  VEHICLE, DEVICE, ItemType:CYBERWARE)? No ref (or CARRIED) takes anything. */

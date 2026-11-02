@@ -41,7 +41,7 @@ export async function mount(node: ReactElement) {
     await act(async () => root.render(n))
     await settle()
   }
-  return { el, rerender }
+  return { el, rerender, root }
 }
 
 const text = (e: Element) => (e.textContent ?? '').replace(/\s+/g, ' ').trim()

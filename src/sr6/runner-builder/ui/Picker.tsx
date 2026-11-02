@@ -410,7 +410,8 @@ export function Bonuses({ uid, name, bonuses, rated: hasRating }: { uid: string;
   const [target, setTarget] = useState<Bonus['target']>('agi'),
     [value, setValue] = useState('1'),
     [per, setPer] = useState(false)
-  const skills = Object.values(data.skills).sort((a, z) => a.name.localeCompare(z.name))
+  // (sorted only while the dialog is open: every purchase line has one of these)
+  const skills = open ? Object.values(data.skills).sort((a, z) => a.name.localeCompare(z.name)) : []
   const [skill, setSkill] = useState('')
   const list = bonuses ?? [],
     v = Number(value),

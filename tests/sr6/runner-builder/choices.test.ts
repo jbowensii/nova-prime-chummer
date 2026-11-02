@@ -1,6 +1,6 @@
 // choiceOptions: what a choice power or quality may be for, as values noteAttr / noteSkill read back. Made-up entries on the fixture catalog.
 import { expect, test } from 'vitest'
-import { choiceOptions, choiceSelectOptions, noteAttr, noteSkill } from '../../../src/sr6/runner-builder/domain/creation/choices'
+import { choiceCtx, choiceOptions, choiceSelectOptions, noteAttr, noteSkill } from '../../../src/sr6/runner-builder/domain/creation/choices'
 import type { Sr6Entry, Sr6Part } from '../../../src/sr6/formats/domain/types'
 import { made } from '../catalog/fixture'
 import type { Sr6Data } from '../../../src/sr6/catalog/domain/data'
@@ -222,4 +222,14 @@ test('a skill choice’s type ref lists only that type; costCombat adds the comb
   } as Sr6Entry
   expect(choiceOptions(data, ia)!.options.map(o => o.value)).toEqual(['Athletics', 'Close Combat', 'Firearms'])
   expect(choiceOptions(data, entry('X', [part('selection', { type: 'SKILL', options: 'athletics,stealth,con', distr: '1 1' })]))!.count).toBe(2)
+})
+
+test('choiceCtx: one answer per build and catalog; an edited (replaced) build gets its own', () => {
+  const { data } = made()
+  const b = { contacts: [{ name: 'Made-up Fixer' }], purchases: [] } as never as Parameters<typeof choiceCtx>[1]
+  const first = choiceCtx(data, b)
+  expect(choiceCtx(data, b)).toBe(first)
+  const next = { ...b, contacts: [{ name: 'Made-up Fence' }] } as typeof b
+  expect(choiceCtx(data, next).contacts).toEqual(['Made-up Fence'])
+  expect(choiceCtx(made().data, b)).not.toBe(first)
 })
