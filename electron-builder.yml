@@ -42,3 +42,5 @@ publish:
   provider: github
   owner: jbowensii
   repo: nova-prime-chummer
+portable:
+  artifactName: ${productName}-Portable-${version}.${ext}
