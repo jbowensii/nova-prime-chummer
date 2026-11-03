@@ -163,7 +163,7 @@ export const REASONS: Record<string, string> = {
   'not-for-adept': 'A pure adept takes no Sorcery, Conjuring or Enchanting.',
   'aptitude-incompetent': 'Aptitude and Incompetent can’t be on the same skill.',
   'not-for-metatype': 'That quality isn’t for this runner’s metatype.',
-  'one-native': 'One native language a runner: clear the other one first.',
+  'one-native': 'One native language a runner (a second needs the Bilingual quality): clear the other one first.',
   'critters-only': 'That one is critter equipment (Body Shop, Taming the Wild): not for a player’s character.',
   'once-per-runner': 'The runner already has that augmentation (a limb: one a side).',
   'not-a-critter-quality': 'That isn’t a critter companion quality (Wild Life pp. 184-186).',

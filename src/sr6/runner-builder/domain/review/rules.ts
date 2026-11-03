@@ -66,7 +66,7 @@ import { collectiveFits, collectiveGrants, collectiveOptions, isMetagenic, SURGE
 import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnimalism } from '../creation/animalism'
 import { MAGIC_KINDS, metamagicFits, picksFor, qualityFitsMetatype, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
-import { languageCap } from '../creation/skills'
+import { languageCap, nativeMax } from '../creation/skills'
 import { adeptBars, opposite } from '../creation/actions'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { characterRequirements } from '../creation/prereq'
@@ -408,7 +408,10 @@ const RULES: Rule[] = [
       const langs = c.b.knowledge.filter(k => k.kind === 'language'),
         most = languageCap(c.b, c.data, num(c.cr, 'languageMax')),
         hits: Hit[] = []
-      if (langs.filter(k => k.native).length > 1) hits.push({ message: `${langs.filter(k => k.native).length} native languages: only one.`, ...CRB(67) })
+      const nat = langs.filter(k => k.native).length,
+        allowed = nativeMax(c.b, c.data)
+      if (nat > allowed)
+        hits.push({ message: `${nat} native languages: ${allowed === 1 ? 'only one (a second needs the Bilingual quality)' : 'two at most'}.`, ...CRB(67) })
       if (most !== undefined)
         for (const k of langs)
           if (!k.native && k.points + k.karma > most)

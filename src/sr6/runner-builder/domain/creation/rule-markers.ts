@@ -11,6 +11,7 @@ import { structureOf } from '../../../catalog/domain/structure'
 /** The creation-cost RULE refs the builder implements today. */
 export type RuleRef =
   | 'POLYGLOT'
+  | 'BILINGUAL'
   | 'KNOWLEDGE_COST2_AT_GEN'
   | 'KARMA_COST_PLUS_1'
   | 'CONTACTS_START_LOYAL2'
@@ -29,6 +30,7 @@ export const ruleRefsOf = (e: Sr6Entry): string[] =>
 /** The wording of a RULE ref for the effects list (only the refs worth a line there). */
 export const RULE_TEXT: Partial<Record<string, string>> = {
   POLYGLOT: 'Language ranks cost 1 Karma less (never below 1) and go to rank 4',
+  BILINGUAL: 'A second Native language',
 }
 
 /** The set of active RULE refs, read from each chosen quality's `<modifier type="RULE" ref>` marker. */
