@@ -36,7 +36,8 @@ test('the picker prices an item at the rating and grade picked', () => {
 })
 
 test('every career refusal has a sentence; an unset setting names itself and where to set it', async () => {
-  const src = (await import('node:fs')).readFileSync('src/sr6/runner-builder/domain/career/career.ts', 'utf8')
+  const fs = await import('node:fs')
+  const src = ['career-pricing', 'career-ledger'].map(f => fs.readFileSync(`src/sr6/runner-builder/domain/career/${f}.ts`, 'utf8')).join('\n')
   const codes = new Set([...src.matchAll(/no\('([a-z-]+)'\)|reason: '([a-z-]+)'/g)].map(m => m[1] ?? m[2]))
   expect(codes.size).toBeGreaterThan(15)
   for (const code of codes) expect(REASONS[code], code).toBeDefined()
