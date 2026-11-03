@@ -9,7 +9,7 @@ import { activeRules } from './rule-markers'
 // the creation rules; a refusal here is only what can't be stored at all (Review's rules flag the rest). A prerequisite
 // the runner lacks never refuses a step (owner, 2026-10-09): it is taken, and Review's error stands until a GM approves it.
 import { knowledgeNuyenAvailable } from './rule-markers'
-import { languageCap } from './skills'
+import { languageCap, nativeMax } from './skills'
 import type { Sr6Kind } from '../../../formats/domain/types'
 import { newId } from '../../../../core/shared/types'
 import {
@@ -1101,7 +1101,7 @@ function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result 
           b.knowledge = l
         })
       if (!op.uid) {
-        if (op.native && b.knowledge.some(x => x.native)) return no('one-native')
+        if (op.native && b.knowledge.filter(x => x.native).length >= nativeMax(b, data)) return no('one-native')
         // a native language is free; anything else starts with one point
         b.knowledge.push({
           uid: newId(),
@@ -1117,7 +1117,7 @@ function applyOp(b: Sr6Build, op: Op, data: Sr6Data, cr: CreationRules): Result 
       if (op.name !== undefined) k.name = op.name
       if (op.kind) k.kind = op.kind
       // owner's decision 6: one native language a runner
-      if (op.native && b.knowledge.some(x => x !== k && x.native)) return no('one-native')
+      if (op.native && !k.native && b.knowledge.filter(x => x.native).length >= nativeMax(b, data)) return no('one-native')
       if (op.native) {
         k.native = true
         k.points = 0

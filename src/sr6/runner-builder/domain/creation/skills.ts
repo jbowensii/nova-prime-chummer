@@ -13,6 +13,9 @@ import { augmentedRating } from './attributes'
  *  active, or (back-compat) it is the known quality id — the catalog carries both. */
 export const POLYGLOT = 'swc.polyglot'
 export const hasPolyglot = (b: Sr6Build, data: Sr6Data) => activeRules(b, data).has('POLYGLOT') || b.qualities.some(q => q.id === POLYGLOT)
+/** Bilingual (owner ruling 2026-11-03): a runner has one free Native language; a second only with a quality carrying the
+ *  BILINGUAL RULE marker. Not in Commlink6 or the imported books, so an override or a GM quality supplies the marker. */
+export const nativeMax = (b: Sr6Build, data: Sr6Data) => (activeRules(b, data).has('BILINGUAL') ? 2 : 1)
 export const languageKarma = (b: Sr6Build, data: Sr6Data, perRank: number) => (hasPolyglot(b, data) ? Math.max(1, perRank - 1) : perRank)
 /** The highest a non-Native language goes: languageMax is the Native level (4); a learned one stops a level below, at Expert
  *  (CRB Hong Kong pp. 67, 99), unless Polyglot, which lets it reach the Native level (SWC p. 135). */

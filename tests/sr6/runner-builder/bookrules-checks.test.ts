@@ -97,7 +97,7 @@ test('languages: one Native, the others up to languageMax', () => {
     validateSr6(s.data, s.cr, ch)
       .filter(v => v.code === 'knowledge.languages')
       .map(v => v.message),
-  ).toEqual(['2 native languages: only one.'])
+  ).toEqual(['2 native languages: only one (a second needs the Bilingual quality).'])
 })
 
 test('the initiate grade never above Magic', () => {
