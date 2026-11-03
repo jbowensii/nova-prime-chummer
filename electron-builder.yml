@@ -29,8 +29,10 @@ win:
   target:
     - nsis
     - portable
-  # signing: set CSC_LINK (path to your .pfx) and CSC_KEY_PASSWORD in the environment; never put them in this file
+  # signing: SSL.com eSigner via the owner's CodeSignTool (tools/desktop-sign/esigner.mjs; skipped without ESIGNER_USERNAME)
   signAndEditExecutable: true
+  signtoolOptions:
+    sign: tools/desktop-sign/esigner.mjs
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true

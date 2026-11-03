@@ -85,11 +85,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-  # Signed Windows desktop build, attached to the GitHub Release the updater reads. Release tags only.
+  # Windows desktop build, attached to the GitHub Release the updater reads. Manual only (run it on a release tag): the
+  # signed installers are built and signed locally with SSL.com eSigner (tools/desktop-sign) and uploaded to the release.
   # UNVERIFIED: never run on a real runner. Secrets (set by the owner in the repo settings, referenced only): CSC_LINK (the .pfx,
   # base64 or URL), CSC_KEY_PASSWORD. Nothing here prints them. A tag containing "-" (e.g. v0.21.0-beta.1) must be marked a prerelease.
   desktop:
-    if: github.repository == 'jbowensii/nova-prime-chummer' && github.server_url == 'https://github.com' && github.event_name == 'push'
+    if: github.repository == 'jbowensii/nova-prime-chummer' && github.server_url == 'https://github.com' && github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     timeout-minutes: 60
     permissions:
