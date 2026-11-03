@@ -20,7 +20,7 @@ export interface Provider {
 }
 type Field = 'baseUrl' | 'model' | 'workspace'
 const NS = 'urn:chummer-anarchy2:config:1'
-const IDS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral']
+const IDS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral', 'azure']
 const FIELDS: Record<string, { hint: string; fields: [Field, string, string][] }> = {
   anthropic: {
     hint: 'Claude models, with an API key from console.anthropic.com.',
@@ -71,6 +71,14 @@ const FIELDS: Record<string, { hint: string; fields: [Field, string, string][] }
       ['model', 'Model', 'mistral-large-latest'],
     ],
   },
+  azure: {
+    hint: 'Azure OpenAI: your resource address, a deployment name (used as the model) and an API version, with a key from the Azure portal.',
+    fields: [
+      ['baseUrl', 'Address', 'https://myresource.openai.azure.com'],
+      ['model', 'Deployment', 'my-gpt-deployment'],
+      ['workspace', 'API version', '2024-10-21'],
+    ],
+  },
   gemini: {
     hint: 'Google’s Gemini models, with a key from Google AI Studio.',
     fields: [
@@ -96,7 +104,7 @@ export interface Tested {
 }
 export const connected = (t: Tested) => `Connected — ${t.model} replied “${t.reply}” in ${(t.ms / 1000).toFixed(1)} s.`
 const blank = (): Provider => ({ enabled: false, baseUrl: '', model: '', workspace: '' })
-const KEY_NEEDED = ['anthropic', 'gemini', 'anythingllm', 'openrouter', 'mistral'] // OpenAI and local servers may need none
+const KEY_NEEDED = ['anthropic', 'gemini', 'anythingllm', 'openrouter', 'mistral', 'azure'] // OpenAI and local servers may need none
 /** The fields a provider's test uses, trimmed as they are saved: a stale attribute it ignores (a model on AnythingLLM) never counts. */
 const used = (id: string, p: Provider) => FIELDS[id].fields.map(([k]) => p[k].trim()).join('\n')
 /** Why Test is disabled, said beside it; null when it can run. */

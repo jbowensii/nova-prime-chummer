@@ -120,8 +120,8 @@ export function SettingsButton() {
             <fieldset>
               <legend>AI for Ask the rules / Search the rules</legend>
               <p className="muted">
-                The AI provider for {sr6 ? 'Shadowrun 6' : 'Shadowrun Anarchy'} (its own settings): hosted (Anthropic, OpenAI, Gemini, Mistral, OpenRouter) or
-                self-hosted (Ollama, LM Studio, any OpenAI-compatible server, AnythingLLM), and its key.
+                The AI provider for {sr6 ? 'Shadowrun 6' : 'Shadowrun Anarchy'} (its own settings): hosted (Anthropic, OpenAI, Gemini, Azure OpenAI, Mistral,
+                OpenRouter) or self-hosted (Ollama, LM Studio, any OpenAI-compatible server, AnythingLLM), and its key.
               </p>
               <a className="btn" href={sr6 ? '#/sr6/books/ai' : '#/books/ai'} onClick={() => setOpen(false)}>
                 Open AI settings

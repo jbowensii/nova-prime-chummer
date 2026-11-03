@@ -66,12 +66,27 @@ OPENAI_LIKE = {
     "mistral": "https://api.mistral.ai/v1",
 }
 KEYLESS = ("openai", "ollama", "lmstudio", "compatible")  # a local server may need no key
-PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm", *(i for i in OPENAI_LIKE if i != "openai"))
+PROVIDER_IDS = ("anthropic", "openai", "gemini", "anythingllm", *(i for i in OPENAI_LIKE if i != "openai"), "azure")
+AZURE_VERSION = "2024-10-21"  # used when no API version is saved (the "workspace" attribute holds it for Azure)
 
 
 def _base(p):
     """The address of an OpenAI-compatible provider: the saved one, else its usual one."""
     return (p.get("baseUrl") or OPENAI_LIKE.get(p.get("id"), "")).rstrip("/")
+
+
+def _azure(p, key, model):
+    """(url, headers) of an Azure OpenAI chat call: the saved endpoint, the deployment (the model) and the API version
+    (the saved "workspace" attribute); the key goes in an api-key header, not as a Bearer token."""
+    base = (p.get("baseUrl") or "").rstrip("/")
+    if not base:
+        raise ProviderError("save the address first")
+    if not model:
+        raise ProviderError("choose a model first (the deployment name)")
+    ver = urllib.parse.quote(p.get("workspace") or AZURE_VERSION, safe="")
+    return f"{base}/openai/deployments/{urllib.parse.quote(model, safe='')}/chat/completions?api-version={ver}", {
+        "api-key": key
+    }
 
 
 PROVIDER_ATTRS = {"id", "enabled", "baseUrl", "model", "workspace"}
@@ -217,7 +232,7 @@ def call(config_dir, system, user, schema=None, max_tokens=None, timeout=None):
     if not p or p.get("enabled") != "true":
         raise ProviderError(f"the AI provider “{use}” isn’t enabled")
     key = read_key(config_dir, use) or ""
-    if not key and use in ("anthropic", "gemini", "openrouter", "mistral"):
+    if not key and use in ("anthropic", "gemini", "openrouter", "mistral", "azure"):
         raise ProviderError(f"no API key is set for {use}")
     return complete(p, key, system, user, schema, max_tokens, timeout)
 
@@ -240,6 +255,17 @@ def complete(provider, key, system, user, schema=None, max_tokens=None, timeout=
                 **({"max_completion_tokens": max_tokens * OPENAI_CAP} if max_tokens else {}),
             }  # servers without JSON mode ignore it; propose tolerates prose
             out = _request(_base(provider) + "/chat/completions", _bearer(key), body, timeout=timeout or TIMEOUT)
+            if out["choices"][0].get("finish_reason") == "length":
+                raise TruncatedReply("the reply was cut off at the model’s output limit")
+            return out["choices"][0]["message"]["content"]
+        if pid == "azure":
+            url, headers = _azure(provider, key, model)
+            body = {
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                "response_format": {"type": "json_object"},
+                **({"max_completion_tokens": max_tokens * OPENAI_CAP} if max_tokens else {}),
+            }
+            out = _request(url, headers, body, timeout=timeout or TIMEOUT)
             if out["choices"][0].get("finish_reason") == "length":
                 raise TruncatedReply("the reply was cut off at the model’s output limit")
             return out["choices"][0]["message"]["content"]
@@ -298,6 +324,8 @@ def list_models(provider_id, library_dir):
             if not base:
                 raise ProviderError("save the address first")
             ids = [m["id"] for m in _request(base + "/models", _bearer(key), timeout=LIST_TIMEOUT)["data"]]
+        elif provider_id == "azure":  # deployments are listed by the management API, not the resource's own
+            raise ProviderError("Azure can’t list deployments here; type the deployment name")
         elif provider_id == "anythingllm":
             if not p.get("baseUrl"):
                 raise ProviderError("save the address first")
@@ -339,6 +367,10 @@ def ping(provider_id, library_dir):
             with _anthropic_errors():
                 resp = client.messages.create(model=model, max_tokens=16, messages=[{"role": "user", "content": PING}])
             return model, next((b.text for b in resp.content if b.type == "text"), "")
+        if provider_id == "azure":
+            url, headers = _azure(p, key, model)
+            out = _request(url, headers, {"messages": [{"role": "user", "content": PING}]}, timeout=PING_TIMEOUT)
+            return model, out["choices"][0]["message"].get("content") or ""
         if not p.get("baseUrl") and provider_id != "gemini" and not OPENAI_LIKE.get(provider_id):
             raise ProviderError("save the address first")
         if provider_id in OPENAI_LIKE:

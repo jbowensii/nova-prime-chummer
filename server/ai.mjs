@@ -5,7 +5,7 @@ import { mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import { CONFIG_NS, attr, body, clean, fail, readOr, rootTag, serializer, unesc, writeAtomic } from './common.mjs'
 
-const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral']
+const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral', 'azure']
 const KEYLESS = ['openai', 'ollama', 'lmstudio', 'compatible'] // importer/ai/providers.py KEYLESS: a local server may need no key
 const DEFAULT_ADDRESS = ['ollama', 'lmstudio'] // they have a usual address, so none typed is fine
 /** The 429 when an account's daily questions are used up (limit 0: it has none). */

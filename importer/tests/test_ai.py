@@ -130,6 +130,20 @@ class ProvidersTest(unittest.TestCase):
         with self.assertRaisesRegex(AI.ProviderError, "no API key is set for mistral"):
             AI.list_models("mistral", tempfile.mkdtemp())
 
+    def test_azure_url_header_and_key_rule(self):
+        s = self.stub(lambda p: (200, {"choices": [{"message": {"content": "x"}}]}))
+        prov = {"id": "azure", "baseUrl": s.url + "/", "model": "my dep", "workspace": "2025-01-01"}
+        self.assertEqual(AI.complete(prov, KEY, "s", "u"), "x")
+        r = s.requests[0]
+        self.assertEqual(r["path"], "/openai/deployments/my%20dep/chat/completions?api-version=2025-01-01")
+        self.assertEqual(r["headers"]["api-key"], KEY)
+        self.assertNotIn("authorization", r["headers"])
+        self.assertNotIn("model", r["body"])
+        AI.complete({**prov, "workspace": ""}, KEY, "s", "u")
+        self.assertIn("api-version=" + AI.AZURE_VERSION, s.requests[-1]["path"])
+        with self.assertRaisesRegex(AI.ProviderError, "no API key is set for azure"):
+            AI.list_models("azure", tempfile.mkdtemp())
+
     def test_settings_refuse_a_non_web_address_for_a_new_provider(self):
         doc = (
             '<ca2:aiproviders xmlns:ca2="urn:chummer-anarchy2:config:1" version="1" use="ollama">'

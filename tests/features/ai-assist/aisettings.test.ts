@@ -37,6 +37,7 @@ test('local providers need no key to be tested; hosted ones do; the new ids roun
   expect(testBlocked('compatible', p, p, false, false)).toBeNull()
   expect(testBlocked('openrouter', p, p, false, false)).toBe('No key saved. Save a key first:')
   expect(testBlocked('mistral', p, p, true, false)).toBeNull()
+  expect(testBlocked('azure', p, p, false, false)).toBe('No key saved. Save a key first:')
   const s = parse(toXml('ollama', { ...parse(SAVED).providers, ollama: p }))
   expect(s.use).toBe('ollama')
   expect(s.providers.ollama.model).toBe('llama3.1')
