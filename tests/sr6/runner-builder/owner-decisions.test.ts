@@ -204,7 +204,7 @@ test('effects 15 (book rule, on by default: owner ruling 5): a troll-sized runne
   expect(bought('x.troll')).toEqual([1210, 'Price modifiers: 10% on everything bought'])
   expect(bought('x.gnome')).toEqual([1140, 'Price modifiers: 10% on armor'])
   expect(bought('x.troll', false)).toEqual([1100, undefined])
-  expect(aboutOf('metatypeSizePricing')).toMatch(/\(CRB p\. 64, Sixth World Companion pp\. 91–92\)\.$/) // a book rule (owner ruling 5)
+  expect(aboutOf('metatypeSizePricing')).toMatch(/\(CRB Hong Kong p\. 64, Sixth World Companion pp\. 91–92\)\.$/) // a book rule (owner ruling 5)
 })
 
 test('9: each augmentation once (its ratings one), a cyberlimb once a body part and side, a choice-naming one per choice', () => {
@@ -294,7 +294,6 @@ test('16 (house rule): adjustment points on an attribute whose metatype maximum 
 
 test('17, 21 (house rules): numbers that are the rule itself, while on', () => {
   const on = (rules: Record<string, CreationValue>) => setup(rules).cr
-  expect(on({ pointBuyErrataNuyen: true }).get('pointBuy.max.nuyen')?.value).toBe(450000)
   expect(on({ availabilitySeven: true }).get('maxAvailability')?.value).toBe(7)
   expect(on({ eliteSumToThirteen: true }).get('sumToTenTarget')?.value).toBe(11) // needs Elite
   expect(on({ eliteSumToThirteen: true, levelSwcElite: true, 'swcElite.sumToTen': 12 }).get('sumToTenTarget')?.value).toBe(13)

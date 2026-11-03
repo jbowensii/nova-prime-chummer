@@ -111,7 +111,6 @@ LEVELS = [
 SETS = [
     ["eliteSumToThirteen", "sumToTenTarget", 13],
     ["availabilitySeven", "maxAvailability", 7],
-    ["pointBuyErrataNuyen", "pointBuy.max.nuyen", 450000],
 ]
 
 

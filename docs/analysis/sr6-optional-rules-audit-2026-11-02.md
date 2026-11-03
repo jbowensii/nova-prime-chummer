@@ -300,3 +300,16 @@ from. Per-metatype and per-magic-kind settings, which are made from the catalog 
 | `builtToughQuality` | Built Tough quality: a Physical box per level (unset: none) — *Derived values* | The catalog’s Built Tough quality: a Physical box per level. | Tool convenience | CRB Hong Kong p. 70 |
 | `dermalDepositsQuality` | Dermal Deposits quality: +1 Defense Rating (unset: none) — *Derived values* | The catalog’s Dermal Deposits quality: +1 Defense Rating, Physical unarmed damage. | Tool convenience | CRB Hong Kong p. 71 |
 | `charismaticDefenseQuality` | Charismatic Defense quality: Defense Rating from Charisma, not Body (unset: none) — *Derived values* | The catalog’s Charismatic Defense quality: Defense Rating from Charisma instead of Body. | Tool convenience | Power Plays p. 85 |
+
+## Owner rulings (2026-11-03)
+
+1. capacityAccessoryEssence: book rule, add-ons in a host's Capacity cost no Essence; switch removed (done 350bcb46).
+2. pointBuyErrataNuyen: errata book rule, 450,000¥ is the default; the switch becomes "GM sets the limit" with a number the GM chooses.
+3. knowledgeLogicIntuition: optional book rule in the current (Hong Kong) printing, CRB p.98; keep the switch, default off, under Optional rules (book).
+4. metatypeSizePricing: book rule (ruled 2026-10-31), citation = CRB Hong Kong printing p.64; no play change.
+5. availabilityCapIllegalOnly: default = current book (cap on everything); keep the switch as an optional book rule (2019 printing), off. Same principle for old-printing options.
+6. karmaSpellsAtCreation: same as 5: default current book (no extra spells for Karma), switch kept as optional book rule (2019 printing), off.
+7. karmaBuildMethod: house rule, off by default (no change).
+8. positiveQualityMultiplier: house rule, off by default (no change).
+9. cl6OnlyData: app convenience, off by default (no change).
+10. languageMax: book rule (core value, not house): learned languages top out at Expert, one free Native, a second Native only via Bilingual; cite CRB HK (app's existing pp. 67, 99). Quality pickers stay App conveniences.

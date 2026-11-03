@@ -248,7 +248,6 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | General | `restrictMethods` | true/false | optional |  |  |  | House rule, off: with it on, a runner can only be built with the creation methods ticked under it (`missingFor` lists `restrictMethods` for another; Game data says "the table doesn’t allow it") |
 | General | `methodAllowed.priority`, `.sumtoten`, `.pointbuy`, `.karma`, `.lifepath` | true/false | optional | `restrictMethods` |  |  | Whether that method may be picked while the limit is on (unset: not allowed) |
 | Optional rules | `adjustOnLoweredMax` | true/false | optional |  |  |  | House rule, off: adjustment points also on an attribute whose metatype maximum is below `attributeBaseMax` |
-| Optional rules | `pointBuyErrataNuyen` | true/false | optional |  |  | `pointBuy.max.nuyen` | House rule, off: point buy's most nuyen is 450,000, the errata version (as printed: 440,000, SWC p. 29) |
 | Optional rules | `knowledgeLogicIntuition` | true/false | optional |  |  |  | House rule, off: free knowledge points from Logic + Intuition (as printed: Logic, CRB Hong Kong p. 67) |
 | Optional rules | `magicAboveSixByGrade` | true/false | optional |  |  |  | Option, off (CRB Hong Kong p. 167): Magic or Resonance at creation up to `magicMax` plus the initiation or submersion grade (as printed: `magicMax`, p. 65) |
 | Optional rules | `eliteSumToThirteen` | true/false | optional | `levelSwcElite` |  | `sumToTenTarget` | House rule, off: with Elite, sum-to-thirteen (the book prints sum-to-twelve) |

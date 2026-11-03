@@ -63,7 +63,11 @@ export const RULE_META: Record<string, { kind: 'book' | 'house' | 'app'; about: 
     book: 'Core rulebook, 2019 printing p. 68',
     about: 'The old printing’s reading: extra spells and complex forms can be bought with creation Karma.',
   },
-  knowledgeLogicIntuition: { kind: 'book', book: 'Core rulebook p. 98', about: 'Free knowledge points are (Logic + Intuition) × 2 instead of Logic alone.' },
+  knowledgeLogicIntuition: {
+    kind: 'book',
+    book: 'Core rulebook (Hong Kong) p. 98',
+    about: 'Free knowledge points are (Logic + Intuition) × 2 instead of Logic alone.',
+  },
   magicAboveSixByGrade: {
     kind: 'book',
     book: 'CRB Hong Kong p. 167',
@@ -71,7 +75,7 @@ export const RULE_META: Record<string, { kind: 'book' | 'house' | 'app'; about: 
   },
   metatypeSizePricing: {
     kind: 'book',
-    book: 'Core rulebook p. 64; Sixth World Companion pp. 91–92',
+    book: 'Core rulebook (Hong Kong) p. 64; Sixth World Companion pp. 91–92',
     about: 'Big metatypes (trolls, dwarfs) and some qualities and ware pay more for gear.',
   },
   stackingAdvantage: { kind: 'book', book: 'Sixth World Companion p. 144', about: 'A very large Attack Rating lead earns 2 Edge instead of 1.' },
@@ -102,7 +106,6 @@ export const RULE_META: Record<string, { kind: 'book' | 'house' | 'app'; about: 
   mentorBothAdvantages: { kind: 'house', about: 'A mystic adept gets both its mentor spirit’s magician and adept advantages.' },
   noUsedCulturedBioware: { kind: 'house', about: 'Cultured bioware can’t be bought used.' },
   ownCarryOver: { kind: 'house', about: 'Your own limits on Karma and nuyen kept after creation replace the book’s.' },
-  pointBuyErrataNuyen: { kind: 'house', about: 'Point buy may buy up to 450,000 nuyen instead of the printed 440,000.' },
   positiveQualityMultiplier: { kind: 'house', about: 'Positive qualities cost a multiple of their Karma at creation.' },
   restrictMethods: { kind: 'house', about: 'Only the creation methods you tick can be used.' },
   // not game rules

@@ -544,7 +544,6 @@ export const CREATION_KEYS: CreationKey[] = [
   ...(
     [
       ['adjustOnLoweredMax', 'Adjustment points also on an attribute whose metatype maximum is lowered (house rule)'],
-      ['pointBuyErrataNuyen', 'Point buy: up to 450,000 nuyen bought with character points, the errata version (house rule)'],
       ['knowledgeLogicIntuition', 'Optional: (Logic + Intuition) × 2 Knowledge points'],
       ['magicAboveSixByGrade', 'Magic or Resonance at creation up to the highest plus the initiation or submersion grade (option)'],
       ['eliteSumToThirteen', 'Elite: sum-to-thirteen instead of sum-to-twelve (house rule)'],
@@ -720,7 +719,6 @@ export const powerLevelRules = (level: PowerLevel): RunnerRule[] =>
 export const SETS: [string, string, number][] = [
   ['eliteSumToThirteen', 'sumToTenTarget', 13],
   ['availabilitySeven', 'maxAvailability', 7],
-  ['pointBuyErrataNuyen', 'pointBuy.max.nuyen', 450000],
 ]
 /** The rules with a level of play that is on put in place: its own values (with its source and page) instead of the
  *  settings they replace (a value the level leaves unset keeps the setting's). Two levels on: the later one's. Then a
@@ -1041,7 +1039,10 @@ const ABOUT: Record<string, [string, string]> = {
     'The catalog’s Mentor Spirit quality: choosing a mentor spirit on the Magic tab adds it with its Karma, and removing it removes the mentor spirit',
     HK(73),
   ],
-  languageMax: ['The highest level any language reaches; the Native language counts as this level and no other goes above it; one Native language only', HOUSE],
+  languageMax: [
+    'The highest level any language reaches; the Native language counts as this level and no other goes above it; one Native language only (a second Native only with Bilingual)',
+    HK('67, 99'),
+  ],
   fociForcePerMagic: ['The foci’s Force added together is at most Magic times this; no more foci than Magic, none of Force above it', HK(154)],
   fociBondKarma: ['A focus costs its bonding Karma out of the customization Karma', HK('154, 168')],
   improvedAbilityFactor: ['Improved Ability raises its skill to at most its rank times this, rounded up', HK(157)],
@@ -1247,14 +1248,10 @@ const ABOUT: Record<string, [string, string]> = {
     'On: adjustment points may also go on an attribute whose metatype maximum is lowered; off: only on raised maxima, Edge, Magic and Resonance (CRB Hong Kong p. 63)',
     HOUSE,
   ],
-  pointBuyErrataNuyen: [
-    'On: point buy’s nuyen bought with character points goes up to 450,000, the errata version; off: up to 440,000 as printed (Sixth World Companion p. 29)',
-    HOUSE,
-  ],
-  knowledgeLogicIntuition: ['Optional rule (CRB p. 98): free Knowledge points = (Logic + Intuition) × 2; off (default): Logic only (p. 97)', 'CRB p. 98'],
+  knowledgeLogicIntuition: ['Optional rule (CRB p. 98): free Knowledge points = (Logic + Intuition) × 2; off (default): Logic only (p. 97)', HK(98)],
   metatypeSizePricing: [
     'On: the PRICEMOD data apply, as one line of the nuyen budget: the metatype’s (troll-sized +10% on everything bought, dwarf-sized +10% on armor), and the qualities’ and ware’s (Shiva Arms, Bone Spikes, Thorns, bark: more on armor); off: none (on by default: owner ruling 5, 2026-10-31, a book rule a GM may turn off)',
-    'CRB p. 64, Sixth World Companion pp. 91–92',
+    `${HK(64)}, Sixth World Companion pp. 91–92`,
   ],
   magicAboveSixByGrade: [
     'On: Magic or Resonance at creation up to the highest plus the initiation or submersion grade; off: the highest alone (CRB Hong Kong p. 65)',
@@ -1381,7 +1378,6 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'gradeCap.transhuman',
   'transhumanism',
   'adjustOnLoweredMax',
-  'pointBuyErrataNuyen',
   'knowledgeLogicIntuition',
   'magicAboveSixByGrade',
   'availabilitySeven',

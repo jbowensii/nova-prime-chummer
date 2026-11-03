@@ -121,7 +121,6 @@ const UNSET = [
   'gradeCap.initiation',
   'gradeCap.submersion',
   'adjustOnLoweredMax',
-  'pointBuyErrataNuyen',
   'knowledgeLogicIntuition',
   'magicAboveSixByGrade',
   'eliteSumToThirteen',

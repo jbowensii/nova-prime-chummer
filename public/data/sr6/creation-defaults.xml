@@ -179,7 +179,6 @@
   <setting key="allowSurge" value="true" source="SWC" page="116"/>
   <setting key="restrictMethods" value="false"/>
   <setting key="adjustOnLoweredMax" value="false"/>
-  <setting key="pointBuyErrataNuyen" value="false"/>
   <setting key="knowledgeLogicIntuition" value="false" source="CRB" page="98"/>
   <setting key="magicAboveSixByGrade" value="true" source="CRB-HK" page="167"/>
   <setting key="eliteSumToThirteen" value="false"/>
@@ -217,7 +216,7 @@
   <setting key="pointBuy.free.adjustment" value="1" source="SWC" page="29"/>
   <setting key="pointBuy.max.adjustment" value="12" source="SWC" page="29"/>
   <setting key="pointBuy.free.nuyen" value="10000" source="SWC" page="29"/>
-  <setting key="pointBuy.max.nuyen" value="440000" source="SWC" page="29"/>
+  <setting key="pointBuy.max.nuyen" value="450000" source="SWC" page="29"/>
   <setting key="pointBuy.cost.attribute" value="2" source="SWC" page="29"/>
   <setting key="pointBuy.cost.skill" value="2" source="SWC" page="29"/>
   <setting key="pointBuy.cost.adjustment" value="4" source="SWC" page="29"/>
