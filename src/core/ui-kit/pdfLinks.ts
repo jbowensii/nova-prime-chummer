@@ -92,6 +92,7 @@ export async function openPdfAtPage(src: string, page: number): Promise<boolean>
     const to = `${url}#page=${Math.max(1, page + getOffset(src))}`
     if (tab) tab.location.href = to
     else window.open(to, '_blank')
+    setTimeout(() => URL.revokeObjectURL(url), 60_000) // the tab has loaded it: free the PDF's memory
     return true
   } catch {
     tab?.close()
