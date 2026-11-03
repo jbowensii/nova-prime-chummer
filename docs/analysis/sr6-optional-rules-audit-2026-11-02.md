@@ -37,7 +37,7 @@ I quote no book text: page numbers only.
 
 ## Needs owner (plain English)
 
-1. **Capacity accessory Essence** (`capacityAccessoryEssence`): the rulebook tables (CRB pp. 285–286) print an add-on's
+1. **RULED 2026-11-03 (owner): book rule, no extra Essence; switch removed.** ~~**Capacity accessory Essence** (`capacityAccessoryEssence`): the rulebook tables (CRB pp. 285–286) print an add-on's
    own Essence, but the books' sample characters leave it out. Is charging it a book rule or your house rule? It is
    filed under House rules for now.
 2. **Point buy 450,000 nuyen** (`pointBuyErrataNuyen`): the app calls it "the errata version". If an official errata

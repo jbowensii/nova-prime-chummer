@@ -94,7 +94,6 @@ export const RULE_META: Record<string, { kind: 'book' | 'house' | 'app'; about: 
   adjustOnLoweredMax: { kind: 'house', about: 'Adjustment points may also go on an attribute whose maximum the metatype lowers.' },
   availabilitySeven: { kind: 'house', about: 'Gear of Availability 7 may be bought at creation (the book stops at 6).' },
   buyPowerPoints: { kind: 'house', about: 'Mystic adepts may buy power points with Karma after creation.' },
-  capacityAccessoryEssence: { kind: 'house', about: 'Ware fitted into another piece of ware also costs its own Essence.' },
   dataStructureCaps: { kind: 'house', about: 'Review flags a technomancer’s data structures past the limits you set.' },
   exoticFirstSpecFree: { kind: 'house', about: 'The first Exotic Weapons specialization is free.' },
   gradeCapAtCreation: { kind: 'house', about: 'Review flags initiation, submersion or transhumanist grades at creation past the limits you set.' },

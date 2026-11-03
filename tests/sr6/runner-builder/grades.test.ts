@@ -99,10 +99,8 @@ test('an implant’s add-ons have its grade (CRB p. 282): priced at it, changed 
   expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.plating', rating: 3 })).toEqual({ ok: true })
   expect(act({ op: 'accessory', host: limb.uid, kind: 'augmentations', id: 'crb.glare-filter' })).toEqual({ ok: true })
   // alpha ×1.5 cost, ×0.7 Essence: the limb 9,000 → 13,500, its plating 3,000 → 4,500, the filter 800 → 1,200; the
-  // add-ons in its Capacity cost no Essence (capacityAccessoryEssence off)
+  // add-ons in its Capacity cost no Essence
   expect(priced(limb, data, cr)).toMatchObject({ cost: 19200, essence: 0.7 })
-  const on = run({ capacityAccessoryEssence: true }) // (the setting on: the filter's 0.1 × 0.7 too)
-  expect(priced(limb, on.data, on.cr).essence).toBe(0.77)
   const plating = limb.accessories[0]
   expect(act({ op: 'rate', uid: plating.uid, grade: 'rusty' })).toEqual({ ok: false, reason: 'grade-follows-host' })
   // a file giving one another grade: read at the implant's, noted

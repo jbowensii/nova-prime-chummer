@@ -91,7 +91,6 @@
   <setting key="dataStructureNuyen" value="5000" source="HS" page="72"/>
   <!-- an accessory fitted into a host's Capacity (`[2]`) costs no Essence of its own: CRB pp. 285-286's tables print both
        its Essence and its Capacity; the books' samples print the host's Essence alone (Smooth Operations p. 99) -->
-  <setting key="capacityAccessoryEssence" value="false" source="CRB-HK" page="285"/>
   <setting key="grade:standard:essence" value="1" source="CRB-HK" page="282"/>
   <setting key="grade:standard:cost" value="1" source="CRB-HK" page="282"/>
   <setting key="grade:standard:avail" value="0" source="CRB-HK" page="282"/>

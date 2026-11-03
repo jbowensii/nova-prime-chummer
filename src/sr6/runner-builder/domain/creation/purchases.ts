@@ -3,7 +3,7 @@
 import { limbSnapshot } from '../assets/limbs'
 import type { PurchaseKind, Sr6Build, Sr6Purchase } from '../../../formats/domain/character'
 import type { Sr6Entry } from '../../../formats/domain/types'
-import { flag, type CreationRules } from '../../../table-setup/domain/creation'
+import type { CreationRules } from '../../../table-setup/domain/creation'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import { gradeFactor, type GradeFactor } from './grades'
@@ -177,10 +177,9 @@ export function priced(
   for (const a of x.accessories.map(a => fitted(x, a))) {
     const pa = priced(a, data, cr, own),
       ae = entryOf(a, data)
-    // one fitted into the host's Capacity (`[2]`) costs no Essence of its own unless capacityAccessoryEssence (the
-    // owner hasn't ruled: CRB pp. 285–286's tables print both; the book's samples print the host's alone, Smooth
-    // Operations p. 99's cybereyes 3 with five enhancements: Essence 4.54)
-    const ess = capacityUsed(ae, ratingOf(a, ae)) > 0 && !flag(cr, 'capacityAccessoryEssence') ? 0 : pa.essence
+    // one fitted into the host's Capacity (`[2]`) costs no Essence of its own: it uses the host's Capacity (CRB; owner
+    // ruling 2026-11-03)
+    const ess = capacityUsed(ae, ratingOf(a, ae)) > 0 ? 0 : pa.essence
     cost += pa.cost
     essence += ess
     ok &&= pa.ok

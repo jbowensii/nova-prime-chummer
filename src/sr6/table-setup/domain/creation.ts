@@ -148,15 +148,6 @@ export const CREATION_KEYS: CreationKey[] = [
     group: 'General',
     methods: [],
   })),
-  // (CRB pp. 285–286's tables print an enhancement's Essence and its Capacity; the books' samples print a host's Essence
-  // alone: off, the owner to rule)
-  {
-    key: 'capacityAccessoryEssence',
-    label: 'An accessory fitted into a host’s Capacity costs its own Essence too (option)',
-    type: 'bool',
-    group: 'Augmentation grades',
-    methods: [],
-  },
   // optional (CRB p. 66's list of what the customization Karma buys doesn't name them; Commlink6: an option, off)
   {
     key: 'karmaSpellsAtCreation',
@@ -1063,10 +1054,6 @@ const ABOUT: Record<string, [string, string]> = {
     'the core rulebook’s 2019 printing p. 66',
   ],
   oneSkillAtMax: ['Only one skill may be at the highest rank at creation', HK(65)],
-  capacityAccessoryEssence: [
-    'On: an accessory fitted into a host’s Capacity costs its own Essence too; off: only the host’s, as the books’ sample runners print it',
-    OPTION,
-  ],
   karmaSpellsAtCreation: [
     'On: spells, rituals and complex forms past the free ones can be bought with the customization Karma; off: they can’t, as the later printings say',
     'the core rulebook’s 2019 printing p. 68',
@@ -1378,7 +1365,6 @@ export const RUNNER_RULE_KEYS: { key: string; about: string }[] = [
   'strengthDamageStep1',
   'strengthDamageStep2',
   // the owner's house rules and options (2026-10-11)
-  'capacityAccessoryEssence',
   'positiveQualityMultiplier',
   'positiveQualityFactor',
   'karmaToNuyenCap',

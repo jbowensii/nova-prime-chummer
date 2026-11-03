@@ -193,7 +193,6 @@ the settings a rule stands in for while on (its own code does it). Every rule st
 | Lifepath | `lifepath.contactKarma` | number | optional |  |  |  | Karma per contact rating the contact points don't cover (each module's points go only to contacts of its types; unset: not offered, the ratings overspend the points). Karma never raises a contact's connection or loyalty above Charisma: the points must pay for what is above it (SWC p. 31) |
 | Lifepath | `lifepath.raisedAttributeStart` | number | optional |  |  |  | Attributes whose metatype maximum is above `attributeBaseMax` start at (Born This Way; unset: 1) |
 | Lifepath | `lifepath.mundaneEdge` | number | optional |  |  |  | Edge a runner neither awakened nor emerged gains (Born This Way; unset: none) |
-| Augmentation grades | `capacityAccessoryEssence` | true/false | optional |  |  |  | On: an accessory fitted into a host's Capacity costs its own Essence too; off: only the host's, as the books' sample runners print it (option) |
 | Augmentation grades | `grade:standard:essence` | number | optional |  |  |  | Standard: Essence times |
 | Augmentation grades | `grade:standard:cost` | number | optional |  |  |  | Standard: cost times |
 | Augmentation grades | `grade:standard:avail` | number | optional |  |  |  | Standard: Availability plus |
