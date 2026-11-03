@@ -1137,7 +1137,7 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
     return { ok: false, reason: 'This is a Shadowrun Anarchy runner. Import it on the Anarchy side.' }
   if (r.localName !== 'character' || r.namespaceURI !== SR6_CHAR_NS) return { ok: false, reason: 'Not a Shadowrun 6 runner file.' }
   const v = Number(r.getAttribute('formatVersion'))
-  if (!v) return { ok: false, reason: 'The <character> element has no formatVersion.' }
+  if (!Number.isInteger(v) || v < 1) return { ok: false, reason: 'The <character> element has no formatVersion.' }
   if (v > FORMAT_VERSION) return { ok: false, reason: `This file is from a newer version of the app (format ${v}).` }
   upgradeSr6(r, v)
   if (!r.getAttribute('id')) return { ok: false, reason: 'The <character> element has no id.' }

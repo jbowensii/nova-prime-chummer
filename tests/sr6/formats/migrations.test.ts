@@ -65,3 +65,8 @@ test('a newer-version file is still refused', () => {
   expect(r.ok).toBe(false)
   expect(!r.ok && r.reason).toMatch(/newer version/)
 })
+
+test('a fractional or negative formatVersion is refused, not upgraded', () => {
+  for (const v of ['1.5', '-1'])
+    expect(xmlToSr6(`<sr6:character xmlns:sr6="urn:chummer-sr6:character:1" formatVersion="${v}" id="r"><build/></sr6:character>`)).toMatchObject({ ok: false })
+})
