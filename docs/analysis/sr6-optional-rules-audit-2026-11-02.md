@@ -314,3 +314,4 @@ from. Per-metatype and per-magic-kind settings, which are made from the catalog 
 9. cl6OnlyData: app convenience, off by default (no change).
 10. languageMax: book rule (core value, not house): learned languages top out at Expert, one free Native, a second Native only via Bilingual; cite CRB HK (app's existing pp. 67, 99). Quality pickers stay App conveniences.
 11. Vehicle mounts (owner 2026-11-03): heavy = large weapon mount, 2 hardpoints; huge uses 3 (the DC Huge Hardpoint already gives 3, from CL6).
+12. Bilingual (owner 2026-11-03): not in any SR6 book (63 books, AnythingLLM, CL6); a 5e quality carried into Collapsing Now's NPC Blue (Elf). Not added; the BILINGUAL marker stays unused.
