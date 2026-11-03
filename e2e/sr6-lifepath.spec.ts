@@ -72,7 +72,7 @@ test('lifepath: opening modules, the best attribute, a module twice, typed conta
   await expect(page.getByRole('heading', { name: 'Adult modules: 7 of 7' })).toBeVisible()
   // awakened only: offered to this mundane runner too, marked (taken, it is a Review error)
   await expect(work.locator('tr', { hasText: 'Glow Study' })).toContainText('(for awakened runners)')
-  const dock = work.locator('.stack', { has: page.getByRole('button', { name: 'Remove Dock Hand' }) })
+  const dock = work.locator('.stack:has(> .row > button[aria-label="Remove Dock Hand"])')
   await expect(dock).toHaveCount(2)
   await dock.nth(0).getByLabel('Choice 1 (1)').selectOption('bod')
   await dock.nth(1).getByLabel('Choice 1 (1)').selectOption('str')

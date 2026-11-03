@@ -255,7 +255,7 @@ test('admin: SR6 Books imports the core rulebook; Game data and Rules show it', 
   const U = '.extract/screenshots/ui0131'
   mkdirSync(U, { recursive: true })
   await page.reload()
-  await expect(page.locator('.sr6-creation details.fold.sub')).toHaveCount(9)
+  await expect(page.locator('.sr6-creation details.fold.sub')).toHaveCount(10)
   await shoot(page, 'table-setup-folded', U)
   const house = page.locator('details.fold.sub[data-section="House rules"]')
   await house.locator('summary').click()

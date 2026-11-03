@@ -160,6 +160,7 @@ test('load a provider’s models, pick one, save; a failed list keeps the text b
   const openai = page.locator('fieldset', { has: page.locator('legend', { hasText: /^OpenAI$/ }) })
   await openai.getByLabel('API key').fill('sk-bad-e2e-key')
   await openai.getByRole('button', { name: 'Save key' }).click()
+  await expect(page.getByText('OpenAI key saved.')).toBeVisible() // OpenAI may run keyless, so Load models doesn't wait for the key
   await openai.getByRole('button', { name: 'Load models' }).click()
   await expect(openai.getByRole('alert')).toHaveText(
     'Couldn’t load the model list: stub.example answered HTTP 401: invalid key [key]. You can type a model name.',
