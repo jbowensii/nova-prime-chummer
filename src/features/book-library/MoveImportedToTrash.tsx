@@ -37,8 +37,8 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
   const total = targets?.users.reduce((n, u) => n + u.count, 0) ?? 0
   return (
     <>
-      <button className="btn small" disabled={disabled} onClick={() => void open()}>
-        <Icon name="trash" /> {TITLE[kind]}
+      <button className="btn quiet ibtn" disabled={disabled} aria-label={TITLE[kind]} title={TITLE[kind]} onClick={() => void open()}>
+        <Icon name="recycle" />
       </button>
       {msg && (
         <span className="muted" role="status">
