@@ -47,8 +47,8 @@ export default defineConfig({
       include: ['src/**', 'server/**'],
       exclude: ['**/*.d.ts', 'tests/**'],
       reporter: ['text-summary', 'json-summary'],
-      // floors ~1 point under the 2026-10-21 measure (80.94 / 73.37 / 71.53 / 81.05), so coverage can't silently drop
-      thresholds: { statements: 80, branches: 72, functions: 70, lines: 80 },
+      // floors ~0.5 point under the 2026-11-03 measure (82.45 / 74.57 / 73.45 / 82.95), so coverage can't silently drop
+      thresholds: { statements: 82, branches: 74, functions: 73, lines: 82 },
     },
   },
 })
