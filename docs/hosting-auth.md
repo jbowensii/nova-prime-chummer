@@ -84,7 +84,7 @@ password account can't use Authelia.
    userinfo endpoint, so no `claims_policy` is needed.
 2. In the app: **Settings → Sign-in** (admin): the issuer address exactly as Authelia names itself (e.g.
    `https://auth.example.com`, no trailing slash), the client ID, the plain client secret, **Test**, then tick *Show
-   “Sign in with Authelia”* and **Save**. The secret is stored in `library/.config/auth-secret.xml` (readable by the
+   “Sign in with Authelia”* and **Save**. The secret is stored in `Config/auth-secret.xml` (readable by the
    server only), is never shown again, and is dropped when the issuer address changes. A backup carries it only with
    *Include my API keys*.
 3. The app must know its public https address: set `PUBLIC_URL` (template: **Public address**, e.g.

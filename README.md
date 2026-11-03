@@ -80,13 +80,16 @@ Formats: [Anarchy data](docs/data-format.md), [SR6 data](docs/sr6-data-format.md
 
 ## Install and host
 
-The container needs three folders:
+The container keeps everything in one folder, `/data`:
 
-| Folder in the container | What it holds                                                     |
-| ----------------------- | ----------------------------------------------------------------- |
-| `/data/characters`      | Saved runners, one XML file each, a folder per account            |
-| `/data/custom`          | Imported book data, your edits, overlays, campaigns               |
-| `/data/library`         | Uploaded PDFs, their converted text, reports, AI settings, backups |
+| Folder in `/data` | What it holds                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `Config`          | Accounts, sign-in settings, AI settings and keys                                    |
+| `Data/systems`    | Per game: saved runners (a folder per account), house rules, imported books, edits |
+| `Library`         | Uploaded PDFs, their converted text, import reports. Never served over the web      |
+| `Logs`, `Backups` | Server logs and the automatic safety copies made before a restore                   |
+
+An older install with three folders (`characters`, `custom`, `library`) is moved into this layout on the first start; nothing is deleted. If you still have those three folders, mount their parent folder as `/data`.
 
 ### Unraid
 
@@ -94,40 +97,47 @@ The container needs three folders:
 2. **Add Container** and pick _nova-prime-chummer_. Apply.
 3. Open the web UI on port **8480**.
 
-The template maps the folders to `/mnt/user/appdata/nova-prime-chummer/characters`, `.../custom` and `.../library`. It sets `PUID` 99 and `PGID` 100, Unraid's `nobody` and `users`. The image is pulled ready-built, so there is no build step on the server.
+The template maps one **Data** folder, `/mnt/user/appdata/nova-prime-chummer`, to `/data`. It sets `PUID` 99 and `PGID` 100, Unraid's `nobody` and `users`. The image is pulled ready-built, so there is no build step on the server. The template's source is [unraid/nova-prime-chummer.xml](unraid/nova-prime-chummer.xml); it is copied into `jbowensii/unraid-templates` at each release.
 
 ### Docker
 
 ```bash
 docker run -d --init -p 8480:80 \
-  -v /path/to/characters:/data/characters \
-  -v /path/to/custom:/data/custom \
-  -v /path/to/library:/data/library \
+  -v /path/to/data:/data \
   ghcr.io/jbowensii/nova-prime-chummer:latest
 ```
 
-The container starts as root only to hand the three folders to `PUID`:`PGID` (default 99:100), then runs as that user. Add `-e PUID=1000 -e PGID=1000` to match another host user. Or use `--user` to skip this step.
+The container starts as root only to hand `/data` to `PUID`:`PGID` (default 99:100), then runs as that user. Add `-e PUID=1000 -e PGID=1000` to match another host user. Or use `--user` to skip this step; then `/data` must already be writable by that user.
 
 To build the image yourself: `docker build -t nova-prime-chummer:latest .` (add `--build-arg OCR=1` for scanned books).
 
+### Ubuntu (systemd service)
+
+From a checkout of the repo, as root: `sudo distribution/ubuntu/install.sh` (also `update` and `uninstall`). It installs Node and Python, builds the app, and runs it as a service on `127.0.0.1:8480` with data in `/var/lib/nova-prime-chummer`. Put a reverse proxy in front of it.
+
+### Windows desktop app
+
+Installer and portable builds, with the same server inside. Data lives in `%APPDATA%\Nova Prime Chummer`. There is no setup code: the first admin is made on the setup screen. See [electron/README.md](electron/README.md).
+
 ### From source
 
-You need Node 22 and Python 3.12 (the importer).
+You need Node 22 and Python 3.12 or newer (the importer).
 
 ```bash
 npm ci
 pip install --require-hashes -r importer/requirements.lock
-npm run serve      # builds, then serves on :80 (set PORT, CHAR_DIR, CUSTOM_DIR, LIBRARY_DIR, PYTHON)
+npm run serve      # builds, then serves on :80 (set PORT, DATA_PATH, PYTHON, STATIC_DIR)
 ```
 
-`npm run dev` runs the interface alone on `http://localhost:5173`. It has no server, so no accounts, no Books page and no importer.
+`DATA_PATH` is the data folder above (default `/data`). `npm run dev` runs the interface alone on `http://localhost:5173`. It has no server, so no accounts, no Books page and no importer.
 
 ### First run
 
 1. Read the one-time **setup code** from the container log: `docker logs nova-prime-chummer`. It is new on every restart and works once.
 2. Open the app. Enter the code with a name, username and password. That creates the first **admin**.
 3. Go to **Books** and import your core rulebook (or upload a data pack).
-4. Create accounts for everyone else on the **Users** page. There is no self sign-up.
+4. For AI help with books no recipe knows, or for Ask the rules, set a provider under **Books, AI settings** and type your own key there.
+5. Create accounts for everyone else on the **Users** page. There is no self sign-up.
 
 Locked out? Run `docker exec nova-prime-chummer node server/users.mjs reset <username>`. It prints a one-time code for `<app address>/#/setup/reset`.
 
@@ -156,7 +166,11 @@ The server enforces every rule. A hidden button is only convenience. There is al
 Set up per game (admin, Books, AI settings). Pick one of:
 
 - Anthropic
-- An OpenAI-compatible server (OpenAI, OpenRouter, LiteLLM, Ollama, LM Studio)
+- OpenAI, or any OpenAI-compatible server (LiteLLM and the like)
+- Ollama or LM Studio (local; a key is optional)
+- OpenRouter
+- Mistral
+- Azure OpenAI
 - Google Gemini
 - AnythingLLM (with a workspace)
 
@@ -168,7 +182,7 @@ The GM's page for the whole table: the book's optional rules, house rules, and (
 
 ### Backup and restore
 
-**Settings, Backup** downloads everything as one zip: runners, accounts, edits, imported books, PDFs, background art and AI settings. API keys are included only if you tick **Include my API keys**. **Restore** shows what is in the zip first. It saves a safety copy to `library/.backups` before it replaces anything.
+**Settings, Backup** downloads everything as one zip: runners, accounts, edits, imported books, PDFs, background art and AI settings. API keys are included only if you tick **Include my API keys**. **Restore** shows what is in the zip first. It saves a safety copy to `Backups` before it replaces anything.
 
 ### Backgrounds and art
 

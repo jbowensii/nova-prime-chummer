@@ -1,7 +1,8 @@
 # Desktop app (Windows)
 
 Runs the same `server/server.mjs` as Docker, in an Electron utility process bound to 127.0.0.1, in a locked-down window.
-Data lives under `%APPDATA%\Nova Prime Chummer\` (`Config`, `Data`, `Library`, `Logs`).
+Data lives under `%APPDATA%\Nova Prime Chummer\` (`Config`, `Data`, `Library`, `Logs`, `Backups`). The version in the installer's file name comes from `package.json`.
+There is no setup code: the first admin is made on the setup screen.
 
 ## Build (PowerShell, repo root)
 
@@ -15,7 +16,7 @@ npm run desktop:build             # tsc + vite build, then electron-builder (nsi
 
 Python bundle notes: needs `importer\requirements.desktop.lock` (made with `tools\desktop-python\compile-lock.ps1`, requires uv; separate from `requirements.lock`). Set the python.org SHA256 in `build-python.ps1` (`$PySha256`) before the first real build. The PowerShell scripts are not linted.
 
-Output is in `release\`. Quick dev run without packaging: `npm run desktop` (uses `python` on PATH).
+Output is in `release\`: the NSIS installer and the portable exe. The release workflow (`.github/workflows/publish.yml`) builds and uploads only the installer, on a release tag, and the app updates itself from that GitHub Release. Without a certificate the build is unsigned and Windows SmartScreen warns. Quick dev run without packaging: `npm run desktop` (uses `python` on PATH).
 
 ## Verify
 

@@ -1,1 +1,1 @@
-This file is the in-repo source of truth for the Unraid template: copy it into jbowensii/unraid-templates (nova-prime-chummer/) at release.
+This file is the in-repo source of truth for the Unraid template: copy it into jbowensii/unraid-templates (nova-prime-chummer/) at release. `unraid/nova-prime-chummer.xml` (with the icon) must stay identical to it.

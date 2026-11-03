@@ -28,10 +28,10 @@ migrate() { # no-op without an old three-folder tree; refuses safely (set -e sto
 
 install_app() {
   # ponytail: NodeSource setup script and deadsnakes are trusted as-is; pin/verify keys if this must be hardened
-  if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" != 24 ]; then
+  if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" != 22 ]; then
     apt-get update
     apt-get install -y curl ca-certificates gnupg
-    curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     apt-get install -y nodejs
   fi
   if ! command -v python3.13 >/dev/null; then

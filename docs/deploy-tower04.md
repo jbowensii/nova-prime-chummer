@@ -12,9 +12,7 @@ Container** → pick *nova-prime-chummer* → Apply.
 
 ```bash
 docker run -d --init -p 8480:80 \
-  -v /path/to/characters:/data/characters \
-  -v /path/to/custom:/data/custom \
-  -v /path/to/library:/data/library \
+  -v /path/to/data:/data \
   ghcr.io/jbowensii/nova-prime-chummer:latest
 ```
 
@@ -28,7 +26,7 @@ Until that's done, pulls from Unraid or any other host will fail with
 
 ```bash
 docker build -t nova-prime-chummer:latest .
-docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path/to/custom:/data/custom -v /path/to/library:/data/library nova-prime-chummer:latest
+docker run -d --init -p 8480:80 -v /path/to/data:/data nova-prime-chummer:latest
 ```
 
 | | |
@@ -37,12 +35,13 @@ docker run -d --init -p 8480:80 -v /path/to/characters:/data/characters -v /path
 | Container | `nova-prime-chummer`, bridge network, 8480 → 80, Autostart on. Runs `server/server.mjs` (Node), health check `/api/health` |
 | Template | Added via the `jbowensii/unraid-templates` template repository (see Install above); Unraid manages it |
 | Image | `ghcr.io/jbowensii/nova-prime-chummer:latest`, built and published by GitHub Actions (`.github/workflows/publish.yml`) after `ci` passes on a push to `main` |
-| Characters | `/mnt/user/appdata/nova-prime-chummer/characters` → `/data/characters`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
-| House rules | `/mnt/user/appdata/nova-prime-chummer/custom` → `/data/custom` (list files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
-| Library | `/mnt/user/appdata/nova-prime-chummer/library` → `/data/library`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`) and `.config/` with the AI settings and keys (`ai-keys.xml`, mode 600; Shadowrun 6's own in `sr6/.config/`). Never served over HTTP; back it up with the rest of appdata |
+| Data | `/mnt/user/appdata/nova-prime-chummer` → `/data`, one folder with `Config`, `Data`, `Library`, `Logs` and `Backups` (layout: `server/layout.mjs`) |
+| Characters | `Data/systems/<game>/characters/`: one folder per account with an XML file per runner ([character-format.md](character-format.md)); deletes go to `characters/<username>/.trash/` |
+| House rules | `Data/systems/<game>/` (list overlay files in `index.xml`). The importer writes each book's data to `imported/<source>/` and its private descriptions to `texts/<source>.xml`; don't edit those by hand |
+| Library | `Library/<game>/`: one folder per uploaded PDF (`original.pdf`, `book.md`, `import.xml`, `status.xml`, `review.xml`). The AI settings and keys (`ai-keys.xml`, mode 600) are in `Config/ai/<game>/`. Never served over HTTP; back it up with the rest of appdata |
 | Icon | written to `/var/lib/docker/unraid/images/` and the dockerman runtime images folder. The template's GitHub raw URL can't serve from a private repo. |
 
-Characters live on the server, in the characters folder. Rebuilding the
+Characters live on the server, in the data folder. Rebuilding the
 image or recreating the container doesn't touch them. Back up the
 appdata folder as usual. Browsers that saved runners before server storage
 move them to tower04 on first load (done 2026-09-27: 15 runners moved,
@@ -50,29 +49,28 @@ the 2 empty "Unnamed runner" files deleted to `.trash`).
 
 ## Running as a non-root user (PUID / PGID)
 
-The image's entrypoint (`docker-entrypoint.sh`) starts as root. When any file under `/data/characters`,
-`/data/custom` or `/data/library` isn't owned by `PUID`:`PGID`, it `chown -R`s that folder (later starts skip the
-walk), then drops to that user with `su-exec` and runs the server. The defaults are `PUID=99`, `PGID=100` (Unraid's
+The image's entrypoint (`docker-entrypoint.sh`) starts as root. When any file under `/data` isn't owned by `PUID`:`PGID`, it `chown -R`s `/data` (later starts skip the
+walk), runs the data-layout migrator as that user, then drops to that user with `su-exec` and runs the server. The defaults are `PUID=99`, `PGID=100` (Unraid's
 `nobody`:`users`), so an Unraid install needs no setting; set the two variables to run as another user. Files an
 older, root-running image left behind are handed over on the first start after the upgrade; nothing to fix by hand.
 With `docker run --user UID:GID` (or compose `user:`) the entrypoint skips all of that and just runs the server, so
-those folders must already be writable by that user. Port 80 inside the container works without root because Docker
+`/data` must already be writable by that user. Port 80 inside the container works without root because Docker
 lets container processes bind low ports by default.
 
 ## Backup and restore
 
-Settings → **Backup** downloads a zip of all three mounted volumes
-(`characters`, `custom`, `library`) plus a manifest; see
+Settings → **Backup** downloads a zip of the data folder
+(runners, edits, imported books, uploaded PDFs, AI settings) plus a manifest; see
 [data-format.md](data-format.md#backup-zip) for its layout. A restore
 uploads a zip, previews its manifest, then on confirm replaces each of the
-three volumes' contents **entry-by-entry**: the zip is unpacked into a temp
+data areas' contents **entry-by-entry**: the zip is unpacked into a temp
 folder *inside* each volume (`.restore-new-*`), then the top-level entries
 are swapped by renames (the old ones through `.restore-old-*`). A swap that
 fails puts that volume back, but volumes already swapped stay swapped, and
 a restore killed mid-swap (container stop) can leave a volume partly
 swapped; the next start removes leftover `.restore-*` folders. Before any
 of that the server saves the tower's current state to
-`library/.backups/<timestamp>.zip` (newest 3 kept): if a restore fails or
+`Backups/<timestamp>.zip` (newest 3 kept): if a restore fails or
 is cut off partway, restore that safety backup (copy it off the volume and
 use Settings → Backup → Restore) to get back to where you were. Without
 "Include my API keys" a backup has no `ai-keys.xml`, and a restore keeps
@@ -96,7 +94,7 @@ to the new one for now, so an existing container keeps working, but it is the on
 1. Stop the old container (Docker page → chummer-anarchy2 → Stop).
 2. Move the data folder: `mv /mnt/user/appdata/chummer-anarchy2 /mnt/user/appdata/nova-prime-chummer`.
 3. Docker tab → **Add Container** → pick the *nova-prime-chummer* template (it already points at
-   `/mnt/user/appdata/nova-prime-chummer/{characters,custom,library}` and sets `PUID`/`PGID` to 99/100) → Apply.
+   `/mnt/user/appdata/nova-prime-chummer` (as `/data`) and sets `PUID`/`PGID` to 99/100) → Apply.
 4. Check the runners and Books are there, then remove the old container and its template.
 
 ## 0.4.0 upgrade (accounts, core data)
@@ -105,7 +103,7 @@ to the new one for now, so an existing container keeps working, but it is the on
    fresh image pull, not just a container restart), then Edit → **Apply**.
 2. If tower04 is exposed through a reverse proxy, fill in **Trusted proxy**
    (its address) and, if there's one public address, **Public address**
-   before Apply — see [README.md](../README.md#behind-a-reverse-proxy-trust_proxy).
+   before Apply — see [README.md](../README.md#sign-in).
    Leave both empty for LAN-only.
 3. On first start after the upgrade, read the one-time setup code from the
    container log (`docker logs nova-prime-chummer`) and use it to create the
