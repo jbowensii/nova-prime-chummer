@@ -159,3 +159,21 @@ test('a failure mid-swap restores the old tree', async () => {
   expect(readFileSync(join(live, 'characters', 'me.xml'), 'utf8')).toBe('me')
   rmSync(d, { recursive: true, force: true })
 })
+
+test('install from a web address refuses a bad address, a non-web one and one that points at this machine', async () => {
+  const go = (url: unknown) =>
+    fetch(`${base}/api/setup-config/systems/sr6/install`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) })
+  const before = readdirSync(sr6).sort()
+  const bad: [unknown, number, RegExp][] = [
+    ['not a url', 400, /isn’t a web address/],
+    ['ftp://example.com/p.zip', 400, /only http\(s\)/],
+    ['http://127.0.0.1/p.zip', 400, /this machine or a private network/],
+    ['http://[::1]/p.zip', 400, /this machine or a private network/],
+    ['http://10.1.2.3/p.zip', 400, /this machine or a private network/],
+  ]
+  for (const [url, status, why] of bad) {
+    const r = await go(url)
+    expect([url, r.status, (await r.json()).error]).toEqual([url, status, expect.stringMatching(why)])
+  }
+  expect(readdirSync(sr6).sort()).toEqual(before)
+})

@@ -860,9 +860,9 @@ export function createServer({
       if (url.pathname.startsWith('/api/')) {
         const who = auth.gate(req, res, url, send) // the Origin check and the role table
         if (who === false) return
-        // every write except backup and restore themselves is counted for its whole life: a restore waits for it, and it
+        // every write except backup and restore themselves (cloud ones too) is counted for its whole life: a restore waits for it, and it
         // is refused while a restore runs
-        return await (req.method === 'GET' || /^\/api\/(backup|restore)(\/|$)/.test(url.pathname)
+        return await (req.method === 'GET' || /^\/api\/(backup|restore|cloud-backup)(\/|$)/.test(url.pathname)
           ? api(req, res, url, who)
           : books.track(() => api(req, res, url, who)))
       }
