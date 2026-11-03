@@ -219,6 +219,14 @@ class InlineParts(unittest.TestCase):
         )
         self.assertEqual(r["add"]["kids"], [{"tag": "fits", "attrs": {"slot": "vehicle-hardpoint"}}])
 
+    def test_a_geardef_weapon_mount_keeps_its_weapon_hook_as_a_slot(self):
+        inline = {"mount": {"vehicle": "samurai", "type": "MOD_HARD", "subtype": "MOD_MOUNT", "name": "Weapon Mount", "usage": {"VEHICLE_HARDPOINT": "0.5"},
+                            "hooks": {"VEHICLE_WEAPON_SMALL": "1", "VEHICLE_CF": "2"}, "page": "300", "vname": "Samurai", "weapon": {}}}  # fmt: skip
+        _, rows = vp.inline_entries(inline, {}, {"samurai": ["crb.samurai"]})
+        kids = rows["crb"][0]["add"]["kids"]
+        self.assertIn({"tag": "slot", "attrs": {"id": "vehicle-weapon-small", "value": "1"}}, kids)
+        self.assertEqual(len([k for k in kids if k["tag"] == "slot"]), 1)  # (the host's other hooks stay the host's)
+
     def test_a_global_part_is_minted_under_its_fixed_name(self):
         inline = {"spurs": {"vehicle": "samurai", "type": "WEAPON_CLOSE_COMBAT", "subtype": "BLADES", "name": "Nissan Spurs",
                             "fixed": "Nissan Spurs", "usage": {"VEHICLE_HARDPOINT": "1"}, "page": "300", "vname": "Nissan Samurai",

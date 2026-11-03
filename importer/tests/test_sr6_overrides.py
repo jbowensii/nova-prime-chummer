@@ -117,6 +117,24 @@ class OverridesTest(unittest.TestCase):
                 )
             overrides.table(p.stem)  # (raises on a description field)
 
+    def test_the_named_vehicle_mounts_each_get_a_vehicle_weapon_slot(self):
+        def slots(book, key, **want):
+            rows = [r for r in overrides.table(book) if r.get(key) == want[key] or r.get("cl6") == want[key]]
+            return {
+                k["attrs"]["id"]
+                for r in rows
+                for k in (r.get("kids") or r.get("add", {}).get("kids", []))
+                if k["tag"] == "slot"
+            }
+
+        for oid, hook in (
+            ("small-turreted-weapon-mount", "vehicle-weapon"),
+            ("standard-turreted-weapon-mount", "vehicle-weapon"),
+            ("large-weapon-mount", "vehicle-weapon-large"),
+        ):
+            self.assertEqual(slots("dc", "id", id=oid), {hook}, oid)
+        self.assertEqual(slots("crb", "cl6", cl6="Nissan Samurai Samurai Weapon Mount"), {"vehicle-weapon-small"})
+
 
 def cl6(name, page="10", kind="gear", **more):
     """A Commlink6 record: its name, page, kind and aliases, plus any extra fields."""
