@@ -23,13 +23,13 @@ const marked = (id: string, ref: string): Sr6Entry => ({
   text: '',
 })
 
-/** The fixture world with the given marked qualities added to the catalog, karmaKnowledge = 1, languageMax = 3. */
+/** The fixture world with the given marked qualities added to the catalog, karmaKnowledge = 1, languageMax = 4. */
 function world(...quals: Sr6Entry[]) {
   const c = fixtureCatalog()
   for (const e of quals) c.entries.qualities.set(e.id, e)
   const data = sr6Data(c),
     cr = fixtureCreation()
-  for (const [key, value] of Object.entries({ karmaKnowledge: 1, languageMax: 3 })) cr.set(key, { key, value })
+  for (const [key, value] of Object.entries({ karmaKnowledge: 1, languageMax: 4 })) cr.set(key, { key, value })
   return { data, cr }
 }
 
@@ -78,8 +78,8 @@ test('Polyglot driven by the marker alone (no quality id): cheaper language rank
   const b = build('crb.linguist')
   expect(languageKarma(b, data, 3)).toBe(2) // 1 Karma cheaper, never below 1
   expect(languageKarma(b, data, 1)).toBe(1)
-  expect(languageCap(b, data, num(cr))).toBe(4) // languageMax 3 raised to 4
-  expect(languageCap(build(), data, num(cr))).toBe(3) // without the marker, unchanged
+  expect(languageCap(b, data, num(cr))).toBe(4) // up to Native (4)
+  expect(languageCap(build(), data, num(cr))).toBe(3) // without the marker: Expert (3)
 })
 const num = (cr: ReturnType<typeof world>['cr']) => cr.get('languageMax')?.value as number
 

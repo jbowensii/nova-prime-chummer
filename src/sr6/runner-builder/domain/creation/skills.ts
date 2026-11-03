@@ -14,7 +14,10 @@ import { augmentedRating } from './attributes'
 export const POLYGLOT = 'swc.polyglot'
 export const hasPolyglot = (b: Sr6Build, data: Sr6Data) => activeRules(b, data).has('POLYGLOT') || b.qualities.some(q => q.id === POLYGLOT)
 export const languageKarma = (b: Sr6Build, data: Sr6Data, perRank: number) => (hasPolyglot(b, data) ? Math.max(1, perRank - 1) : perRank)
-export const languageCap = (b: Sr6Build, data: Sr6Data, most: number | undefined) => (most !== undefined && hasPolyglot(b, data) ? Math.max(most, 4) : most)
+/** The highest a non-Native language goes: languageMax is the Native level (4); a learned one stops a level below, at Expert
+ *  (CRB Hong Kong pp. 67, 99), unless Polyglot, which lets it reach the Native level (SWC p. 135). */
+export const languageCap = (b: Sr6Build, data: Sr6Data, most: number | undefined) =>
+  most === undefined ? undefined : hasPolyglot(b, data) ? Math.max(most, 4) : most - 1
 
 /** The skills the aptitude qualities name (CRB Hong Kong p. 70: "for the selected skill"): null without one; a quality
  *  whose note names no skill adds none (Review's quality.choice asks for it). */

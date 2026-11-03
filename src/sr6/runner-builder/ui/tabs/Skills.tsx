@@ -197,7 +197,7 @@ export function SkillsTab() {
       <h2>Knowledge &amp; languages</h2>
       <p className="muted">
         Knowledge points: <Left x={budgets.knowledgePoints} />. One native language is free: tick Native on its line; it counts as level{' '}
-        {num(cr, 'languageMax') ?? 4}, the highest a language goes.
+        {num(cr, 'languageMax') ?? 4} (Native). A learned language goes to Expert at most, or to Native with Polyglot.
       </p>
       {b.knowledge.length > 0 && (
         <div className="scroll-x">

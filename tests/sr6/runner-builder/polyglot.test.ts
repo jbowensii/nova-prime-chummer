@@ -10,7 +10,7 @@ import { effectsOf } from '../../../src/sr6/runner-builder/ui/EntryRef'
 
 function run(polyglot: boolean) {
   const b = buildOf('priority', { letters: 'CABDA', metatype: GLIM, magic: 'mundane' }),
-    { data, cr } = made({ rules: { languageMax: 3, karmaKnowledge: 3 } })
+    { data, cr } = made({ rules: { languageMax: 4, karmaKnowledge: 3 } })
   if (polyglot) b.qualities.push({ uid: 'qp', id: 'swc.polyglot', level: 1 })
   b.knowledge.push({ uid: 'l', name: 'Elvish', kind: 'language', points: 0, karma: 0 }, { uid: 'k', name: 'Lore', kind: 'knowledge', points: 0, karma: 0 })
   const rank = (uid: string, delta = 1) => apply(b, { op: 'knowledgeRank', uid, pool: 'karma', delta }, data, cr)

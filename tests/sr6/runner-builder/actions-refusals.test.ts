@@ -380,7 +380,7 @@ test('contacts: removing, a rating of at least one, known types only (two at mos
 })
 
 test('knowledge: one native language a runner (new or changed), edits to one that is there, ranks of a language capped', () => {
-  const r = runner({ over: { rules: { languageMax: 3 } } })
+  const r = runner({ over: { rules: { languageMax: 4 } } })
   expect(r.act({ op: 'knowledge', remove: 'nope' })).toEqual(no('unknown-line'))
   expect(r.act({ op: 'knowledge', name: 'Glimmerish', kind: 'language', native: true })).toEqual(ok)
   expect(r.b.knowledge[0]).toMatchObject({ native: true, points: 0, kind: 'language' })

@@ -172,13 +172,13 @@ test('6 (continued), effects 12: no language above languageMax; the Native one c
   expect(act({ op: 'knowledge', name: 'Sperethiel', kind: 'language', native: true })).toEqual(ok)
   expect(act({ op: 'knowledge', name: 'Or’zet', kind: 'language' })).toEqual(ok)
   expect(act({ op: 'knowledge', name: 'Made-up lore', kind: 'knowledge' })).toEqual(ok)
-  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 3 })).toEqual(ok) // 4
+  expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'points', delta: 2 })).toEqual(ok) // 3: Expert, a learned language's most
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[1].uid, pool: 'karma', delta: 1 })).toEqual(no('language-max'))
   expect(act({ op: 'knowledgeRank', uid: b.knowledge[2].uid, pool: 'points', delta: 5 })).toEqual(ok) // a knowledge skill: no cap here
   const out = exportSr6Runner(cat, data, cr, ch, { descriptions: false, now: '2026-10-11T00:00:00.000Z', appVersion: 'test' })
   expect(out.knowledge.map(k => [k.name, k.native, k.rank])).toEqual([
     ['Sperethiel', true, 4],
-    ['Or’zet', false, 4],
+    ['Or’zet', false, 3],
     ['Made-up lore', false, 6],
   ])
 })

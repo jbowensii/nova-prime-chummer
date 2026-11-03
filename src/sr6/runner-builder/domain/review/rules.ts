@@ -414,7 +414,7 @@ const RULES: Rule[] = [
           if (!k.native && k.points + k.karma > most)
             hits.push({
               path: `skills.${k.uid}`,
-              message: `${k.name} at level ${k.points + k.karma}: a language goes to ${most} at most (the Native one counts as ${most}).`,
+              message: `${k.name} at level ${k.points + k.karma}: a learned language goes to ${most} at most (Expert; Polyglot lets it reach Native).`,
               ...cite(c.cr, 'languageMax'),
             })
       return hits
