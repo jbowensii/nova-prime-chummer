@@ -61,6 +61,7 @@ PROVIDER_IDS = (
     "compatible",
     "openrouter",
     "mistral",
+    "azure",
 )
 
 

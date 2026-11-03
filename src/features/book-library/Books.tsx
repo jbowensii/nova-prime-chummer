@@ -66,6 +66,7 @@ export const PROVIDER_NAMES: Record<string, string> = {
   compatible: 'OpenAI-compatible endpoint (self-hosted)',
   openrouter: 'OpenRouter',
   mistral: 'Mistral',
+  azure: 'Azure OpenAI',
 }
 const KINDS: [RegExp, string, string][] = [
   [/^amps/, 'amp', 'amps'],
