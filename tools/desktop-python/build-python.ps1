@@ -7,9 +7,9 @@ $ErrorActionPreference = 'Stop'
 $PyVersion = '3.13.9'   # the one pin: also in .github/workflows/desktop-python.yml and electron/README.md
 # SHA256 of python-3.13.9-embed-amd64.zip, checked 2026-11-03 against python.org's sigstore bundle for that file.
 $PySha256 = '91d828c2da3a029b41699e918674a0cb379c02cf20dab9c501306885f837402a'
-$GetPipUrl = 'https://raw.githubusercontent.com/pypa/get-pip/26.3/public/get-pip.py'   # a tagged copy, so its hash holds
+$PipWheelUrl = 'https://files.pythonhosted.org/packages/07/25/ee8c38ae72d66b844ce8eb9711ba905dba21ca1a8a0c960057c41cd23337/pip-26.3-py3-none-any.whl'
 # get-pip.py is EXECUTED before the hash-locked install, so it is pinned the same way as the zip.
-$GetPipSha256 = 'f7654c5589318e1d0789575b2586ce76937eb9943602adda8b15b3be3aa0dac3'   # pypa/get-pip tag 26.3
+$PipWheelSha256 = 'f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13'   # PyPI pip 26.3 wheel
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $out = Join-Path $repo 'build\python'
@@ -41,15 +41,16 @@ if (-not (Select-String -Path $pth.FullName -Pattern '^import site' -Quiet)) { t
 
 $py = Join-Path $out 'python.exe'
 Write-Host 'Bootstrapping pip...'
-$getpip = Join-Path $env:TEMP 'get-pip.py'
-Invoke-WebRequest $GetPipUrl -OutFile $getpip
-$gpHash = (Get-FileHash $getpip -Algorithm SHA256).Hash.ToLower()
-if ($GetPipSha256 -eq 'TODO') {
-  if (-not $AllowUnverified) { Remove-Item $getpip; throw "GetPipSha256 is still TODO. Downloaded get-pip.py SHA256 = $gpHash. Verify it, set it in this script, rerun (or pass -AllowUnverified)." }
-  Write-Warning "UNVERIFIED get-pip.py, SHA256 = $gpHash"
-} elseif ($gpHash -ne $GetPipSha256.ToLower()) { Remove-Item $getpip; throw "get-pip.py SHA256 mismatch: got $gpHash, expected $GetPipSha256" }
-& $py -I $getpip --no-warn-script-location
-if ($LASTEXITCODE) { throw 'get-pip failed' }
+# get-pip/pip 26.3 refuses to install itself on Windows unless run as `python -m pip`, so unpack the
+# hash-checked wheel straight into site-packages (a wheel is a zip; pip is pure Python).
+$whl = Join-Path $env:TEMP 'pip-26.3-py3-none-any.whl'
+Invoke-WebRequest $PipWheelUrl -OutFile $whl
+$wHash = (Get-FileHash $whl -Algorithm SHA256).Hash.ToLower()
+if ($wHash -ne $PipWheelSha256) { Remove-Item $whl; throw "pip wheel SHA256 mismatch: got $wHash, expected $PipWheelSha256" }
+$sp = Join-Path $out 'Lib\site-packages'
+New-Item -ItemType Directory -Force $sp | Out-Null
+& $py -I -c "import zipfile,sys; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])" $whl $sp
+if ($LASTEXITCODE) { throw 'pip wheel unpack failed' }
 
 Write-Host 'Installing importer libs (hash-checked, wheels only)...'
 & $py -I -m pip install --require-hashes --only-binary=:all: --no-warn-script-location -r $lock
