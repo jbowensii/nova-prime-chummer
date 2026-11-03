@@ -5,13 +5,11 @@ param([switch]$Force, [switch]$AllowUnverified)
 $ErrorActionPreference = 'Stop'
 
 $PyVersion = '3.13.9'   # the one pin: also in .github/workflows/desktop-python.yml and electron/README.md
-# TODO(owner/CI): fill from https://www.python.org/downloads/release/python-3139/ (SHA256 of python-3.13.9-embed-amd64.zip).
-# Not invented on purpose. While it is the TODO value the build refuses to run unless -AllowUnverified (CI uses that and prints the hash).
-$PySha256 = 'TODO'
-$GetPipUrl = 'https://bootstrap.pypa.io/get-pip.py'
+# SHA256 of python-3.13.9-embed-amd64.zip, checked 2026-11-03 against python.org's sigstore bundle for that file.
+$PySha256 = '91d828c2da3a029b41699e918674a0cb379c02cf20dab9c501306885f837402a'
+$GetPipUrl = 'https://raw.githubusercontent.com/pypa/get-pip/26.3/public/get-pip.py'   # a tagged copy, so its hash holds
 # get-pip.py is EXECUTED before the hash-locked install, so it is pinned the same way as the zip.
-# TODO(owner/CI): fill from the downloaded file (the script prints its SHA256). -AllowUnverified bypasses (CI uses it).
-$GetPipSha256 = 'TODO'
+$GetPipSha256 = 'f7654c5589318e1d0789575b2586ce76937eb9943602adda8b15b3be3aa0dac3'   # pypa/get-pip tag 26.3
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot '..\..')
 $out = Join-Path $repo 'build\python'
