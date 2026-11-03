@@ -398,7 +398,7 @@ def inline_entries(inline, part_ids, vehicle_ids, names=None):
                 "spec": w["spec"].split("/")[-1].replace("_", " ").title() if w.get("spec") else None,
             }.items() if v}  # fmt: skip
         kids = [{"tag": "fits", "attrs": {"slot": hook_id(h)}} for h in d["usage"] if h]
-        # (a global part's own hook grant; a geardef mount's is the host's, except the weapon hook that makes it a mount)
+        # (a global part's own hook grant; a geardef mount's is the host's, but its weapon hook makes it a mount)
         kids += [
             {"tag": "slot", "attrs": {"id": hook_id(h), "value": v}}
             for h, v in d.get("hooks", {}).items()
