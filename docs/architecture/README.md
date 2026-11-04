@@ -206,6 +206,9 @@ both: it sets the version, writes the `CHANGELOG.md` entry for everything merged
 (`git log --oneline <last tag>..origin/main`), and is tagged after merge. That keeps parallel PRs from conflicting on the
 same two lines, and keeps the changelog from drifting behind the version (0.17.0 shipped without an entry until this step).
 
+On GitHub, release-please opens that release PR automatically from the conventional-commit history (it needs the
+`RELEASE_PLEASE_TOKEN` repository secret, a fine-grained token with Contents and Pull requests write access).
+
 ## Not done, on purpose
 
 Per-module `index.ts` barrels (add one when deep imports become a problem; a barrel is what made `src/engine/index.ts` a
