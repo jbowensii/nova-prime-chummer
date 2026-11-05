@@ -57,6 +57,13 @@ const server = await mk()
 const base = `http://127.0.0.1:${server.address().port}/`
 const browser = await chromium.launch()
 const VIEW = { width: 1100, height: 720 }
+// every shot uses the app's own dark theme (Settings, Theme = Dark; stored as ca2.settings.v1) and a dark colour scheme
+const ctxDark = async (opts, init) => {
+  const ctx = await browser.newContext({ colorScheme: 'dark', ...opts })
+  await ctx.addInitScript(() => localStorage.setItem('ca2.settings.v1', JSON.stringify({ texture: 'flat', theme: 'dark' })))
+  if (init) await ctx.addInitScript(init, undefined)
+  return ctx
+}
 
 async function signIn(page, user, hash) {
   await page.goto(base + hash)
@@ -66,10 +73,10 @@ async function signIn(page, user, hash) {
   await page.getByLabel('Username').waitFor({ state: 'detached' })
 }
 async function newPage(user, hash, game = 'sr6') {
-  const ctx = await browser.newContext({ viewport: VIEW, baseURL: base })
+  const ctx = await browser.newContext({ viewport: VIEW, baseURL: base, colorScheme: 'dark' })
   await ctx.addInitScript(g => localStorage.setItem('chummer.game', g), game)
   // Anarchy's paper-grain texture roughly doubles a PNG: the shots use the Flat texture setting (Settings, Texture)
-  await ctx.addInitScript(() => localStorage.setItem('ca2.settings.v1', JSON.stringify({ texture: 'flat' })))
+  await ctx.addInitScript(() => localStorage.setItem('ca2.settings.v1', JSON.stringify({ texture: 'flat', theme: 'dark' })))
   const page = await ctx.newPage()
   await signIn(page, user, hash)
   return page
@@ -94,8 +101,7 @@ try {
   if (want('first-admin')) {
     const d2 = mkdtempSync(join(tmpdir(), 'readme-shots-empty-'))
     const empty = await mk({ charDir: join(d2, 'characters'), customDir: join(d2, 'custom'), libraryDir: join(d2, 'library') })
-    const ctx = await browser.newContext({ viewport: { width: 1100, height: 560 } })
-    await ctx.addInitScript(() => localStorage.setItem('chummer.game', 'ca2'))
+    const ctx = await ctxDark({ viewport: { width: 1100, height: 560 } }, () => localStorage.setItem('chummer.game', 'ca2'))
     const p = await ctx.newPage()
     await p.goto(`http://127.0.0.1:${empty.address().port}/`)
     await p.waitForTimeout(1500)
@@ -108,7 +114,7 @@ try {
 
   // the picker: a browser that has not chosen a game yet
   if (want('game-picker')) {
-    const ctx = await browser.newContext({ viewport: { width: 1100, height: 560 } })
+    const ctx = await ctxDark({ viewport: { width: 1100, height: 560 } })
     const p = await ctx.newPage()
     await p.goto(base) // the picker comes before sign-in
     await p.waitForTimeout(1000)
