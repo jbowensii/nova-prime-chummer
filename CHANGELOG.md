@@ -1,5 +1,19 @@
 # Release notes
 
+## 1.0.0 — 2026-11-05
+
+**Every install method is now in the release:** Windows installer, Windows portable, Docker, Docker Compose, Unraid, Pelican or Pterodactyl, and Ubuntu.
+
+**Fixed**
+- The Windows portable and installer could not import books: their bundled Python couldn't find the importer. Fixed, and the build now checks it.
+- A desktop start-up failure now shows a message instead of silently closing. The portable no longer offers an update that would install a second copy.
+- Career: a second choice of a repeatable leveled quality now adds its own line, and raising one line no longer raises another. Clear history uses the latest finalize.
+- Career: add-ons fitted to graded implants are priced at the grade. Id migration covers fitted add-ons and packs.
+- Saving keeps a starter pack's lifestyle mark and which Knowledge skill a life module gave.
+- Anything you fit to a starter-pack item at creation now costs nuyen.
+- A backup is refused while a save or import runs. A package download checks every redirect, so it can't be sent to your private network.
+- Ubuntu: clear refusal when run from a home folder, `update` refreshes the service, and a missing venv module is installed.
+
 ## 0.36.0 — 2026-10-30
 
 **Needs a full Re-import of all books** (catalog data changed). Re-apply your GM creation toggles afterwards.

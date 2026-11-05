@@ -35,7 +35,7 @@ ENV UV_THREADPOOL_SIZE=16 PORT=80 STATIC_DIR=/app/dist DATA_PATH=/data \
     PYTHON=python3 CA2_DATA_DIR=/app/dist/data PYTHONDONTWRITEBYTECODE=1
 VOLUME ["/data"]
 EXPOSE 80
-HEALTHCHECK CMD wget -qO- http://127.0.0.1/api/health > /dev/null || exit 1
+HEALTHCHECK CMD wget -qO- http://127.0.0.1:${SERVER_PORT:-${PORT:-80}}/api/health > /dev/null || exit 1
 # starts as root only to match the data mounts to PUID/PGID (default 99:100), then runs the server as that user
 ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["node", "server/server.mjs"]

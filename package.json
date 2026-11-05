@@ -1,7 +1,7 @@
 {
   "name": "nova-prime-chummer",
   "private": true,
-  "version": "0.45.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {
@@ -23,7 +23,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "desktop": "npm run build && electron .",
-    "desktop:build": "npm run build && electron-builder --win nsis portable",
+    "desktop:build": "npm run build && node -e \"fs.writeFileSync('VERSION',require('./package.json').version)\" && electron-builder --win nsis portable",
     "prepare": "husky"
   },
   "dependencies": {

@@ -1,0 +1,47 @@
+{
+  "_comment": "Pelican / Pterodactyl egg: the panel runs the published image as its unprivileged container user, with data under /home/container.",
+  "meta": { "version": "PTDL_v2", "update_url": null },
+  "exported_at": "2026-11-05T00:00:00+00:00",
+  "name": "Nova Prime Chummer",
+  "author": "johnbowensii@gmail.com",
+  "description": "Character manager for Shadowrun 6e and Anarchy. Bring your own PDFs; no book data ships with it.",
+  "features": null,
+  "docker_images": { "Nova Prime Chummer": "ghcr.io/jbowensii/nova-prime-chummer:latest" },
+  "file_denylist": [],
+  "startup": "node /app/server/server.mjs",
+  "config": {
+    "files": "{}",
+    "startup": "{\"done\": \"nova-prime-chummer on\"}",
+    "logs": "{}",
+    "stop": "^C"
+  },
+  "scripts": {
+    "installation": {
+      "script": "#!/bin/sh\n# nothing to fetch: the app is in the image, and it creates its own folders on first start\nexit 0\n",
+      "container": "ghcr.io/jbowensii/nova-prime-chummer:latest",
+      "entrypoint": "sh"
+    }
+  },
+  "variables": [
+    {
+      "name": "Data folder",
+      "description": "Where characters, books and settings live. Keep it under /home/container so it survives restarts.",
+      "env_variable": "DATA_PATH",
+      "default_value": "/home/container/data",
+      "user_viewable": true,
+      "user_editable": false,
+      "rules": "required|string|max:255",
+      "field_type": "text"
+    },
+    {
+      "name": "Public address",
+      "description": "The address people use to reach this server, for sign-in links. Leave empty if you only use the panel's IP and port.",
+      "env_variable": "PUBLIC_URL",
+      "default_value": "",
+      "user_viewable": true,
+      "user_editable": true,
+      "rules": "nullable|string|max:255",
+      "field_type": "text"
+    }
+  ]
+}

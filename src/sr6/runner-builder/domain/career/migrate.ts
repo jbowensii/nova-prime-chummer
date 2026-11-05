@@ -137,25 +137,27 @@ export function migrateSr6Ids(ch: Sr6Character, c: Pick<Sr6Catalog, 'entries' | 
     const a = e.advance
     const advance =
       relative(a) ??
-      (a.op === 'purchase' || a.op === 'upgrade'
+      (a.op === 'purchase' || a.op === 'upgrade' || a.op === 'fit'
         ? { ...a, line: purchase(a.line) }
-        : a.op === 'drop' && a.line
-          ? { ...a, line: purchase(a.line) }
-          : a.op === 'pick'
-            ? { ...a, line: pick(a.line) }
-            : a.op === 'initiate' && a.line
+        : a.op === 'pack'
+          ? { ...a, lines: a.lines.map(purchase) }
+          : (a.op === 'drop' || a.op === 'unfit') && a.line
+            ? { ...a, line: purchase(a.line) }
+            : a.op === 'pick'
               ? { ...a, line: pick(a.line) }
-              : a.op === 'martialart'
-                ? { ...a, line: martial(a.line) }
-                : a.op === 'technique'
-                  ? { ...a, line: technique(a.line) }
-                  : a.op === 'quality'
-                    ? { ...a, line: quality(a.line) }
-                    : a.op === 'buyoff' && a.line
+              : a.op === 'initiate' && a.line
+                ? { ...a, line: pick(a.line) }
+                : a.op === 'martialart'
+                  ? { ...a, line: martial(a.line) }
+                  : a.op === 'technique'
+                    ? { ...a, line: technique(a.line) }
+                    : a.op === 'quality'
                       ? { ...a, line: quality(a.line) }
-                      : a.op === 'lifestyle'
-                        ? { ...a, id: lifestyleId(a.id) }
-                        : a)
+                      : a.op === 'buyoff' && a.line
+                        ? { ...a, line: quality(a.line) }
+                        : a.op === 'lifestyle'
+                          ? { ...a, id: lifestyleId(a.id) }
+                          : a)
     if (!voided.has(e.id)) applyAdvance(state, a)
     return { ...e, advance }
   })

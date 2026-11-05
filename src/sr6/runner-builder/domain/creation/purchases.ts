@@ -174,6 +174,9 @@ export function priced(
   if (!perLine.has('essence')) essence *= x.qty
   const body = x.kind === 'critters' ? critterStat(entryOf(x, data), 'bod') : undefined
   const own = { cost, avail, essence, body }
+  // a starter pack's content is free: the pack's header line carries the price (packs.ts). Its own cost only: an accessory
+  // the player fitted to it is paid (the pack's own carry `pack` too)
+  if (x.pack && x.pack !== x.uid) cost = 0
   for (const a of x.accessories.map(a => fitted(x, a))) {
     const pa = priced(a, data, cr, own),
       ae = entryOf(a, data)
@@ -187,8 +190,6 @@ export function priced(
   cost *= material
   // a GM-adjusted price for a vehicle/drone replaces the whole computed line (as career.ts does)
   if (!host && x.kind === 'vehicles' && x.gmPrice !== undefined && Number.isFinite(x.gmPrice) && x.gmPrice >= 0) cost = x.gmPrice
-  // a starter pack's content is free: the pack's header line carries the price (packs.ts)
-  if (x.pack && x.pack !== x.uid) cost = 0
   return { cost, avail, essence: round2(essence), ok, unpriced, notes, ...(body !== undefined ? { body } : {}) }
 }
 

@@ -1,0 +1,12 @@
+# Nova Prime Chummer on plain Docker: `docker compose up -d`, then open http://localhost:8480
+services:
+  nova-prime-chummer:
+    image: ghcr.io/jbowensii/nova-prime-chummer:latest
+    restart: unless-stopped
+    ports:
+      - '8480:80'
+    environment:
+      PUID: '1000'
+      PGID: '1000'
+    volumes:
+      - ./data:/data

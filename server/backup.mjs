@@ -54,12 +54,14 @@ export function backupApi(ctx) {
   /** Step 1 of a download: make the zip in its own folder in library/.backups (never backed up itself). One at a time
    *  (each is a full copy of the Library on its disk), counted in `zipping` from the first line so a restore can't start
    *  under it. A client that leaves stops it; the folder goes with a killed backup's partial .tmp. -> { token }
-   *  ponytail: not a point-in-time snapshot. Saves and imports may run meanwhile; each file is written atomically, so
-   *  every file is whole but two files can be from different moments. Refuse while `writes`/`running` if that matters. */
+   *  Refused while a save or an import runs, so files in the zip are from one moment; a write starting after it begins
+   *  can still land. ponytail: no full write freeze, make `track` refuse while `zipping` if that ever bites. */
   async function makeBackup(req, res, url, send, who) {
     noRestore()
     if (lock.zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
     if (lock.packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    if (lock.writes) throw fail(409, 'a save or an upload is running; try again when it’s done')
+    if (ctx.running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     lock.zipping++
     const folder = join(backups, `download-${randomBytes(12).toString('hex')}`),
       out = join(folder, 'backup.zip')

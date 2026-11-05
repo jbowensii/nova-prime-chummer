@@ -30,11 +30,13 @@ export function record(
     ...(name && !line.name ? { name } : {}),
   })
   /** a family of levels (levels.ts): the level the spend lands on, and the runner's lower level it replaces */
-  const level = <K extends 'qualities' | PickKind>(kind: K, id: string, asked?: number) => {
+  const level = <K extends 'qualities' | PickKind>(kind: K, id: string, asked?: number, target?: string) => {
     const fam = data.family(kind, id)
     if (!fam) return undefined
     const lines: { uid: string; id: string }[] = kind === 'qualities' ? b.qualities.filter(q => !q.free) : b.picks.filter(x => x.kind === kind)
-    const cur = lines.find(x => data.family(kind, x.id) === fam),
+    // (a repeatable quality: the line of the choice raised, none a new choice: as the preview reads it)
+    const multi = kind === 'qualities' && !!data.qualities[id]?.multi
+    const cur = lines.find(x => (multi ? x.uid === target : data.family(kind, x.id) === fam)),
       curLevel = cur ? (data.levelOf(data.entry(kind, cur.id)) ?? 1) : 0
     const e = data.atLevel(kind, id, data.levelOf(data.entry(kind, id)) ?? curLevel + (asked || 1))
     return e ? { e, target: cur?.uid } : undefined
@@ -44,7 +46,7 @@ export function record(
       adv.line = { ...named(adv.line), points: 0, karma: 1 }
       break
     case 'quality': {
-      const lv = level('qualities', adv.line.id, adv.line.level)
+      const lv = level('qualities', adv.line.id, adv.line.level, adv.target)
       if (lv) {
         adv.line = { ...adv.line, id: lv.e.id, level: 1 }
         if (lv.target) adv.target = lv.target
@@ -246,7 +248,7 @@ export const deletableIds = (ch: Sr6Character): Set<string> => new Set(ch.ledger
 
 /** Clear the whole career history, keeping only the Finalize baseline (start the career over). */
 export const clearHistory = (ch: Sr6Character): Sr6Character => {
-  const fin = ch.ledger.findIndex(e => e.type === 'finalize')
+  const fin = ch.ledger.findLastIndex(e => e.type === 'finalize')
   return { ...ch, ledger: fin >= 0 ? ch.ledger.slice(0, fin + 1) : [], updatedAt: new Date().toISOString() }
 }
 

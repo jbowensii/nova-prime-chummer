@@ -84,7 +84,15 @@ export function readBuild(b: Element, fix?: string[]): Sr6Build {
   )
   out.lifepath = each(
     kids(b, 'lifemodule'),
-    e => ({ id: e.getAttribute('id') ?? '', choices: Object.fromEntries(kids(e, 'choice').map(c => [num(c, 'index', 0), c.getAttribute('pick') ?? ''])) }),
+    e => {
+      const cs = kids(e, 'choice'),
+        lines = Object.fromEntries(cs.filter(c => c.getAttribute('line')).map(c => [num(c, 'index', 0), c.getAttribute('line')!]))
+      return {
+        id: e.getAttribute('id') ?? '',
+        choices: Object.fromEntries(cs.map(c => [num(c, 'index', 0), c.getAttribute('pick') ?? ''])),
+        ...(Object.keys(lines).length ? { lines } : {}),
+      }
+    },
     label,
     fix,
   )

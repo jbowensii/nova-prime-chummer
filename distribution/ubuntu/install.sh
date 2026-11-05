@@ -12,6 +12,12 @@ UNIT=/etc/systemd/system/nova-prime-chummer.service
 PORT="${PORT:-8480}"
 
 [ "$(id -u)" = 0 ] || { echo "Run as root: sudo $0 ${1:-install}" >&2; exit 1; }
+case "$REPO/" in
+  /home/* | /root/*)
+    echo "Move the repo somewhere the service user can reach, such as /opt/nova-prime-chummer, then rerun (home folders are private)." >&2
+    exit 1
+    ;;
+esac
 
 build() {
   cd "$REPO"
@@ -26,26 +32,7 @@ migrate() { # no-op without an old three-folder tree; refuses safely (set -e sto
   (cd "$REPO" && runuser -u "$SVC_USER" -- env DATA_PATH="$DATA_PATH" node server/migrate.mjs --apply --data-path "$DATA_PATH")
 }
 
-install_app() {
-  # ponytail: NodeSource setup script and deadsnakes are trusted as-is; pin/verify keys if this must be hardened
-  if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" != 22 ]; then
-    apt-get update
-    apt-get install -y curl ca-certificates gnupg
-    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
-    apt-get install -y nodejs
-  fi
-  if ! command -v python3.13 >/dev/null; then
-    apt-get install -y software-properties-common
-    add-apt-repository -y ppa:deadsnakes/ppa
-    apt-get update
-    apt-get install -y python3.13 python3.13-venv
-  fi
-  id "$SVC_USER" >/dev/null 2>&1 ||
-    useradd --system --no-create-home --home-dir "$DATA_PATH" --shell /usr/sbin/nologin "$SVC_USER"
-  install -d -o "$SVC_USER" -g "$SVC_USER" "$DATA_PATH"
-  [ -x "$REPO/.venv/bin/python" ] || python3.13 -m venv "$REPO/.venv"
-  "$REPO/.venv/bin/pip" install --require-hashes -r "$REPO/importer/requirements.lock"
-  build
+write_unit() {
   cat >"$UNIT" <<UNITEOF
 [Unit]
 Description=Nova Prime Chummer
@@ -62,6 +49,29 @@ Restart=on-failure
 WantedBy=multi-user.target
 UNITEOF
   systemctl daemon-reload
+}
+
+install_app() {
+  # ponytail: NodeSource setup script and deadsnakes are trusted as-is; pin/verify keys if this must be hardened
+  if ! command -v node >/dev/null || [ "$(node -p 'process.versions.node.split(".")[0]')" != 22 ]; then
+    apt-get update
+    apt-get install -y curl ca-certificates gnupg
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    apt-get install -y nodejs
+  fi
+  if ! python3.13 -c 'import venv, ensurepip' 2>/dev/null; then
+    apt-get install -y software-properties-common
+    add-apt-repository -y ppa:deadsnakes/ppa
+    apt-get update
+    apt-get install -y python3.13 python3.13-venv
+  fi
+  id "$SVC_USER" >/dev/null 2>&1 ||
+    useradd --system --no-create-home --home-dir "$DATA_PATH" --shell /usr/sbin/nologin "$SVC_USER"
+  install -d -o "$SVC_USER" -g "$SVC_USER" "$DATA_PATH"
+  [ -x "$REPO/.venv/bin/python" ] || python3.13 -m venv "$REPO/.venv"
+  "$REPO/.venv/bin/pip" install --require-hashes -r "$REPO/importer/requirements.lock"
+  build
+  write_unit
   migrate
   systemctl enable --now nova-prime-chummer
   echo "Running on http://127.0.0.1:$PORT (data: $DATA_PATH)"
@@ -73,6 +83,7 @@ update_app() {
   "$REPO/.venv/bin/pip" install --require-hashes -r "$REPO/importer/requirements.lock"
   systemctl stop nova-prime-chummer
   build
+  write_unit
   migrate
   systemctl start nova-prime-chummer
 }

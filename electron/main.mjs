@@ -1,5 +1,5 @@
 // Electron main: starts the shared server in a utility process, bound to 127.0.0.1, and shows it in a locked-down window.
-import { app, BrowserWindow, session, shell, utilityProcess } from 'electron'
+import { app, BrowserWindow, dialog, session, shell, utilityProcess } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { createWriteStream, mkdirSync } from 'node:fs'
 import { createServer as netServer } from 'node:net'
@@ -44,7 +44,7 @@ async function start() {
   child = utilityProcess.fork(join(here, 'server-entry.mjs'), [], {
     stdio: 'pipe',
     serviceName: 'nova-prime-chummer-server',
-    env: { ...process.env, CA2_DATA_DIR: join(importerRoot, 'dist', 'data'), PYTHONDONTWRITEBYTECODE: '1' },
+    env: { ...process.env, CA2_DATA_DIR: join(importerRoot, 'dist', 'data'), PYTHONDONTWRITEBYTECODE: '1', PYTHONNOUSERSITE: '1' },
   })
   const log = createWriteStream(join(dirs.Logs, 'server.log'), { flags: 'a' })
   child.stdout.pipe(log, { end: false })
@@ -144,6 +144,12 @@ else {
     if (process.argv.includes(BROWSE)) browseUserData()
     return start().catch(e => {
       console.error(e)
+      dialog.showErrorBox(
+        'Nova Prime Chummer could not start',
+        `${e.message}
+
+Details: ${join(app.getPath('userData'), 'Logs', 'server.log')}`,
+      )
       app.quit()
     })
   })

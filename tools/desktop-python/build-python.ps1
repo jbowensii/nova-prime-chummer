@@ -38,6 +38,8 @@ Expand-Archive $zip -DestinationPath $out
 $pth = Get-ChildItem $out -Filter 'python*._pth' | Select-Object -First 1
 (Get-Content $pth.FullName) -replace '^#\s*import site', 'import site' | Set-Content $pth.FullName
 if (-not (Select-String -Path $pth.FullName -Pattern '^import site' -Quiet)) { throw "could not enable 'import site' in $($pth.Name)" }
+# a ._pth file is the WHOLE search path (no cwd, no PYTHONPATH), so `python -m importer` needs the unpacked app listed here
+Add-Content $pth.FullName '..\app.asar.unpacked'
 
 $py = Join-Path $out 'python.exe'
 Write-Host 'Bootstrapping pip...'
@@ -66,6 +68,14 @@ if ($LASTEXITCODE) { throw 'pip uninstall failed' }
 # smoke test: the importer's imports must load from the bundle
 & $py -I -c "import lxml.etree, pdfplumber, pypdfium2, PIL, cffi, cryptography, anthropic; print('imports ok')"
 if ($LASTEXITCODE) { throw 'smoke import failed' }
+# and the bundle must find the importer where electron-builder puts it: stage it there just for this check
+$unpacked = Join-Path $repo 'build\app.asar.unpacked'
+New-Item -ItemType Directory -Force $unpacked | Out-Null
+Copy-Item (Join-Path $repo 'importer') $unpacked -Recurse -Force
+try {
+  $found = & $py -c "import importer; print(importer.__file__)"
+  if ($LASTEXITCODE -or -not $found) { throw 'the bundled Python cannot find the importer' }
+} finally { Remove-Item $unpacked -Recurse -Force }
 
 Set-Content $stamp $want
 Write-Host "Done: $out"

@@ -9,7 +9,8 @@ const { autoUpdater } = electronUpdater
 
 /** Wires the three IPC calls. `origin` is the app's own page; calls from any other frame are refused. */
 export function initUpdater(getWin, origin) {
-  if (!app.isPackaged) return // dev: no feed, nothing to update
+  // dev: no feed. Portable: the feed's installer would add a second, installed copy instead of replacing the exe
+  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_FILE) return
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = false
   autoUpdater.allowDowngrade = false

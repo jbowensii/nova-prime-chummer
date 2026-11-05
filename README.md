@@ -111,13 +111,21 @@ The container starts as root only to hand `/data` to `PUID`:`PGID` (default 99:1
 
 To build the image yourself: `docker build -t nova-prime-chummer:latest .` (add `--build-arg OCR=1` for scanned books).
 
+### Docker Compose
+
+Download [distribution/docker/docker-compose.yml](distribution/docker/docker-compose.yml), set `PUID` and `PGID` to your user, run `docker compose up -d`, and open port **8480**. Your data stays in `./data`.
+
+### Pelican or Pterodactyl panel
+
+Import the egg, [distribution/pelican/egg-nova-prime-chummer.json](distribution/pelican/egg-nova-prime-chummer.json), under **Eggs**, then create a server from it. The panel gives it a port and keeps the data under `/home/container/data`. It runs as the panel's unprivileged user, so nothing else is needed.
+
 ### Ubuntu (systemd service)
 
 From a checkout of the repo, as root: `sudo distribution/ubuntu/install.sh` (also `update` and `uninstall`). It installs Node and Python, builds the app, and runs it as a service on `127.0.0.1:8480` with data in `/var/lib/nova-prime-chummer`. Put a reverse proxy in front of it.
 
 ### Windows desktop app
 
-Installer and portable builds, with the same server inside. Data lives in `%APPDATA%\Nova Prime Chummer`. There is no setup code: the first admin is made on the setup screen. See [electron/README.md](electron/README.md).
+Installer and portable builds, with the same server and its own Python inside, so nothing else needs installing. The portable exe does not update itself: download each new version from the release page. Data lives in `%APPDATA%\nova-prime-chummer`. There is no setup code: the first admin is made on the setup screen. See [electron/README.md](electron/README.md).
 
 ### From source
 

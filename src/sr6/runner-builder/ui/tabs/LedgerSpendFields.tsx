@@ -214,7 +214,7 @@ export function LedgerSpendFields({ L }: { L: LedgerForm }) {
           </button>
         </div>
       )}
-      {(op in LEARN || op === 'purchase') &&
+      {(op in LEARN || op === 'purchase' || op === 'quality') &&
         picked &&
         (() => {
           const co = choiceOptions(data, picked.e, choiceContext)

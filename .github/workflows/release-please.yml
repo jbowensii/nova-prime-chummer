@@ -2,7 +2,7 @@ name: release-please
 
 # GitHub only (Forgejo builds stay untagged). Each push to main updates one "release PR" that bumps package.json and
 # prepends the new section to CHANGELOG.md from the conventional commits. Merging it creates the tag (v0.45.0) and the GitHub
-# Release; the tag push is what starts publish.yml (image + signed desktop build). Nothing else tags, so nothing double-publishes.
+# Release; the tag push is what starts publish.yml (the image; the signed desktop build is a manual run of publish.yml on the tag). Nothing else tags, so nothing double-publishes.
 # Needs the repo secret RELEASE_PLEASE_TOKEN (a PAT with contents + pull-requests write): events made with the default
 # GITHUB_TOKEN never start other workflows, so without the PAT the tag would not trigger publish.yml.
 # To keep plain-English notes on top: as the LAST step before merging, edit CHANGELOG.md on the release PR's branch (add your

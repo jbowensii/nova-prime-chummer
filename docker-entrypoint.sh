@@ -4,6 +4,8 @@
 # started as any other user (docker run --user), it migrates and runs the server directly.
 # The migrator is a no-op when there is no old tree; if it refuses or fails, set -e stops the container (no server start).
 set -e
+# Pelican/Wings hands the allocated port in SERVER_PORT and runs the container as an unprivileged user
+export PORT="${SERVER_PORT:-${PORT:-80}}"
 if [ "$(id -u)" = 0 ]; then
   PUID=${PUID:-99} PGID=${PGID:-100}
   d=${DATA_PATH:-/data}

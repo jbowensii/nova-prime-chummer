@@ -19,6 +19,7 @@ import {
   attrRating,
   diyAllowed,
   entryOf,
+  fitted,
   licenceFee,
   magicLoss,
   priced,
@@ -376,8 +377,8 @@ export function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRul
         const problem = addonUpgradeProblem(was, a.line, data)
         if (problem) no(problem)
         const hostPr = priced({ ...accHost, accessories: [] }, data, cr)
-        const now = priced(a.line, data, cr, hostPr),
-          before = priced(was, data, cr, hostPr)
+        const now = priced(fitted(accHost, a.line), data, cr, hostPr),
+          before = priced(fitted(accHost, was), data, cr, hostPr)
         if (!now.ok || !before.ok) no('book-value')
         return { label: `Changed: ${lineLabel(was)} → ${lineLabel(a.line)} on ${lineLabel(accHost)}`, nuyen: now.cost - before.cost }
       }
@@ -427,7 +428,7 @@ export function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRul
       }
       // (critter equipment on an owned critter only; on a critter what is printed in its Body reads at it: priced)
       if (critterOnly(e) && host.kind !== 'critters') no('critters-only')
-      const pr = priced(x, data, cr, priced({ ...host, accessories: [] }, data, cr))
+      const pr = priced(fitted(host, x), data, cr, priced({ ...host, accessories: [] }, data, cr))
       if (!pr.ok) no('book-value')
       return { label: `Fit: ${lineLabel(x)}${x.rating ? ` (rating ${x.rating})` : ''}${x.diy ? ', do it yourself' : ''} on ${lineLabel(host)}`, nuyen: pr.cost }
     }

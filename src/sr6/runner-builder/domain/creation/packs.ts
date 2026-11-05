@@ -293,7 +293,7 @@ export function expandPack(data: Sr6Data, id: string, b: Pick<Sr6Build, 'sins'>,
     id,
     name: pack.name,
     cost,
-    lines: c.lines.map(l => ({ ...l, pack: uid })),
+    lines: c.lines.map(l => ({ ...l, pack: uid, accessories: l.accessories.map(a => ({ ...a, pack: uid })) })),
     sins,
     lifestyles: c.months.map(m => ({ sin: host!, line: { uid: newId(), id: m.id, months: m.months, pack: uid } })),
   }

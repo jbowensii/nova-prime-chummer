@@ -232,19 +232,27 @@ export function systemsApi({ layout, version }) {
     } catch {
       throw fail(400, 'that isn’t a web address')
     }
-    if (u.protocol !== 'https:' && u.protocol !== 'http:') throw fail(400, 'only http(s) addresses work')
-    try {
-      const host = u.hostname.replace(/^\[|\]$/g, '')
-      const addrs = isIP(host) ? [{ address: host }] : await lookup(host, { all: true })
-      if (addrs.some(a => isInternalIp(a.address))) throw fail(400, 'that address points to this machine or a private network')
-    } catch (e) {
-      throw e.code ? e : fail(502, 'couldn’t look up that address')
-    }
+    // every hop is checked (GitHub release links redirect, and a redirect must not reach the LAN).
+    // ponytail: DNS could still change between the lookup and the fetch; pin the vetted address if this ever faces untrusted admins
     let r
-    try {
-      r = await fetch(u, { signal: AbortSignal.timeout(120000) })
-    } catch {
-      throw fail(502, 'couldn’t download the package')
+    for (let hops = 0; ; hops++) {
+      if (u.protocol !== 'https:' && u.protocol !== 'http:') throw fail(400, 'only http(s) addresses work')
+      try {
+        const host = u.hostname.replace(/^\[|\]$/g, '')
+        const addrs = isIP(host) ? [{ address: host }] : await lookup(host, { all: true })
+        if (addrs.some(a => isInternalIp(a.address))) throw fail(400, 'that address points to this machine or a private network')
+      } catch (e) {
+        throw e.code ? e : fail(502, 'couldn’t look up that address')
+      }
+      try {
+        r = await fetch(u, { redirect: 'manual', signal: AbortSignal.timeout(120000) })
+      } catch {
+        throw fail(502, 'couldn’t download the package')
+      }
+      const to = r.status >= 300 && r.status < 400 && r.headers.get('location')
+      if (!to) break
+      if (hops === 5) throw fail(502, 'too many redirects')
+      u = new URL(to, u)
     }
     if (!r.ok) throw fail(502, `the download failed (${r.status})`)
     if (Number(r.headers.get('content-length')) > MAX_ZIP) throw fail(413, 'the package is larger than 200 MB')

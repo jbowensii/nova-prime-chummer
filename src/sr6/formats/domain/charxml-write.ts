@@ -132,7 +132,7 @@ export const sinXml = (s: Sr6Sin) =>
   el(
     'sin',
     { uid: s.uid, name: s.name, kind: s.kind, rating: s.rating, gender: s.gender, placeholder: s.placeholder, pack: s.pack },
-    s.licences.map(l => el('licence', { ...l })).join('') + (s.lifestyles ?? []).map(l => el('lifestyle', { uid: l.uid, id: l.id, months: l.months })).join(''),
+    s.licences.map(l => el('licence', { ...l })).join('') + (s.lifestyles ?? []).map(l => lifestyleXml(l)).join(''),
   )
 
 export function buildXml(b: Sr6Build): string {
@@ -144,7 +144,7 @@ export function buildXml(b: Sr6Build): string {
         'lifemodule',
         { id: m.id },
         Object.entries(m.choices)
-          .map(([index, pick]) => el('choice', { index, pick }))
+          .map(([index, pick]) => el('choice', { index, pick, line: m.lines?.[Number(index)] }))
           .join(''),
       ),
     ),

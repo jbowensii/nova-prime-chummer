@@ -169,6 +169,7 @@
               <xs:complexType>
                 <xs:attribute name="index" type="c:Count" use="required"/>
                 <xs:attribute name="pick" type="xs:string" use="required"/>
+                <xs:attribute name="line" type="xs:string"/>
               </xs:complexType>
             </xs:element>
           </xs:sequence>

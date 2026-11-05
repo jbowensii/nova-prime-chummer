@@ -263,7 +263,9 @@ export function useLedgerForm() {
           ? { op, line: { uid: '', name: f.name.trim(), kind: f.kind === 'language' ? 'language' : 'knowledge', points: 0, karma: 1 } }
           : null
       case 'quality':
-        return e ? { op, line: { uid: '', id: e.id, level: 1 } } : null
+        return e
+          ? { op, line: { uid: '', id: e.id, level: 1, ...(choiceOptions(data, e, choiceContext) && f.note.trim() ? { note: f.note.trim() } : {}) } }
+          : null
       case 'buyoff':
         // (Stolen Gear: the part of its converted karma bought off; none, all of it)
         return f.target ? { op, target: f.target, ...(stolen?.uid === f.target && f.karma.trim() ? { part: whole(f.karma) } : {}) } : null
