@@ -1,69 +1,361 @@
 # Nova Prime Chummer
 
-A self-hosted character generator and career tracker for two games: **Shadowrun: Anarchy 2.0** and **Shadowrun Sixth World (SR6)**.
+A self-hosted character generator and career tracker for two games: **Shadowrun Sixth World (SR6)** and **Shadowrun: Anarchy 2.0**.
 
-You run it on your own network (a home server, a NAS, a PC). Everyone at the table uses it in a browser. It ships the rules engine only. You bring your own books. See [How data comes in](#how-data-comes-in).
+**Version 1.0.0 (Beta).** Release history: [CHANGELOG.md](CHANGELOG.md). Installers: [latest release](https://github.com/jbowensii/nova-prime-chummer/releases/latest).
 
-- Version 0.23.0. Release history: [CHANGELOG.md](CHANGELOG.md)
-- Example sheets: [Example character sheets](#example-character-sheets)
+![The game picker: Shadowrun 6th World on the left, Shadowrun Anarchy 2.0 on the right](docs/images/game-picker.png)
+
+You run it on your own network (a home server, a NAS, a PC) or as a Windows desktop app. Everyone at the table uses it in a browser. It ships the rules engine only: **no book text, tables or art**. You bring your own books. See [How a book becomes data](#how-a-book-becomes-data).
+
+> **About the screenshots.** Every screenshot in this guide was taken from a real running build with invented sample data (names like "Glimmerkin" and "Zip Spark" are made up). They show how the app looks and works, not what is in any book. `node tools/readme-shots.mjs` retakes them.
+
+## Contents
+
+1. [What it is](#what-it-is)
+2. [Key features](#key-features)
+3. [How the pieces fit](#how-the-pieces-fit)
+4. [Choose your install](#choose-your-install)
+5. [Install guides](#install-guides): [Windows installer](#windows-installer) · [Windows portable](#windows-portable) · [Docker](#docker) · [Docker Compose](#docker-compose) · [Unraid](#unraid) · [Pelican or Pterodactyl](#pelican-or-pterodactyl-panel) · [Ubuntu](#ubuntu-systemd-service) · [From source](#from-source)
+6. [First run](#first-run)
+7. [How a book becomes data](#how-a-book-becomes-data)
+8. [The life of a runner](#the-life-of-a-runner)
+9. [Using the app: the basics](#using-the-app-the-basics)
+10. [Shadowrun 6 guide](#shadowrun-6-guide)
+11. [Anarchy 2.0 guide](#anarchy-20-guide)
+12. [Options](#options): accounts, sign-in, AI, backup, backgrounds
+13. [FoundryVTT support](#foundryvtt-support)
+14. [Development](#development)
+15. [Thanks](#thanks)
 
 ## What it is
 
 Build runners with each book's own creation rules. A **Review** tab checks every rule and cites the book and page. If a runner breaks a rule, Review says which one. A GM can approve an exception.
 
-When a runner is finished, you **Finalize** it. From then on the career ledger tracks every change: Karma and nuyen earned, spent and refunded. A mistake is voided, never silently edited.
+When a runner is finished, you **Finalize** it. From then on a **Ledger** tracks the runner's career:
 
-Also in the box:
+- **Shadowrun 6** has two currencies, Karma and nuyen. The ledger only grows. A mistake is voided (struck through, with a reason), never silently edited.
+- **Anarchy 2.0** has nuyen only. Nothing is locked after Finalize: a change on any tab applies at once, and the ledger logs it with its price (a removed item is refunded).
 
-- **NPCs and critters** for GMs: grunts, prime NPCs, critters, spirits and sprites with their stat blocks.
-- **Campaigns** with a GM. The GM adds players. Players put their runners in. The GM sees the runners. Players see the roster.
-- **Compendiums**: your own collections of entries, private or shared with a campaign's GMs.
-- **Printable sheets** that follow the official layout. Use your browser's "Save as PDF".
+The two games are kept fully apart. Runners, NPCs, campaigns, books, data, edits, trash and AI settings belong to one game, and the server refuses an object from the other game. Only your account and its role are shared. The first screen asks which game you want, and an icon in the header switches.
+
+## Key features
+
+| | Shadowrun 6 | Anarchy 2.0 |
+| --- | --- | --- |
+| Creation | Five methods: priority, sum to ten, point buy, karma, lifepath | Level of play, optional package guide, free allocation of nuyen |
+| Budget view | Attribute, skill, adjustment, knowledge, contact, power and Karma pools, nuyen, Essence, each itemized | One nuyen receipt that lists every rule |
+| Magic and tech | Magic or Resonance tab: spells, rituals, adept powers, metamagics, complex forms, echoes, foci, bound spirits | Shadow Amps (amp builder), Awakened and Emerged amps, spells and complex forms |
+| Gear | Weapons, armor, electronics, programs, augmentations, vehicles, drones, critters, starter packs, contacts, SINs, licenses, lifestyles | Weapons, armor, gear, vehicles, spells, lifestyles |
+| Designers | Vehicle, drone, weapon and cyberware designers | Amp builder |
+| Review | Rule problems block Finalize until fixed or approved by a GM | Same |
+| Career | Karma and nuyen ledger with voiding, per-line edit, export and import | Nuyen ledger, changes logged by themselves |
+| Sheets | Six printable styles | Four printable styles |
+| GM tools | NPCs (grunts, contacts), critters, spirits, sprites | NPCs (regular or prime), critters, spirits |
+| Table | Table setup (creation rules, per campaign too), campaigns, compendiums | Table setup (optional and house rules), campaigns, compendiums |
+| Data | Import books you own, edit entries, restore a version | Same, plus new entries under a house-rule source, XML overlays and data packs |
+
+Shared by both games:
+
+- **Accounts and roles** (admin, editor, player). The server enforces every rule.
 - **Ask the rules**: an AI answers rules questions from your own imported data, with book and page. You choose the provider and bring the key.
-- **Optional rules and house rules** that the GM switches on or off for the whole table.
-- A **trash** for deleted runners, **example characters** to load, and a **portrait** picker.
+- **Backup and restore** of everything as one zip, plus cloud backup to S3 (admin).
+- **FoundryVTT export** with a companion module for each game.
+- **Trash** for deleted runners and NPCs, **example characters** to load, **portraits**, **background art**.
+- **Eight ways to install**: Windows installer, Windows portable, Docker, Docker Compose, Unraid, Pelican or Pterodactyl, Ubuntu, and from source.
 
-The two games are kept fully apart. Runners, NPCs, campaigns, books, data, edits, trash and AI settings belong to one game. The server refuses an object from the other game. Only your account and its role are shared. The first screen asks which game you want, and an icon in the header switches.
+## How the pieces fit
 
-## Both systems
+```mermaid
+flowchart LR
+  B["Browser<br/>(everyone at the table)"] -->|"HTTP"| N["Node server<br/>server/server.mjs"]
+  N -->|"serves"| S["Built web app<br/>(React, dist/)"]
+  N -->|"runs one job at a time"| P["Python importer<br/>python -m importer"]
+  N <--> D[("Data folder")]
+  P <--> D
+  subgraph D2["Inside the data folder"]
+    C["Config<br/>accounts, sign-in, AI settings"]
+    Y["Data/systems<br/>runners, house rules, books, edits"]
+    L["Library<br/>your PDFs, never served"]
+    O["Logs and Backups"]
+  end
+  D --- D2
+```
 
-### Shadowrun: Anarchy 2.0
+The Node server stores runners as XML files, one folder per account. It never serves the `Library` folder. The Python importer turns a PDF you upload into game data. On Windows desktop the same server runs inside the app, with its own Python bundled.
 
-Anarchy 2.0 uses nuyen only. This is the 2.0 rule set, not Anarchy 1st edition.
+The container, the panel egg and the desktop app all use this layout:
 
-- **Creation**: pick Ganger, Runner or Prime Runner, and optionally a book package. A live nuyen receipt shows every rule.
-- **Shadow Amps**: an amp builder. An amp type plus effects gives its rating, cost and Essence. Imported books add prebuilt amps and add-ons.
-- **Technomancers**: the Emerged amp, the Tasking skill, a living persona and complex forms (from the Conversion Guide).
-- **Also covered**: weapons, vehicles and drones, mental armor, lifestyles, and knowledge and languages.
-- **Optional rules**: Table setup holds the book's optional rules and your house rules. The GM turns them on or off. Players see a read-only list.
-- **Canon**: material that is not official rules carries a **Non-canon** badge. A runner can be set to canon only.
-- **Sheets**: Printer-friendly, Full color and Book style.
-- **Rules reference**: a searchable page built from the quick-reference sheets.
+| Folder | What it holds |
+| --- | --- |
+| `Config` | Accounts, sign-in settings, AI settings and keys |
+| `Data/systems` | Per game: saved runners (a folder per account), house rules, imported books, edits |
+| `Library` | Uploaded PDFs, their converted text, import reports. Never served over the web |
+| `Logs`, `Backups` | Server logs and the automatic safety copies made before a restore |
 
-### Shadowrun Sixth World
+An older install with three folders (`characters`, `custom`, `library`) is moved into this layout on the first start. Nothing is deleted. If you still have those three folders, mount their parent folder as the data folder.
 
-- **Five creation methods**: priority, sum to ten, point buy, karma and lifepath. Lifepath needs a book that prints life modules.
-- **Budgets**: attribute, skill, adjustment, Karma, nuyen, Essence, power, contact and knowledge points, each itemized.
-- **Tabs**: Concept, Creation method, Attributes, Skills, Qualities, Magic or Resonance, Augmentations, Gear, Vehicles, Contacts and lifestyle, Review and Ledger.
-- **Derived values** come from the engine: dice pools, condition monitors, initiative, Defense Rating, Essence and Magic loss, and more.
-- **Creation rules** (Table setup): the numbers the book prints in its text, each with its page. The admin sets the server's. A GM can give a campaign its own. The standard creation numbers ship as defaults (`public/data/sr6/creation-defaults.xml`).
-- **Optional and house rules**: the Sixth World Companion's optional rules and several house rules, all off until a table turns them on.
-- **Career ledger**: spend Karma on attributes, skills, qualities, spells, initiation and more. Spend nuyen on gear and lifestyle.
-- **Sheets**: six styles (Printer-friendly, Full color, Book style, Neon, Hex, Dossier).
+## Choose your install
 
-## How data comes in
+```mermaid
+flowchart TD
+  A["Where will it run?"] --> B{"Just you, on a Windows PC?"}
+  B -->|"Yes"| C{"Want an installed app that can<br/>check for updates from inside?"}
+  C -->|"Yes"| W1["Windows installer"]
+  C -->|"No, run from a folder"| W2["Windows portable"]
+  B -->|"No, a shared server"| D{"What is the server?"}
+  D -->|"Unraid"| U["Unraid template"]
+  D -->|"A Pelican or Pterodactyl panel"| PE["Pelican egg"]
+  D -->|"Ubuntu, no Docker"| UB["Ubuntu service"]
+  D -->|"Any Docker host"| E{"Prefer a compose file?"}
+  E -->|"Yes"| DC["Docker Compose"]
+  E -->|"No"| DK["Docker run"]
+  D -->|"I want to change the code"| SRC["From source"]
+```
 
-The app ships **no book content**: no tables, no rules text, no descriptions. A fresh server shows a setup page until you load your core data.
+| Method | Best for | Updates | Data lives in | Maturity |
+| --- | --- | --- | --- | --- |
+| [Windows installer](#windows-installer) | One person, one PC | Check and install from Setup, Updates | `%APPDATA%\nova-prime-chummer` | Main path |
+| [Windows portable](#windows-portable) | A USB stick or a PC where you cannot install | Download each new version yourself | `%APPDATA%\nova-prime-chummer` | Main path |
+| [Docker](#docker) | A home server | Pull the image, recreate the container | The folder you mount as `/data` | Main path |
+| [Unraid](#unraid) | Unraid users | Unraid's Docker tab | `/mnt/user/appdata/nova-prime-chummer` | Main path |
+| [Docker Compose](#docker-compose) | Docker hosts that use compose | `docker compose pull` and `up -d` | `./data` next to the compose file | **New in this beta** |
+| [Pelican or Pterodactyl](#pelican-or-pterodactyl-panel) | Game-server panels | Restart or reinstall from the panel | `/home/container/data` in the server | **New in this beta** |
+| [Ubuntu service](#ubuntu-systemd-service) | A Linux box without Docker | `install.sh update` | `/var/lib/nova-prime-chummer` | **New in this beta** |
+| [From source](#from-source) | Developers | `git pull`, rebuild | The folder you set with `DATA_PATH` | For development |
+
+**An honest note on maturity.** Pelican, Docker Compose and Ubuntu are new in this beta. They have automated checks (see [distribution/README.md](distribution/README.md)) but far less field use than Docker, Unraid and the Windows app. If one fails, please [open an issue](https://github.com/jbowensii/nova-prime-chummer/issues) with the log.
+
+## Install guides
+
+Each guide below ends with how to update and how to remove it. Whichever method you pick, then follow [First run](#first-run).
+
+### Windows installer
+
+Asset name: `Nova-Prime-Chummer-Setup-1.0.0.exe`, from the [latest release](https://github.com/jbowensii/nova-prime-chummer/releases/latest).
+
+1. Download the `Nova-Prime-Chummer-Setup-1.0.0.exe` asset.
+2. Run it. It is a normal wizard (not one-click): you can change the install folder.
+3. The installer is code-signed. A new certificate can still trigger a Windows SmartScreen warning: check that you downloaded it from the release page, then choose **More info**, then **Run anyway**.
+4. Finish the wizard and start **Nova Prime Chummer**. A window opens with the app. There is no browser, no server to start, and nothing else to install: Python for the importer is bundled.
+5. Follow [First run](#first-run). On the desktop there is **no setup code**: the first screen asks you to create the admin account.
+
+**Where your data lives:** `%APPDATA%\nova-prime-chummer` (open it by pasting that into the File Explorer address bar). It holds `Config`, `Data`, `Library`, `Logs` and `Backups`. The server log is `Logs\server.log`.
+
+**Update:** the installed app does not update by itself in the background. Open the **Setup** screen (the **Setup** link on the game picker), then the **Updates** tab, and check for an update. It can make a backup first and then install. You can also download a newer installer and run it over the old one.
+
+**Uninstall:** use Windows **Settings, Apps**. The build does not turn on "delete my data on uninstall", so your data folder is left in place. Delete `%APPDATA%\nova-prime-chummer` yourself if you want it gone.
+
+The app talks to a server bound to `127.0.0.1` only, so nothing else on your network can reach it. To let other people at the table use it, install it on a shared server instead (see [Choose your install](#choose-your-install)).
+
+### Windows portable
+
+Asset name: `Nova-Prime-Chummer-Portable-1.0.0.exe`, from the [latest release](https://github.com/jbowensii/nova-prime-chummer/releases/latest).
+
+1. Download `Nova-Prime-Chummer-Portable-1.0.0.exe`.
+2. Put it anywhere (a folder, a USB stick) and double-click it. The same SmartScreen note as above applies.
+3. Follow [First run](#first-run). No setup code: the first admin is made on screen.
+
+**Where your data lives:** the same place as the installer, `%APPDATA%\nova-prime-chummer`, not beside the exe. So moving the exe to another PC does not move your runners. Copy that data folder across too (or use Settings, Backup and Restore).
+
+**Update:** the portable exe **does not update itself**. Download each new version from the release page and run it. It keeps using the same data folder.
+
+**Uninstall:** delete the exe. Delete `%APPDATA%\nova-prime-chummer` if you want your data gone.
+
+### Docker
+
+You need Docker. The image is published to GitHub's container registry and is built in GitHub Actions, so there is no build step on your machine.
+
+1. Make a folder for your data, for example `/srv/nova-prime-chummer`.
+2. Run:
+
+   ```bash
+   docker run -d --init --name nova-prime-chummer -p 8480:80 \
+     -v /srv/nova-prime-chummer:/data \
+     ghcr.io/jbowensii/nova-prime-chummer:latest
+   ```
+
+3. Read the setup code: `docker logs nova-prime-chummer`. Look for the line `No accounts yet. Setup code for the first admin: ...`.
+4. Open `http://<the server's address>:8480` and follow [First run](#first-run).
+
+The container starts as root only to hand `/data` to `PUID`:`PGID` (default 99:100), then runs as that user. Add `-e PUID=1000 -e PGID=1000` to match another host user. Or use `--user` to skip this step; then `/data` must already be writable by that user.
+
+To build the image yourself: `docker build -t nova-prime-chummer:latest .` (add `--build-arg OCR=1` to add OCR for scanned books).
+
+**Update:** `docker pull ghcr.io/jbowensii/nova-prime-chummer:latest`, then `docker stop nova-prime-chummer && docker rm nova-prime-chummer` and run the same `docker run` command again. Your data stays in the mounted folder. After an update, see "Re-import all books" under [How a book becomes data](#how-a-book-becomes-data).
+
+**Uninstall:** `docker stop nova-prime-chummer && docker rm nova-prime-chummer`, then `docker rmi ghcr.io/jbowensii/nova-prime-chummer:latest`. Your data folder stays until you delete it.
+
+### Docker Compose
+
+New in this beta. File: [distribution/docker/docker-compose.yml](distribution/docker/docker-compose.yml).
+
+1. Make a folder, for example `nova-prime-chummer`, and put the compose file in it:
+
+   ```bash
+   mkdir nova-prime-chummer && cd nova-prime-chummer
+   curl -fsSLO https://raw.githubusercontent.com/jbowensii/nova-prime-chummer/main/distribution/docker/docker-compose.yml
+   ```
+
+2. Open the file. Under `environment`, set `PUID` and `PGID` to your user's ids (`id -u` and `id -g` print them). The file ships with `1000`.
+3. Start it: `docker compose up -d`.
+4. Read the setup code: `docker compose logs nova-prime-chummer`.
+5. Open `http://<the server's address>:8480` and follow [First run](#first-run).
+
+The file maps host port 8480 to the container's port 80 and keeps your data in `./data` next to the file. It restarts the container unless you stop it.
+
+**Update:** `docker compose pull && docker compose up -d`.
+
+**Uninstall:** `docker compose down`. Your `./data` folder stays until you delete it.
+
+### Unraid
+
+1. **Docker** tab, then **Template repositories**. Add `https://github.com/jbowensii/unraid-templates` and **Save**.
+2. **Add Container** and pick _nova-prime-chummer_. Check the settings (below), then **Apply**.
+3. When it is running, click its icon on the Docker tab, then **Logs**, and read the setup code.
+4. Click the icon, then **WebUI** (port **8480**), and follow [First run](#first-run).
+
+The template maps one **Data** folder, `/mnt/user/appdata/nova-prime-chummer`, to `/data`. It sets `PUID` 99 and `PGID` 100, Unraid's `nobody` and `users`. The image is pulled ready-built, so there is no build step on the server. The template's source is [unraid/nova-prime-chummer.xml](unraid/nova-prime-chummer.xml); it is copied into `jbowensii/unraid-templates` at each release.
+
+**Behind a reverse proxy**, fill in **Trusted proxy** (the proxy's address) and **Public address** (the one address people use). See [docs/hosting-auth.md](docs/hosting-auth.md).
+
+**A second instance** (a second table, or a test copy) needs its own name, port and data folder. Add the container from the template again and change three things before **Apply**:
+
+| Setting | First instance | Second instance (example) |
+| --- | --- | --- |
+| Name | `nova-prime-chummer` | `nova-prime-chummer-2` |
+| WebUI Port | `8480` | `8481` |
+| Data | `/mnt/user/appdata/nova-prime-chummer` | `/mnt/user/appdata/nova-prime-chummer-2` |
+
+Leave **Data path** (`/data`) alone: that is the path inside the container. The second instance has its own accounts, so it shows its own setup code in its own log.
+
+**Update:** on the Docker tab, check for updates and apply the one for this container. Your data stays in the appdata folder.
+
+**Uninstall:** remove the container (tick the option to remove its image). The appdata folder stays until you delete it.
+
+### Pelican or Pterodactyl panel
+
+New in this beta. Egg: [distribution/pelican/egg-nova-prime-chummer.json](distribution/pelican/egg-nova-prime-chummer.json).
+
+1. In the panel's admin area, open **Eggs** and import `egg-nova-prime-chummer.json` (download it from the repo first).
+2. Create a server from the **Nova Prime Chummer** egg. Give it a port allocation. The panel passes the port to the app as `SERVER_PORT`.
+3. Start the server. The egg's installer does nothing (the app is inside the image, which is `ghcr.io/jbowensii/nova-prime-chummer:latest`). The console shows `nova-prime-chummer on` when it is ready.
+4. Read the setup code in the panel's console (`No accounts yet. Setup code for the first admin: ...`).
+5. Open `http://<the node's address>:<your port>` and follow [First run](#first-run).
+
+The server runs as the panel's unprivileged user and keeps its data under `/home/container/data` (the egg's **Data folder** variable, which a user cannot edit). The other variable, **Public address**, is for sign-in links: leave it empty if you only use the node's address and port.
+
+**Update:** restart the server so the panel pulls the current `:latest` image. If the panel does not pull it, reinstall the server from the panel (your files under `/home/container` stay). This path has had little field testing.
+
+**Uninstall:** delete the server in the panel. That removes its files, including your data. Download a backup first (Settings, Backup).
+
+### Ubuntu (systemd service)
+
+New in this beta. Script: [distribution/ubuntu/install.sh](distribution/ubuntu/install.sh). Target: Ubuntu LTS.
+
+The script **refuses to run from a home folder** (`/home/...` or `/root/...`), because the service user cannot read a private home folder. Use `/opt`.
+
+1. Get the code somewhere under `/opt`:
+
+   ```bash
+   sudo git clone https://github.com/jbowensii/nova-prime-chummer.git /opt/nova-prime-chummer
+   ```
+
+2. Run the installer as root:
+
+   ```bash
+   sudo /opt/nova-prime-chummer/distribution/ubuntu/install.sh
+   ```
+
+   It installs Node 22 (from NodeSource) and Python 3.13 (from the deadsnakes PPA) if they are missing. It makes a system user `novaprime`, a Python virtual environment in `/opt/nova-prime-chummer/.venv`, builds the app, writes the systemd service and starts it. It trusts the NodeSource and deadsnakes install steps as they are.
+3. Read the setup code: `sudo journalctl -u nova-prime-chummer | grep "Setup code"`.
+4. The service listens on **`127.0.0.1:8480` only**. To reach it from other machines put a reverse proxy in front (see [docs/hosting-auth.md](docs/hosting-auth.md)), or for a quick look from your own PC use an SSH tunnel: `ssh -L 8480:127.0.0.1:8480 you@the-server`, then open `http://localhost:8480`.
+5. Follow [First run](#first-run).
+
+To use another port, run the script as `sudo env PORT=9000 /opt/nova-prime-chummer/distribution/ubuntu/install.sh` (for install and for update). Editing the service file by hand does not last: `update` rewrites it.
+
+**Where your data lives:** `/var/lib/nova-prime-chummer`.
+
+**Update:** `sudo /opt/nova-prime-chummer/distribution/ubuntu/install.sh update`. It pulls the repo (if it is a git checkout), refreshes the Python packages, rebuilds, rewrites the service file and restarts.
+
+**Uninstall:** `sudo /opt/nova-prime-chummer/distribution/ubuntu/install.sh uninstall`. It stops and disables the service and renames the unit file to `.removed`. It does **not** delete your data in `/var/lib/nova-prime-chummer`, the `novaprime` user, or the code in `/opt`. Remove those yourself if you want them gone.
+
+### From source
+
+You need Node 22 and Python 3.12 or newer (the importer).
+
+```bash
+git clone https://github.com/jbowensii/nova-prime-chummer.git
+cd nova-prime-chummer
+npm ci
+pip install --require-hashes -r importer/requirements.lock
+```
+
+Then build and serve. The server defaults to port 80 and to the data folder `/data`, so set both:
+
+```bash
+# bash
+PORT=8480 DATA_PATH=./data npm run serve
+```
+
+```powershell
+# PowerShell
+$env:PORT = 8480; $env:DATA_PATH = "$PWD\data"; npm run serve
+```
+
+The setup code is printed in that terminal. Open `http://localhost:8480`. The other variables are `PYTHON` (the Python to run the importer) and `STATIC_DIR`.
+
+`npm run dev` runs the interface alone on `http://localhost:5173`. It has no server, so no accounts, no Books page and no importer.
+
+**Update:** `git pull`, `npm ci`, `npm run serve`. **Uninstall:** delete the folder. Your data is in `DATA_PATH`.
+
+## First run
+
+On a server install (Docker, Compose, Unraid, Pelican, Ubuntu, source):
+
+1. Read the one-time **setup code** from the log (the commands are in each install guide). It is new on every restart and works once.
+2. Open the app. Choose a game. The first-admin page asks for the setup code, your name, a username and a password (at least 10 characters). That creates the first **admin**.
+
+   ![The first-admin page: setup code, name, username and password](docs/images/first-admin.png)
+
+3. Go to **Books** and import your core rulebook (or upload a data pack, Anarchy only). Until you do, the pickers are empty: the app ships no book content.
+4. For AI help (Ask the rules, or Anarchy books no recipe knows), set a provider under **Books, AI settings** and type your own key there.
+5. Create accounts for everyone else on the **Users** page. There is no self sign-up.
+
+On the Windows desktop app there is no setup code. The first screen asks for the admin account directly.
+
+Locked out? Run `docker exec nova-prime-chummer node server/users.mjs reset <username>` (Compose: `docker compose exec nova-prime-chummer ...`; Ubuntu: from `/opt/nova-prime-chummer` as `sudo -u novaprime env DATA_PATH=/var/lib/nova-prime-chummer node server/users.mjs reset <username>`). It prints a one-time code for `<app address>/#/setup/reset`. The code works once, for 15 minutes.
+
+## How a book becomes data
+
+The app ships **no book content**: no tables, no rules text, no descriptions. A fresh server shows empty pickers until you load your core data.
+
+```mermaid
+flowchart LR
+  PDF["Your PDF<br/>(a book you own)"] -->|"Books, upload"| LIB["Library folder<br/>never served"]
+  LIB --> CONV["Convert<br/>PDF to Markdown"]
+  CONV --> REC{"Does the book<br/>have a recipe?"}
+  REC -->|"Yes"| EXT["Read tables and rules<br/>into game data"]
+  REC -->|"No (Anarchy only)"| AI["AI proposes entries<br/>you review each one"]
+  AI --> EXT
+  EXT --> REPORT["Import report:<br/>what it could not read or match"]
+  EXT --> DATA[("Data/systems<br/>imported book data")]
+  EDIT["Your edits and house rules"] --> DATA2[("edits layer<br/>survives re-import")]
+  DATA --> APP["Pickers, Review, sheets"]
+  DATA2 --> APP
+```
+
+![The Books page for Shadowrun 6: a drop zone for PDFs and the list of supported books](docs/images/sr6-books.png)
 
 ### 1. Upload books you own
 
 Open **Books** (admin) and drop in the PDF of a book you own. The importer converts the PDF, then reads its tables and rules into game data. A report lists anything it could not read or match. Nothing is guessed.
 
-**Only use books you own.** Your PDFs stay in your `library` folder and are never served over the web. Nothing is shared or redistributed. Book descriptions stay private to your server.
+**Only use books you own.** Your PDFs stay in your `Library` folder and are never served over the web. Nothing is shared or redistributed. Book descriptions stay private to your server.
 
-- Books with a built-in recipe import at once. Shadowrun 6 reads only books that have a recipe.
+- Books with a built-in recipe import at once. The Books page lists the supported books under "Supported books". Shadowrun 6 reads only books that have a recipe (its list has dozens of books); Anarchy's recipes cover the core rulebook, the Conversion Guide, the pregens and two community documents.
 - **Anarchy only**: any other book can be read by an AI you set up. You review every proposed entry before it is added.
-- **Re-import** reruns one book. **Re-import all books** reruns every book (after an app update, say). Your edits, runners and NPCs are kept.
+- **Re-import** reruns one book. **Re-import all books** reruns every book (after an app update, say). Your edits, runners and NPCs are kept. In Shadowrun 6, a full **Re-import all books** resets the GM's **creation rules** toggles; re-apply them afterwards.
 - Each game has its own AI settings for Ask the rules, including its own AnythingLLM workspace. Put only that game's books in it.
 - **Data packs** (Anarchy only): a small zip of the core tables (no descriptions, PDFs or keys). Download one from a server that has the core book. Upload it to set up another server.
 
@@ -78,76 +370,264 @@ Open **Books** (admin) and drop in the PDF of a book you own. The importer conve
 
 Formats: [Anarchy data](docs/data-format.md), [SR6 data](docs/sr6-data-format.md).
 
-## Install and host
+## The life of a runner
 
-The container keeps everything in one folder, `/data`:
-
-| Folder in `/data` | What it holds                                                                       |
-| ----------------- | ----------------------------------------------------------------------------------- |
-| `Config`          | Accounts, sign-in settings, AI settings and keys                                    |
-| `Data/systems`    | Per game: saved runners (a folder per account), house rules, imported books, edits |
-| `Library`         | Uploaded PDFs, their converted text, import reports. Never served over the web      |
-| `Logs`, `Backups` | Server logs and the automatic safety copies made before a restore                   |
-
-An older install with three folders (`characters`, `custom`, `library`) is moved into this layout on the first start; nothing is deleted. If you still have those three folders, mount their parent folder as `/data`.
-
-### Unraid
-
-1. **Docker** tab, then **Template repositories**. Add `https://github.com/jbowensii/unraid-templates` and **Save**.
-2. **Add Container** and pick _nova-prime-chummer_. Apply.
-3. Open the web UI on port **8480**.
-
-The template maps one **Data** folder, `/mnt/user/appdata/nova-prime-chummer`, to `/data`. It sets `PUID` 99 and `PGID` 100, Unraid's `nobody` and `users`. The image is pulled ready-built, so there is no build step on the server. The template's source is [unraid/nova-prime-chummer.xml](unraid/nova-prime-chummer.xml); it is copied into `jbowensii/unraid-templates` at each release.
-
-### Docker
-
-```bash
-docker run -d --init -p 8480:80 \
-  -v /path/to/data:/data \
-  ghcr.io/jbowensii/nova-prime-chummer:latest
+```mermaid
+stateDiagram-v2
+  [*] --> Draft: New runner
+  Draft --> Draft: Edit tabs, budgets update live
+  Draft --> Review: Open the Review tab
+  Review --> Draft: Fix a problem, or a GM approves it
+  Review --> Finalized: Finalize (no open problems)
+  Finalized --> Career: Ledger opens with "Creation finished"
+  Career --> Career: Earn, spend, void or log changes
+  Finalized --> Draft: Back to draft (only while the ledger holds nothing live)
+  Career --> [*]: Export, print, or move to Trash
 ```
 
-The container starts as root only to hand `/data` to `PUID`:`PGID` (default 99:100), then runs as that user. Add `-e PUID=1000 -e PGID=1000` to match another host user. Or use `--user` to skip this step; then `/data` must already be writable by that user.
+1. **Draft.** You build the runner. Every tab updates the budgets panel at the side.
+2. **Review.** Lists every broken rule (a **problem**, which blocks Finalize) and every **note** (which never blocks), each with its book page and a link to the tab that fixes it. A GM can tick **Approved by GM** on a problem.
+3. **Finalize.** Locks the creation caps and opens the **Ledger** with a first line, "Creation finished", and what is left over.
+4. **Career.** The runner changes by earning and spending. See each game's guide for the details.
 
-To build the image yourself: `docker build -t nova-prime-chummer:latest .` (add `--build-arg OCR=1` for scanned books).
+## Using the app: the basics
 
-### Docker Compose
+### The header
 
-Download [distribution/docker/docker-compose.yml](distribution/docker/docker-compose.yml), set `PUID` and `PGID` to your user, run `docker compose up -d`, and open port **8480**. Your data stays in `./data`.
+Every page has a row of icons. Hover one for its name. The set you see depends on your role and the game.
 
-### Pelican or Pterodactyl panel
+| Icon | Page | Who sees it |
+| --- | --- | --- |
+| Runner card | **Your runners** | Everyone |
+| Wrench, hub, pistol, chip (SR6 only) | **Vehicle designer**, **Drone designer**, **Weapon designer**, **Cyberware designer** | Everyone, on a server |
+| Skull | **NPCs & Critters** | GMs (editor, admin) |
+| Books | **Compendiums** | GMs, on a server |
+| Map | **Campaigns** | Everyone, on a server |
+| Open book | **Books** (import) | Admin |
+| Scales | **Rules** | Everyone in SR6; GMs in Anarchy |
+| Cylinder | **Game data** | Everyone |
+| Sliders | **Table setup** | Everyone (players read, GMs set) |
+| Anvil | **Export book data for Foundry** | GMs |
+| Arrows | Switch to the other game | Everyone |
+| Gear | **Settings** | Everyone |
+| Person | Your account | Everyone |
 
-Import the egg, [distribution/pelican/egg-nova-prime-chummer.json](distribution/pelican/egg-nova-prime-chummer.json), under **Eggs**, then create a server from it. The panel gives it a port and keeps the data under `/home/container/data`. It runs as the panel's unprivileged user, so nothing else is needed.
+When an AI provider is set up for the game, an **Ask the rules** icon appears too, and an AI search shows above Rules and Game data.
 
-### Ubuntu (systemd service)
+### Settings
 
-From a checkout of the repo, as root: `sudo distribution/ubuntu/install.sh` (also `update` and `uninstall`). It installs Node and Python, builds the app, and runs it as a service on `127.0.0.1:8480` with data in `/var/lib/nova-prime-chummer`. Put a reverse proxy in front of it.
+![The Settings dialog: theme, texture, printed sheet style, background art](docs/images/settings.png)
 
-### Windows desktop app
+Settings are saved in your browser only: theme (match system, light, dark), texture, the printed sheet style, background art on or off with a strength slider, and **Linked rulebooks** (your own PDFs, opened at the cited page, which never leave your browser). **What's new** shows the newest release notes. Admins also see the AI settings link, background art, sign-in settings and backup here.
 
-Installer and portable builds, with the same server and its own Python inside, so nothing else needs installing. The portable exe does not update itself: download each new version from the release page. Data lives in `%APPDATA%\nova-prime-chummer`. There is no setup code: the first admin is made on the setup screen. See [electron/README.md](electron/README.md).
+### The Setup screen
 
-### From source
+Admins only. On the game picker, the **Setup** link opens a screen with four tabs: **Configuration** (a few server settings), **Backups** (safety backups, plus cloud backup to S3 when you give it a settings file), **Updates** (desktop app only) and **Game Systems** (each game's version, on or off, and install or update from a zip file or a web address). Installing a game package keeps your runners, NPCs, designs and compendiums.
 
-You need Node 22 and Python 3.12 or newer (the importer).
+### Accounts and roles
 
-```bash
-npm ci
-pip install --require-hashes -r importer/requirements.lock
-npm run serve      # builds, then serves on :80 (set PORT, DATA_PATH, PYTHON, STATIC_DIR)
-```
+See [Accounts and roles](#accounts-and-roles). In short: players build and play, editors act as GMs, the admin does everything.
 
-`DATA_PATH` is the data folder above (default `/data`). `npm run dev` runs the interface alone on `http://localhost:5173`. It has no server, so no accounts, no Books page and no importer.
+## Shadowrun 6 guide
 
-### First run
+Shadowrun 6 is the Sixth World rule set: the core rulebook and its supplements, as imported from your own PDFs.
 
-1. Read the one-time **setup code** from the container log: `docker logs nova-prime-chummer`. It is new on every restart and works once.
-2. Open the app. Enter the code with a name, username and password. That creates the first **admin**.
-3. Go to **Books** and import your core rulebook (or upload a data pack).
-4. For AI help with books no recipe knows, or for Ask the rules, set a provider under **Books, AI settings** and type your own key there.
-5. Create accounts for everyone else on the **Users** page. There is no self sign-up.
+### Your runners
 
-Locked out? Run `docker exec nova-prime-chummer node server/users.mjs reset <username>`. It prints a one-time code for `<app address>/#/setup/reset`.
+![Your runners: two runners, one Draft and one Finalized, with Export, Export for Foundry and Delete](docs/images/sr6-runners.png)
+
+The page lists your SR6 runners with their state (Draft with a count of problems, or Finalized). Icons at the top:
+
+- **New runner**: asks for a street name and a creation method (both can change later).
+- **Import file**: a runner file from another server. An Anarchy file is refused with a message.
+- **Load example characters**: copies the books' example runners into your list once.
+- **Export for Foundry**: tick runners (or a campaign) and download a file for Foundry. See [FoundryVTT support](#foundryvtt-support).
+- **Trash**: deleted runners wait here, where you can restore them.
+
+Search by street name or real name, and sort A to Z, Z to A or by recently edited. A runner file the app cannot open is listed with **Download** and **Try to repair**.
+
+### Creating a runner, step by step
+
+1. **New runner.** Type a street name, pick a method, **Create runner**. You land on **Concept**.
+2. **Concept.** Names, portrait and token, backdrop, background and notes. The metatype is shown here but chosen on the next tab.
+3. **Creation method.** Pick the method and fill in what it asks for. Then the metatype and the magic kind (mundane, magician, adept, mystic adept, aspected, technomancer and so on, as the book allows).
+
+   ![Creation method tab: priority letters per column, then metatype and magic kind](docs/images/sr6-method.png)
+
+4. **Attributes.** Raise each attribute with points, adjustment points and Karma. The page shows the metatype's range, natural and augmented ratings. Hover an attribute for its card.
+
+   ![Attributes tab with the budgets panel showing points, Karma, nuyen and Essence left](docs/images/sr6-attributes.png)
+
+5. **Skills.** Active skills grouped by attribute with points, Karma, dice pool, a specialization and an expertise. Then knowledge skills and languages (one native language per runner).
+6. **Qualities.** Positive and negative qualities, with levels where the book has them, and the net Karma against the cap. A quality that names its own choice (an attribute or skill) can be taken again for another choice.
+7. **Martial arts.** Styles bought with Karma, each with the techniques learned under it. A style comes with its signature technique.
+8. **Magic** (or **Resonance**, for a technomancer). Only shown for an awakened or emerged runner. See [Magic and Resonance](#magic-and-resonance).
+9. **Augmentations, Gear, Vehicles, Drones, Critters, Contacts & lifestyle.** See below.
+10. **Review**, then **Finalize**.
+
+The **budgets panel** at the side (or a bar you tap, on a phone) shows what is left of each pool. Click a line for its breakdown, each linked to the tab that spends it. Every action can be undone with **Undo** and **Redo** at the top.
+
+### The five creation methods
+
+| Method | How it works |
+| --- | --- |
+| **Priority** | Give each column (Metatype, Attributes, Magic or Resonance, Skills, Resources) a different letter from A to E. Each letter gives its row's values. |
+| **Sum to ten** | Give letters whose values add up to the target. The page shows the running total against the target. |
+| **Point buy** | Spend character points on pools (attributes, skills, adjustment, resources, power points, spells, complex forms). Every point has to be spent. |
+| **Karma build** | No pools. Everything is bought with the Karma it starts with. |
+| **Lifepath** | Pick life modules in order. Each grants things and costs something. It needs a book that prints life modules. |
+
+A method whose settings are not set up yet cannot be picked and says what is missing (set them on **Table setup**). The **Power level** control (Standard, Street or Elite) follows the table's level. Overriding it for one runner asks first and is meant to be done only with your GM's permission.
+
+### Augmentations, gear, vehicles, drones and critters
+
+![The Gear tab with the starter pack picker at the top and weapon, explosive and detonator sections](docs/images/sr6-gear.png)
+
+- **Augmentations**: cyberware, bioware, geneware, nanoware, symbionts and transgenics, with rating and grade, Essence cost, and accessories.
+- **Gear**: weapons (with accessories and attack ratings), armor, electronics, programs and autosofts, other gear with quantities, and a **Custom item** at your own price. A **Starter pack** picker buys a whole pack as separate lines at the pack's price; removing the pack line undoes it all.
+- **Vehicles** and **Drones** (two tabs): each owned one with its stats, what is fitted, and a **Modify** panel for mods, weapon mounts and autosofts. Capacity is enforced when fitting.
+- **Critters**: owned critters with their powers, pet class, price, commands and special training, companion qualities and critterware.
+- **Contacts & lifestyle**: contacts against the contact points, SINs (real or fake, with a rating) each with licenses and lifestyles, and Karma turned into nuyen.
+
+A weapon or an implant has its own full-page **builder** (open it from its line): factory parts as removable chips, a picker per mount that offers only what fits, and switchable bonuses. You can **Save as design** from there.
+
+### Magic and Resonance
+
+Shown only for an awakened or emerged runner. A magician has a tradition and a drain attribute, a mentor spirit, spells and rituals against the free ones, adept powers (with power points), initiation grade and metamagics, **foci** (buy, Force, bonding Karma) and **bound spirits**. A technomancer's tab is titled **Resonance** and holds complex forms, submersion, echoes and data structures. What the runner's kind cannot learn is shown too, marked, and Review flags it.
+
+### Review and Finalize
+
+![The Review tab: two problems that block finalizing, then notes](docs/images/sr6-review.png)
+
+Review lists **problems** and **notes** with their book pages, each linked to where it is fixed. Leftover pool points are notes (they are lost on Finalize). Leftover Karma or nuyen above the carry-over limit is a problem. A GM can tick **Approved by GM**. **Finalize** is at the bottom.
+
+### The career ledger
+
+![The Ledger tab: balances, Record earnings, Spend, and the history with voided lines struck through](docs/images/sr6-ledger.png)
+
+After Finalize, every tab except Concept, Review and Ledger is read only. Changes are made on the **Ledger** tab:
+
+- **Record earnings**: Karma, nuyen, the run's name and a date.
+- **Spend**: pick **What**, pick the item, see its price and the balances after, then **Record**. The choices include raising an attribute or skill, a specialization or expertise, knowledge, buying or buying off a quality, learning a spell, ritual, complex form, adept power, martial arts style or technique, power points, initiating or submerging, buying gear, a starter pack, a vehicle, drone or critter, upgrading, selling, fitting or removing accessories and mods, SINs, licenses, lifestyles, contacts, and converting Karma to nuyen and back. Prices come from the table's creation rules.
+- **Void** a line (it asks for a reason) and the line is struck through. The newest spend is voided first. **Edit** changes a line. **Add note** writes a note into the history.
+- **Export ledger**, **Import ledger**, and **Clear history** (which starts again from the latest finalize).
+
+A spend the runner lacks a prerequisite for is offered too, marked. It is recorded and Review flags it.
+
+**Back to draft** (on Review) is possible only while the ledger holds nothing live to undo.
+
+### Designers
+
+The four designer pages (**Vehicle**, **Drone**, **Weapon**, **Cyberware**) keep designs of your own, saved on the server.
+
+![The New vehicle design dialog: a name, and an optional known vehicle to start from](docs/images/sr6-designer.png)
+
+A design can start from scratch or from a known vehicle (it then begins at that vehicle's stats, price and availability and you add mods). A runner buys a design on the **Vehicles** or **Drones** tab (after Finalize, on the Ledger). A GM can mark a player's design approved (only a GM can set that mark). Designs can be exported and imported, and have a trash of their own.
+
+### NPCs and critters (GMs)
+
+![NPCs and Critters: grunts grouped by Professional Rating with Export, Export for Foundry, Share with campaign, Copy and Delete](docs/images/sr6-npcs.png)
+
+For GMs only: players never see them. Two tabs: **NPCs** (grunts, grouped by Professional Rating, and contacts) and **Critters** (critters, spirits and sprites). **New** makes one, **Load book NPCs** copies the imported books' NPCs once, and **Import** reads a file. Each can be exported, exported for Foundry, **Shared with a campaign** (its other GMs can read and print it), copied or deleted (to the NPC trash). An NPC opens with Concept, Stat block and Print tabs; a critter also has Design.
+
+### Table setup and optional rules
+
+![Table setup on the Shadowrun 6 side: Creation rules with a preset picker, a settings file loader and collapsible sections](docs/images/sr6-table-setup.png)
+
+(The "changed" counts in this shot come from the invented sample settings file, not from the standard values.)
+
+Table setup is the page for the whole table. The **Creation rules** are the numbers the books print in their text, each with its page. The admin sets the server's. They start as the standard values (a value at the standard is grey; a changed one stands out with the standard beside it). You can pick a **Rule preset**, **Load settings file** (a `creation.xml` you review before saving), **Reset all to standard**, search for a setting, and reset a section. Options marked as optional or as a house rule are off until a table turns them on.
+
+A GM can give a campaign **its own** settings on its campaign page, and **lock** options so they bind every runner in it. A runner may choose unlocked optional rules itself on its Creation method tab. The standard creation numbers ship as defaults (`public/data/sr6/creation-defaults.xml`).
+
+### Campaigns
+
+A GM (editor or admin) makes a campaign on **Campaigns** and adds players by username. Players add their runners to it from their runner list (**Add to campaign**). The GM reads and prints the campaign's runners; players see the roster. The campaign page has the creation-rules choice (the server's or its own), the locks, the table (GM and players), and GM tools (rename, archive, delete).
+
+### Compendiums
+
+GMs make **compendiums**: their own collections of entries, private or shared with a campaign's GMs or the whole table. A shared entry shows in the pickers as house content.
+
+### Rules, Game data and editing
+
+**Rules** is a searchable reference built from the books you imported, with an AI search above it when AI is set up. **Game data** is the catalog browser: pick a book, search everything, open a section (priorities, metatypes, attributes, skills, qualities, weapons, armor, augmentations and so on), and **Edit** an existing entry. **Needs attention** lists what the importer could not read. **Export to Foundry VTT** is here too.
+
+![Game data: a book picker, a search box, sections down the left and the entries of Qualities, each with its page and an Edit link](docs/images/sr6-game-data.png) See [How a book becomes data](#how-a-book-becomes-data).
+
+### Sheets
+
+![The Print tab: the printer-friendly sheet with attributes, skills and condition monitors](docs/images/sr6-print.png)
+
+The **Print** tab shows the sheet. Pick a style from the dropdown: **Printer-friendly**, **Full color**, **Book style**, **Neon** (one dense page for play), **Hex** (attributes and tracks as hexagons) or **Dossier** (rounded panels, up to two pages). Use your browser's **Print** and **Save as PDF**. The image icon switches the background art on the sheet.
+
+## Anarchy 2.0 guide
+
+Anarchy 2.0 uses nuyen only. This is the 2.0 rule set, not Anarchy 1st edition.
+
+### Your runners
+
+![Your runners in Anarchy: three example runners listed with Export, Duplicate and Delete](docs/images/anarchy-runners.png)
+
+Like Shadowrun 6's list, plus **Duplicate**, a **Find duplicates** icon, and a filter by campaign ("Every runner", "Not in a campaign" or one campaign). **Load example characters** copies the example runners from your imported books once.
+
+### Creating a runner, step by step
+
+1. **New runner.** **Create runner** makes a draft at once and opens **Concept**.
+2. **Concept.** Street name, real name, gender, metatype, **Level of play** (Ganger, Runner or Prime Runner in the book; the names and nuyen come from your imported book), an optional **Package guide** (or free allocation), lifestyle, portrait and token, and the book's Keywords, Dispositions and Cues.
+3. **Attributes.** Raise each attribute. The page shows the level's caps.
+4. **Skills.** Raise skills and add specializations. Knowledge skills and languages are below, in two lists you can reorder, hide or mark native.
+5. **Shadow Amps.** Everything special about a runner is a Shadow Amp: Qualities, magic, implants, signature gear, vehicles and contacts. Rating is the amp's base plus its effects, and each point costs nuyen. **Add an amp** opens the book's list, or you build your own.
+6. **Gear & spells.** Weapons, armor, gear, vehicles, spells and (for the Emerged) complex forms. Free starting gear is marked.
+7. **Review**, then **Finalize**.
+
+The **receipt** at the side (dark panel) lists nuyen per area (attributes, skills and knowledge, Shadow Amps, gear, spells), the creation total and what is left to spend, with Edge, Essence and wound thresholds under it.
+
+### Shadow Amps and the amp builder
+
+![The Add a Shadow Amp dialog: build-your-own buttons for each amp type and a search of the book's amps](docs/images/anarchy-amps.png)
+
+**Build your own** by type: Trait, Gifted, Chrome, Grown, Adept knack, Gear, Deck, Ride, Friend, Emerged. An amp type plus effects gives its rating, cost and Essence. Imported books add prebuilt amps and add-ons (an add-on is applied in the amp builder).
+
+**Technomancers** use the **Emerged** amp, the **Tasking** skill, a living persona and complex forms (from the Conversion Guide). Review flags Tasking or complex forms without the Emerged amp, and an Emerged and Awakened runner together.
+
+### Canon
+
+Material that is not official rules carries a **Non-canon** badge. The GM can switch non-canon content off on Table setup: Review then flags any a runner uses. A runner can also be set to canon only.
+
+### Review and Finalize
+
+![The Finalize dialog: finalizing locks nothing, and the leftover nuyen carries into the ledger](docs/images/anarchy-finalize.png)
+
+Review lists problems and notes with page numbers. Problems block Finalize until fixed or approved by a GM. In Anarchy, Finalize **locks nothing**: afterwards you can still add, change or remove anything. Adding charges its price, removing refunds the book price, and the level-of-play creation caps stop applying. Until you record earnings, you can reopen creation from Review.
+
+### The nuyen ledger
+
+![The Ledger tab: earnings entry and history with a running balance](docs/images/anarchy-ledger.png)
+
+Nuyen is experience too: runs pay out and you spend it to improve the runner. Record earnings with the run's name and a date. A change on any tab is logged by itself at the creation prices, or refunded for anything removed. Mistakes are undone with Undo or by changing the item back. Earnings can be **Voided**. You can add a note to the history.
+
+### NPCs and critters (GMs)
+
+NPCs for GMs: regular or prime NPCs, critters and spirits, with stat blocks. Like SR6's, they are for GMs only and can be shared with a campaign you run. **Load book NPCs** copies them from imported books.
+
+### Table setup and optional rules
+
+![Table setup as a player sees it: app settings and house rules, read only](docs/images/anarchy-table-setup.png)
+
+**Table setup** holds the books' optional rules and your house rules. The GM turns them on or off, and can **lock** a rule so it binds every runner (a runner may otherwise set its own). Players see a read-only list. Two **app settings** sit on top: **Non-canon content allowed** and **Real SINs allowed**. Review flags a runner that uses what the table does not allow.
+
+### Campaigns, compendiums, rules, game data
+
+- **Campaigns** work as in Shadowrun 6: a GM, players added by username, runners put in, the GM reads and prints them.
+- **Compendiums**: collections of amps, gear, spells, vehicles and NPCs, private or shared. Their entries are house content (Non-canon). The imported books are listed as read-only compendiums.
+- **Rules** (GMs): a searchable page built from the quick-reference sheets, with an AI search when set up.
+- **Game data**: edit any entry or add new ones under a house-rule source you name. Anarchy also takes custom XML overlays and data packs (see [How a book becomes data](#how-a-book-becomes-data)).
+
+### Sheets
+
+![The Print tab: the printer-friendly Anarchy sheet with attributes, skills, wounds and risk](docs/images/anarchy-print.png)
+
+The **Print** tab offers four styles: **Printer-friendly**, **Full color**, **Book style** and **Official sheet** (the two-column fillable layout).
 
 ## Options
 
@@ -184,13 +664,9 @@ Set up per game (admin, Books, AI settings). Pick one of:
 
 **Load models** lists a provider's models. **Test** checks the saved settings. Keys are stored on the server and never shown again. The admin sets a daily question limit per person on the Users page.
 
-### Table setup
-
-The GM's page for the whole table: the book's optional rules, house rules, and (SR6) the creation-rules numbers. Rules can be locked so they bind every runner. Review flags a runner that uses what the table does not allow.
-
 ### Backup and restore
 
-**Settings, Backup** downloads everything as one zip: runners, accounts, edits, imported books, PDFs, background art and AI settings. API keys are included only if you tick **Include my API keys**. **Restore** shows what is in the zip first. It saves a safety copy to `Backups` before it replaces anything.
+**Settings, Backup** downloads everything as one zip: runners, accounts, edits, imported books, PDFs, background art and AI settings. API keys are included only if you tick **Include my API keys**. **Restore** shows what is in the zip first. It saves a safety copy to `Backups` before it replaces anything. The Setup screen's **Backups** tab can also send Config and Data (never your books) to an S3 bucket.
 
 ### Backgrounds and art
 
@@ -214,10 +690,6 @@ Export runners, NPCs, compendiums and book data as JSON files, then import them 
 
 Formats: [Anarchy export](docs/export-format.md), [SR6 export](docs/sr6-export-format.md).
 
-## Example character sheets
-
-Coming soon.
-
 ## Development
 
 ```bash
@@ -228,9 +700,10 @@ npm run lint           # ESLint
 npm run format:check   # Prettier (npm run format fixes)
 npm run coverage       # test coverage; fails under the floors in vite.config.ts (npm run check runs it)
 npm run perf           # timing checks (tests/perf): median of 15 runs per slow path against a budget; not part of npm test
+node tools/readme-shots.mjs   # retake the README screenshots (after npm run build)
 ```
 
-Docs live in [docs/](docs/): data, character and export formats for each game, the design system, sign-in and hosting ([hosting-auth.md](docs/hosting-auth.md)), and deployment notes ([deploy-tower04.md](docs/deploy-tower04.md)).
+Docs live in [docs/](docs/): data, character and export formats for each game ([Anarchy data](docs/data-format.md), [Anarchy character](docs/character-format.md), [SR6 character](docs/sr6-character-format.md)), the design system ([design-system.md](docs/design-system.md)), and sign-in and hosting ([hosting-auth.md](docs/hosting-auth.md)). The install methods and what checks each: [distribution/README.md](distribution/README.md).
 
 ### Working on one module
 
@@ -266,6 +739,7 @@ Coverage thresholds (`vite.config.ts`) are unchanged for now; raise them a few p
 - `src/sr6/table-setup/domain/creation.ts`: the creation settings (Table setup).
 - `importer/sr6/catalog.py` and `importer/sr6/recipes/crb.md`: the Shadowrun 6 import.
 - `importer/convert.py` and `importer/pdf/`: PDF to Markdown.
+- `tools/readme-shots.mjs`: the README screenshots; `electron/README.md`: building the desktop app.
 
 ## Thanks
 

@@ -1,8 +1,25 @@
 # Release notes
 
-## 1.0.0 — 2026-11-05
+## 1.0.0 (Beta release) — 2026-11-05
 
-**Every install method is now in the release:** Windows installer, Windows portable, Docker, Docker Compose, Unraid, Pelican or Pterodactyl, and Ubuntu.
+**This is the beta release of Nova Prime Chummer.** Both games work end to end: create a runner, review it, finalize it and run its career. It is a beta because some install methods are new and have had little field use (Docker Compose, Pelican or Pterodactyl, Ubuntu), and because rules coverage depends on which of your books the importer can read. Please report problems on GitHub.
+
+**What Nova Prime Chummer is.** A self-hosted character generator and career tracker for Shadowrun Sixth World (SR6) and Shadowrun: Anarchy 2.0. You run it on your own network or as a Windows desktop app, and everyone at the table uses it in a browser. It ships the rules engine only. You bring your own books, and your PDFs stay on your server.
+
+**Key features**
+
+- **Two games, kept apart.** Runners, NPCs, campaigns, books, data, edits, trash and AI settings belong to one game, and the server refuses an object from the other. Only accounts and roles are shared.
+- **Shadowrun 6.** Five creation methods (priority, sum to ten, point buy, karma, lifepath). Itemized budgets. Tabs for concept, attributes, skills, qualities, martial arts, magic or Resonance, augmentations, gear, vehicles, drones, critters, and contacts and lifestyle. A Review tab that cites the book page for every rule. Finalize, then a Karma and nuyen career ledger where mistakes are voided, not erased. Starter packs, weapon and cyberware builders, and vehicle, drone, weapon and cyberware designers. Table setup for the creation rules, per server or per campaign. Six printable sheet styles.
+- **Anarchy 2.0.** Level of play and package guides, a live nuyen receipt, attributes, skills, Shadow Amps with an amp builder, gear and spells, technomancers (Emerged amp, Tasking, complex forms), Review, Finalize and a nuyen ledger that logs every change. Optional rules and house rules the GM switches on or off, a Non-canon badge and a canon-only setting, and four printable sheet styles.
+- **For GMs.** NPCs, critters, spirits and (SR6) sprites, loadable from your imported books. Campaigns with players, shared runners and locked rules. Compendiums of your own content, private or shared.
+- **Your books, your data.** Upload PDFs you own and the importer reads them into game data, with a report of anything it could not match. A catalog editor changes entries and keeps your edits across re-imports. Anarchy can also read unknown books with an AI you set up, and share core data as a data pack.
+- **Accounts.** Admin, editor and player roles, enforced by the server. Local passwords, or Authelia (OpenID Connect).
+- **Ask the rules.** An AI answers rules questions from your own imported data, with book and page. Eight kinds of provider, your own key.
+- **Backup and restore** of everything as one zip, with a safety copy before any restore, and cloud backup to S3.
+- **FoundryVTT export** with a companion module for each game.
+- **Seven ways to install, plus source.** Windows installer, Windows portable, Docker, Docker Compose, Unraid, Pelican or Pterodactyl, and Ubuntu. The README has a step-by-step guide for each, with pictures.
+
+**Latest changes**
 
 **Fixed**
 - The Windows portable and installer could not import books: their bundled Python couldn't find the importer. Fixed, and the build now checks it.
