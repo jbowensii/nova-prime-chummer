@@ -1,4 +1,4 @@
-// The Setup screen's API (Phase 2; docs/plans/desktop-app-foundry-model-2026-10-22.md). Admin only (server/auth.mjs need()).
+// The Setup screen's API (docs/plans/desktop-app-foundry-model-2026-10-22.md). Admin only (server/auth.mjs need()).
 //   GET /api/setup-config   -> { file, version, desktop, settings: [{ key, type, value, source, later }], systems, backups, cloud: { configured, error? } }
 //   PUT /api/setup-config/systems/<disk>/enabled { enabled } and POST .../systems/<disk>/install (zip body, or JSON { url }) -> systems (server/systems.mjs)
 //   PUT /api/setup-config   { set: { key: value|null }, reset: [key] } -> the same. Writes <Config>/options.json only: the path is
@@ -13,7 +13,7 @@ import { systemsApi } from './systems.mjs'
 
 const str = v => typeof v === 'string' && v.length <= 500 && ![...v].some(c => c < ' ')
 const flagOf = v => typeof v === 'boolean'
-// type: how the UI edits it. later: stored only, nothing reads it yet (ssl/proxy/upnp: a later phase).
+// type: how the UI edits it. later: stored only, nothing reads it yet (hostname, route prefix, ssl, proxy, upnp, compression, telemetry).
 const SPEC = {
   hostname: { type: 'text', ok: str, later: true },
   routePrefix: { type: 'text', ok: v => str(v) && /^\/[\w./-]*$/.test(v) && !v.includes('..'), later: true },

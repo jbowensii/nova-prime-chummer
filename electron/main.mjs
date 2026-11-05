@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { initUpdater } from './updater.mjs'
 
-const DEFAULT_PORT = 47480 // ponytail: fixed default; Phase 2's options.json makes it configurable
+const DEFAULT_PORT = 47480 // ponytail: fixed preferred port (an OS-chosen one if taken); add a setting if users need a fixed port
 const here = dirname(fileURLToPath(import.meta.url))
 
 const packaged = app.isPackaged

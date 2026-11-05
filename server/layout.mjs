@@ -7,7 +7,7 @@
 //     <dataPath>/Data/assets/<disk>/     a game's backgrounds/
 //     <dataPath>/Library/<disk>/<id>/    a game's uploaded books
 //     <dataPath>/Logs/, <dataPath>/Backups/
-//   legacyLayout({ charDir, customDir, libraryDir })   the pre-Phase-2 three folders. Only the migrator (server/migrate.mjs)
+//   legacyLayout({ charDir, customDir, libraryDir })   the old three folders. Only the migrator (server/migrate.mjs)
 //     and the tests of the old shape use it; the server main block starts on dataLayout and refuses a data path that still
 //     holds the old tree.
 //

@@ -19,7 +19,7 @@ const KEYS = {
   trustProxy: ['--trust-proxy', 'TRUST_PROXY'],
   publicUrl: ['--public-url', 'PUBLIC_URL'],
   // Phase 2 settings (docs/plans/desktop-app-foundry-model-2026-10-22.md). Resolved and stored only: nothing reads
-  // sslCert/sslKey/proxySSL/proxyPort/upnp yet. Env names avoid the shell's own HOSTNAME and LANGUAGE.
+  // hostname/routePrefix/sslCert/sslKey/proxySSL/proxyPort/upnp/compressStatic/telemetry yet. Env names avoid the shell's own HOSTNAME and LANGUAGE.
   hostname: ['--hostname', 'APP_HOSTNAME'],
   routePrefix: ['--route-prefix', 'ROUTE_PREFIX'],
   sslCert: ['--ssl-cert', 'SSL_CERT'],
@@ -59,7 +59,7 @@ export function resolveConfig(argv = [], env = {}) {
 /** The same resolution over an already-read options object (Setup shows the effective values without touching cwd's file). */
 export function resolveOpts(argv, env, opts) {
   const get = k => flag(argv, KEYS[k][0]) ?? env[KEYS[k][1]] ?? opts[k]
-  // Foundry's semantics for the Phase 2 settings: null (JSON null, or the text "null" from a flag or env var) turns the
+  // Foundry's semantics for the Setup-screen settings: null (JSON null, or the text "null" from a flag or env var) turns the
   // setting off, and stays off instead of falling through to the default. A key that is absent takes the default.
   const setting = (k, dflt, as = v => v) => {
     const v = flag(argv, KEYS[k][0]) ?? env[KEYS[k][1]] ?? (k in opts ? opts[k] : undefined)

@@ -90,6 +90,7 @@ export function jobsApi(ctx) {
    *  for it. server.mjs runs every non-GET request except backup and restore themselves through this. */
   function track(fn) {
     noRestore()
+    if (lock.zipping) throw fail(409, 'a backup is being made; try again when it’s done') // so its files are from one moment
     lock.writes++
     return Promise.resolve()
       .then(fn)

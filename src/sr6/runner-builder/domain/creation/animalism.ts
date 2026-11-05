@@ -7,7 +7,7 @@ import type { Sr6Entry } from '../../../formats/domain/types'
 import { flag, num, type CreationRules } from '../../../table-setup/domain/creation'
 import type { Sr6Data } from '../../../catalog/domain/data'
 
-/** An animalism power: a metamagic Commlink6 types ANIMALISM (`class="ANIMALISM"`), or, until the importer writes that, any
+/** An animalism power: a metamagic Commlink6 types ANIMALISM (`class="ANIMALISM"`), or, as a fallback, any
  *  of Bestial Nature's metamagics (its recipe imports only the animalism powers as metamagics: importer/sr6/recipes/bn.md). */
 export const isAnimalism = (e: Sr6Entry | undefined): boolean => !!e && e.kind === 'metamagics' && (e.attrs.class === 'ANIMALISM' || e.source === 'BN')
 

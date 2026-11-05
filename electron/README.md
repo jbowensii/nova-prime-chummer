@@ -14,7 +14,7 @@ $env:CSC_KEY_PASSWORD = '...'                # type it yourself; never commit it
 npm run desktop:build             # tsc + vite build, then electron-builder (nsis installer + portable)
 ```
 
-Python bundle notes: needs `importer\requirements.desktop.lock` (made with `tools\desktop-python\compile-lock.ps1`, requires uv; separate from `requirements.lock`). Set the python.org SHA256 in `build-python.ps1` (`$PySha256`) before the first real build. The PowerShell scripts are not linted.
+Python bundle notes: needs `importer\requirements.desktop.lock` (made with `tools\desktop-python\compile-lock.ps1`, requires uv; separate from `requirements.lock`). `$PySha256` in `build-python.ps1` pins the python.org zip; update it together with `$PyVersion`. The PowerShell scripts are not linted.
 
 Output is in `release\`: the NSIS installer and the portable exe. The release workflow (`.github/workflows/publish.yml`) builds and uploads only the installer, on a release tag, and the app updates itself from that GitHub Release. Without a certificate the build is unsigned and Windows SmartScreen warns. Quick dev run without packaging: `npm run desktop` (uses `python` on PATH).
 

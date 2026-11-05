@@ -111,12 +111,11 @@ export function nuyenBudget(b: Sr6Build, data: Sr6Data, cr: CreationRules, p: Pr
   // `<modifier type="PRICEMOD">` add up per kind (EVERYTHING, ARMOR, CLOTHING) as a share of what is bought; one line, so
   // each item still shows its printed price. The table's metatypeSizePricing switch turns it off.
   if (flag(cr, 'metatypeSizePricing')) {
-    const m = priceMods(b, data),
-      share = (x: Sr6Purchase) => m.everything + (x.kind === 'armor' ? m.armor + (isClothing(entryOf(x, data)) ? m.clothing : 0) : 0)
+    const m = priceMods(b, data)
     add(
       'sizePricing',
       priceModLabel(m),
-      b.purchases.reduce((t, x) => t + priced(x, data, cr).cost * share(x), 0),
+      b.purchases.reduce((t, x) => t + priced(x, data, cr).cost * priceShare(m, x, data), 0),
       'gear',
     )
   }
@@ -194,6 +193,15 @@ const priceModLabel = (m: PriceMods) =>
     .filter(Boolean)
     .join(', ')
 /** Clothing (Commlink6's ARMOR_CLOTHES): an armor entry whose class or category names clothes or clothing. */
+/** The extra share of a line's price its PriceMods add. */
+const priceShare = (m: PriceMods, x: Sr6Purchase, data: Sr6Data) =>
+  m.everything + (x.kind === 'armor' ? m.armor + (isClothing(entryOf(x, data)) ? m.clothing : 0) : 0)
+
+/** A career price with the same PRICEMOD share creation charges (owner ruling 2026-11-05: a troll pays +10% in career too). */
+export function withPriceMods(nuyen: number, x: Sr6Purchase, b: Sr6Build, data: Sr6Data, cr: CreationRules): number {
+  return flag(cr, 'metatypeSizePricing') ? Math.round(nuyen * (1 + priceShare(priceMods(b, data), x, data))) : nuyen
+}
+
 const isClothing = (e?: Sr6Entry) => /cloth/i.test(`${e?.attrs.class ?? ''} ${e?.attrs.category ?? ''}`)
 
 /** Every budget, as the editor's budget panel shows them. */

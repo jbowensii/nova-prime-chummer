@@ -2,6 +2,7 @@
 // (characters/<username>/, deleted ones in its .trash/). No dependencies. Accounts, sessions and the role table:
 // server/auth.mjs; every /api route but health, sign-in, setup and /api/auth/me needs a session, and so does /custom/. A
 // request that names the account its page was signed in as (X-CA2-User) is refused (401) when the session is another's.
+// Paths below are the old layout's names; live data is under Data/systems/<disk>/ (server/layout.mjs).
 // Two games (server/games.mjs), kept apart: Shadowrun Anarchy 2.0 in characters/ (<username>/, .npcs/, .compendiums/,
 // .trash/) and custom/ (campaigns.xml, imported/, edits/, ...) at the routes below; Shadowrun 6 the same shape in
 // characters/sr6/ (<username>/, .npcs/, .compendiums/, .trash/) and custom/sr6/ (campaigns.xml) at /api/sr6/ + characters,

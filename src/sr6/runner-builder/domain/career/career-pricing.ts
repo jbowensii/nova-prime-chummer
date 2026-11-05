@@ -29,6 +29,7 @@ import {
   sinCost,
   skillRank,
   toNuyen,
+  withPriceMods,
 } from '../creation/budgets'
 import { flag, num, type CreationRules } from '../../../table-setup/domain/creation'
 import { MAGIC_KINDS, pickMaxLevel, type Sr6Data } from '../../../catalog/domain/data'
@@ -342,7 +343,8 @@ export function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRul
       if (!pr.ok) no('book-value')
       return {
         label: `${e ? entryLabel(e) : (x.name ?? 'Custom item')}${x.rating ? ` (rating ${x.rating})` : ''}${x.qty > 1 ? ` × ${x.qty}` : ''}`,
-        nuyen: x.gmPrice !== undefined && x.kind === 'vehicles' && Number.isFinite(x.gmPrice) && x.gmPrice >= 0 ? x.gmPrice : pr.cost,
+        nuyen:
+          x.gmPrice !== undefined && x.kind === 'vehicles' && Number.isFinite(x.gmPrice) && x.gmPrice >= 0 ? x.gmPrice : withPriceMods(pr.cost, x, b, data, cr),
       }
     }
     case 'pack': {
@@ -380,7 +382,10 @@ export function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRul
         const now = priced(fitted(accHost, a.line), data, cr, hostPr),
           before = priced(fitted(accHost, was), data, cr, hostPr)
         if (!now.ok || !before.ok) no('book-value')
-        return { label: `Changed: ${lineLabel(was)} → ${lineLabel(a.line)} on ${lineLabel(accHost)}`, nuyen: now.cost - before.cost }
+        return {
+          label: `Changed: ${lineLabel(was)} → ${lineLabel(a.line)} on ${lineLabel(accHost)}`,
+          nuyen: withPriceMods(now.cost - before.cost, accHost, b, data, cr),
+        }
       }
       // upgrade a line in place to a higher level in its family (levels.ts) and/or a different grade, paying the DIFFERENCE
       // in cost (SR Missions FAQ v2.4 p.21: same-type upgrade credits the old piece at full value). The line keeps its
@@ -406,7 +411,7 @@ export function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRul
         gradeChange && !higherLevel
           ? `Upgrade: ${entryLabel(e)} to ${gradeName(data, x.grade!)}`
           : `Upgrade: ${entryLabel(oldE)} → ${entryLabel(e)}${x.grade && x.grade !== old.grade ? `, ${gradeName(data, x.grade)}` : ''}`
-      return { label, nuyen: pr.cost - oldPr.cost }
+      return { label, nuyen: withPriceMods(pr.cost - oldPr.cost, x, b, data, cr) }
     }
     case 'fit': {
       // an accessory (a vehicle mod, a weapon in one of its mounts, an autosoft) on an owned line, at its price (do it
@@ -430,7 +435,10 @@ export function price(b: Sr6Build, a: Sr6Advance, data: Sr6Data, cr: CreationRul
       if (critterOnly(e) && host.kind !== 'critters') no('critters-only')
       const pr = priced(fitted(host, x), data, cr, priced({ ...host, accessories: [] }, data, cr))
       if (!pr.ok) no('book-value')
-      return { label: `Fit: ${lineLabel(x)}${x.rating ? ` (rating ${x.rating})` : ''}${x.diy ? ', do it yourself' : ''} on ${lineLabel(host)}`, nuyen: pr.cost }
+      return {
+        label: `Fit: ${lineLabel(x)}${x.rating ? ` (rating ${x.rating})` : ''}${x.diy ? ', do it yourself' : ''} on ${lineLabel(host)}`,
+        nuyen: withPriceMods(pr.cost, host, b, data, cr),
+      }
     }
     case 'unfit': {
       // take an accessory off; selling it back credits an adjustable nuyen sellback (SR Missions: 30% of value by

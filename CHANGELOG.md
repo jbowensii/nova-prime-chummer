@@ -11,7 +11,8 @@
 - Career: add-ons fitted to graded implants are priced at the grade. Id migration covers fitted add-ons and packs.
 - Saving keeps a starter pack's lifestyle mark and which Knowledge skill a life module gave.
 - Anything you fit to a starter-pack item at creation now costs nuyen.
-- A backup is refused while a save or import runs. A package download checks every redirect, so it can't be sent to your private network.
+- Saves and imports wait while a backup is made, so a backup is one moment in time. A package download checks every redirect, so it can't be sent to your private network.
+- With metatype size pricing on, career purchases cost the same extra as at creation (a troll pays +10%).
 - Ubuntu: clear refusal when run from a home folder, `update` refreshes the service, and a missing venv module is installed.
 
 ## 0.36.0 — 2026-10-30

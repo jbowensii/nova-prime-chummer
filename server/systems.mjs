@@ -1,4 +1,4 @@
-// Game systems as packages (Phase 3; docs/plans/desktop-app-foundry-model-2026-10-22.md). Each game's folder
+// Game systems as packages (docs/plans/desktop-app-foundry-model-2026-10-22.md). Each game's folder
 // <Data>/systems/<disk>/ may hold a system.json: { id, title, version, compatibility:{minCore,verifiedCore}, provides:[], enabled }.
 // Missing manifest + data present -> a default one is written; no data yet -> one is synthesized in memory only.
 // Install/update takes a zip (system.json at its root, id = the target) from a file upload or a URL. The old tree
@@ -98,7 +98,7 @@ export async function swapIn(dir, stage, aside, mv = rename) {
   }
 }
 
-/** True for loopback, link-local, private, ULA and unspecified addresses (v4, v6, v4-mapped). */
+/** True for loopback, link-local, private, carrier-grade NAT, multicast/reserved, ULA and unspecified addresses (v4, v6, v4-mapped). */
 export function isInternalIp(ip) {
   const m = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip)
   const h = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i.exec(ip) // URL parsing turns ::ffff:1.2.3.4 into hex
@@ -106,7 +106,16 @@ export function isInternalIp(ip) {
   else if (h) ip = [parseInt(h[1], 16) >> 8, parseInt(h[1], 16) & 255, parseInt(h[2], 16) >> 8, parseInt(h[2], 16) & 255].join('.')
   if (isIP(ip) === 4) {
     const [a, b] = ip.split('.').map(Number)
-    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168)
+    return (
+      a === 0 ||
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 100 && b >= 64 && b <= 127) ||
+      a >= 224
+    )
   }
   const l = ip.toLowerCase()
   return l === '::' || l === '::1' || /^f[cd]/.test(l) || /^fe[89ab]/.test(l)

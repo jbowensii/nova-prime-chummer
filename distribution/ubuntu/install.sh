@@ -41,7 +41,7 @@ After=network.target
 [Service]
 User=$SVC_USER
 WorkingDirectory=$REPO
-Environment=DATA_PATH=$DATA_PATH BIND_HOST=127.0.0.1 PORT=$PORT PYTHON=$REPO/.venv/bin/python STATIC_DIR=$REPO/dist
+Environment="DATA_PATH=$DATA_PATH" "BIND_HOST=127.0.0.1" "PORT=$PORT" "PYTHON=$REPO/.venv/bin/python" "STATIC_DIR=$REPO/dist"
 ExecStart=$(command -v node) server/server.mjs
 Restart=on-failure
 

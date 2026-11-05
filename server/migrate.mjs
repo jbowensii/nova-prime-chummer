@@ -1,4 +1,4 @@
-// One-time move of the old three-folder data (characters/, custom/, library/) into the Phase 2 layout (server/layout.mjs).
+// One-time move of the old three-folder data (characters/, custom/, library/) into the Config/Data/Library layout (server/layout.mjs).
 // Design: docs/plans/desktop-phase2-migration-2026-10-23.md (§3 mapping, §4 algorithm, §5 guard, §6 accounts).
 //
 //   node server/migrate.mjs [--apply] [--data-path D] [--char-dir D --custom-dir D --library-dir D] [--port N]
@@ -404,7 +404,7 @@ async function aside(root, to) {
 export async function containerGuard(dataPath, env = {}) {
   const inDocker = env.container ?? (await exists('/.dockerenv'))
   if (!inDocker) return null
-  const why = `Running in a container, and ${dataPath} is not a mounted volume, so migrated data would be lost on restart. Mount a persistent volume or bind mount at the data path (the Unraid/Docker template, Phase 4), then run again.`
+  const why = `Running in a container, and ${dataPath} is not a mounted volume, so migrated data would be lost on restart. Mount a persistent volume or bind mount at the data path (the Unraid/Docker template mounts /data), then run again.`
   try {
     const real = await realpath(dataPath)
     const mounts = env.mounts ?? (await readFile('/proc/self/mountinfo', 'utf8'))

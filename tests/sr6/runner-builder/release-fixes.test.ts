@@ -3,7 +3,7 @@
 import { expect, test } from 'vitest'
 import { clearHistory, currentBuild, preview, record } from '../../../src/sr6/runner-builder/domain/career/career'
 import { migrateSr6Ids } from '../../../src/sr6/runner-builder/domain/career/migrate'
-import { priced } from '../../../src/sr6/runner-builder/domain/creation/budgets'
+import { priced, withPriceMods } from '../../../src/sr6/runner-builder/domain/creation/budgets'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { blankSr6, type Sr6Character, type Sr6Purchase } from '../../../src/sr6/formats/domain/character'
 import { buildOf, fixtureCatalog, GLIM, made } from '../catalog/fixture'
@@ -104,4 +104,15 @@ test('the id migration reaches fit, unfit and pack ledger lines', () => {
     return (a.line ?? a.lines![0]).kind
   })
   expect(kinds).toEqual(['ammotypes', 'ammotypes', 'ammotypes']) // (the fixture moves it from gear)
+})
+
+test('career prices carry the same size modifier as creation, only with the table switch on', () => {
+  const data = {
+    entry: (kind: string) =>
+      kind === 'metatypes' ? { parts: [{ tag: 'modifier', attrs: { type: 'PRICEMOD', ref: 'EVERYTHING', value: '0.1' } }] } : undefined,
+  } as never
+  const b = { metatype: 'troll', qualities: [], purchases: [] } as never
+  const x = { kind: 'gear' } as never
+  expect(withPriceMods(1000, x, b, data, new Map([['metatypeSizePricing', { value: false }]]) as never)).toBe(1000)
+  expect(withPriceMods(1000, x, b, data, new Map([['metatypeSizePricing', { value: true }]]) as never)).toBe(1100)
 })

@@ -18,7 +18,7 @@ export function drakeKind(b: Sr6Build, data: Sr6Data): 'aware' | 'latent' | unde
   const names = b.qualities.map(q => qualityName(data, q))
   return names.includes('drake') ? 'aware' : names.includes('latent drake') ? 'latent' : undefined
 }
-/** A dracogenesis power: a critter power Commlink6 types DRACOGENESIS_POWER (`class`), or, until the importer writes that,
+/** A dracogenesis power: a critter power Commlink6 types DRACOGENESIS_POWER (`class`), or, as a fallback,
  *  one of Lofwyr's Legions' critter powers (its recipe reads the drake powers there: importer/sr6/recipes/ll.md). */
 export const isDracogenesis = (e: Sr6Entry | undefined): boolean =>
   !!e && e.kind === 'critterpowers' && (/^DRACOGENESIS/.test(e.attrs.class ?? '') || e.source === 'LL')

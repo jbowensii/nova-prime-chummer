@@ -51,11 +51,10 @@ export function backupApi(ctx) {
     return token
   }
 
-  /** Step 1 of a download: make the zip in its own folder in library/.backups (never backed up itself). One at a time
+  /** Step 1 of a download: make the zip in its own folder in Backups/ (never backed up itself). One at a time
    *  (each is a full copy of the Library on its disk), counted in `zipping` from the first line so a restore can't start
    *  under it. A client that leaves stops it; the folder goes with a killed backup's partial .tmp. -> { token }
-   *  Refused while a save or an import runs, so files in the zip are from one moment; a write starting after it begins
-   *  can still land. ponytail: no full write freeze, make `track` refuse while `zipping` if that ever bites. */
+   *  Refused while a save or an import runs, and `track` refuses writes while it runs: the zip's files are from one moment. */
   async function makeBackup(req, res, url, send, who) {
     noRestore()
     if (lock.zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
@@ -145,7 +144,7 @@ export function backupApi(ctx) {
     }
   }
 
-  /** Data pack step 1: `datapack export` into its own folder in library/.backups. The request is a counted write (track),
+  /** Data pack step 1: `datapack export` into its own folder in Backups/. The request is a counted write (track),
    *  so no restore runs under it. -> { token } for sendZip('datapack'). */
   async function makePack(res, send, who) {
     if (lock.packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
@@ -283,7 +282,7 @@ export function backupApi(ctx) {
     if (r.code === 3) throw fail(400, why || 'the backup was refused')
     if (r.code !== 0)
       return send(res, 500, {
-        error: `the restore failed (${why || `exit code ${r.code}`}); the server’s earlier data is in its safety backup in library/.backups`,
+        error: `the restore failed (${why || `exit code ${r.code}`}); the server’s earlier data is in its safety backup in Backups/`,
       })
     return send(res, 200, { ok: true })
   }

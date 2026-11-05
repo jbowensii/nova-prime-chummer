@@ -8,7 +8,7 @@ $PyVersion = '3.13.9'   # the one pin: also in .github/workflows/desktop-python.
 # SHA256 of python-3.13.9-embed-amd64.zip, checked 2026-11-03 against python.org's sigstore bundle for that file.
 $PySha256 = '91d828c2da3a029b41699e918674a0cb379c02cf20dab9c501306885f837402a'
 $PipWheelUrl = 'https://files.pythonhosted.org/packages/07/25/ee8c38ae72d66b844ce8eb9711ba905dba21ca1a8a0c960057c41cd23337/pip-26.3-py3-none-any.whl'
-# get-pip.py is EXECUTED before the hash-locked install, so it is pinned the same way as the zip.
+# The pip wheel is unpacked into site-packages before the hash-locked install, so it is pinned the same way as the zip.
 $PipWheelSha256 = 'f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13'   # PyPI pip 26.3 wheel
 
 $repo = Resolve-Path (Join-Path $PSScriptRoot '..\..')

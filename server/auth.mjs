@@ -1,4 +1,4 @@
-// Accounts: users (library/.config/users.xml), sessions (sessions.xml, hashed), sign-in with lockout, the first-admin
+// Accounts: users (Config/users.xml), sessions (sessions.xml, hashed), sign-in with lockout, the first-admin
 // setup code, the recovery code (server/users.mjs reset), the Origin check, the trusted proxy and the role table.
 // See docs/superpowers/specs/2026-09-28-accounts-design.md §2–§4. No dependencies: node:crypto and node:net.
 //
@@ -201,7 +201,7 @@ const pub = u => ({
   dailyQuestions: u.dailyQuestions ?? null,
 })
 
-/** The recovery code for `username` (server/users.mjs reset): only its hash goes to library/.config/reset.xml (mode 600),
+/** The recovery code for `username` (server/users.mjs reset): only its hash goes to Config/reset.xml (mode 600),
  *  which the running server reads at /api/setup/reset and deletes when used. A new code replaces the old one. */
 export async function issueReset(libraryDir, username, configDir = join(libraryDir, '.config')) {
   const name = oneLine(username).toLowerCase()
@@ -339,7 +339,7 @@ export function authApi({
   const fails = new Map() // "<key>|<ip>" -> { n, until }
   const netFails = new Map() // netKey(ip) -> { n, since }
   const accountFails = new Map() // typed username -> { n, last, until, devices: Map(nonce -> failures) }, oldest first
-  let deviceSecret = null // library/.config/device-key.xml, made on first use
+  let deviceSecret = null // Config/device-key.xml, made on first use
   function deviceKey() {
     if (deviceSecret) return deviceSecret
     const path = join(config, 'device-key.xml')
@@ -373,7 +373,7 @@ export function authApi({
       if (xml != null) users = parseUsers(xml)
     } catch (e) {
       broken = true
-      log.error(`library/.config/users.xml can’t be read (${e.message}); nobody can sign in until it is fixed or restored`)
+      log.error(`Config/users.xml can’t be read (${e.message}); nobody can sign in until it is fixed or restored`)
     }
     if (!users.length && !broken && !openSetup) {
       setupCode = code()
