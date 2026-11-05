@@ -1,0 +1,20 @@
+%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
+flowchart TD
+  B["Browser<br/>everyone at the table"]
+  N["Node server<br/>server/server.mjs"]
+  S["Web app<br/>React, dist/"]
+  P["Python importer<br/>one job at a time"]
+  D[("Data folder<br/>Config, Data/systems,<br/>Library, Logs, Backups")]
+  B -->|"HTTP"| N
+  N -->|"serves"| S
+  N -->|"starts"| P
+  N <-->|"reads, writes"| D
+  P <-->|"reads, writes"| D
+  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
+  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
+  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
+  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
+  class B a
+  class N,S b
+  class P c
+  class D d

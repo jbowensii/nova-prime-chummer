@@ -1,0 +1,20 @@
+%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
+flowchart LR
+  A["Where will<br/>it run?"] -->|"One Windows PC"| C{"Update from<br/>inside the app?"}
+  C -->|"Yes"| W1["Windows<br/>installer"]
+  C -->|"No"| W2["Windows<br/>portable"]
+  A -->|"A shared server"| D{"Which server?"}
+  D -->|"Unraid"| U["Unraid<br/>template"]
+  D -->|"Pelican or<br/>Pterodactyl"| PE["Pelican egg"]
+  D -->|"Ubuntu,<br/>no Docker"| UB["Ubuntu<br/>service"]
+  D -->|"Other Docker host"| E{"Use a<br/>compose file?"}
+  E -->|"Yes"| DC["Docker<br/>Compose"]
+  E -->|"No"| DK["Docker run"]
+  D -->|"Changing<br/>the code"| SRC["From source"]
+  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
+  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
+  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
+  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
+  class A a
+  class C,D,E c
+  class W1,W2,U,PE,UB,DC,DK,SRC b

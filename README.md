@@ -8,7 +8,7 @@ A self-hosted character generator and career tracker for two games: **Shadowrun 
 
 You run it on your own network (a home server, a NAS, a PC) or as a Windows desktop app. Everyone at the table uses it in a browser. It ships the rules engine only: **no book text, tables or art**. You bring your own books. See [How a book becomes data](#how-a-book-becomes-data).
 
-> **About the screenshots.** Every screenshot in this guide was taken from a real running build with invented sample data (names like "Glimmerkin" and "Zip Spark" are made up). They show how the app looks and works, not what is in any book. `node tools/readme-shots.mjs` retakes them.
+> **About the screenshots.** Every screenshot in this guide uses the dark theme (printed sheets stay paper-colored) and was taken from a real running build with invented sample data (names like "Glimmerkin" and "Zip Spark" are made up). They show how the app looks and works, not what is in any book. `node tools/readme-shots.mjs` retakes them.
 ## Contents
 
 **Using it**
@@ -68,23 +68,7 @@ Shared by both games:
 
 ## The life of a runner
 
-```mermaid
-%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
-flowchart TD
-  N(["New runner"]) --> DR["Draft<br/>edit tabs"]
-  DR -->|"open Review"| RV["Review<br/>problems and notes"]
-  RV -->|"fix a problem,<br/>or a GM approves it"| DR
-  RV -->|"Finalize<br/>no open problems"| CA["Career<br/>ledger opens"]
-  CA -->|"Back to draft<br/>if nothing live yet"| DR
-  CA --> EX(["Export, print<br/>or move to Trash"])
-  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
-  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
-  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
-  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
-  class N,EX d
-  class DR,RV a
-  class CA b
-```
+<p align="center"><img src="docs/images/diagram-the-life-of-a-runner.png" alt="Diagram: The life of a runner" width="380"></p>
 
 1. **Draft.** You build the runner. Every tab updates the budgets panel at the side.
 2. **Review.** Lists every broken rule (a **problem**, which blocks Finalize) and every **note** (which never blocks), each with its book page and a link to the tab that fixes it. A GM can tick **Approved by GM** on a problem.
@@ -387,28 +371,7 @@ Pick one way to run the app, then follow its steps from top to bottom. Every opt
 
 ### Choose your install
 
-```mermaid
-%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
-flowchart LR
-  A["Where will<br/>it run?"] -->|"One Windows PC"| C{"Update from<br/>inside the app?"}
-  C -->|"Yes"| W1["Windows<br/>installer"]
-  C -->|"No"| W2["Windows<br/>portable"]
-  A -->|"A shared server"| D{"Which server?"}
-  D -->|"Unraid"| U["Unraid<br/>template"]
-  D -->|"Pelican or<br/>Pterodactyl"| PE["Pelican egg"]
-  D -->|"Ubuntu,<br/>no Docker"| UB["Ubuntu<br/>service"]
-  D -->|"Other Docker host"| E{"Use a<br/>compose file?"}
-  E -->|"Yes"| DC["Docker<br/>Compose"]
-  E -->|"No"| DK["Docker run"]
-  D -->|"Changing<br/>the code"| SRC["From source"]
-  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
-  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
-  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
-  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
-  class A a
-  class C,D,E c
-  class W1,W2,U,PE,UB,DC,DK,SRC b
-```
+<p align="center"><img src="docs/images/diagram-choose-your-install.png" alt="Diagram: Choose your install" width="760"></p>
 
 | Method | Best for | Updates | Data lives in | Maturity |
 | --- | --- | --- | --- | --- |
@@ -666,28 +629,7 @@ Everything from here down is for people running or changing the server. You do n
 
 ### How the pieces fit
 
-```mermaid
-%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
-flowchart TD
-  B["Browser<br/>everyone at the table"]
-  N["Node server<br/>server/server.mjs"]
-  S["Web app<br/>React, dist/"]
-  P["Python importer<br/>one job at a time"]
-  D[("Data folder<br/>Config, Data/systems,<br/>Library, Logs, Backups")]
-  B -->|"HTTP"| N
-  N -->|"serves"| S
-  N -->|"starts"| P
-  N <-->|"reads, writes"| D
-  P <-->|"reads, writes"| D
-  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
-  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
-  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
-  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
-  class B a
-  class N,S b
-  class P c
-  class D d
-```
+<p align="center"><img src="docs/images/diagram-how-the-pieces-fit.png" alt="Diagram: How the pieces fit" width="420"></p>
 
 The Node server stores runners as XML files, one folder per account. It never serves the `Library` folder. The Python importer turns a PDF you upload into game data. On Windows desktop the same server runs inside the app, with its own Python bundled.
 
@@ -708,30 +650,7 @@ An older install with three folders (`characters`, `custom`, `library`) is moved
 
 The app ships **no book content**: no tables, no rules text, no descriptions. A fresh server shows empty pickers until you load your core data.
 
-```mermaid
-%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
-flowchart TD
-  PDF["Your PDF<br/>a book you own"] -->|"Books, upload"| LIB["Library folder<br/>never served"]
-  LIB --> CONV["Convert PDF<br/>to Markdown"]
-  CONV --> REC{"Does the book<br/>have a recipe?"}
-  REC -->|"Yes"| EXT["Read tables and rules<br/>into game data"]
-  REC -->|"No, Anarchy only"| AI["AI proposes entries<br/>you review each one"]
-  AI --> EXT
-  EXT --> REPORT["Import report:<br/>what it could not read"]
-  EXT --> DATA[("Data/systems<br/>imported book data")]
-  EDIT["Your edits and<br/>house rules"] --> LAYER[("Edits layer<br/>survives re-import")]
-  DATA --> APP["Pickers, Review, sheets"]
-  LAYER --> APP
-  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
-  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
-  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
-  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
-  class PDF,EDIT a
-  class LIB,CONV,EXT,AI,REPORT b
-  class REC c
-  class DATA,LAYER d
-  class APP a
-```
+<p align="center"><img src="docs/images/diagram-how-a-book-becomes-data.png" alt="Diagram: How a book becomes data" width="380"></p>
 
 ![The Books page for Shadowrun 6: a drop zone for PDFs and the list of supported books](docs/images/sr6-books.png)
 

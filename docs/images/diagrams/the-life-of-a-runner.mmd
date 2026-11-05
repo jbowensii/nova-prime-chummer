@@ -1,0 +1,15 @@
+%%{init: {'theme':'dark','themeVariables':{'fontSize':'16px','lineColor':'#8b949e','edgeLabelBackground':'#21262d','primaryTextColor':'#f0f6fc','textColor':'#f0f6fc','primaryColor':'#1f3a5f','primaryBorderColor':'#58a6ff'},'flowchart':{'htmlLabels':true,'useMaxWidth':true}}}%%
+flowchart TD
+  N(["New runner"]) --> DR["Draft<br/>edit tabs"]
+  DR -->|"open Review"| RV["Review<br/>problems and notes"]
+  RV -->|"fix a problem,<br/>or a GM approves it"| DR
+  RV -->|"Finalize<br/>no open problems"| CA["Career<br/>ledger opens"]
+  CA -->|"Back to draft<br/>if nothing live yet"| DR
+  CA --> EX(["Export, print<br/>or move to Trash"])
+  classDef a fill:#1f3a5f,stroke:#58a6ff,color:#f0f6fc
+  classDef b fill:#1e4620,stroke:#56d364,color:#f0f6fc
+  classDef c fill:#4a2f0d,stroke:#e3b341,color:#f0f6fc
+  classDef d fill:#3b1f4a,stroke:#d2a8ff,color:#f0f6fc
+  class N,EX d
+  class DR,RV a
+  class CA b
