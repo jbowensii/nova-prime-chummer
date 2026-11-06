@@ -1,5 +1,19 @@
 # Release notes
 
+## [1.2.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.1.0...v1.2.0) (2026-11-06)
+
+
+### Bug Fixes
+
+* **sr6:** Dissonant Technomancer options and Cyber Ninja path steps at 0 Karma ([e3b25b4](https://github.com/jbowensii/nova-prime-chummer/commit/e3b25b43cfb45a4823bed458a1dc4b40ae4bdf24))
+* **sr6:** karma from Commlink6, escape pod table, metahuman variant CF ([9b1cf3b](https://github.com/jbowensii/nova-prime-chummer/commit/9b1cf3b7d827d328307e64773b727826751062d4))
+* **sr6:** karma from Commlink6, escape pod table, metahuman variant CF ([eba324b](https://github.com/jbowensii/nova-prime-chummer/commit/eba324b29d7882807ab96fdcab3b03234b51934c))
+
+
+### Miscellaneous Chores
+
+* release as 1.2.0 ([c84e40c](https://github.com/jbowensii/nova-prime-chummer/commit/c84e40cdefd70fb1b5e7688497ff2947c2f60d82))
+
 ## [1.1.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.3...v1.1.0) (2026-11-06)
 
 
