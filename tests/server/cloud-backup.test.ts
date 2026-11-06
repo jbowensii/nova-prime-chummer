@@ -67,6 +67,19 @@ test('an empty bucket has nothing to restore, and a name that is not a backup is
   expect([bad.status, (await bad.json()).error]).toEqual([400, 'not a cloud backup name'])
 })
 
+test('a cloud backup is refused while an import is queued or running, or a write runs: its files must be from one moment', async () => {
+  const busy = 'a book is being imported or read by AI; try again when it’s done'
+  expect((await fetch(`${base}/api/books`, { method: 'POST', body: '%PDF-1.7 slow', headers: { 'Content-Type': 'application/pdf' } })).status).toBe(202)
+  const r = await fetch(`${base}/api/cloud-backup`, { method: 'POST' })
+  expect([r.status, (await r.json()).error]).toEqual([409, busy])
+  await vi.waitFor(async () => expect((await (await fetch(`${base}/api/books`)).json()).some((b: { busy: boolean }) => b.busy)).toBe(false), { timeout: 5000 })
+  const writing = fetch(`${base}/api/ai-keys`, { method: 'PUT', body: '<keys><key provider="openai">sk-test-SLOW12345</key></keys>' }) // the stub's set-key takes 300 ms
+  await new Promise(ok => setTimeout(ok, 100))
+  const w = await fetch(`${base}/api/cloud-backup`, { method: 'POST' })
+  expect([w.status, (await w.json()).error]).toEqual([409, 'a save or an upload is running; try again when it’s done'])
+  await writing
+})
+
 test('a cloud backup goes up, is listed newest first, and the newest restores', async () => {
   const made = await (await fetch(`${base}/api/cloud-backup`, { method: 'POST' })).json()
   expect(made.key).toMatch(/^backups\/[\w.-]+\.zip$/)
