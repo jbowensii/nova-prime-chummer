@@ -1,7 +1,6 @@
 # Plan: adopt the good ideas from OMA3
 
-Status: DRAFT v2, not started (2026-11-02). Team-reviewed (gossipcat: gpt-reviewer, gemini-reviewer, ca-reasoning);
-findings verified against the code and folded in below. Awaiting owner go-ahead.
+Status: DONE. All items shipped in 0.45.0 (audited 2026-11-06); item 8 continues piecemeal.
 Source compared: https://github.com/HeyOmae/OMA3 (Shadowrun 6e character generator; Next.js + MUI + IndexedDB).
 
 ## Bottom line
