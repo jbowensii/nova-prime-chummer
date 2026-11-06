@@ -488,7 +488,7 @@ function deriveAt(c: Catalog, ch: Character, on: boolean, table?: Pick<TableFlag
       const spec = sk.specs.find(x => x.id === specId)
       const name = spec?.name ?? specId.replace(/^custom:/, '')
       const first = spec?.attr ?? sk.attr
-      for (const a of [first, ...(specAlt && first === sk.attr ? [specAlt] : [])])
+      for (const a of [first, ...(spec?.alt && spec.alt !== first ? [spec.alt] : specAlt && first === sk.attr ? [specAlt] : [])])
         pool({
           skill: s.id,
           spec: specId,

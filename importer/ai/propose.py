@@ -357,7 +357,11 @@ def core_entry(table, raw, source, page, seen):
         )
     if table == "skills":
         inner += "".join(
-            _el("spec", {"id": _id(s.get("id")), "attr": _text(s.get("attr"))}, escape(_text(s.get("name")) or ""))
+            _el(
+                "spec",
+                {"id": _id(s.get("id")), "attr": _text(s.get("attr")), "alt": _text(s.get("alt")) or None},
+                escape(_text(s.get("name")) or ""),
+            )
             for s in rows("specs")
         )
     if table == "lifestyles":

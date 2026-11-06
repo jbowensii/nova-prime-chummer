@@ -101,6 +101,19 @@ test('wound boxes, RR from amps, and the RR cap of 3', () => {
   expect(d.pools.find(p => p.skill === 'stealth' && !p.spec && p.attr === 'agi')!.rr).toBe(1)
 })
 
+test('a specialization with two printed attributes gets a pool for each', () => {
+  const skills = new Map(cat.skills)
+  const stealth = skills.get('stealth')!
+  skills.set('stealth', { ...stealth, specs: stealth.specs.map(s => (s.id === 'stealth.lockpicking' ? { ...s, alt: 'log' as const } : s)) })
+  const c = face()
+  c.build.skills = [{ id: 'stealth', rating: 2, specs: ['stealth.lockpicking'] }]
+  const rows = derive({ ...cat, skills }, c).pools.filter(p => p.spec === 'stealth.lockpicking')
+  expect(rows.map(p => [p.attr, p.dp])).toEqual([
+    ['agi', 4 + c.build.attributes.agi],
+    ['log', 4 + c.build.attributes.log],
+  ])
+})
+
 test('alternative DVs by ammunition are read from a weapon’s text; page references and plain DVs are not', () => {
   expect(ammoDVs('Fires DV 5 (gel) / 6 (explosive) rounds.')).toEqual(['5 (gel)', '6 (explosive)'])
   expect(ammoDVs('dv: 4 (stick-n-shock), or 6 (APDS)')).toEqual(['4 (stick-n-shock)', '6 (APDS)'])

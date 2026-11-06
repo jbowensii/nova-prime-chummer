@@ -16,7 +16,7 @@ describeBooks('amp ratings (book samples)', () => {
     // a mod has no base rating of its own: it adds its effects to an existing amp
     const bad = [...books!.amps.values()].filter(
       t =>
-        !listed.has(t.id) &&
+        !listed.has(t.id.replace(/^(crb|dhsa)\./, '')) &&
         (t.mod
           ? t.effects.reduce((n, e) => n + effectRating(books!, e), 0)
           : ampRating(books!, { uid: t.id, type: t.type, name: t.name, narrative: '', effects: t.effects }, first)) !== t.printedRating,

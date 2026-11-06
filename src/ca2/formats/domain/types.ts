@@ -41,6 +41,7 @@ export interface Spec {
   id: string
   name: string
   attr: AttrId
+  alt?: AttrId
   source?: string
   page?: number
 }

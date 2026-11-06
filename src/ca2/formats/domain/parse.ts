@@ -87,6 +87,7 @@ export const toSkill = (el: Element): Skill => ({
     id: s.getAttribute('id')!,
     name: s.textContent!.trim(),
     attr: s.getAttribute('attr') as AttrId,
+    alt: str(s, 'alt') as AttrId | undefined,
     source: str(s, 'source'),
     page: num(s, 'page'),
   })),

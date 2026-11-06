@@ -75,8 +75,8 @@ _RISK = re.compile(r"\bmust\s+take\s+a\s+high\s+or\s+extreme\s+risk\b", re.I)
 _MIN_RISK = re.compile(
     r"\b(\d+)\s+risk\s+dice\s+minimum\b|\b(?:at\s+least|a\s+minimum\s+of)\s+(\d+)\s+risk\s+dice\b", re.I
 )
-_SOCIAL = re.compile(r"\bsocial\s+armor\s+\+?(\d)\b", re.I)
-_MATRIX = re.compile(r"\bmatrix\s+armor\s+\+?(\d)\b", re.I)
+_SOCIAL = re.compile(r"\bsocial\s+armor\s+\+?(\d)\b|\+(\d)\s+social\s+armor\b", re.I)
+_MATRIX = re.compile(r"\bmatrix\s+armor\s+\+?(\d)\b|\+(\d)\s+matrix\s+armor\b", re.I)
 _FORM = re.compile(r"\b(?:maintain|sustain)\w*\s+(?:one\s+|an\s+)?(?:additional|extra|more)\s+complex\s+form", re.I)
 _EDGE_GAIN = re.compile(
     rf"\b(?:gain|gains|gaining|recover|recovers|recovering|regain|regains|earn|earns|grants?)\s+(?:back\s+)?"

@@ -71,6 +71,7 @@ class RulesTest(unittest.TestCase):
         )
         self.assertEqual(kinds("Accustomed to banter; social armor 2.")[0][:3], ("social-armor", "", 2))
         self.assertEqual(kinds("Matrix Armor +1.")[0][:3], ("matrix-armor", "", 1))
+        self.assertEqual(kinds("+1 matrix armor")[0][:3], ("matrix-armor", "", 1))
         self.assertEqual(kinds("Allows maintaining an additional Complex form.")[0][0], "sustain-form")
         self.assertEqual(kinds("The last point of Essence counts double.")[0][0], "essence-implant")
         self.assertEqual(

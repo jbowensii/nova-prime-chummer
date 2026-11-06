@@ -267,7 +267,10 @@ def skills(md, pages, attrs):
     """Names, specializations and their attributes from the SKILLS, SPECIALIZATIONS, AND RELATED ATTRIBUTES box (p.54);
     linked attributes, page and who can use it from each Skill's description (pp.53-57)."""
     _, body = _box(md, "SKILLS, SPECIALIZATIONS")
-    sheet = [(n, re.findall(r"\s*([^,()]+?) \(\+([SAWLC])", rest)) for n, _, rest in crb.entries(join_lines(body))]
+    sheet = [
+        (n, re.findall(r"\s*([^,()]+?) \(\+([SAWLC])(?:/([SAWLC]))?", rest))
+        for n, _, rest in crb.entries(join_lines(body))
+    ]
     by_name = {a["name"]: a["id"] for a in attrs}
     lines = _lines(pages, 53, 57)
     heads = sorted((i, n) for i, (_, l) in enumerate(lines) for n, _ in sheet if l == n.upper())
@@ -293,7 +296,10 @@ def skills(md, pages, attrs):
                 "alt": linked[-1] if len(linked) > 1 else None,
                 "requires": req[1].lower() if req else None,
                 "page": lines[i][0],
-                "specs": [(f"{sid}.{slug(s.replace('&', ''))}", ATTR_LETTER[a], _cap(s.strip())) for s, a in specs],
+                "specs": [
+                    (f"{sid}.{slug(s.replace('&', ''))}", ATTR_LETTER[a], _cap(s.strip()), ATTR_LETTER.get(b))
+                    for s, a, b in specs
+                ],
             }
         )
     if len(out) != len(sheet):
@@ -895,7 +901,10 @@ def build(md):
                 "  <skill"
                 f'{_attrs({"id": s["id"], "attr": s["attr"], "alt": s["alt"], "requires": s["requires"], **_ref(s)})}>'
                 f'<name>{escape(s["name"])}</name>\n'
-                + "".join(f'    <spec{_attrs({"id": i, "attr": a})}>{escape(n)}</spec>\n' for i, a, n in s["specs"])
+                + "".join(
+                    f'    <spec{_attrs({"id": i, "attr": a, "alt": b})}>{escape(n)}</spec>\n'
+                    for i, a, n, b in s["specs"]
+                )
                 + "  </skill>"
                 for s in got["skills"]
             ],
