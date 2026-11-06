@@ -1,5 +1,13 @@
 # Release notes
 
+## [1.0.3](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.2...v1.0.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* **anarchy:** matrix armor line and specialization second attribute ([e2099f1](https://github.com/jbowensii/nova-prime-chummer/commit/e2099f1674761920f5867f8baa8ea5e18ee64465))
+* **anarchy:** read "+1 matrix armor" and a specialization's second attribute ([cd80fcf](https://github.com/jbowensii/nova-prime-chummer/commit/cd80fcfce972a25d1a69ae58e8b69ebcc59437e8))
+
 ## [1.0.2](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.1...v1.0.2) (2026-11-06)
 
 
