@@ -751,8 +751,15 @@ Coverage thresholds (`vite.config.ts`) are unchanged for now; raise them a few p
 
 This project stands on the work of others.
 
-- **Commlink6**, the Shadowrun 6 character generator by the RPGFramework / Genesis team.
-- **Chummer5a**, the Shadowrun 5th Edition Chummer application.
+- **[Commlink6](https://github.com/taranion/Commlink6)**, the Shadowrun 6 character generator by the RPGFramework / Genesis team.
+  - Owner: Stefan Prelle (taranion).
+  - Contributors: Kid-Test, mer0mingian, alatarum, MaverickBrandy-AT, Rundohr, janhelke, poolitzerlive4claude, balazsc.
+- **[Chummer5a](https://github.com/chummer5a/chummer5a)**, the Shadowrun 5th Edition Chummer application.
+  - Owner: chummer5a.
+  - Contributors: DelnarErsike, ArchonMegalon, joha4270, JoschiZ, Teksura, holgerschlegel, skarsol, BM123499, HaukeW, HaikenEdge, luizbgomide, and [many more](https://github.com/chummer5a/chummer5a/graphs/contributors).
+- **[OMA3](https://github.com/HeyOmae/OMA3)**, a Shadowrun 6 character generator whose ideas shaped parts of this app.
+  - Owner: HeyOmae.
+  - Contributors: William Johnson (dethstrobe).
 - And various others.
 
 Shadowrun is a trademark of its owners (The Topps Company, Inc.; Catalyst Game Labs publishes it under license). Nova Prime Chummer is an unofficial fan tool. It is not affiliated with or endorsed by them. No book content ships with it.
