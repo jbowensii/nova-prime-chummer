@@ -125,8 +125,8 @@ Datajack 2, Unlocked Datajack 4). Merging any of them would be a judgement about
 - Parity with the 13 hand-encoded runners: derive() gives the same attributes, pools, thresholds and Essence for all
   13; every printed amp rating is kept on the amp (where the engine rates it otherwise, Review says so: 0.5.6, the
   runner is as printed); every printed pool,
-  threshold and Essence the oracle lists is reproduced. Two printed pools roll with an attribute the rules don't
-  give that pool (status "attribute", not tested): Casper's Network (medical) WIL, Mictlan's Stealth (lockpicking) LOG.
+  threshold and Essence the oracle lists is reproduced. A printed pool can roll with an attribute the rules don't
+  give it (status "attribute", not tested): Casper's Network (medical) WIL.
 
 ## Core files (Task 1 of 0.4.0)
 

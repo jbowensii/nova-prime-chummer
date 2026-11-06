@@ -19,12 +19,12 @@ describeBooks('weapons, vehicles and finalize (book samples)', () => {
 
   test('vehicle stats match the book (CRB p.96-101)', () => {
     const v = (id: string, name: string) => derive(books!, sample(id)).vehicles.find(x => x.name === name)!
-    expect(v('charon', 'Eurocar Northstar 20')).toMatchObject({ pilot: 6, body: 7, handling: 1, speed: 4, armor: 1 })
+    expect(v('charon', 'Eurocar Northstar 2.0')).toMatchObject({ pilot: 6, body: 7, handling: 1, speed: 4, armor: 1 })
     expect(v('charon', 'Cyberspace Design Quadrotor')).toMatchObject({ pilot: 6, body: 1, handling: 9, speed: 4, armor: 0, flying: true })
     expect(v('casper', 'Roto-drone')).toMatchObject({ body: 2, handling: 7, speed: 6 })
     expect(v('casper', 'Damaged MCT Gnat')).toMatchObject({ body: 0, handling: 10, speed: 1 })
-    expect(v('casper', '2 Cyberspace Design Quadrotors').count).toBe(2)
-    expect(v('charon', 'Eurocar Northstar 20').thresholds).toEqual([8, 15, 22]) // Body 7 + Armor 1; 2x; 3x
+    expect(v('casper', 'Cyberspace Design Quadrotor').count).toBe(2)
+    expect(v('charon', 'Eurocar Northstar 2.0').thresholds).toEqual([8, 15, 22]) // Body 7 + Armor 1; 2x; 3x
   })
 
   test('Finalize can be undone while no earnings are recorded', () => {

@@ -9,7 +9,9 @@ import { describeBooks } from '../_gate'
 
 const doc = (dir: string, f: string) => new DOMParser().parseFromString(readFileSync(join(dir, f), 'utf8'), 'text/xml')
 const entries = (dir: string, f: string) => [...doc(dir, f).documentElement.children]
-const ids = (dir: string, f: string) => new Set(entries(dir, f).map(e => e.getAttribute('id')))
+// a book's import scopes its ids (crb.spell-heal); the samples and this test name them without the book
+const bare = (id: string | null) => id?.replace(/^(crb|dhsa|cg|qref|pregens)\./, '') ?? null
+const ids = (dir: string, f: string) => new Set(entries(dir, f).map(e => bare(e.getAttribute('id'))))
 
 describeBooks('book catalog XML', () => {
   test('every book catalog kind has entries', () => {
@@ -43,7 +45,7 @@ describeBooks('book catalog XML', () => {
   })
 
   test('equipment amps priced from the book carry their base item', () => {
-    const predator = entries(BOOKS_DIR, 'amps.xml').find(a => a.getAttribute('id') === 'ares-predator-iv-heavy-pistol')!
+    const predator = entries(BOOKS_DIR, 'amps.xml').find(a => bare(a.getAttribute('id')) === 'ares-predator-iv-heavy-pistol')!
     expect(predator.querySelector('item')!.getAttribute('kind')).toBe('weapon')
     expect(predator.querySelector('effect')!.getAttribute('param')).toBe('ranged-weapons.pistols')
   })

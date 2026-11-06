@@ -128,8 +128,11 @@ def load_rules(data=None):
     skills, specs = {}, {}
     for s in (s for r in roots("skills.xml") for s in r.iter("skill")):
         sid = s.get("id")
-        skills.setdefault(sid, {"name": s.findtext("name"), "attr": s.get("attr"), "alt": s.get("alt"), "specs": {}})
+        skills.setdefault(
+            sid, {"name": s.findtext("name"), "attr": s.get("attr"), "alt": s.get("alt"), "specs": {}, "specAlt": {}}
+        )
         skills[sid]["specs"].update({sp.get("id"): sp.get("attr") for sp in s.iter("spec")})
+        skills[sid]["specAlt"].update({sp.get("id"): sp.get("alt") for sp in s.iter("spec") if sp.get("alt")})
         specs.update({(sid, sp.text.strip().lower()): sp.get("id") for sp in s.iter("spec")})
     effects = {
         e.get("id"): {
@@ -851,7 +854,7 @@ def to_character(
                 if info["alt"] and first == info["attr"] and all(v == info["attr"] for v in info["specs"].values())
                 else None
             )
-            ok_attrs = [first] + ([alt] if alt else [])
+            ok_attrs = [first] + ([info["specAlt"].get(sp) or alt] if info["specAlt"].get(sp) or alt else [])
         else:
             ok_attrs = [info["attr"]] + ([info["alt"]] if info["alt"] else [])
         status = "attribute" if attr not in ok_attrs else "ok" if base + attrs[attr] == dp else "contradicts"
