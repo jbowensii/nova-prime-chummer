@@ -122,8 +122,9 @@ export function restoredCopy(xml, id, tag = CA2) {
   return setRev(
     xml.replace(new RegExp(`<${tag}\\b[^>]*>`), t => {
       const street = t.match(/\sstreetName="([^"]*)"/)?.[1] || t.match(/\sname="([^"]*)"/)?.[1] || 'Unnamed runner' // still escaped
-      // a copy is in no campaign
-      return t.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(new RegExp(`^<${tag}`), `$& id="${id}" streetName="${street} (restored copy)"`)
+      // a copy is in no campaign; an NPC shows `name`, so with no street name that says it's a copy too
+      const named = /\sstreetName="/.test(t) ? t : t.replace(/\sname="([^"]*)"/, ' name="$1 (restored copy)"')
+      return named.replace(/\s(id|streetName|campaign)="[^"]*"/g, '').replace(new RegExp(`^<${tag}`), `$& id="${id}" streetName="${street} (restored copy)"`)
     }),
     1,
     tag,
@@ -345,21 +346,29 @@ export function createServer({
     // ~40 empty comments then took the whole server minutes to refuse (exponential backtracking)
     const NS = new RegExp(`^\\uFEFF?\\s*(?:<\\?xml\\b[^>]*\\?>\\s*)?(?:<!--(?:(?!-->)[\\s\\S])*-->\\s*)*<${tag}\\b[^>]*\\sxmlns:${tag.split(':')[0]}="${g.ns}"`)
     const WELL = new RegExp(`^<${tag}(?:\\s+[\\w:.-]+="[^"<>]*")*\\s*>$`)
+    /** The root's content from its first tag, past any comments (a loop: a pattern here would backtrack, as above). */
+    const inner = xml => {
+      const r = rootTag(xml, tag)
+      let s = xml.slice(xml.indexOf(r) + r.length).trimStart()
+      while (s.startsWith('<!--')) {
+        const end = s.indexOf('-->')
+        if (end < 0) return ''
+        s = s.slice(end + 3).trimStart()
+      }
+      return s
+    }
     /** An <npc> block first in the root (a closed root: WELL passed). Root only, by rootTag: a pattern tried at every later
      *  <tag in the body backtracked quadratically. */
     const isNpc = xml => {
-      const r = rootTag(xml, tag)
-      return /^\s*<npc[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+      return /^<npc[\s/>]/.test(inner(xml))
     }
     /** A <design> block first in the root: an SR6 vehicle or drone design (the Designer's store). */
     const isDesign = xml => {
-      const r = rootTag(xml, tag)
-      return /^\s*<(design|itemDesign)[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+      return /^<(design|itemDesign)[\s/>]/.test(inner(xml))
     }
     /** A saved weapon or cyberware design (the item builders, SR6): shared, every account sees and buys every one's. */
     const isItemDesign = xml => {
-      const r = rootTag(xml, tag)
-      return /^\s*<itemDesign[\s/>]/.test(xml.slice(xml.indexOf(r) + r.length))
+      return /^<itemDesign[\s/>]/.test(inner(xml))
     }
     /** The design without its `approved` (either quote, any value): a GM's mark, which a player's own save never sets
      *  (owner 2026-10-16, BUILDER Q8). The <design> tag read attribute by attribute: a value may hold a `>`. null: a tag
@@ -385,6 +394,11 @@ export function createServer({
     const designRoot = area.designs,
       designFolder = username => join(designRoot, username)
 
+    /** A file deleted by another request since readdir: skipped, like the trash list. */
+    const gone = e => {
+      if (e.code === 'ENOENT') return null
+      throw e
+    }
     /** The folder's character files as { file, id, rev, xml }, from `indexed` while unchanged. */
     async function index(dir) {
       const files = (await readdir(dir).catch(() => [])).filter(f => f.endsWith('.xml'))
@@ -393,14 +407,16 @@ export function createServer({
       const out = await Promise.all(
         files.map(async file => {
           const path = join(dir, file),
-            s = await stat(path),
-            key = `${s.size}/${s.mtimeMs}/${s.ino}`
+            s = await stat(path).catch(gone)
+          if (!s) return null
+          const key = `${s.size}/${s.mtimeMs}/${s.ino}`
           const hit = was?.get(file)
           if (hit?.key === key) {
             now.set(file, hit)
             return hit.entry
           }
-          const xml = await readFile(path, 'utf8')
+          const xml = await readFile(path, 'utf8').catch(gone)
+          if (xml == null) return null
           const entry = { file, id: attrOf(xml, 'id'), rev: Number(attrOf(xml, 'rev') ?? 0), xml }
           now.set(file, { key, entry })
           return entry
@@ -409,7 +425,7 @@ export function createServer({
       if (now.size)
         indexed.set(dir, now) // (a file deleted or renamed since: its entry is gone)
       else indexed.delete(dir)
-      return out
+      return out.filter(Boolean)
     }
 
     const campaigns = campaignsApi({

@@ -152,10 +152,18 @@ export function s3Client(cfg) {
       await pipeline(createReadStream(file), h)
       await text(await ok(await send('PUT', key, { file, size: bytes, payloadHash: h.digest('hex') })))
     },
-    async get(key, dest) {
+    /** To the file `dest`, refused past `max` bytes: a wrong object can't fill the disk. */
+    async get(key, dest, max = Infinity) {
       const res = await ok(await send('GET', key))
+      let bytes = 0
+      const capped = async function* (chunks) {
+        for await (const c of chunks) {
+          if ((bytes += c.length) > max) throw Object.assign(new Error('the cloud object is too large'), { code: 413 })
+          yield c
+        }
+      }
       try {
-        await pipeline(res, createWriteStream(dest, { mode: 0o600 }))
+        await pipeline(res, capped, createWriteStream(dest, { mode: 0o600 }))
       } catch (e) {
         await rm(dest, { force: true })
         throw e

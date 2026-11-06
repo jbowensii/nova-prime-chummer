@@ -331,7 +331,7 @@ export function backupApi(ctx) {
     const file = tempZip('upload')
     try {
       await mkdir(backups, { recursive: true })
-      await c.get(key, file)
+      await c.get(key, file, MAX_ZIP)
     } catch (e) {
       await rm(file, { force: true })
       throw e

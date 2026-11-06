@@ -396,7 +396,7 @@ Asset name: `Nova-Prime-Chummer-Setup-1.0.0.exe`, from the [latest release](http
 
 1. Download the `Nova-Prime-Chummer-Setup-1.0.0.exe` asset.
 2. Run it. It is a normal wizard (not one-click): you can change the install folder.
-3. The installer is code-signed. A new certificate can still trigger a Windows SmartScreen warning: check that you downloaded it from the release page, then choose **More info**, then **Run anyway**.
+3. Release installers are code-signed (a build you make yourself is not). A new certificate can still trigger a Windows SmartScreen warning: check that you downloaded it from the release page, then choose **More info**, then **Run anyway**.
 4. Finish the wizard and start **Nova Prime Chummer**. A window opens with the app. There is no browser and no server to start.
 
 The app talks to a server bound to `127.0.0.1` only, so nothing else on your network can reach it. To let other people at the table use it, install it on a shared server instead (see [Choose your install](#choose-your-install)).

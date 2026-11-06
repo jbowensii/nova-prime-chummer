@@ -202,3 +202,8 @@ test('a trash file named only by its time restores as runner.xml', async () => {
   expect(await (await call('pat', 'POST', '/api/trash/-1700000000000.xml/restore')).json()).toMatchObject({ file: 'runner.xml', copy: false })
   expect(existsSync(join(chars, 'pat', 'runner.xml'))).toBe(true)
 })
+
+test('a restored copy of an NPC says so in its name', () => {
+  const xml = restoredCopy('<ca2:character id="a" name="Blue" rev="3"><npc/></ca2:character>', 'b')
+  expect(xml).toContain('name="Blue (restored copy)"')
+})

@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Cloud backup through the API against a local fake S3 (stub worker for the zip): not set up, a backup goes up, it is listed,
 // the newest is restored, and a bad name or an empty bucket is refused.
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { createServer as http, type Server } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -111,4 +111,20 @@ test('cloud backup needs the Config/Data/Library layout', async () => {
   } finally {
     old.close()
   }
+})
+
+test('a cloud object past the limit is refused and leaves no file', async () => {
+  const { s3Client } = await import('../../server/s3.mjs')
+  store.set('backups/big.zip', Buffer.alloc(2000))
+  const c = s3Client({
+    endpoint: `http://127.0.0.1:${(s3.address() as { port: number }).port}`,
+    region: 'r1',
+    bucket: 'bkt',
+    accessKeyId: 'AK',
+    secretAccessKey: 'SK',
+  })
+  const dest = join(dir, 'big.zip')
+  await expect(c.get('backups/big.zip', dest, 1000)).rejects.toMatchObject({ code: 413 })
+  expect(existsSync(dest)).toBe(false)
+  store.delete('backups/big.zip')
 })
