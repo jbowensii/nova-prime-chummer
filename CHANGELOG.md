@@ -1,5 +1,12 @@
 # Release notes
 
+## [1.0.2](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.1...v1.0.2) (2026-11-06)
+
+
+### Bug Fixes
+
+* samples' printed quality prices, desktop port retry, and tests for review fixes ([54bc4da](https://github.com/jbowensii/nova-prime-chummer/commit/54bc4da2008ebdab1fc9523bf745a1f10c8a0eb1))
+
 ## [1.0.1](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.0...v1.0.1) (2026-11-06)
 
 
