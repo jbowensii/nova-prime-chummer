@@ -292,6 +292,8 @@
     <xs:attribute name="essence" type="xs:string"/>
     <xs:attribute name="avail" type="xs:string"/>
     <xs:attribute name="required" type="xs:boolean"/>
+    <!-- the Customization Factor the variant takes of a vehicle's vehicle-cf hook (a number; absent: one) -->
+    <xs:attribute name="cf" type="xs:decimal"/>
   </xs:complexType>
   <xs:complexType name="Option">
     <xs:attribute name="choice" type="xs:string" use="required"/>

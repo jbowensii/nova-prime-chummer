@@ -11,7 +11,7 @@ importer reads none of it from the text). Children of any entry (`common.xsd` ta
 - Sub-options and variants (behaviour-gap plan Stage 2, 2026-10-31; written by `python -m tools.cl6check.options --runs
   <import>` into the family rows, regenerable): `<option choice id name cost? price? avail? count?/>` one per sub-option of a
   Commlink6 SUBSELECT pick (`cost`: karma on a quality, nuyen on an item, added to the entry's); `<variant name price?
-  essence? avail? required?/>` a variant's own values, which replace the entry's while it is picked (`required`: a
+  essence? avail? cf? required?/>` a variant's own values, which replace the entry's while it is picked (`required`: a
   `reqVariant` item, one must be picked); `<effect … option="<choice>.<id>"/>` or `variant="<name>"`: holds only while that
   one is picked, in place of the entry's own effect on the same target. An entry the book already split per option or variant
   (`Arm (synthetic)`, `Functional Tail (Balance)`) gets none. The builder applies them (catalog `structure.ts` `subChoices`,

@@ -4,7 +4,7 @@ import { expect, test } from 'vitest'
 import { validateXML } from 'xmllint-wasm'
 import { readFileSync } from 'node:fs'
 import { toEntry } from '../../../src/sr6/formats/domain/entryxml'
-import { enhancementFits, fit, fitsOnly, mountSlots, requirementsOf, structureOf } from '../../../src/sr6/catalog/domain/structure'
+import { enhancementFits, fit, fitsOnly, mountSlots, requirementsOf, structureOf, variantCf } from '../../../src/sr6/catalog/domain/structure'
 import type { Sr6Entry } from '../../../src/sr6/formats/domain/types'
 import { effectBonuses, maxEffects } from '../../../src/sr6/catalog/domain/effects'
 import type { Sr6Data } from '../../../src/sr6/catalog/domain/data'
@@ -188,4 +188,10 @@ test('enhancementFits: Metahuman Adaptation (one selreq of ranged and close-comb
   expect(enhancementFits(adapt, item({ class: 'WEAPON_CLOSE_COMBAT/BLADES' }, '', 'weapons'))).toBe(true)
   expect(enhancementFits(adapt, item({ class: 'WEAPON_FIREARMS/PISTOLS_HEAVY' }, '', 'weapons'))).toBe(true)
   expect(enhancementFits(adapt, item({ class: 'ARMOR/ARMOR_BODY' }, '', 'armor'))).toBe(false)
+})
+
+test('a variant carries its own CF: Metahuman Adjustments takes 0 for a dwarf and 1 for a troll', () => {
+  const x = `<?xml version="1.0" encoding="UTF-8"?><sr6:data xmlns:sr6="${NS}" kind="gear" version="1"><gear id="zz.adj" source="ZZ" page="1"><name>Adj</name><variant name="Dwarf" price="5" required="true" cf="0"/><variant name="Troll" price="5" required="true" cf="1"/><text/></gear></sr6:data>`
+  const e = toEntry(new DOMParser().parseFromString(x, 'text/xml').getElementsByTagName('gear')[0], 'gear')
+  expect([variantCf(e, { '@variant': 'Dwarf' }), variantCf(e, { '@variant': 'Troll' }), variantCf(e, {})]).toEqual([0, 1, undefined])
 })

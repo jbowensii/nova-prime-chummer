@@ -10,7 +10,7 @@ import { SHIFT_KINDS, SLOT_KINDS, type ShiftKind, type SlotKind, type SlotShift,
 import type { Sr6Entry, Sr6Part } from '../../../formats/domain/types'
 import type { Sr6Data } from '../../../catalog/domain/data'
 import { entryLabel } from '../../../catalog/domain/categories'
-import { structureOf } from '../../../catalog/domain/structure'
+import { structureOf, variantCf } from '../../../catalog/domain/structure'
 import { entryOf, hardpointOf, isDrone, isMount, modKind, ratingOf, type Hardpoint, type ModKind } from '../creation/purchases'
 import { bookValue, dataFind } from '../../../catalog/domain/values'
 import { evalFormula } from '../../../../core/shared/formula'
@@ -379,7 +379,13 @@ export function modsOf(x: Sr6Purchase, data: Sr6Data): VehicleMods {
     // that fits the family takes one
     for (const k of DECLARED_ONLY) {
       const max = declaredCap(k)
-      if (max !== undefined) slots[k] = { used: x.accessories.filter(f => fitFamily(f.uid) === k).length + (usedByHook[slotId(k)] ?? 0), max }
+      if (max !== undefined)
+        slots[k] = {
+          used:
+            x.accessories.filter(f => fitFamily(f.uid) === k).reduce((t, f) => t + (variantCf(entryOf(f, data), f.options) ?? 1), 0) +
+            (usedByHook[slotId(k)] ?? 0),
+          max,
+        }
     }
     out.slots = slots
     // slots shifted to another core category: two of one give one of another (p. 120)

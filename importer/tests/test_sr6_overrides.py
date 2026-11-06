@@ -98,6 +98,23 @@ class OverridesTest(unittest.TestCase):
         self.assertEqual(added.find("formula").attrib, {"field": "cost"})
         self.assertEqual((added.find("formula").text, e.find("gear[@id='a']").get("slots")), ("R*4000", "50 CF"))
 
+    def test_the_owner_rulings_of_20261106_karma_escape_pod_and_metahuman_cf(self):
+        """Natural Venom takes Commlink6's 9 Karma; the Escape Pod's swapped AVAIL/COST columns are put right (ED p.80); the
+        four Metahuman Adjustments variants carry their CF (dwarf 0, troll 1)."""
+        row = lambda stem, i: next(
+            r for r in overrides.table(stem) if r.get("id") == i and r.get("gen") == "owner" and "set" in r
+        )
+        self.assertEqual(row("swc", "natural-venom")["set"], {"kind": "positive", "karma": "9"})
+        pod = row("ed", "generic-escape-pod")["set"]
+        self.assertEqual((pod["cost"], pod["avail"]), ("5,000¥", "Common"))
+        fam = next(
+            r for r in overrides.table("dc") if r.get("id") == "metahuman-adjustments" and r.get("gen") == "family"
+        )
+        self.assertEqual(
+            {k["attrs"]["name"]: k["attrs"]["cf"] for k in fam["kids"] if k["tag"] == "variant"},
+            {"Driver (Dwarf)": "0", "Driver (Troll)": "1", "Passenger (Dwarf)": "0", "Passenger (Troll)": "1"},
+        )
+
     def test_a_sub_rows_name_takes_its_parents_and_an_artifact_goes(self):
         rows = [
             {"cl6": "Zorp (Spit)", "kind": "gear", "id": "b", "rename": "Zorp (Spit)"},

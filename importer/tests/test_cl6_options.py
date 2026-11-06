@@ -57,6 +57,15 @@ class OptionsTest(unittest.TestCase):
         )
         self.assertIsNone(options.variant_kids(r, "Arm (synthetic)", None))
 
+    def test_variant_carries_its_own_cf(self):
+        r = rec(
+            '<item id="zz" reqVariant="y"><variant id="a"><usage mode="EMBEDDED" slot="VEHICLE_CF" value="0"/>'
+            '<attrdef id="PRICE" value="500"/></variant><variant id="b"><usage mode="EMBEDDED" slot="VEHICLE_CF" value="1"/>'
+            '<attrdef id="PRICE" value="500"/></variant></item>',
+            variants={"a": "Dwarf", "b": "Troll"},
+        )
+        self.assertEqual([k["attrs"].get("cf") for k in options.variant_kids(r, "Zed", None)], ["0", "1"])
+
 
 class SplitTest(unittest.TestCase):
     def test_split_entry_gets_its_option_and_the_shared_data(self):
