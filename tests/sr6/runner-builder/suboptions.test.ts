@@ -79,3 +79,9 @@ test("an item's option adds its nuyen and availability; a variant's price and es
   expect(effectsOf(data, ch.build.purchases[1]).map(b => b.value)).toEqual([2])
   expect(withOptions(data.entry('gear', 'crb.zz-limb'))!.parts.filter(p => p.tag === 'effect')).toHaveLength(1)
 })
+
+test('a book sample with a printed price and no picks keeps that price', () => {
+  const v = { karma: -2, karmaMax: -20, optionKarma: { 'a.b': 3 } } as never
+  expect(qualityCost({ id: 'x', level: 1, karma: 11 } as never, v)).toBe(11)
+  expect(qualityCost({ id: 'x', level: 1, karma: 11, options: { a: 'b' } } as never, v)).toBe(5)
+})

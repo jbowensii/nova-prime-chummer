@@ -50,7 +50,7 @@ test.skipIf(!LIVE)(
       picks: string[] = []
     const notRolled: { npc: string; printed: string; why: string }[] = [],
       noneRollable: string[] = []
-    for (const f of readdirSync(dir)) {
+    for (const f of readdirSync(dir).filter(f => f.endsWith('.xml'))) {
       n.files++
       const r = xmlToSr6(readFileSync(join(dir, f), 'utf8'))
       if (!r.ok || !r.character.npc) continue

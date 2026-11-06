@@ -207,3 +207,18 @@ test('a restored copy of an NPC says so in its name', () => {
   const xml = restoredCopy('<ca2:character id="a" name="Blue" rev="3"><npc/></ca2:character>', 'b')
   expect(xml).toContain('name="Blue (restored copy)"')
 })
+
+test('an NPC restored beside its own id comes back under a name that says it is a copy', async () => {
+  const npc = `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="n-copy" name="Blue" rev="1"><npc/></ca2:character>`
+  expect((await call('ada', 'PUT', '/api/npcs/n-copy', npc)).status).toBe(201)
+  expect((await call('ada', 'DELETE', '/api/npcs/n-copy')).status).toBe(204)
+  expect((await call('ada', 'PUT', '/api/npcs/n-copy', npc)).status).toBe(201)
+  const { items } = await (await call('ada', 'GET', '/api/npcs/trash')).json()
+  const r = await call('ada', 'POST', `/api/npcs/trash/${items[0].file}/restore`)
+  expect(await r.json()).toMatchObject({ name: 'Blue (restored copy)', copy: true })
+})
+
+test('a comment before the <npc> block is still an NPC', async () => {
+  const npc = `<ca2:character xmlns:ca2="urn:chummer-anarchy2:character:1" formatVersion="1" id="n-note" name="Note" rev="1"><!-- hand note --><npc/></ca2:character>`
+  expect((await call('ada', 'PUT', '/api/npcs/n-note', npc)).status).toBe(201)
+})

@@ -21,14 +21,15 @@ import { animalismGrade, animalismKarma } from './animalism'
  *  taken for (kept within the range; the lowest when it isn't set). */
 export function qualityCost(q: Sr6Quality, v: Sr6QualityView): number {
   // (a price line listing its prices, `7 or 12 Karma`: one of them, the highest at or below the karma it was taken for)
-  // (one priced by its sub-options, structure.ts subChoices: the base and what they add, never a range or a step)
+  // (one priced by its sub-options, structure.ts subChoices: the base and what they add, never a step; a book sample
+  // keeps only the printed price and no picks, so that price stands)
   const steps = v.optionKarma ? undefined : v.karmaSteps?.map(Math.abs).sort((a, b) => a - b)
   const lo = Math.abs(v.karma ?? 0),
     each = steps?.length
       ? q.karma == null
         ? steps[0]
         : ([...steps].reverse().find(k => k <= q.karma!) ?? steps[0])
-      : v.karmaMax != null && q.karma != null && !v.optionKarma
+      : v.karmaMax != null && q.karma != null && (!v.optionKarma || !Object.keys(q.options ?? {}).length)
         ? Math.min(Math.abs(v.karmaMax), Math.max(lo, q.karma))
         : lo
   // (its sub-options' karma: Allergy's allergen and severity, catalog structure.ts subChoices)

@@ -5,6 +5,7 @@ import { createWriteStream, mkdirSync } from 'node:fs'
 import { createServer as netServer } from 'node:net'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { withPortRetry } from './port-retry.mjs'
 import { initUpdater } from './updater.mjs'
 
 const DEFAULT_PORT = 47480 // ponytail: fixed preferred port (an OS-chosen one if taken); add a setting if users need a fixed port
@@ -36,43 +37,51 @@ const freePort = pref =>
 
 async function start() {
   const secret = randomUUID()
-  const port = await freePort(DEFAULT_PORT)
   const root = app.getPath('userData')
   const dirs = Object.fromEntries(['Config', 'Data', 'Library', 'Logs'].map(d => [d, join(root, d)]))
   for (const d of Object.values(dirs)) mkdirSync(d, { recursive: true })
 
-  child = utilityProcess.fork(join(here, 'server-entry.mjs'), [], {
-    stdio: 'pipe',
-    serviceName: 'nova-prime-chummer-server',
-    env: { ...process.env, CA2_DATA_DIR: join(importerRoot, 'dist', 'data'), PYTHONDONTWRITEBYTECODE: '1', PYTHONNOUSERSITE: '1' },
-  })
   const log = createWriteStream(join(dirs.Logs, 'server.log'), { flags: 'a' })
-  child.stdout.pipe(log, { end: false })
-  child.stderr.pipe(log, { end: false })
-  child.on('exit', () => {
-    child = null
-    if (!quitting) app.quit()
-  })
-
-  const ready = new Promise((ok, fail) => {
-    child.on('message', m => (m?.type === 'ready' ? ok() : m?.type === 'error' && fail(new Error(m.message))))
-    child.once('exit', code => fail(new Error(`server exited (${code})`)))
-  })
-  child.postMessage({
-    type: 'start',
-    opts: {
-      port,
-      host: '127.0.0.1',
-      allowedHosts: [`127.0.0.1:${port}`, `localhost:${port}`],
-      localSecret: secret,
-      openSetup: true, // the first admin is made on screen, not with a code from a log
-      importerRoot,
-      python,
-      staticDir: join(importerRoot, 'dist'), // served from the unpacked copy (importerRoot = app.asar.unpacked when packaged), never from inside app.asar
-      dataPath: root, // Config, Data, Library, Logs, Backups under it (server/layout.mjs)
-    },
-  })
-  await ready
+  const launch = async port => {
+    const c = (child = utilityProcess.fork(join(here, 'server-entry.mjs'), [], {
+      stdio: 'pipe',
+      serviceName: 'nova-prime-chummer-server',
+      env: { ...process.env, CA2_DATA_DIR: join(importerRoot, 'dist', 'data'), PYTHONDONTWRITEBYTECODE: '1', PYTHONNOUSERSITE: '1' },
+    }))
+    c.stdout.pipe(log, { end: false })
+    c.stderr.pipe(log, { end: false })
+    c.on('exit', () => {
+      if (child !== c) return // a copy dropped below for a port that was taken
+      child = null
+      if (!quitting) app.quit()
+    })
+    const ready = new Promise((ok, fail) => {
+      c.on('message', m => (m?.type === 'ready' ? ok() : m?.type === 'error' && fail(new Error(m.message))))
+      c.once('exit', code => fail(new Error(`server exited (${code})`)))
+    })
+    c.postMessage({
+      type: 'start',
+      opts: {
+        port,
+        host: '127.0.0.1',
+        allowedHosts: [`127.0.0.1:${port}`, `localhost:${port}`],
+        localSecret: secret,
+        openSetup: true, // the first admin is made on screen, not with a code from a log
+        importerRoot,
+        python,
+        staticDir: join(importerRoot, 'dist'), // served from the unpacked copy (importerRoot = app.asar.unpacked when packaged), never from inside app.asar
+        dataPath: root, // Config, Data, Library, Logs, Backups under it (server/layout.mjs)
+      },
+    })
+    try {
+      await ready
+    } catch (e) {
+      child = null
+      c.kill()
+      throw e
+    }
+  }
+  const port = await withPortRetry(() => freePort(DEFAULT_PORT), launch)
 
   // The window's own requests carry the secret; it is added below the page, so page script never sees it.
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: [`http://127.0.0.1:${port}/*`, `http://localhost:${port}/*`] }, (d, cb) =>
