@@ -219,6 +219,9 @@ def variant_kids(rec, name, level, siblings=()):
             )
             if req:
                 a["required"] = "true"
+        cf = next((u.get("value") for u in v if u.tag == "usage" and u.get("slot") == "VEHICLE_CF"), None)
+        if cf is not None:  # (Metahuman Adjustments: a dwarf seat takes 0 of the vehicle's CF, a troll seat 1)
+            a["cf"] = _value(cf, None, level) or cf
         kids.append({"tag": "variant", "attrs": a})
         kids += [k for k in (effect(m, variant=n) for m in _mods(v)) if k]
     return kids

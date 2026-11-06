@@ -251,6 +251,8 @@ export interface SubOption {
   price?: number
   essence?: number
   avail?: string
+  /** a variant's own Customization Factor (Commlink6's per-variant VEHICLE_CF usage: a dwarf seat 0, a troll seat 1) */
+  cf?: number
 }
 /** A pick of sub-options, or the entry's variants (ref VARIANT): how many may be taken, and whether one must be. */
 export interface SubChoice {
@@ -293,10 +295,13 @@ export function subChoices(e?: Sr6Entry): SubChoice[] {
         ...def('price', optNum(p.attrs.price)),
         ...def('essence', optNum(p.attrs.essence)),
         ...def('avail', p.attrs.avail),
+        ...def('cf', optNum(p.attrs.cf)),
       })),
     })
   return [...out.values()]
 }
+/** The Customization Factor the picked variant takes, when it states one (Metahuman Adjustments: dwarf 0, troll 1). */
+export const variantCf = (e: Sr6Entry | undefined, picks?: SubPicks) => pickedOptions(e, picks).find(x => x.choice.ref === VARIANT)?.option.cf
 /** The options of a line's picks that are taken (unknown ids dropped). */
 export function pickedOptions(e: Sr6Entry | undefined, picks?: SubPicks): { choice: SubChoice; option: SubOption }[] {
   if (!picks) return []

@@ -44,6 +44,8 @@ Every entry also has `id`, `source`, `page`, `<name>` and the optional `<text>`.
 | mentorspirits, datastructures, spellfeatures, contacttypes, licencetypes, magictypes, ruleoptions, senses, trueelements | mentorspirit, datastructure, spellfeature, contacttype, licencetype, magictype, ruleoption, sense, trueelement | category | — |
 | categories | category | of* (the kind its rows are), table, section, confidence (`low`), why, fits, accessories (see Categories) | — |
 
+**Per-variant CF** (`<variant cf>`, gear). A variant may state the Customization Factor (CF) it takes of the vehicle's `vehicle-cf` hook, a number, as Commlink6's per-variant `VEHICLE_CF` usage: Metahuman Adjustments (Double Clutch p. 128) is CF 0 for the dwarf variants and CF 1 for the troll ones. A bought mod counts its picked variant's `cf` against the vehicle's CF meter (`structure.ts variantCf`, `vehiclemods.ts`); a variant with no `cf`, and every other mod that fits `vehicle-cf`, takes 1. Factory parts keep the cost on their own `<part cost>`. It is an attribute of `<variant>` in `common.xsd`; `tools/cl6check/options.py variant_kids` writes it.
+
 **Critter powers a stat block names.** A being's `Powers` line is read by `powerlist.power_list`: the commas a book ran
 together (`Armor 2. Astral Form`, `Hardened Armor 2; Immunity (Cold)`) are put back, and a sentence the line runs on with
 (`Sapience damage increases to 9P, a glitch raises it 10P …`, text after a power's brackets) goes to the entry's text as a

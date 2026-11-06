@@ -669,5 +669,6 @@
   {"cl6": "Permanent Improvement", "kind": "qualities", "id": "permanent-improvement", "set": {"kind": "positive", "karma": "0"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
   {"cl6": "Fulfilled", "kind": "qualities", "id": "fulfilled", "set": {"kind": "negative", "karma": "15"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
   {"cl6": "Unhealthy Attachment", "kind": "qualities", "id": "unhealthy-attachment", "set": {"kind": "negative", "karma": "5"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
-  {"cl6": "Into the Shadows", "kind": "qualities", "id": "into-the-shadows", "set": {"kind": "positive", "karma": "18"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"}
+  {"cl6": "Into the Shadows", "kind": "qualities", "id": "into-the-shadows", "set": {"kind": "positive", "karma": "18"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
+  {"cl6": "Natural Venom", "kind": "qualities", "id": "natural-venom", "set": {"kind": "positive", "karma": "9"}, "note": "SWC p.119 prints no Karma cost: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"}
 ]
