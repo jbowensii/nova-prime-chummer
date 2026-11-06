@@ -1,5 +1,14 @@
 # Release notes
 
+## [1.0.1](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.0...v1.0.1) (2026-11-06)
+
+
+### Bug Fixes
+
+* **backup:** refuse a cloud backup while a save or an import runs ([12c554a](https://github.com/jbowensii/nova-prime-chummer/commit/12c554a363ad792ee7a4ff5d61b0347b74f1fcbb))
+* **backup:** refuse a cloud backup while a save or an import runs ([2e04411](https://github.com/jbowensii/nova-prime-chummer/commit/2e04411f5c9ad805c8e56af4353a4f63f6146c7a))
+* remaining confirmed review findings ([1ad15cc](https://github.com/jbowensii/nova-prime-chummer/commit/1ad15cc1accdffc5ada470e08225b7084d8ce19a))
+
 ## 1.0.0 (Beta release) — 2026-11-05
 
 **This is the beta release of Nova Prime Chummer.** Both games work end to end: create a runner, review it, finalize it and run its career. It is a beta because some install methods are new and have had little field use (Docker Compose, Pelican or Pterodactyl, Ubuntu), and because rules coverage depends on which of your books the importer can read. Please report problems on GitHub.
