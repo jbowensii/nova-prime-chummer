@@ -105,6 +105,15 @@ class OverridesTest(unittest.TestCase):
             r for r in overrides.table(stem) if r.get("id") == i and r.get("gen") == "owner" and "set" in r
         )
         self.assertEqual(row("swc", "natural-venom")["set"], {"kind": "positive", "karma": "9"})
+        for i, kind in (
+            ("control-apophenian", "positive"),
+            ("alt-morphinae", "positive"),
+            ("delete-erisian", "positive"),
+            ("losing-balance", "negative"),
+            ("evaluating-humanity", "negative"),
+            ("ghost-town", "negative"),
+        ):
+            self.assertEqual(row("shc", i)["set"], {"kind": kind, "karma": "0"})
         pod = row("ed", "generic-escape-pod")["set"]
         self.assertEqual((pod["cost"], pod["avail"]), ("5,000¥", "Common"))
         fam = next(
