@@ -88,13 +88,14 @@
     </xs:complexType>
   </xs:element>
 
-  <!-- ask-counts.xml: each account's answered Ask the rules questions on `date` (UTC), by user id (server/books.mjs) -->
+  <!-- ask-counts.xml: each account's answered Ask the rules questions on `date` (UTC), by user id; `game="sr6"` for Shadowrun 6's, none for Anarchy's (server/books.mjs) -->
   <xs:element name="askcounts">
     <xs:complexType>
       <xs:sequence>
         <xs:element name="count" minOccurs="0" maxOccurs="unbounded">
           <xs:complexType>
             <xs:attribute name="user" type="ca2:UserId" use="required"/>
+            <xs:attribute name="game" type="xs:string" use="optional"/>
             <xs:attribute name="n" type="xs:positiveInteger" use="required"/>
           </xs:complexType>
         </xs:element>

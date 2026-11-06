@@ -28,8 +28,8 @@
 //                                     (a review of core tables, core="true": ?apply=1 writes custom/imported/core/)
 //   Each game has its own AI (the AI routes and Ask the rules, also under /api/sr6/): Anarchy's settings and keys in
 //                                     library/.config/, SR6's in library/sr6/.config/ (its own provider, key, AnythingLLM
-//                                     workspace); each game's Ask reads only its own data (importer/ask.py). The daily count is
-//                                     the account's, both games together
+//                                     workspace); each game's Ask reads only its own data (importer/ask.py). The daily limit is
+//                                     the account's, counted apart for each game
 //   GET    /api/ai-settings           -> ai-providers.xml plus <key provider set="true|false"/> (never a key)
 //   PUT    /api/ai-settings           body: ai-providers.xml -> { cleared: [provider…] } (keys cleared: base URL changed); 400 when refused
 //   PUT    /api/ai-keys               body: <key provider="…">…</key> elements; each is stored, an empty one removed
@@ -58,7 +58,7 @@
 //                                     (tablerules.xsd: a book's optional rule by its id, a house rule with its name and text);
 //                                     anyone signed in reads the file at /custom/table-rules.xml
 //   GET    /api/ask                   anyone signed in: -> { available, limit, used } (available: an AI provider is chosen, enabled
-//                                     and has its key; limit: the account's dailyQuestions, null for none; used: answered today, UTC)
+//                                     and has its key; limit: the account's dailyQuestions, null for none; used: answered today for this game, UTC)
 //   POST   /api/ask                   anyone signed in: { question, scope? } (500 characters at most; scope "rules": the rules only,
 //                                     the Rules page's search) -> { answer, sources: [{ source, page, title, kind, id }], covered, used, limit } through `importer ask` (60 s); one at a time per account and
 //                                     ASK_AT_ONCE on the server (429); every question that reached the provider counts against the day's

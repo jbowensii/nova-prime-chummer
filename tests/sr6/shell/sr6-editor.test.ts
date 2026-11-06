@@ -5,6 +5,7 @@ import { createElement } from 'react'
 import { expect, test } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
 import { blankSr6, type Sr6Character } from '../../../src/sr6/formats/domain/character'
+import { Me, type User } from '../../../src/core/ui-kit/auth'
 import { Sr6EditorView } from '../../../src/sr6/shell/ui/EditorView'
 import { fixtureCatalog, made } from '../catalog/fixture'
 import { button, change, click, fakeStore, field, hasButton, mount, option, pageText, stubFetch } from '../../ui/dom'
@@ -186,4 +187,16 @@ test('Review: the GM approves every problem, Finalize opens the ledger; earnings
   const got = await e.saved()
   expect(got.finalizedAt).toBeTruthy()
   expect(got.ledger.length).toBeGreaterThanOrEqual(4)
+})
+
+test('the editor carries the Ask the rules bar, and it asks the SR6 AI', async () => {
+  const ch = built()
+  const store = fakeStore('sr6/characters', { [ch.id]: sr6ToXml(ch) })
+  const calls = stubFetch([[/\/api\/(sr6\/)?ask$/, () => ({ available: true, limit: 3, used: 1 })], store.route])
+  const me = { id: 'u1', username: 'pia', role: 'player' } as User
+  await mount(createElement(Me.Provider, { value: me }, createElement(Sr6EditorView, { c, data, cr, id: ch.id, tab: 'build' })))
+  const asks = calls.map(x => x.url).filter(u => /\/ask$/.test(u))
+  expect(asks.length).toBeGreaterThan(0)
+  expect(asks.every(u => u.endsWith('api/sr6/ask'))).toBe(true)
+  expect(document.querySelector('form[aria-label="Ask the rules"]')).not.toBeNull()
 })
