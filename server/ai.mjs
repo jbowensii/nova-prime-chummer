@@ -8,7 +8,7 @@ import { CONFIG_NS, attr, body, clean, fail, readOr, rootTag, serializer, unesc,
 const PROVIDERS = ['anthropic', 'openai', 'gemini', 'anythingllm', 'ollama', 'lmstudio', 'compatible', 'openrouter', 'mistral', 'azure']
 const KEYLESS = ['openai', 'ollama', 'lmstudio', 'compatible'] // importer/ai/providers.py KEYLESS: a local server may need no key
 const DEFAULT_ADDRESS = ['ollama', 'lmstudio'] // they have a usual address, so none typed is fine
-/** The 429 when an account's daily questions are used up (limit 0: it has none). */
+/** The 429 when an account's daily questions for the game are used up (limit 0: it has none). */
 export const limitReached = n =>
   n === 0 ? 'You have no questions today.' : `${n === 1 ? 'You’ve used today’s question.' : `You’ve used all ${n} of today’s questions.`} Ask again tomorrow.`
 const MAX_QUESTION = 500 // importer/ask.py MAX_QUESTION; its provider call gives up at 50 s, the server's askTimeout (60 s) stops it
@@ -120,19 +120,21 @@ export function aiApi(ctx) {
   const asking = new Set() // user ids with a question being answered
   const countsPath = join(config, 'ask-counts.xml')
   const utcDay = (t = Date.now()) => new Date(t).toISOString().slice(0, 10)
-  /** Today's answered questions per user id; ask-counts.xml (users.xsd askcounts) keeps them over a restart. */
+  /** Today's answered questions per game and user id (key: the id, SR6's prefixed `sr6:`, so a count saved before the
+   *  split, with no game, stays Anarchy's); ask-counts.xml (users.xsd askcounts) keeps them over a restart. */
+  const askKey = (id, game) => (game === 'sr6' ? `sr6:${id}` : id)
   let asked = { day: utcDay(), n: new Map() }
   try {
     const xml = readFileSync(countsPath, 'utf8')
     if (attr(rootTag(xml, 'ca2:askcounts'), 'date') === asked.day)
       for (const [m] of xml.matchAll(/<count\b[^>]*>/g))
-        if (/^[0-9a-f]{12}$/.test(attr(m, 'user') ?? '')) asked.n.set(attr(m, 'user'), Number(attr(m, 'n')) || 0)
+        if (/^[0-9a-f]{12}$/.test(attr(m, 'user') ?? '')) asked.n.set(askKey(attr(m, 'user'), attr(m, 'game')), Number(attr(m, 'n')) || 0)
   } catch {
     /* none yet */
   }
-  const usedToday = id => {
+  const usedToday = (id, game) => {
     if (asked.day !== utcDay()) asked = { day: utcDay(), n: new Map() }
-    return asked.n.get(id) ?? 0
+    return asked.n.get(askKey(id, game)) ?? 0
   }
   const saveCounts = () =>
     serial('ask', () =>
@@ -140,7 +142,7 @@ export function aiApi(ctx) {
         countsPath,
         `<?xml version="1.0" encoding="UTF-8"?>\n<ca2:askcounts xmlns:ca2="${CONFIG_NS}" version="1" date="${
           asked.day
-        }">\n${[...asked.n].map(([u, n]) => `  <count user="${u}" n="${n}"/>\n`).join('')}</ca2:askcounts>\n`,
+        }">\n${[...asked.n].map(([k, n]) => `  <count user="${k.replace('sr6:', '')}"${k.startsWith('sr6:') ? ' game="sr6"' : ''} n="${n}"/>\n`).join('')}</ca2:askcounts>\n`,
       ),
     ).catch(e => console.error(`couldn’t save ask-counts.xml: ${e.message}`))
 
@@ -169,7 +171,7 @@ export function aiApi(ctx) {
     if (asking.has(who.id)) throw Object.assign(fail(429, 'your last question is still being answered; wait for it'), { retryAfter: 5 })
     if (asking.size >= ASK_AT_ONCE) throw Object.assign(fail(429, 'Ask the rules is busy; try again in a moment'), { retryAfter: 5 })
     const limit = who.dailyQuestions ?? null
-    if (limit != null && usedToday(who.id) >= limit)
+    if (limit != null && usedToday(who.id, game) >= limit)
       throw Object.assign(fail(429, limitReached(limit)), { retryAfter: Math.ceil((Date.parse(`${utcDay()}T00:00:00Z`) + 86400e3 - Date.now()) / 1000) })
     asking.add(who.id)
     let r
@@ -191,8 +193,8 @@ export function aiApi(ctx) {
     }
     // counted unless the importer says it never asked the provider (a timeout or a crash counts: it may have)
     if (out?.called !== false) {
-      const n = usedToday(who.id) + 1 // first: at midnight this rolls the day over, and the count goes in the new one
-      asked.n.set(who.id, n)
+      const n = usedToday(who.id, game) + 1 // first: at midnight this rolls the day over, and the count goes in the new one
+      asked.n.set(askKey(who.id, game), n)
       await saveCounts()
     }
     if (r.signal) throw fail(502, `no answer within ${askTimeout / 1000} seconds; try again`)
@@ -208,7 +210,7 @@ export function aiApi(ctx) {
     const sources = (Array.isArray(out.sources) ? out.sources : [])
       .slice(0, 8)
       .map(s => ({ source: text(s?.source), page: text(s?.page), title: text(s?.title), kind: text(s?.kind), id: text(s?.id) }))
-    return { answer: (await redact(String(out.answer ?? ''))).slice(0, 6000), sources, covered: out.covered === true, used: usedToday(who.id), limit }
+    return { answer: (await redact(String(out.answer ?? ''))).slice(0, 6000), sources, covered: out.covered === true, used: usedToday(who.id, game), limit }
   }
 
   /** The game's AI: its settings, keys, model list and test, and Ask the rules (the same routes for both games); false: not one. */
@@ -233,7 +235,7 @@ export function aiApi(ctx) {
       )
     }
     if (p === '/api/ask' && method === 'GET')
-      return send(res, 200, { available: await askAvailable(game), limit: who.dailyQuestions ?? null, used: usedToday(who.id) })
+      return send(res, 200, { available: await askAvailable(game), limit: who.dailyQuestions ?? null, used: usedToday(who.id, game) })
     if (p === '/api/ask' && method === 'POST') return send(res, 200, await ask(req, who, game))
     if (p === '/api/ask') return send(res, 405, { error: 'method not allowed' })
     if (p === '/api/ai-keys' && method === 'PUT') {

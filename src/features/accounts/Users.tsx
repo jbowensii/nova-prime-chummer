@@ -96,7 +96,7 @@ function AccountForm({ u, onSaved, onCancel }: { u?: Account; onSaved: (msg: str
           </select>
         </label>
         <label>
-          Questions per day (Ask the rules)
+          Questions per day, in each game (Ask the rules)
           <input type="number" min={0} max={10000} step={1} value={f.daily} onChange={set('daily')} placeholder="No limit" />
         </label>
       </div>
@@ -246,7 +246,7 @@ export function UsersScreen({ game = 'ca2' }: { game?: Game }) {
                 <th>Status</th>
                 <th>Last sign-in</th>
                 <th className="num">Runners</th>
-                <th className="num">Questions a day</th>
+                <th className="num">Questions a day (per game)</th>
                 <th>
                   <span className="sr-only">Actions</span>
                 </th>

@@ -50,6 +50,7 @@ import { DronesTab, VehiclesTab } from '../../runner-builder/ui/tabs/Vehicles'
 import { CrittersTab } from '../../runner-builder/ui/tabs/Critters'
 import { ItemBuilder } from '../../runner-builder/ui/Builder'
 import { Sr6Sheet } from '../../print/ui/Sheet'
+import { AskRules } from '../../../features/ai-assist/AskRules'
 import { TabBoundary } from '../../../core/shared/ui'
 import { npcTabs, sr6Tabs } from '../../runner-builder/ui/tabList'
 import { ProblemsPanel, useScrollToTarget } from '../../runner-builder/ui/FixAt'
@@ -315,6 +316,7 @@ export function Sr6EditorView({
           {shown === 'build' ? 'Builder' : tabs.find(([k]) => k === shown)?.[1]}
         </div>
         <main className="work">
+          <AskRules game="sr6" />
           <fieldset className="bare" disabled={ro && !(shown === 'review' && ctx.approve)}>
             {shown !== 'review' && shown !== 'build' && <ProblemsPanel tab={shown} tabs={tabs} />}
             <TabBoundary key={shown}>

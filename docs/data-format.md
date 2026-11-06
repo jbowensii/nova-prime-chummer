@@ -75,8 +75,8 @@ The importer's own records (`library/<book>/import.xml`, `review.xml`,
 `Config/ai/sr6/.config/` (`ai-providers.xml`, `ai-keys.xml`, the same schemas): its AI's provider, key and
 AnythingLLM workspace, apart from Anarchy's.
 The server's account files in `Config/` use `users.xsd` (`users.xml`, `sessions.xml`, `device-key.xml`,
-`reset.xml`, `ask-counts.xml`: each account's answered Ask the rules questions today, UTC; a `<user>`'s optional
-`dailyQuestions` is its limit) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret; `oidc-key.xml`: the
+`reset.xml`, `ask-counts.xml`: each account's answered Ask the rules questions today, UTC, counted apart per game (`game="sr6"`; none is Anarchy); a `<user>`'s optional
+`dailyQuestions` is its limit for each game) and `auth.xsd` (`auth.xml`: the Authelia issuer, client ID and on/off; `auth-secret.xml`: its client secret; `oidc-key.xml`: the
 sign-in state cookie's key, never backed up). An Authelia account's `<user>` carries `oidcIss`/`oidcSub` once linked.
 
 ### levels

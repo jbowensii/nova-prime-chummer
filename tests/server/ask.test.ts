@@ -248,7 +248,9 @@ test('each game has its own AI: SR6’s settings, keys and questions apart from 
   expect(await (await sr6('pat', { question: 'puddles?' })).json()).toMatchObject({ answer: 'Invented SR6 answer [ZZ p.61].', covered: true })
   expect((await (await sr6('pat', { question: 'puddles?', scope: 'rules' })).json()).answer).toBe('Invented SR6 answer (rules only) [ZZ p.61].')
   expect((await (await ask('pat', 'puddles?')).json()).answer).toBe('Invented answer [ZZ p.61].') // Anarchy's still Anarchy's
-  expect((await (await as('pat', '/api/ask')).json()).used).toBe(before + 3) // one daily count for both games
+  expect((await (await as('pat', '/api/ask')).json()).used).toBe(before + 1) // Anarchy's count moved only by its own question
+  expect((await (await as('pat', '/api/sr6/ask')).json()).used).toBe(2) // SR6 counts apart (its two questions)
+  expect(readFileSync(join(lib, '.config', 'ask-counts.xml'), 'utf8')).toMatch(/game="sr6"/)
   // SR6's key never comes back either
   const leak = await (await sr6('pat', { question: 'leak puddles' })).text()
   expect(leak).toContain('[key]')
