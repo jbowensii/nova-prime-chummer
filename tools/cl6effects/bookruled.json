@@ -32,14 +32,14 @@
     "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR set=AUGMENTED apply=CHARACTER",
     "cl6": "0.5",
     "ours": ["derived:physical-monitor add 1"],
-    "why": "1b: a partial cyberlimb gives a whole box in the book"
+    "why": "1b: the replay pairs the record with the full limb, whose box is 1; the partial limbs' half box is on the Forearm and Lower leg entries (owner ruling 2026-11-06)"
   },
   {
     "pair": ["crb", "cyberleg", "item"],
     "sig": "valmod ATTRIBUTE PHYSICAL_MONITOR",
     "cl6": "0.5",
     "ours": ["derived:physical-monitor add 1"],
-    "why": "1b: a partial cyberlimb gives a whole box in the book"
+    "why": "1b: the replay pairs the record with the full limb, whose box is 1; the partial limbs' half box is on the Forearm and Lower leg entries (owner ruling 2026-11-06)"
   },
   {
     "pair": ["crb", "will_to_live", "quality"],
@@ -174,13 +174,6 @@
     "cl6": "+3/+3",
     "ours": ["item:acceleration add -3"],
     "why": "owner-flag: the book decreases Acceleration by 3; Commlink6 prints +3"
-  },
-  {
-    "pair": ["dc", "soft_knowledge", "item"],
-    "sig": "valmod SKILL LANGUAGE",
-    "cl6": "3",
-    "ours": [],
-    "why": "owner-flag: Commlink6 gives the Knowledge autosoft a Language skill of 3; the book gives Edge when searching with the knowledge skill"
   },
   {
     "pair": ["dc", "armor_ceramic", "item"],

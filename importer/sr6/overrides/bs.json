@@ -1135,5 +1135,7 @@
   {"cl6": "Genetic Optimization", "kind": "augmentations", "id": "genetic-optimization-genetic-optimization-skill", "set": {"cl6": "genetic_optimization"}, "gen": "marker"},
   {"cl6": "Transgenic awareness", "kind": "augmentations", "id": "transgenic-awareness-tactical", "set": {"cl6": "transgen_awareness"}, "gen": "marker"},
   {"cl6": "Transgenic chemical gland", "kind": "augmentations", "id": "exhalation-spray", "set": {"cl6": "transgen_chemical_gland"}, "gen": "marker"},
-  {"cl6": "Transgenic chemical gland", "kind": "augmentations", "id": "spit", "set": {"cl6": "transgen_chemical_gland"}, "gen": "marker"}
+  {"cl6": "Transgenic chemical gland", "kind": "augmentations", "id": "spit", "set": {"cl6": "transgen_chemical_gland"}, "gen": "marker"},
+  {"cl6": "Toughskin", "kind": "gear", "id": "utility-nanites-toughskin-colony", "gen": "cl6", "why": "Commlink6 adds the Nanite Volume itself to the physical Defense Rating, not the book's one per two points (owner ruling 2026-11-06)", "effects": [{"target": "derived:defense", "op": "add", "value": "nanite-volume"}]},
+  {"cl6": "Toughskin", "kind": "gear", "id": "utility-nanites-toughskin-nanites", "gen": "cl6", "why": "Commlink6 adds the Nanite Volume itself to the physical Defense Rating, not the book's one per two points (owner ruling 2026-11-06)", "effects": [{"target": "derived:defense", "op": "add", "value": "nanite-volume"}]}
 ]

@@ -138,6 +138,10 @@ class ChildrenTest(unittest.TestCase):
         self.assertEqual(k, [("issue", {"field": "cost", "code": "unreadable", "page": 12}, "printed: Ask the troll")])
         k = self.kids("gear", {"category": "x", "avail": "2", "cost": "900/1800"})
         self.assertEqual(k[0][1]["code"], "ambiguous")
+        # (owner, 2026-11-06) a word the book prints for a number (Special, See text…) is a value, not a flag
+        for word in ("Special", "Unavailable", "See text", "Varies"):
+            k = self.kids("gear", {"category": "x", "avail": "2", "cost": word}, readable=lambda v: False)
+            self.assertEqual(k, [], word)
         # (a misprinted thousands group: no number, even one the app would read)
         k = self.kids("gear", {"category": "x", "avail": "2", "cost": "1,00¥"}, readable=lambda v: True)
         self.assertEqual(k, [("issue", {"field": "cost", "code": "unreadable", "page": 12}, "printed: 1,00¥")])

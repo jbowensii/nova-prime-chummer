@@ -6,7 +6,8 @@ recipe):
 It adds the Commlink6 name as an <alias> child (a name only) to each entry of `ours`, and sets the listed attributes.
 A row with "add" instead of "ours" CREATES an entry the books print only inside other items' text (Commlink6 has it):
   {"cl6": "<Commlink6's name>", "kind": "<catalog file stem>", "add": {"page": <int>, "attrs": {...rule data from
-   Commlink6}, "kids": [{"tag": "effect|choice|alias|...", "attrs": {...}}], "name": "<optional, default cl6>"}}
+   Commlink6}, "kids": [{"tag": "effect|choice|alias|...", "attrs": {...}}], "name": "<optional, default cl6>",
+   "formula": {"<field>": "<expr>"} (optional: `<formula field>` children, Grey Mana Warding's `R*4000`)}}
 id = slug(name) (scoped to the source by the importer); an id already in the file is left alone (logged). No text of
 any kind is written: the entry's description, if the book has one, comes from the texts step. "text_from": "<heading
 name>" (a name, never text) in an add row gives the entry the description the book's text already has under that

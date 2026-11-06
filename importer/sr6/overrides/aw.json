@@ -64,5 +64,11 @@
   {"cl6": "Saurian", "kind": "qualities", "id": "saurian", "set": {"class": "METAGENIC"}, "gen": "marker"},
   {"cl6": "Astral Gateway", "kind": "rituals", "id": "astral-gateway-ritual", "set": {"cl6": "astral_gateway"}, "gen": "marker"},
   {"cl6": "Metaplanar Gateway", "kind": "rituals", "id": "metaplanar-gateway-ritual", "set": {"cl6": "metaplanar_gateway"}, "gen": "marker"},
-  {"cl6": "Disruptive", "kind": "trueelements", "id": "true-earth-sandcasting-disruptive", "set": {"cl6": "disruptive_earth"}, "gen": "marker"}
+  {"cl6": "Disruptive", "kind": "trueelements", "id": "true-earth-sandcasting-disruptive", "set": {"cl6": "disruptive_earth"}, "gen": "marker"},
+  {"cl6": "Ballista, Light", "kind": "weapons", "id": "ballista-light", "set": {"modes": "SS", "ammo": "1(m)"}, "note": "AW p. 128-129 prints no Modes or Ammo column; single shot, 1(m), as Commlink6 (owner ruling 2026-11-06)", "gen": "value"},
+  {"cl6": "Ballista, Standard", "kind": "weapons", "id": "ballista-standard", "set": {"modes": "SS", "ammo": "1(m)"}, "note": "AW p. 128-129 prints no Modes or Ammo column; single shot, 1(m), as Commlink6 (owner ruling 2026-11-06)", "gen": "value"},
+  {"cl6": "Ballista, Heavy", "kind": "weapons", "id": "ballista-heavy", "set": {"modes": "SS", "ammo": "1(m)"}, "note": "AW p. 128-129 prints no Modes or Ammo column; single shot, 1(m), as Commlink6 (owner ruling 2026-11-06)", "gen": "value"},
+  {"cl6": "Cannon, Light", "kind": "weapons", "id": "cannon-light", "set": {"modes": "SS", "ammo": "1(m)"}, "note": "AW p. 128-129 prints no Modes or Ammo column; single shot, 1(m), as Commlink6 (owner ruling 2026-11-06)", "gen": "value"},
+  {"cl6": "Cannon, Standard", "kind": "weapons", "id": "cannon-standard", "set": {"modes": "SS", "ammo": "1(m)"}, "note": "AW p. 128-129 prints no Modes or Ammo column; single shot, 1(m), as Commlink6 (owner ruling 2026-11-06)", "gen": "value"},
+  {"cl6": "Cannon, Heavy", "kind": "weapons", "id": "cannon-heavy", "set": {"modes": "SS", "ammo": "1(m)"}, "note": "AW p. 128-129 prints no Modes or Ammo column; single shot, 1(m), as Commlink6 (owner ruling 2026-11-06)", "gen": "value"}
 ]

@@ -83,6 +83,21 @@ class OverridesTest(unittest.TestCase):
         self.assertIsNone(e[1].get("cost"))
         self.assertEqual(overrides.apply("zz", {"gear.xml": out}, self.ROWS)["gear.xml"], out)  # (again: no 2nd alias)
 
+    def test_an_add_row_may_carry_formulas_and_an_owner_row_sets_slots(self):
+        """(owner rulings 2026-11-06: Grey Mana Warding is its own item, Portable Facility is 50 CF)"""
+        rows = [
+            {
+                "cl6": "Zorp Ward",
+                "kind": "gear",
+                "add": {"page": 3, "attrs": {"cost": "Rating x 4000"}, "formula": {"cost": "R*4000"}},
+            },
+            {"cl6": "Real Name", "kind": "gear", "id": "a", "set": {"slots": "50 CF"}, "gen": "owner"},
+        ]
+        e = ET.fromstring(overrides.apply("zz", {"gear.xml": self.XML}, rows)["gear.xml"].encode())
+        added = e.find("gear[@id='zorp-ward']")
+        self.assertEqual(added.find("formula").attrib, {"field": "cost"})
+        self.assertEqual((added.find("formula").text, e.find("gear[@id='a']").get("slots")), ("R*4000", "50 CF"))
+
     def test_a_sub_rows_name_takes_its_parents_and_an_artifact_goes(self):
         rows = [
             {"cl6": "Zorp (Spit)", "kind": "gear", "id": "b", "rename": "Zorp (Spit)"},

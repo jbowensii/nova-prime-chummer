@@ -4,6 +4,8 @@
     ["hs", "gear", "hs.gonzo-case-cyberdeck", "capacity"],
     ["hs", "gear", "hs.gonzo-case-cyberhack", "capacity"],
     ["aw", "vehicles", "aw.buzzard", "seats"],
+    ["dc", "gear", "dc.oil-slick-sprayer-refill", "avail"],
+    ["dc", "gear", "dc.oil-slick-sprayer-refill", "legality"],
     ["bn", "armor", "bn.heavy-barding", "cost"],
     ["bn", "armor", "bn.light-barding", "cost"],
     ["bn", "armor", "bn.smart-clothes", "cost"],

@@ -235,7 +235,13 @@ class AddOnsTest(unittest.TestCase):
         a, kids = self.g["Zorp Zapper cell"]
         self.assertEqual((a["supplyOf"], a["cost"], a["category"]), ("zorp-zapper", "40", "Supply"))
         self.assertIn(("alias", {}, "Cell for Zorp Zapper"), kids)
-        self.assertTrue(any(c == "issue" and x["field"] == "avail" for c, x, _ in kids))
+        # (owner, 2026-11-06) a supply a sentence prices takes its parent's availability, noted and not flagged
+        self.assertEqual(a["avail"], "4(L)")
+        self.assertIn(
+            ("found", {"field": "avail", "how": "parent", "source": "FS", "page": "9"}, "from the parent item"), kids
+        )
+        self.assertFalse(any(c == "issue" and x["field"] == "avail" for c, x, _ in kids))
+        self.assertEqual(self.g["Fizz Sprayer refill"][0]["avail"], "2")
 
     def test_refills_replacement_parts_and_a_price_line(self):
         got = {n: (self.g[n][0]["cost"], self.g[n][0]["supplyOf"]) for n in self.g if n.startswith("Fizz Sprayer ")}

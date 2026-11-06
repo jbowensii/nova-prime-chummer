@@ -454,7 +454,8 @@ You gain the Glow Fan quality at half its cost.
             {"Blisters": "negative", "Calluses": "negative", "Rest Stop": "positive"},
         )
         issues = {e.findtext("name"): [i.get("field") for i in e.iter("issue")] for e in res}
-        self.assertIn("kind", issues["Blisters"])
+        # (owner, 2026-11-06, as Commlink6: an unpriced step is a no-cost drawback the GM gives, not flagged)
+        self.assertEqual((q["Blisters"].get("karma"), issues["Blisters"]), ("0", []))
         self.assertNotIn("kind", issues["Rest Stop"])
         self.assertEqual((q["Step 3"]["group"], q["Step 3"]["id"]), ("Long Road", "long-road-step-3"))
         self.assertEqual(sum(e.findtext("name") == "Glow Fan" for e in res), 1)

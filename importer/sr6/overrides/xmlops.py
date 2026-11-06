@@ -53,6 +53,8 @@ def _add(out, name, r, source):
         {"id": eid, "source": source, "page": str(a["page"]), **{k: str(v) for k, v in a.get("attrs", {}).items()}},
     )
     etree.SubElement(e, "name").text = ename
+    for f, expr in a.get("formula", {}).items():  # (a rule the item's price or slots follow: `R*4000`)
+        etree.SubElement(e, "formula", {"field": f}).text = expr
     for k in a.get("kids", []):
         etree.SubElement(e, k["tag"], {x: str(v) for x, v in k.get("attrs", {}).items()}).text = k.get("text")
     out[name] = dump(out.get(name), root)

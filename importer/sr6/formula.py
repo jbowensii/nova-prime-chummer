@@ -494,6 +494,9 @@ _NOTE = {
     "essence": "no Essence printed",
 }
 _DASH = re.compile(r"\s*(?:[—–-]+|n/a)[*†]?\s*", re.I)
+# a word the book prints where a number would go (owner, 2026-11-06): the value as printed, no flag; the item has no
+# price to buy it at
+PRINTED_WORD = re.compile(r"\s*(?:unknown|unavailable|common|varies|special|see text|variable)[*†]?\s*", re.I)
 
 
 def _short(v, n=40):
@@ -704,7 +707,7 @@ def children(kind, attrs, page, row=None, tiered=None, readable=None, options=()
                 )
         elif two_values(v):
             out.append(("issue", {"field": f, "code": "ambiguous", "page": page}, f"two values printed: {_short(v)}"))
-        elif not (readable and readable(v)):
+        elif not (readable and readable(v)) and not PRINTED_WORD.fullmatch(v):
             out.append(("issue", {"field": f, "code": "unreadable", "page": page}, f"printed: {_short(v)}"))
     for f in NEEDED.get(kind, ()):
         v = attrs.get(f)

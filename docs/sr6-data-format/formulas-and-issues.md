@@ -55,7 +55,7 @@ deck's stat line, the class row a type names: `Cyberprogram, hacking`, `Autosoft
 sources of one date that disagree leave the issue), `errata` (an errata PDF's statement on its own book, applied
 when the errata is newer than the printing; the text keeps the value it replaced. A book's Current Printing
 (`recipes.crb.CURRENT`) already incorporates its errata, so an erratum never replaces a value it prints: it fills only a
-field the printing leaves open, whatever the dates, and renumbers or unrates nothing), or `printing` (an older printing of
+field the printing leaves open, whatever the dates, and renumbers or unrates nothing), or `parent` (a refill, spare magazine or battery a sentence prices, `supplyOf` its item: the item's availability, noted "from the parent item", not flagged; owner ruling 2026-11-06), or `printing` (an older printing of
 the same book, `importer/sr6/run.py` `older_printings`: field by field the latest printing wins, which for the core rulebook is its Current Printing (2019) before the Seattle, Berlin and Hong Kong City Editions (`recipes.crb.CURRENT`; another book ranks by publication month), and a field it leaves
 out or prints as no SR6 value takes the newest older printing's valid value; the text names that printing). `source` and `page` say where it is
 printed. Beyond fields, an older printing fills entries (`older_extras`, listed in import.xml as `printing-extra` rows):

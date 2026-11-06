@@ -281,13 +281,22 @@ kind or the override), at creation, after it and in the Qualities picker (`54 (l
 Awakened; this runner: 44)`); the non-human vampire costs its `<infectedalt>` karma.
 
 A quality path's bare step heading (`Step 2` under `Quality Path: Gestalt`, owner decision 2026-10-07) is a quality
-named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), positive, its Karma the price
-its prose states (`By investing 10 Karma`) or the one the path's prose gives it (`spend 10 Karma, and they move to step
-1`), else the usual missing issue. Its id is the path's and the step's (`shc.gestalt-step-2`).
+named as printed, its path its `category` and `group` (the app shows `Gestalt: Step 2`), its Karma the price its prose
+states (`By investing 10 Karma`) or the one the path's prose gives it (`spend 10 Karma, and they move to step 1`), and
+positive then, as bought. Its id is the path's and the step's (`shc.gestalt-step-2`).
 
-A value outside its field's SR6 vocabulary (`importer/sr6/vocab.py`: a critter power's action `Complex`, `Simple` or
-`Free`; an adept power's activation likewise; an availability's legality `R` or `F`, SR5's) stays as printed with an
-`<issue code="unreadable">` saying why; the corpus pass looks for the field in the other books.
+A step that prints no price anywhere in the book (the 47 or so steps of Firing Squad, Shadow Cast, the Companion and
+others) is a story item the game master gives: **negative, Karma 0, no flag** (owner ruling 2026-11-06, as Commlink6).
+A step that prints a price keeps it. Where Commlink6 gives an unpriced step another kind or Karma (Fulfilled 15,
+Unhealthy Attachment 5, Into the Shadows 18, Getting Help 5), an owner row sets Commlink6's.
+(`importer/sr6/sections.py` `imposed`, `step_qualities`; `Catalog._story_steps`.)
+
+A value outside its field's SR6 vocabulary (`importer/sr6/vocab.py`: an adept power's activation `Complex`, `Simple` or
+`Free`; an availability's legality `R` or `F`, SR5's) stays as printed with an `<issue code="unreadable">` saying why;
+the corpus pass looks for the field in the other books. A critter power's action `Complex` is SR6's `Major` (owner ruling
+2026-11-06): the importer writes `Major`. A word the book prints where a number would go (`Unknown`, `Unavailable`,
+`Common`, `Varies`, `Special`, `See text`, `Variable`) is the value as printed, with no flag; the item has no price to
+be bought at (`formula.PRINTED_WORD`).
 
 **Effects** (`importer/sr6/effects.py`, owner decisions 2026-10-10). After a recipe has read a book, one pass
 (`effects.apply`, run.py) reads every entry's effects from its description and from the book's tables: qualities,
