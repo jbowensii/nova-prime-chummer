@@ -1,5 +1,19 @@
 # Release notes
 
+## [1.1.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.3...v1.1.0) (2026-11-06)
+
+
+### Features
+
+* **ai:** count the daily question limit per game; Ask the rules bar in the SR6 editor ([b1df815](https://github.com/jbowensii/nova-prime-chummer/commit/b1df8158fd247efea2d198cceef54c33d5520c9f))
+* **ai:** per-game daily question limit; Ask the rules bar in the SR6 editor ([70db5e5](https://github.com/jbowensii/nova-prime-chummer/commit/70db5e5b3ee588c2f6da2e87f3b5cd9be0d0c5d9))
+
+
+### Bug Fixes
+
+* **sr6:** apply the 2026-11-06 owner rulings to the importer data ([7d24784](https://github.com/jbowensii/nova-prime-chummer/commit/7d247844eb12b8129e84bb1d3fef78309c05313a))
+* **sr6:** apply the 2026-11-06 owner rulings to the importer data ([03fc29e](https://github.com/jbowensii/nova-prime-chummer/commit/03fc29ed9507aff15e32bc6d47478a0166fd4d1c))
+
 ## [1.0.3](https://github.com/jbowensii/nova-prime-chummer/compare/v1.0.2...v1.0.3) (2026-11-06)
 
 
