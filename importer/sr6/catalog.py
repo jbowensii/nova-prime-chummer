@@ -602,6 +602,7 @@ class Catalog:
         """Add an entry of `kind` (with its children, text and aliases) and give it a unique id."""
         name = re.sub(r"\s*\*.*$", "", name) or name  # a footnote mark (`Bullwhip*`), or its note run into the cell
         context = (attrs or {}).pop("_context", ())  # (the headings it is printed under: flags.metamagic)
+        story = (attrs or {}).pop("_story", False)  # (a quality path step printing no price: _story_steps)
         if kind == "metamagics":  # who may take it, and whether again (flags.py); `(Adepts Only)` leaves the name
             printed, (name, more) = name, flags.metamagic(name, text, context)
             attrs, aliases = {**(attrs or {}), **more}, (*aliases, printed)
@@ -676,6 +677,7 @@ class Catalog:
             "where": self.where,
             "text": text,
             "aliases": al,
+            "story": story,
         }
         if kind == "weapons":
             self.last_weapon = e
@@ -1427,6 +1429,8 @@ class Catalog:
         for kind, es in self.entries.items():
             tiered = formula.tier_groups(es) if kind in formula.FORMULA_FIELDS else {}
             for e in es:
+                if kind == "critterpowers" and re.fullmatch(r"(?i)\s*complex\s*", e["attrs"].get("action") or ""):
+                    e["attrs"]["action"] = "Major"  # (owner, 2026-11-06) SR5's Complex action is SR6's Major
                 opts = [
                     o for w, n, o in said if kind in formula.PRICED and w == e["where"] and formula.names(n, e["name"])
                 ]
@@ -1464,6 +1468,36 @@ class Catalog:
                         next((i for i, c in enumerate(e["children"]) if c[0] == "issue"), len(e["children"])),
                         ("formula", {"field": "ammo", "round": "down"}, x),
                     )
+        self._supply_avail()
+        self._story_steps()
+
+    def _story_steps(self):
+        """A quality path step that prints no price (and none is found elsewhere in the books) is a story item the GM
+        gives: a no-cost drawback, Karma 0, not flagged (owner, 2026-11-06, as Commlink6)."""
+        for e in self.entries["qualities"]:
+            if e.get("story") and not str(e["attrs"].get("karma") or "").strip():
+                e["attrs"]["karma"] = 0
+                e["children"] = [c for c in e["children"] if not (c[0] == "issue" and c[1].get("field") == "karma")]
+
+    def _supply_avail(self):
+        """A supply a sentence prices (refill, spare magazine, battery: `supplyOf` its parent) prints no availability:
+        it takes the parent item's, noted `<found how="parent">` and not flagged (owner, 2026-11-06)."""
+        byid = {e["id"]: (k, e) for k, es in self.entries.items() for e in es}
+        for e in self.entries["gear"]:
+            host = byid.get(e["attrs"].get("supplyOf"), (None, None))[1]
+            miss = [c for c in e["children"] if c[0] == "issue" and c[1].get("field") == "avail"]
+            if not (host and miss and (host["attrs"].get("avail") or "").strip()):
+                continue
+            e["attrs"]["avail"] = host["attrs"]["avail"]
+            e["children"] = [c for c in e["children"] if c not in miss]
+            kids = [c for c in host["children"] if c[0] == "formula" and c[1].get("field") == "avail"]
+            e["children"] += kids + [
+                (
+                    "found",
+                    {"field": "avail", "how": "parent", "source": self.source, "page": e["page"]},
+                    "from the parent item",
+                )
+            ]
 
     def resolve(self, kind, e, kids):
         """The issues' fields found elsewhere in the book (search.py's first two circles), written to the entry's

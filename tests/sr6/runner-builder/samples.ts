@@ -162,7 +162,10 @@ const ENTRIES: Sr6Entry[] = [
     fx('item:handling', '-1'),
     fx('item:top-speed', '10'),
   ),
-  mur('gear', 'test-mount', 'Test Standard Weapon Mount', { category: 'Weapon mount', class: 'MOD_HARD/MOD_MOUNT', hardpoint: 'standard', cost: '2000' }),
+  withParts(
+    mur('gear', 'test-mount', 'Test Standard Weapon Mount', { category: 'Weapon mount', class: 'MOD_HARD/MOD_MOUNT', hardpoint: 'standard', cost: '2000' }),
+    { tag: 'slot', attrs: { id: 'vehicle-weapon', value: '1', unit: 'capacity' }, text: '' },
+  ),
   mur('weapons', 'test-smg', 'Test SMG', { category: 'Submachine guns', dv: '3P', ar: '8/8/6/—/—', modes: 'SA/BF', ammo: '30(c)', cost: '300' }),
   mur('programs', 'test-targeting', 'Made-up Targeting Autosoft', { type: 'autosoft', rating: '1-6', cost: '500' }),
   mur('qualities', 'test-loyal', 'Made-up Loyal', { kind: 'positive', karma: '2', class: 'CRITTERWARE/QUALITY' }),

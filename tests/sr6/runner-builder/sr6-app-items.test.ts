@@ -248,7 +248,7 @@ test.each(['plain', 'book', 'neon', 'hex', 'dossier'] as const)(
                   .replace('category="tools" rating="1–4" capacity="—" avail="1"', 'category="tools" rating="1–4" capacity="—" avail="2, 500¥"')
                   .replace(
                     '</sr6:data>',
-                    '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear></sr6:data>',
+                    '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><slot id="vehicle-weapon" value="1" unit="capacity"/><text/></gear></sr6:data>',
                   )
               : f.endsWith('crb/vehicles.xml')
                 ? x.replace('<name>Putt-Putt</name>', '<name>Putt-Putt</name><builtin name="Zap horn"/>')

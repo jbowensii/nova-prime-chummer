@@ -73,5 +73,7 @@
   {"cl6": "Gestalt Step 2", "kind": "qualities", "id": "gestalt-step-2", "set": {"cl6": "social_adept_gestalt_2"}, "gen": "marker"},
   {"cl6": "Operations Ace Step 1", "kind": "qualities", "id": "operations-ace-step-1", "set": {"cl6": "social_adept_operations_ace_1"}, "gen": "marker"},
   {"cl6": "Operations Ace Step 2", "kind": "qualities", "id": "operations-ace-step-2", "set": {"cl6": "social_adept_operations_ace_2"}, "gen": "marker"},
-  {"cl6": "Operations Ace Step 3", "kind": "qualities", "id": "operations-ace-step-3", "set": {"cl6": "social_adept_operations_ace_3"}, "gen": "marker"}
+  {"cl6": "Operations Ace Step 3", "kind": "qualities", "id": "operations-ace-step-3", "set": {"cl6": "social_adept_operations_ace_3"}, "gen": "marker"},
+  {"cl6": "Getting Help", "kind": "qualities", "id": "getting-help", "set": {"kind": "positive", "karma": "5"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
+  {"cl6": "Gestalt Step 2", "kind": "qualities", "id": "gestalt-step-2", "set": {"kind": "positive", "karma": "0"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"}
 ]

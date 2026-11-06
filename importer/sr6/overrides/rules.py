@@ -53,6 +53,7 @@ VALUE_ATTRS = {
     "ammo",
     "defense",
     "seats",
+    "slots",
     "range",
     "type",
     "duration",

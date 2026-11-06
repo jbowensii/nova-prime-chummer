@@ -33,9 +33,9 @@ const GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zap-bracket" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="1/3 body (rounded up)" avail="2" cost="300"><name>Zap Bracket</name></gear>
   <gear id="zz.small-hardpoint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="0.5" avail="2" cost="500"><name>Small hardpoint</name></gear>
   <gear id="zz.large-hardpoint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="2" avail="3" cost="2500"><name>Large hardpoint</name></gear>
-  <gear id="zz.zap-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" avail="4(I)" cost="2000"><name>Zap Standard Weapon Mount</name></gear>
-  <gear id="zz.zap-small-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="small" avail="3(I)" cost="1000"><name>Zap Small Weapon Mount</name></gear>
-  <gear id="zz.zap-heavy-mount" ${at} category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="5(I)" cost="4000"><name>Zap Heavy Weapon Mount</name></gear>
+  <gear id="zz.zap-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" avail="4(I)" cost="2000"><name>Zap Standard Weapon Mount</name><slot id="vehicle-weapon" value="1" unit="capacity"/></gear>
+  <gear id="zz.zap-small-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="small" avail="3(I)" cost="1000"><name>Zap Small Weapon Mount</name><slot id="vehicle-weapon-small" value="1" unit="capacity"/></gear>
+  <gear id="zz.zap-heavy-mount" ${at} category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="5(I)" cost="4000"><name>Zap Heavy Weapon Mount</name><slot id="vehicle-weapon-large" value="1" unit="capacity"/></gear>
   <gear id="zz.zap-crate" ${at} category="Accessory equipment" class="ACCESSORY/VEHICLE_ACCESSORY" avail="2" cost="400"><name>Zap Crate</name><fits slot="vehicle-cf"/></gear>
   <gear id="zz.zap-slotmount" ${at} category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" hardpoint="large" avail="4(I)" cost="2000"><name>Zap Nameless Rig</name><slot id="vehicle-weapon-large"/></gear>
 </sr6:data>`

@@ -1113,6 +1113,8 @@ def step_qualities(b, page, path, owner="", prices=None, granted=None):
             attrs["karma"] = (
                 (k.group(1) or k.group(2)) if k else (prices or {}).get(_STEP_WORDS.get(m.group(1).lower(), m.group(1)))
             )
+        if not attrs.get("karma") and not _ANY_COST.search(body):
+            attrs.update(kind="negative", _story=True)  # (a step printing no price: the GM gives it, as imposed())
         attrs.update({"category": owner, "group": owner, "_id": f"{owner} {name.strip()}"})
         return [Found("qualities", name.strip(), page, {k: v for k, v in attrs.items() if v}, [], body, b, path=True)]
     for n in re.split(r"\s+or\s+", name):
@@ -1126,6 +1128,9 @@ def step_qualities(b, page, path, owner="", prices=None, granted=None):
                 out.append(imposed(n.strip(), page, body))
             elif granted is not None and name != b.name:
                 granted.add(norm(n))  # (one of several the step names: described under a heading of its own, maybe)
+    for f in out:
+        if "karma" not in f.attrs and not _ANY_COST.search(body):
+            f.attrs.update(kind="negative", _story=True)  # (a step printing no price: the GM gives it, as imposed())
     for f in out:  # (the printed heading, `Obsession: Consumed`: Catalog.section names a step by it when it must)
         if norm(f.name) != norm(b.name):
             f.attrs["_heading"] = b.name.strip()
@@ -1172,18 +1177,10 @@ def optional_rule_quality(b, page):
 def imposed(name, page, body):
     """A quality a path's step imposes: positive when it prints a cost in nuyen or by a rule, else negative with an
     issue (the book doesn't say)."""
-    kids = (
-        []
-        if _ANY_COST.search(body)
-        else [
-            (
-                "issue",
-                {"field": "kind", "code": "missing", "page": page},
-                "no Karma cost or bonus printed: a step the quality path imposes, positive or negative not stated",
-            )
-        ]
-    )
-    return Found("qualities", name, page, {"kind": "negative" if kids else "positive"}, kids, body, path=True)
+    if _ANY_COST.search(body):
+        return Found("qualities", name, page, {"kind": "positive"}, [], body, path=True)
+    # (owner, 2026-11-06, as Commlink6: a step with no price is a story item the GM gives, a no-cost drawback)
+    return Found("qualities", name, page, {"kind": "negative", "_story": True}, [], body, path=True)
 
 
 def class_row(heading):

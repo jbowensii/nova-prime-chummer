@@ -16,7 +16,7 @@ import { button, change, click, fakeStore, field, mount, option, pageText, stubF
 const dialog = () => document.querySelector('dialog[open]')!
 const NS = 'xmlns:sr6="urn:chummer-sr6:data:1"'
 const MODS =
-  '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><text/></gear>' +
+  '<gear id="crb.zap-mount" source="CRB" page="295" category="Vehicle modification" class="MOD_HARD/MOD_MOUNT" avail="4(I)" cost="2000"><name>Zap Weapon Mount</name><slot id="vehicle-weapon" value="1" unit="capacity"/><text/></gear>' +
   '<gear id="crb.zap-grip" source="CRB" page="295" category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="2" avail="4" cost="1000"><name>Zap Grip</name><text/></gear>' +
   '<gear id="crb.zap-bars" source="CRB" page="295" category="Accessory equipment" class="ACCESSORY/VEHICLE_ACCESSORY" avail="2" cost="800"><name>Zap Bars</name><text/></gear>'
 const BUILTIN = '<builtin name="Zap horn"/><builtin name="2 additional Chassis mod slots" slots="2" category="Chassis"/>'

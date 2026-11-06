@@ -35,7 +35,7 @@ export const DESIGN_PARTS = `<sr6:data ${NS} kind="vehicledesign" version="1">
 </sr6:data>`
 export const DESIGN_GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.zap-grip" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_HANDLING" slots="2" avail="4" cost="1000"><name>Zap Grip</name></gear>
-  <gear id="zz.zip-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" slots="1" avail="4(I)" cost="1500"><name>Zip Weapon Mount</name></gear>
+  <gear id="zz.zip-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" slots="1" avail="4(I)" cost="1500"><name>Zip Weapon Mount</name><slot id="vehicle-weapon" value="1" unit="capacity"/></gear>
   <gear id="zz.powertrain-roller" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Roller Powertrain</name><fits slot="vehicle-powertrain"/></gear>
   <gear id="zz.powertrain-floater" ${at} category="Vehicle modification" class="MOD_POWER/MOD_PROPULSION" modonly="true" cost="0"><name>Floater Powertrain</name><fits slot="vehicle-powertrain"/></gear>
   <gear id="zz.glitter-paint" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_SKIN" slots="0" avail="6(L)" cost="4000"><name>Glitter Paint</name></gear>

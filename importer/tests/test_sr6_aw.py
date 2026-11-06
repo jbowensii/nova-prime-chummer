@@ -99,6 +99,11 @@ A made-up ritual.
 |---|---|---|---|
 | M | Major | LOS (A) | Sustained |
 A made-up power.
+#### Made-Up Old Gateway
+| TYPE | ACTION | RANGE | DURATION |
+|---|---|---|---|
+| M | Complex | LOS (A) | Sustained |
+A made-up SR5 leftover power.
 #### Made-Up Stasis
 ##### (Manipulation Spell)
 | RANGE | TYPE | DURATION | DV |
@@ -172,6 +177,8 @@ class AwRecipeTest(unittest.TestCase):
         self.assertEqual((r["keywords"], r["threshold"]), ("Anchored", "3 + (Distance Number)"))
         p = entries(self.res, "critterpowers")["Made-Up Gateway"]
         self.assertEqual((p["action"], p["duration"]), ("Major", "Sustained"))
+        # (owner, 2026-11-06) SR5's Complex action on a critter power is SR6's Major, not flagged
+        self.assertEqual(entries(self.res, "critterpowers")["Made-Up Old Gateway"]["action"], "Major")
         self.assertIn("made-up power", self.texts[("critterpowers", "made-up-gateway")])
         self.assertIn("Made-Up Summoning", entries(self.res, "metamagics"))
         q = entries(self.res, "qualities")["Scaly"]

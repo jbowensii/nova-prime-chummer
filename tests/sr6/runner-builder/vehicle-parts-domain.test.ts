@@ -32,7 +32,7 @@ const GEAR = `<sr6:data ${NS} kind="gear" version="1">
   <gear id="zz.plate" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="2" avail="2" cost="100"><name>Zap Plate</name></gear>
   <gear id="zz.armor-plate" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="1" avail="2" cost="100"><name>Zap Armor Plate</name></gear>
   <gear id="zz.eyes" ${at} category="Electronics mod" class="MOD_ELEC/MOD_CORE" slots="1" avail="2" cost="100"><name>Zap Eyes</name></gear>
-  <gear id="zz.zap-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" avail="4(I)" cost="2000"><name>Zap Standard Weapon Mount</name></gear>
+  <gear id="zz.zap-mount" ${at} category="Weapon mount" class="MOD_HARD/MOD_MOUNT" hardpoint="standard" avail="4(I)" cost="2000"><name>Zap Standard Weapon Mount</name><slot id="vehicle-weapon" value="1" unit="capacity"/></gear>
   <gear id="zz.bulk" ${at} category="Chassis mod" class="MOD_CHASSIS/MOD_CORE" slots="3" avail="2" cost="100"><name>Zap Bulk</name></gear>
 </sr6:data>`
 const WEAPONS = `<sr6:data ${NS} kind="weapons" version="1"><weapon id="zz.zap-smg" ${at} category="Submachine gun" dv="3P" avail="2" cost="100"><name>Zap SMG</name></weapon></sr6:data>`
