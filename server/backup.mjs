@@ -299,6 +299,8 @@ export function backupApi(ctx) {
     noRestore()
     if (lock.zipping) throw fail(409, 'a backup is already being made; wait for it to finish')
     if (lock.packing) throw fail(409, 'a data pack is being made or loaded; try again when it’s done')
+    if (lock.writes) throw fail(409, 'a save or an upload is running; try again when it’s done')
+    if (ctx.running || queue.length) throw fail(409, 'a book is being imported or read by AI; try again when it’s done')
     lock.zipping++
     const tmp = tempZip('upload') // (swept like an upload if the server dies meanwhile)
     try {
