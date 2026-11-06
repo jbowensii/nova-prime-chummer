@@ -2370,6 +2370,11 @@ dialog.drawer h2 {
   max-width: 100%;
   min-width: 0;
 }
+/* a status line among a toolbar's icons: its own row after them, so it never pushes an icon down */
+.iconbar .bar-note {
+  flex-basis: 100%;
+  order: 1;
+}
 .pagehead .bars,
 .topbar > .bars {
   flex: 1 1 100%;

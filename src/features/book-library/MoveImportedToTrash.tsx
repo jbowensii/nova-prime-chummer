@@ -28,7 +28,7 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
     setTargets(null)
     try {
       const r = await api<{ moved: number; trash: string }>(url, { method: 'POST' })
-      setMsg(`Moved ${r.moved} to ${r.trash} (a copy is in Backups; moves.csv there undoes it).`)
+      setMsg(`Moved ${r.moved} to the trash. A copy is in Backups.`)
       onDone?.()
     } catch (e) {
       setMsg(because('Couldn’t move them to the trash', (e as Error).message))
@@ -41,7 +41,7 @@ export function MoveImportedToTrash({ kind, disabled, onDone }: { kind: Kind; di
         <Icon name="recycle" />
       </button>
       {msg && (
-        <span className="muted" role="status">
+        <span className="muted bar-note" role="status">
           {msg}
         </span>
       )}
