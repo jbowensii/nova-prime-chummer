@@ -60,7 +60,8 @@ class OptionsTest(unittest.TestCase):
     def test_variant_carries_its_own_cf(self):
         r = rec(
             '<item id="zz" reqVariant="y"><variant id="a"><usage mode="EMBEDDED" slot="VEHICLE_CF" value="0"/>'
-            '<attrdef id="PRICE" value="500"/></variant><variant id="b"><usage mode="EMBEDDED" slot="VEHICLE_CF" value="1"/>'
+            '<attrdef id="PRICE" value="500"/></variant>'
+            '<variant id="b"><usage mode="EMBEDDED" slot="VEHICLE_CF" value="1"/>'
             '<attrdef id="PRICE" value="500"/></variant></item>',
             variants={"a": "Dwarf", "b": "Troll"},
         )

@@ -99,11 +99,12 @@ class OverridesTest(unittest.TestCase):
         self.assertEqual((added.find("formula").text, e.find("gear[@id='a']").get("slots")), ("R*4000", "50 CF"))
 
     def test_the_owner_rulings_of_20261106_karma_escape_pod_and_metahuman_cf(self):
-        """Natural Venom takes Commlink6's 9 Karma; the Escape Pod's swapped AVAIL/COST columns are put right (ED p.80); the
-        four Metahuman Adjustments variants carry their CF (dwarf 0, troll 1)."""
-        row = lambda stem, i: next(
-            r for r in overrides.table(stem) if r.get("id") == i and r.get("gen") == "owner" and "set" in r
-        )
+        """Natural Venom takes Commlink6's 9 Karma; the Escape Pod's swapped AVAIL/COST columns are put right (ED p.80);
+        the four Metahuman Adjustments variants carry their CF (dwarf 0, troll 1)."""
+
+        def row(stem, i):
+            return next(r for r in overrides.table(stem) if r.get("id") == i and r.get("gen") == "owner" and "set" in r)
+
         self.assertEqual(row("swc", "natural-venom")["set"], {"kind": "positive", "karma": "9"})
         for i, kind in (
             ("control-apophenian", "positive"),
