@@ -1,5 +1,15 @@
 # Release notes
 
+## [1.2.1](https://github.com/jbowensii/nova-prime-chummer/compare/v1.2.0...v1.2.1) (2026-11-07)
+
+
+### Bug Fixes
+
+* **sr6:** correct nuyen printed under availability ([fde28ee](https://github.com/jbowensii/nova-prime-chummer/commit/fde28ee5d7bce79eb241c308257055f425f64635))
+* **sr6:** keep the MGL-24 licence fee ruling ([a1f7f8c](https://github.com/jbowensii/nova-prime-chummer/commit/a1f7f8ce5c32625e6b7c175754b2ddd4873efce0))
+* trash message row and prices printed under availability ([7c6d46c](https://github.com/jbowensii/nova-prime-chummer/commit/7c6d46c6a34d516a8801d339e76887cd8af53978))
+* **ui:** keep the trash result message off the icon row ([1e778ae](https://github.com/jbowensii/nova-prime-chummer/commit/1e778ae2f25d8f5635d0ac07df9d2d8e40a1dd2d))
+
 ## [1.2.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.1.0...v1.2.0) (2026-11-06)
 
 
