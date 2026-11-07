@@ -98,6 +98,12 @@ class OverridesTest(unittest.TestCase):
         self.assertEqual(added.find("formula").attrib, {"field": "cost"})
         self.assertEqual((added.find("formula").text, e.find("gear[@id='a']").get("slots")), ("R*4000", "50 CF"))
 
+    def test_printed_prices_under_avail_get_commlink6_availability(self):
+        """BS p.148 prints nuyen under AVAIL: the price moves to cost, availability comes from Commlink6."""
+        rows = {r["id"]: r["set"] for r in overrides.table("bs") if r.get("gen") == "owner" and "set" in r}
+        self.assertEqual(rows["cybertorso-synthetic"], {"cost": "25,000¥", "avail": "4"})
+        self.assertEqual(rows["cyberskull-obvious"], {"cost": "10,000¥", "avail": "5"})
+
     def test_the_owner_rulings_of_20261106_karma_escape_pod_and_metahuman_cf(self):
         """Natural Venom takes Commlink6's 9 Karma; the Escape Pod's swapped AVAIL/COST columns are put right (ED p.80);
         the four Metahuman Adjustments variants carry their CF (dwarf 0, troll 1)."""
