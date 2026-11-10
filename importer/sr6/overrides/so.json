@@ -92,7 +92,7 @@
   {"cl6": "Epoch Essence of Le Tigre (x30)", "cl6id": "perfume_epoch_tigre", "kind": "gear", "id": "epoch-essence-of-le-tigre", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Hart Parfumerie Of the Pack (x30)", "cl6id": "perfume_hart_pack", "kind": "gear", "id": "hart-parfumerie-of-the-pack", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Hart Parfumerie Sunglasses (x30)", "cl6id": "perfume_hart_sunglass", "kind": "gear", "id": "hart-parfumerie-sunglasses", "set": {"usage": "carried"}, "gen": "slot"},
-  {"cl6": "Blur Mask", "cl6id": "blur_mask", "kind": "gear", "id": "blur-mask", "set": {"usage": "carried"}, "gen": "slot"},
+  {"cl6": "Blur Mask", "cl6id": "blur_mask", "kind": "gear", "id": "blur-mask", "kids": [{"tag": "fits", "attrs": {"slot": "optical", "cost": "1", "mode": "embedded"}}, {"tag": "fits", "attrs": {"slot": "helmet-accessory", "cost": "1", "mode": "embedded"}}, {"tag": "fits", "attrs": {"slot": "audio", "cost": "1", "mode": "embedded"}}], "gen": "slot"},
   {"cl6": "Explosive Cosmetics Lipstick", "cl6id": "explosive_lipstick", "kind": "gear", "id": "explosive-cosmetics-lipstick", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Explosive Cosmetics Eyeliner", "cl6id": "explosive_eyeliner", "kind": "gear", "id": "explosive-cosmetics-eyeliner", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Explosive Cosmetics Finishing Powder", "cl6id": "explosive_finishing_power", "kind": "gear", "id": "explosive-cosmetics-finishing-powder", "set": {"usage": "carried"}, "gen": "slot"},
