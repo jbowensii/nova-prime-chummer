@@ -310,10 +310,12 @@ def families(el, attrs, variants):
     if ch:
         out["choices"] = tuple(ch)
     req = sorted(
-        (_norm(r.get("type")), _norm(r.get("ref")))
-        for rq in _own(el, "requires")
-        for r in rq.iter()
-        if r.tag in ("datareq", "valuereq")
+        {  # (a set: a test two <requires> blocks repeat is one test, Athame's Sacrifice in 1.15)
+            (_norm(r.get("type")), _norm(r.get("ref")))
+            for rq in _own(el, "requires")
+            for r in rq.iter()
+            if r.tag in ("datareq", "valuereq")
+        }
     )
     if req:
         out["requires"] = tuple(req)

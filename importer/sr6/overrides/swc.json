@@ -670,5 +670,6 @@
   {"cl6": "Fulfilled", "kind": "qualities", "id": "fulfilled", "set": {"kind": "negative", "karma": "15"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
   {"cl6": "Unhealthy Attachment", "kind": "qualities", "id": "unhealthy-attachment", "set": {"kind": "negative", "karma": "5"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
   {"cl6": "Into the Shadows", "kind": "qualities", "id": "into-the-shadows", "set": {"kind": "positive", "karma": "18"}, "note": "a quality-path step the book prints no price for: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
-  {"cl6": "Natural Venom", "kind": "qualities", "id": "natural-venom", "set": {"kind": "positive", "karma": "9"}, "note": "SWC p.119 prints no Karma cost: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"}
+  {"cl6": "Natural Venom", "kind": "qualities", "id": "natural-venom", "set": {"kind": "positive", "karma": "9"}, "note": "SWC p.119 prints no Karma cost: kind and Karma as Commlink6 (owner ruling 2026-11-06)", "gen": "owner"},
+  {"cl6": "Astral Perception", "kind": "qualities", "add": {"page": 90, "attrs": {"kind": "positive", "karma": "0", "granted": "true"}}, "note": "the Pixie's trait (Commlink6 companion astral_perception, karma 0, selectable n): granted with no category, never offered to pick (owner ruling 2026-11-10)"}
 ]

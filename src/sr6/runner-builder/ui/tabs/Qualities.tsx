@@ -397,6 +397,8 @@ export function QualitiesTab() {
               .filter(
                 q =>
                   q.positive === (picking === 'positive') &&
+                  // (granted with no category list: only a metatype's trait gives it, the Pixie's Astral Perception)
+                  !(q.granted && !q.category) &&
                   qualityFitsMetatype(data, b.metatype, q.id) &&
                   !infectedOff(data.entry('qualities', q.id), cr) &&
                   // (an Infected type is taken on Creation method; an optional power only from the runner's type's list)

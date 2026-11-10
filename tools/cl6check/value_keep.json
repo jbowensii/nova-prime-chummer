@@ -356,6 +356,18 @@
   "hold": [],
   "verdicts": [
     {
+      "src": "bs",
+      "kind": "augmentations",
+      "cl6_id": "nanspy_kit",
+      "cl6_name": "Nanospy Kit",
+      "our_id": "bs.nanospy-kit",
+      "field": "cost",
+      "cl6": "1400",
+      "ours": "9500",
+      "page": "BS p89",
+      "reason": "the price table prints Nanospy Kit 9,500 (owner ruling 2026-11-10); Commlink6 1.15's 1,400 is the Nanopaste Disguise Kit price printed two rows above"
+    },
+    {
       "src": "cln",
       "kind": "weapons",
       "cl6_id": "spore_grenade",

@@ -266,5 +266,6 @@
   {"cl6": "Black Magic", "kind": "traditions", "id": "black-magic", "set": {"cl6": "black"}, "gen": "marker"},
   {"cl6": "Secular Qabbalah", "kind": "traditions", "id": "secular-qabbalah", "set": {"cl6": "qabbalists_secular"}, "gen": "marker"},
   {"cl6": "Romani Tradition", "kind": "traditions", "id": "romani-tradition", "set": {"cl6": "romani"}, "gen": "marker"},
-  {"cl6": "Storyteller Tradition", "kind": "traditions", "id": "storyteller-tradition", "set": {"cl6": "storyteller"}, "gen": "marker"}
+  {"cl6": "Storyteller Tradition", "kind": "traditions", "id": "storyteller-tradition", "set": {"cl6": "storyteller"}, "gen": "marker"},
+  {"cl6": "Athame Blood Focus", "kind": "gear", "id": "athame", "set": {"rating": "1–10"}, "note": "Force 1–10, as a weapon focus of the same Force (SW pp. 157-158); the melee-weapon pick kept, Commlink6 1.15's FORCE choice is this rating (owner ruling 2026-11-10)", "gen": "owner"}
 ]
