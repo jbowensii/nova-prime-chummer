@@ -45,6 +45,25 @@ A made-up power.
 #### Glow Skin
 Cost: 4 Karma
 A made-up quality.
+## Game Information: magical Updates
+### Advanced Tradition Game Information
+#### Unified Magic Theory
+Those who commit may choose to use either Cha-
+risma or Logic as their tradition attribute.
+#### Hermetic
+Made-up rules for a made-up tradition.
+## Places
+### MINOR AWAKENED TALENTS
+A made-up minor talent.
+#### New skill: Patterncraft
+**Specializations:** Readings, Itemcraft
+**Untrained:** No
+**Linked Attribute:** Magic.
+A made-up skill.
+# LOCATIONS OF POWER
+New Quality: Brew Sense
+**Cost:** 12 (6 for Awakened characters)
+A made-up quality.
 """
 
 
@@ -85,6 +104,16 @@ class DeaRecipeTest(unittest.TestCase):
         self.assertEqual(entries(self.res, "rituals")["Bright Rite"]["threshold"], "4")
         self.assertIn("Zap", entries(self.res, "critterpowers"))
         self.assertEqual(entries(self.res, "qualities")["Glow Skin"]["karma"], "4")
+
+    def test_one_printing_several_entries(self):
+        t = entries(self.res, "traditions")
+        self.assertEqual(sorted(t), ["Re-Awoken Hermetic", "Re-Awoken UMT (Charisma)", "Re-Awoken UMT (Logic)"])
+        q = entries(self.res, "qualities")
+        self.assertEqual((q["Brew Sense (mundane)"]["karma"], q["Brew Sense (awakened)"]["karma"]), ("12", "6"))
+
+    def test_minor_talent_and_skill(self):
+        self.assertIn("Minor Awakened", entries(self.res, "magictypes"))
+        self.assertEqual(entries(self.res, "skills")["Patterncraft"]["attr"], "mag")
 
     def test_recipe_is_found_by_title(self):
         self.assertIs(identify({"title": "Shadowrun: Deus Ex Arcana"}, "")[0], dea)

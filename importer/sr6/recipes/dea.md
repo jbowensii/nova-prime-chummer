@@ -22,7 +22,8 @@ reads:
 - A critter power's band (`Type Action Range Duration` + `P Major LOS Sustained`) is a table.
 - A being's box title is a plain lower-case line over its `B A R S W L I C M ESS` table (a heading elsewhere): set as a
   level-5 heading, and a level-3 creature heading with such a table under it is made level 4 so its box pairs with it.
-- `New Quality: Brumeur` is a line: a level-4 heading. `COST ¥` is `COST`; the Ukkru and fool's mithril cost tables list
+- `New Quality: Brumeur` is a line, its cost `12 (6 for Awakened characters)`: two level-4 headings, `Brumeur (mundane)` at
+  12 and `Brumeur (awakened)` at 6 (Commlink6's two records; `_split_entries`). `COST ¥` is `COST`; the Ukkru and fool's mithril cost tables list
   sizes only: their rows are named `Ukkru Small (...)`.
 - Headings set in capitals or lower case that are entries (`THE RED BEAR`, `toxic red bear`, `lemur as a mentor spirit`,
   `HARDENED WILL`) are retitled; a lone `Advantages` line is a heading (Lemur's mentor box).
@@ -34,14 +35,19 @@ reads:
 ## Item shapes
 
 - Spells (ARCANA UNLEASHED New Spells, Communication Spells): level-4 heading, a `(Category)` tag, the band. The category is
-  the tag's (`Manipulation`, `Direct Combat`). Ward Evil prints `(Voodoo)` and no category: not read (reported).
+  the tag's (`Manipulation`, `Direct Combat`). Ward Evil prints `(Voodoo)` and no category: not read; `overrides/dea.json` adds it under Manipulation (owner
+  2026-11-13).
 - Rituals: level-4 heading, a tag `(Anchored, Spell)`, `Threshold:` and `Ritual Time:` lines.
 - Qualities: metagenic (cost line, a heading each), the minor-talent sparks, gifts and curses (level-3 headings with
   `Cost:`/`Bonus:`), the quality-path steps (a `(5 Karma)` tag, given as their Cost) and Brumeur (a place's section).
 - Adept powers (Toxic Adept Powers) and metamagics (New Metamagics, Toxic Metamagics): level-4 headings.
 - Mentor spirits: the sections reader's (headings under `Mentor Spirits`, `Advantages`/`Disadvantages`).
-- Traditions: only Avengers and Poisoners (Toxic Magic Traditions). The `Shamanic`, `Hermetic` and `Unified Magic Theory`
-  headings (p. 99) are rules on changing traditions, not catalog traditions.
+- Traditions: Avengers and Poisoners (Toxic Magic Traditions), and the four `Re-Awoken` ones (owner 2026-11-13, as
+  Commlink6 has them): under `Advanced Tradition Game Information` (p. 99) `_split_entries` retitles the `Hermetic` and
+  `Shamanic` headings and makes the `Unified Magic Theory` one a heading for each tradition attribute its text offers
+  (`either Charisma or Logic as their tradition attribute`): `Re-Awoken UMT (Charisma)` and `(Logic)`.
+- Minor Awakened (a magic type): the level-3 section `MINOR AWAKENED TALENTS` (p. 115), retitled `Minor Awakened`.
+  Patterncraft (a skill): `New skill: Patterncraft` (p. 111), read by its `Linked Attribute` line.
 - Critter powers (New Spirit and Critter Powers), critters (fauna, Gomorrah Apple Tree, Homunculus, Shedim, the toxic
   critter template) and toxic spirits (tag `(Toxic Spirit of Earth)`): a being's box paired with its heading.
 - The magical materials (Awakened metals, Ukkru, Fool's mithril: gear) and the Mana Redistribution Grenade (weapons).

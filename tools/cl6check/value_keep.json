@@ -834,6 +834,30 @@
       "ours": "45000",
       "page": "BS p88",
       "reason": "the colonies & nanites table prints the colony template at 45,000¥ (pre-built 4,500¥); Commlink6's 5,500¥ is the Neocortical Neural Amplifier row above it (owner rule 2026-10-17: a printed table wins)"
+    },
+    {
+      "src": "dea",
+      "kind": "rituals",
+      "cl6_id": "lost_and_found",
+      "cl6_name": "Lost and Found",
+      "our_id": "dea.lost-and-found",
+      "field": "threshold",
+      "cl6": "3",
+      "ours": "3 + Object Resistance (see below)",
+      "page": "DEA p108",
+      "reason": "owner 2026-11-13: the book prints the threshold as 3 + Object Resistance (see below); Commlink6 states the flat 3"
+    },
+    {
+      "src": "dea",
+      "kind": "rituals",
+      "cl6_id": "sacrament_of_changed",
+      "cl6_name": "Sacrament of Changed Form",
+      "our_id": "dea.sacrament-of-changed-form",
+      "field": "threshold",
+      "cl6": "6",
+      "ours": "Special",
+      "page": "DEA p109",
+      "reason": "owner 2026-11-13: the book prints the threshold as Special; Commlink6 states 6"
     }
   ]
 }

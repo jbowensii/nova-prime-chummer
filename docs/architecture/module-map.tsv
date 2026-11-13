@@ -197,6 +197,7 @@ importer/sr6/layout.py	sr6/book-import	10243
 importer/sr6/lifemodules.py	sr6/book-import	3348
 importer/sr6/moved.py	sr6/book-corrections	2866
 importer/sr6/overrides/__init__.py	sr6/book-corrections	3184
+importer/sr6/overrides/dea.json	sr6/book-corrections	3100
 importer/sr6/overrides/rules.py	sr6/book-corrections	1399
 importer/sr6/overrides/schema.py	sr6/book-corrections	681
 importer/sr6/overrides/xmlops.py	sr6/book-corrections	3843
@@ -278,6 +279,8 @@ importer/sr6/recipes/da.md	sr6/book-import	3281
 importer/sr6/recipes/da.py	sr6/book-import	2053
 importer/sr6/recipes/dc.md	sr6/book-import	2114
 importer/sr6/recipes/dc.py	sr6/book-import	5491
+importer/sr6/recipes/dea.md	sr6/book-import	1150
+importer/sr6/recipes/dea.py	sr6/book-import	3400
 importer/sr6/recipes/ed.md	sr6/book-import	779
 importer/sr6/recipes/ed.py	sr6/book-import	2756
 importer/sr6/recipes/fs.md	sr6/book-import	1661
@@ -354,6 +357,7 @@ importer/tests/test_sr6_crb.py	sr6/book-import	15724
 importer/tests/test_sr6_crb_city.py	sr6/book-import	1743
 importer/tests/test_sr6_da.py	sr6/book-import	3134
 importer/tests/test_sr6_dc.py	sr6/book-import	2252
+importer/tests/test_sr6_dea.py	sr6/book-import	1000
 importer/tests/test_sr6_ed.py	sr6/book-import	1287
 importer/tests/test_sr6_edits.py	sr6/game-data	1962
 importer/tests/test_sr6_edits_more.py	sr6/game-data	639

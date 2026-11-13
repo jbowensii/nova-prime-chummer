@@ -238,6 +238,7 @@ HEADERS = {
     "martialarts": {"CATEGORY": "categories", "SIGNATURE TECHNIQUE": "signature"},
     "martialtechniques": {"CATEGORY": "category"},
     "traditions": {},
+    "magictypes": {},  # (a book's minor talent, a section: Deus Ex Arcana's Minor Awakened)
     "ammotypes": {
         "AR": "ar",
         "ATTACK RATINGS": "ar",

@@ -60,9 +60,14 @@ _RETITLE = {
     "### Path of Attaining a Mentor Spirit": "### Quality Path: Path of Attaining a Mentor-Spirit",
     "### Path of the Familiar": "### Quality Path: Path of the Familiar",
     "#### Sensory Ranges of Detection Spells": "#### Sensory Ranges of Detection",
+    "#### New skill: Patterncraft": "#### Patterncraft",  # (a skill: kind() reads its Linked Attribute line)
+    "### MINOR AWAKENED TALENTS": "### Minor Awakened",  # (the magic type: Commlink6's name for it)
 }
 # a cost table's title -> what its rows' sizes are the sizes of (`ukkru cost`: `Ukkru Small (knife, …)`)
 _SIZED = {"#### Ukkru cost": "Ukkru", "#### Fool’s mithril cost": "Fool's mithril"}
+_AWARE_COST = re.compile(r"\*\*Cost:\*\* (\d+) \((\d+) for Awakened characters\)$")
+_TRADITION_ATTRS = re.compile(r"either (\w+) or (\w+) as their tradition attribute")
+_REAWOKEN = {"Hermetic": "Re-Awoken Hermetic", "Shamanic": "Re-Awoken Shamanic"}
 _ROW = re.compile(r"(LOS ?\(A\)|LOS|Touch|Self|T) ([MP]) (\w) (\d+)(?: (.+))?$")
 
 
@@ -84,12 +89,46 @@ def _stat_block_below(lines, i):
     return False
 
 
+def _split_entries(lines):
+    """The lines with the two places the book prints several entries as one set as one each, as Commlink6 has them:
+    a quality priced `12 (6 for Awakened characters)` (Brumeur: a `(mundane)` and an `(awakened)` entry), and the
+    rules of p. 99 (`Advanced Tradition Game Information`: how Hermetic, Shamanic and Unified Magic Theory work after
+    the Re-Awakening), each a `Re-Awoken ...` tradition, Unified Magic Theory one for each tradition attribute its text
+    offers (Charisma or Logic). The text goes to the last of such entries (regroup)."""
+    out, i, advanced = [], 0, False
+    while i < len(lines):
+        ln = lines[i]
+        advanced = ln == "### Advanced Tradition Game Information" or (advanced and not ln.startswith(("## ", "### ")))
+        nq, cost = _NEW_QUALITY.match(ln), _AWARE_COST.match(lines[i + 1]) if i + 1 < len(lines) else None
+        if nq and cost:
+            for who, karma in (("mundane", cost.group(1)), ("awakened", cost.group(2))):
+                out += [f"#### {nq.group(1)} ({who})", f"**Cost:** {karma}"]
+            i += 2
+            continue
+        if advanced and ln.startswith("#### "):
+            title = ln[5:]
+            if title in _REAWOKEN:
+                out.append(f"#### {_REAWOKEN[title]}")
+                i += 1
+                continue
+            if title == "Unified Magic Theory":
+                text = re.sub(r"-\n", "", "\n".join(lines[i + 1 : i + 12]))  # (a word broken at a line's end)
+                attrs = _TRADITION_ATTRS.search(" ".join(text.split()))
+                if attrs:
+                    out += [f"#### Re-Awoken UMT ({a})" for a in sorted(attrs.groups())]
+                    i += 1
+                    continue
+        out.append(ln)
+        i += 1
+    return out
+
+
 def prepare_md(md):
     """book.md with a tag line (`(Manipulation)`, `Cost: 4 Karma`) under a heading set as a level-5 heading, a spell's
     band (a bold `Range Type Duration DV` line over `LOS (A) P S 3` lines) and a critter power's (`Type Action Range
     Duration`) set as the table the regroup reads, and the layout slips named below put right. A spell duration printed
     as the digit 5 is the sustained S (the only digit the column can't hold)."""
-    out, lines, i = [], md.split("\n"), 0
+    out, lines, i = [], _split_entries(md.split("\n")), 0
     while i < len(lines):
         if _TAG.match(lines[i]) and out and _HEAD.match(out[-1]):  # a tag or `Cost:` line right under a heading
             out.append(f"##### {lines[i]}")  # (SW's are set in a small face: the converter reads them as headings)
@@ -193,6 +232,17 @@ def kind(chapter, b, parent2):
         return "qualities", "positive"  # (Brumeur: `New Quality:` in a place's section)
     if b.type == "item" and "threshold" in labels:
         return "rituals", None
+    if b.type == "item" and "linked attribute" in labels:
+        return "skills", None  # (Patterncraft)
+    if b.type == "section" and b.level == 3 and norm(b.name) == "minor awakened":
+        return "magictypes", None
+    if (
+        b.type == "item"
+        and b.level == 4
+        and "advanced tradition game information" in sec
+        and norm(b.name).startswith("re awoken")
+    ):
+        return "traditions", None
     if b.type == "item" and {"cost", "activation"} <= labels and "adept powers" in sec:
         return "adeptpowers", None
     if b.type == "item" and b.level == 4 and "toxic metamagics" in sec:
