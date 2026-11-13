@@ -6,10 +6,32 @@ to import."""
 import re
 
 from importer.core import Result  # noqa: F401
-from importer.sr6.recipes import aw, bn, bs, crb, da, dc, ed, fs, general, hs, ia, jd, kk, ll, nf, so, sw, swc, ts, wl
+from importer.sr6.recipes import (
+    aw,
+    bn,
+    bs,
+    crb,
+    da,
+    dc,
+    dea,
+    ed,
+    fs,
+    general,
+    hs,
+    ia,
+    jd,
+    kk,
+    ll,
+    nf,
+    so,
+    sw,
+    swc,
+    ts,
+    wl,
+)
 
 THRESHOLD = 0.6
-RECIPES = [crb, swc, fs, da, hs, sw, ll, jd, ia, bs, dc, kk, nf, ts, aw, wl, bn, so, ed]
+RECIPES = [crb, swc, fs, da, hs, sw, dea, ll, jd, ia, bs, dc, kk, nf, ts, aw, wl, bn, so, ed]
 RECIPES += general.RECIPES  # the books with no recipe of their own: one each, last (a dedicated recipe wins a tie)
 
 

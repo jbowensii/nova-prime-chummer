@@ -62,6 +62,7 @@ BOOK_SOURCE = {
     "companion": "swc",
     "deadly_arts": "da",
     "dealers_of_death": "dod",
+    "deus_ex_arcana": "dea",
     "double_clutch": "dc",
     "emerald": "emc",
     "firing_squad": "fs",
