@@ -7,8 +7,10 @@ import { getQualityPaths, PATH_BOOKS } from '../../../catalog/domain/load'
 import { advancePath, chooseAt, pathsFor, progressOf, qualityIdOf, removePath, rewindPath, startPath, stepOf } from '../../domain/paths'
 import { useSr6Editor } from '../editor'
 
+const nice = (id: string) => (t => t[0].toUpperCase() + t.slice(1))(id.replace(/_/g, ' '))
+
 export function PathsSection({ load = getQualityPaths }: { load?: (book: string) => Promise<QualityPath[]> }) {
-  const { ch, data, cr, update, ro, career } = useSr6Editor()
+  const { c, ch, data, cr, update, ro, career } = useSr6Editor()
   const [paths, setPaths] = useState<QualityPath[]>([])
   const [notes, setNotes] = useState<string[]>([])
   useEffect(() => {
@@ -23,9 +25,20 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
   // (a finalized runner's qualities come from its ledger, not the build: no stepping there)
   const locked = ro || career
   const run = (fn: (c: typeof ch) => string[]) => update(c => setNotes(fn(c)))
-  const label = (m: PathModification) => {
+  const bookName = (key: string) => {
+    const w = key.replace(/_/g, '').toLowerCase()
+    return (
+      [...(c?.sources.values() ?? [])].find(s =>
+        s.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '')
+          .includes(w),
+      )?.name ?? nice(key)
+    )
+  }
+  const label = (m: PathModification, path: QualityPath) => {
     if (m.op === 'add' || m.op === 'remove') {
-      const id = qualityIdOf(data, m.ref)
+      const id = qualityIdOf(data, m.ref, path.bookKey, path)
       return `${m.op === 'add' ? 'Gains' : 'Loses'} ${id ? data.qualities[id]?.name : m.ref.replace(/^quality:/, '')}`
     }
     return m.op === 'valmod' ? `${m.attr} ${m.value ?? ''}`.trim() : m.op === 'subOption' ? `Option: ${m.label}` : 'Choose one'
@@ -44,7 +57,7 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
         const cur = p && stepOf(path, p.currentStepId)
         return (
           <div key={path.id} className="card" data-path={path.id}>
-            <b>{path.name}</b> <span className="muted small">{path.bookKey}</span>{' '}
+            <b>{path.name}</b> <span className="muted small">{bookName(path.bookKey)}</span>{' '}
             {!p ? (
               <button className="btn small" disabled={locked} onClick={() => run(c => startPath(c, path, data, cr))}>
                 Start this path
@@ -69,7 +82,7 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
                 ) : (
                   <ul className="muted small">
                     {cur.modifications.map((m, i) => (
-                      <li key={i}>{label(m)}</li>
+                      <li key={i}>{label(m, path)}</li>
                     ))}
                   </ul>
                 )}
@@ -80,11 +93,17 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
                   m.op === 'choice' ? (
                     <Choice
                       key={i}
-                      options={m.options}
+                      options={m.options.map(o => ({
+                        ...o,
+                        label:
+                          m.type === 'QUALITY'
+                            ? (data.qualities[qualityIdOf(data, `quality:${o.ref}`, path.bookKey, path) ?? '']?.name ?? nice(o.ref))
+                            : nice(o.ref),
+                      }))}
                       stepId={cur.id}
                       pick={p.choicesByStepId[cur.id]}
                       disabled={locked}
-                      onPick={(o, s) => update(c => chooseAt(c, path, cur.id, o, s))}
+                      onPick={(o, s) => run(x => chooseAt(x, path, cur.id, o, s, data, cr))}
                     />
                   ) : null,
                 )}
@@ -135,7 +154,7 @@ function Choice(props: {
           <option value="">Choose…</option>
           {sel.subOptions.map(s => (
             <option key={s.ref} value={s.ref}>
-              {s.label}
+              {nice(s.label)}
             </option>
           ))}
         </select>

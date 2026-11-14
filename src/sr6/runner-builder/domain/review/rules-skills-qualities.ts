@@ -822,7 +822,7 @@ export const RULES_SKILLS_QUALITIES: Rule[] = [
           if (step.modifications.some(m => m.op === 'choice') && !p.choicesByStepId[id])
             hits.push({ path: at, message: `${path.name}: ${step.name} asks for a choice; none is recorded.` })
           for (const m of step.modifications)
-            if ((m.op === 'add' || m.op === 'remove') && !qualityIdOf(c.data, m.ref, path.bookKey))
+            if ((m.op === 'add' || m.op === 'remove') && m.ref !== 'quality:CHOICE' && !qualityIdOf(c.data, m.ref, path.bookKey, path))
               hits.push({ path: at, message: `${path.name}: ${step.name} names ${m.ref}, which isn’t in the catalog (skipped).` })
         }
       }

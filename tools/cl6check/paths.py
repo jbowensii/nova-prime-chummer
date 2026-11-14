@@ -31,36 +31,51 @@ def counts(paths):
 
 
 def refs(paths):
-    """{quality ref: [book-less path ids naming it]} of every add/remove quality mod."""
-    out = {}
-    for p in paths:
-        for s in p["steps"]:
-            for m in s["modifications"]:
-                if m["op"] in ("add", "remove") and m["ref"].startswith("quality:"):
-                    out.setdefault(m["ref"][8:], set()).add(p["id"])
-    return out
+    """[(path, ref)] of every add/remove quality mod, once each."""
+    return sorted(
+        {
+            (p["id"], m["ref"][8:])
+            for p in paths
+            for s in p["steps"]
+            for m in s["modifications"]
+            if m["op"] in ("add", "remove") and m["ref"].startswith("quality:")
+        }
+    )
 
 
 def catalog_names(custom):
-    """The normalised name parts of every quality in a custom/sr6 import (the id after `<book>.`)."""
-    names = set()
+    """(id name parts, quality names, names less a parenthetical aside), normalised, of a custom/sr6 import."""
+    ids, names, bare = set(), set(), set()
     for src in ours.load(custom).values():
         for e in src.entries:
             if e["kind"] == "qualities":
-                names.add(_norm(re.sub(r"^[^.]*\.", "", e["id"]) if e["id"].startswith(f"{src.src}.") else e["id"]))
+                ids.add(_norm(e["id"][len(src.src) + 1 :] if e["id"].startswith(f"{src.src}.") else e["id"]))
                 names.add(_norm(e["name"]))
-    return names
+                bare.add(_norm(re.sub(r"\s*\(.*$", "", e["name"])))
+    return ids, names, bare
 
 
-def misses(published, names):
-    """(unresolved {ref: path ids}, whether CHOICE appears) over every book's refs."""
+def resolves(path, ref, found):
+    """Whether a catalog quality answers to `ref`: its id's name part, else (as qualityIdOf does with the path) a
+    quality named as the ref, `<path>: <step>` or the step's name."""
+    ids, names, bare = found
+    if _norm(ref) in ids:
+        return True
+    step = next((s for s in path["steps"] if s["id"] == ref), None)
+    want = [ref] + ([path["name"] + step["name"], step["name"]] if step else [])
+    return any(_norm(w) in names or _norm(w) in bare for w in want)
+
+
+def misses(published, found):
+    """({ref: path ids} no catalog quality answers to, whether the CHOICE placeholder appears)."""
     out, choice = {}, False
     for paths in published.values():
-        for ref, ids in refs(paths).items():
+        byid = {p["id"]: p for p in paths}
+        for pid, ref in refs(paths):
             if ref == "CHOICE":
                 choice = True
-            elif _norm(ref) not in names:
-                out.setdefault(ref, set()).update(ids)
+            elif not resolves(byid[pid], ref, found):
+                out.setdefault(ref, set()).add(pid)
     return out, choice
 
 

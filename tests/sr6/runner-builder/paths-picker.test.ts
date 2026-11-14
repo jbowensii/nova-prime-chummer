@@ -6,7 +6,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { QualityPath } from '../../../src/sr6/catalog/domain/data'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
-import { advancePath, pathsFor, rewindPath, startPath } from '../../../src/sr6/runner-builder/domain/paths'
+import { advancePath, pathsFor, qualityIdOf, rewindPath, startPath } from '../../../src/sr6/runner-builder/domain/paths'
 import { Sr6Editor, type Sr6Ctx } from '../../../src/sr6/runner-builder/ui/editor'
 import { PathsSection } from '../../../src/sr6/runner-builder/ui/tabs/PathsSection'
 import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/validate'
@@ -226,4 +226,60 @@ test('Review path.progress warns: unknown path, off-graph step, missing choice, 
   expect(pathsFor(ch, data, cr, [mag])).toEqual([])
   ch.build.magic = 'full'
   expect(pathsFor(ch, data, cr, [mag])).toEqual([mag])
+})
+
+test('a QUALITY choice adds the picked quality, swaps it, and Back / clear take it off; the CHOICE placeholder is not a skip', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const path: QualityPath = {
+    id: 'q_choice',
+    name: 'Q Choice',
+    bookKey: 'crb',
+    steps: [
+      step(
+        'q1',
+        0,
+        [
+          { op: 'add', ref: 'quality:CHOICE' },
+          {
+            op: 'choice',
+            ref: 'CHOICE',
+            type: 'QUALITY',
+            id: 'u1',
+            options: [
+              { ref: 'butterfingers', label: 'butterfingers' },
+              { ref: 'stoneskin', label: 'stoneskin' },
+            ],
+          },
+        ],
+        [],
+      ),
+    ],
+  }
+  const m = mount([path])
+  await m.render()
+  await click(m.host, 'Start this path')
+  expect(ids(m.ch)).toEqual([])
+  expect(m.host.textContent).not.toContain('Skipped')
+  await pick(m.host, 'Path choice', 'butterfingers')
+  expect(ids(m.ch)).toEqual(['crb.butterfingers'])
+  expect(m.host.textContent).toContain('Butterfingers')
+  await pick(m.host, 'Path choice', 'stoneskin')
+  expect(ids(m.ch)).toEqual(['crb.stoneskin'])
+  await pick(m.host, 'Path choice', '')
+  expect(ids(m.ch)).toEqual([])
+  await pick(m.host, 'Path choice', 'butterfingers')
+  await click(m.host, 'Remove path')
+  expect(ids(m.ch)).toEqual([])
+  expect(m.ch.pathProgress).toEqual([])
+})
+
+test('qualityIdOf finds a path step filed as `<path>: <step>`, and a parenthetical aside is ignored', () => {
+  const data = {
+    qualities: { 'swc.obsession-momentous-misfortune': { name: 'Obsession: Momentous Misfortune' }, 'fs.phobia-object': { name: 'Phobia (Object)' } },
+  } as never
+  const path: QualityPath = { id: 'obsession', name: 'Obsession', bookKey: 'companion', steps: [step('obsession_misfortune', 0, [], [])] }
+  path.steps[0].name = 'Momentous Misfortune'
+  expect(qualityIdOf(data, 'quality:obsession_misfortune')).toBeNull()
+  expect(qualityIdOf(data, 'quality:obsession_misfortune', 'companion', path)).toBe('swc.obsession-momentous-misfortune')
+  expect(qualityIdOf(data, 'quality:phobia', 'fs', path)).toBe('fs.phobia-object')
 })

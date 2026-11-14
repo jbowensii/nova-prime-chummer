@@ -4,7 +4,7 @@
 // mods are display-only (applied at the table). A mod that can't be applied (no such catalog quality, or the engine
 // refuses) is logged and skipped, and its sentence is returned so the card can show it.
 import type { CreationRules } from '../../table-setup/domain/creation'
-import type { PathStep, QualityPath, Sr6Data } from '../../catalog/domain/data'
+import type { PathModification, PathStep, QualityPath, Sr6Data } from '../../catalog/domain/data'
 import type { Sr6Character } from '../../formats/domain/character'
 import { apply } from './creation/actions'
 import { deriveSr6 } from './creation/derive'
@@ -12,12 +12,23 @@ import { deriveSr6 } from './creation/derive'
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 /** A path ref `quality:<id>` as a catalog quality id (`<book>.<name>`): the id's name part matches ignoring case and
- *  punctuation, the path's own book first. null: not a quality ref, or not in the catalog. */
-export function qualityIdOf(data: Pick<Sr6Data, 'qualities'>, ref: string, bookKey = ''): string | null {
+ *  punctuation, the path's own book first. With the path: else a quality named as the ref, `<path>: <step>` (how the
+ *  importer files a step) or the step's name alone, a parenthetical aside (`Phobia (Object)`) ignored.
+ *  null: not a quality ref, or not in the catalog. tools/cl6check/paths.py reads the same rule. */
+export function qualityIdOf(data: Pick<Sr6Data, 'qualities'>, ref: string, bookKey = '', path?: QualityPath): string | null {
   const m = /^quality:(.+)$/.exec(ref)
   if (!m) return null
   const ids = Object.keys(data.qualities).filter(id => norm(id.slice(id.indexOf('.') + 1)) === norm(m[1]))
-  return ids.find(id => id.startsWith(`${bookKey}.`)) ?? ids[0] ?? null
+  const hit = ids.find(id => id.startsWith(`${bookKey}.`)) ?? ids[0]
+  if (hit || !path) return hit ?? null
+  const step = path.steps.find(x => x.id === m[1])
+  const want = [m[1], ...(step ? [`${path.name}${step.name}`, step.name] : [])].map(norm)
+  const names = Object.entries(data.qualities).map(([id, q]) => [id, norm(q.name), norm(q.name.replace(/\s*\(.*$/, ''))] as const)
+  for (const w of want) {
+    const found = names.find(n => n[1] === w || n[2] === w)
+    if (found) return found[0]
+  }
+  return null
 }
 
 const MAGIC: Record<string, string> = { magician: 'full', adept: 'adept', mysticadept: 'mystic-adept', aspectedmagician: 'aspected' }
@@ -56,29 +67,35 @@ export const progressOf = (ch: Sr6Character, path: QualityPath) => ch.pathProgre
 export const pathsFor = (ch: Sr6Character, data: Sr6Data, cr: CreationRules, paths: QualityPath[]) =>
   paths.filter(p => progressOf(ch, p) || (p.steps[0] && meets(ch, data, cr, p.steps[0], p.bookKey)))
 
-/** Apply (or, `undo`, reverse) a step's add/remove mods on the runner's build; the sentences of those skipped. */
-function applyMods(ch: Sr6Character, path: QualityPath, step: PathStep, data: Sr6Data, cr: CreationRules, undo: boolean): string[] {
-  const skipped: string[] = []
-  for (const m of step.modifications) {
-    if (m.op !== 'add' && m.op !== 'remove') continue
-    const grant = (m.op === 'add') !== undo
-    const id = qualityIdOf(data, m.ref, path.bookKey)
-    const skip = (why: string) => {
-      const s = `${grant ? 'Add' : 'Remove'} ${m.ref} (${step.name}): ${why}`
-      console.warn(`[quality path ${path.id}] ${s}`)
-      skipped.push(s)
-    }
-    if (!id) {
-      skip('not in the catalog')
-      continue
-    }
-    const row = ch.build.qualities.find(q => q.id === id && !q.free)
-    if (grant ? row : !row) continue // already so
-    const r = apply(ch.build, grant ? { op: 'quality', id } : { op: 'quality', remove: row!.uid }, data, cr)
-    if (!r.ok) skip(`refused (${String(r.reason)})`)
+/** One mod of a step, applied (or, `undo`, reversed) on the runner's build: an add/remove of a quality, or a choice of
+ *  type QUALITY (the picked quality is added; the step's `quality:CHOICE` placeholder is that one). The sentence when
+ *  it was skipped. */
+function applyMod(ch: Sr6Character, path: QualityPath, step: PathStep, m: PathModification, data: Sr6Data, cr: CreationRules, undo: boolean): string | null {
+  let op: 'add' | 'remove', ref: string
+  if (m.op === 'add' || m.op === 'remove') [op, ref] = [m.op, m.ref]
+  else if (m.op === 'choice' && m.type === 'QUALITY') {
+    const pick = progressOf(ch, path)?.choicesByStepId[step.id]?.optionRef
+    if (!pick) return null
+    ;[op, ref] = ['add', `quality:${pick}`]
+  } else return null
+  if (ref === 'quality:CHOICE') return null
+  const grant = (op === 'add') !== undo
+  const id = qualityIdOf(data, ref, path.bookKey, path)
+  const skip = (why: string) => {
+    const s = `${grant ? 'Add' : 'Remove'} ${ref} (${step.name}): ${why}`
+    console.warn(`[quality path ${path.id}] ${s}`)
+    return s
   }
-  return skipped
+  if (!id) return skip('not in the catalog')
+  const row = ch.build.qualities.find(q => q.id === id && !q.free)
+  if (grant ? row : !row) return null // already so
+  const r = apply(ch.build, grant ? { op: 'quality', id } : { op: 'quality', remove: row!.uid }, data, cr)
+  return r.ok ? null : skip(`refused (${String(r.reason)})`)
 }
+
+/** Apply (or, `undo`, reverse) a step's mods on the runner's build; the sentences of those skipped. */
+const applyMods = (ch: Sr6Character, path: QualityPath, step: PathStep, data: Sr6Data, cr: CreationRules, undo: boolean) =>
+  step.modifications.flatMap(m => applyMod(ch, path, step, m, data, cr, undo) ?? [])
 
 /** Start the path at its first step. */
 export function startPath(ch: Sr6Character, path: QualityPath, data: Sr6Data, cr: CreationRules): string[] {
@@ -120,10 +137,24 @@ export function removePath(ch: Sr6Character, path: QualityPath, data: Sr6Data, c
   return skipped
 }
 
-/** Record the pick for a step's choice ('' as the option clears it). */
-export function chooseAt(ch: Sr6Character, path: QualityPath, stepId: string, optionRef: string, subOptionRef?: string) {
-  const p = progressOf(ch, path)
-  if (!p) return
+/** Record the pick for a step's choice ('' as the option clears it). A QUALITY choice takes the quality it names off
+ *  (the old pick) and adds the new one; the sentences of what was skipped. */
+export function chooseAt(
+  ch: Sr6Character,
+  path: QualityPath,
+  stepId: string,
+  optionRef: string,
+  subOptionRef: string | undefined,
+  data: Sr6Data,
+  cr: CreationRules,
+): string[] {
+  const p = progressOf(ch, path),
+    step = stepOf(path, stepId)
+  if (!p || !step) return []
+  const picks = step.modifications.filter(m => m.op === 'choice' && m.type === 'QUALITY')
+  const each = (undo: boolean) => picks.flatMap(m => applyMod(ch, path, step, m, data, cr, undo) ?? [])
+  each(true)
   if (!optionRef) delete p.choicesByStepId[stepId]
   else p.choicesByStepId[stepId] = subOptionRef ? { optionRef, subOptionRef } : { optionRef }
+  return each(false)
 }
