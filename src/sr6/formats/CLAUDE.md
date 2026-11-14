@@ -8,5 +8,5 @@ The file formats (runner, catalog, entry, compendium) and their schemas: the con
 - **Rules:** ranks in `docs/architecture/README.md`, enforced by `tests/core/shared/module-boundaries.test.ts`; never import `ca2/`, the other game.
 - **Test:** `npx vitest run tests/sr6/formats`; before a PR `npm run check`, `npm run lint`, `npm run format:check`.
 - **Docs:** [docs/sr6-character-format.md](../../../docs/sr6-character-format.md), [docs/sr6-data-format.md](../../../docs/sr6-data-format.md), [docs/sr6-data-format/categories.md](../../../docs/sr6-data-format/categories.md), [docs/sr6-data-format/classification.md](../../../docs/sr6-data-format/classification.md), … (+11 more).
-- **Do not touch:** other modules' files, `public/data/**`, `src/ca2/`.
+- **Do not touch:** other modules' files, `public/data/**`, `src/ca2/`. Additive, backward-compatible XSD extensions driven by catalog data are permitted when old files must still load as defaults (e.g. the 2026-11 `pathProgress` extension for the CL6 quality-path picker).
 - **Look-alikes in the other game** (`src/ca2/formats/`, same file names, different rules): `charxml.ts`, `compendium.ts`, `types.ts`.
