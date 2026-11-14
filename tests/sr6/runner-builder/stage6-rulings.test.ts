@@ -112,6 +112,8 @@ test('the shifter’s animal form: picked among the Shifter forms, its grants an
   const ex = exportSr6Runner(fixtureCatalog(undefined, FILES), w.data, w.cr, ch, { descriptions: false, now: '2026-10-31T00:00:00.000Z', appVersion: 't' })
   expect(ex.animalForm).toMatchObject({ form: 'Shifter (Furry)', weapons: [{ dv: '4P' }] })
   expect(ex.animalForm!.attributes.str).toBe(ex.attributes.str.augmented + 1)
+  const at = ex.animalForm!.attributes
+  expect(ex.animalForm!.weapons[0].ar).toEqual([at.rea + at.str, null, null, null, null])
 })
 
 test('a Shifter form’s requirements are character prerequisites (feathery: Body at most 3)', () => {

@@ -1829,7 +1829,12 @@
               "items": {
                 "type": "object",
                 "required": ["name", "dv"],
-                "properties": { "name": { "type": "string" }, "dv": { "type": "string" }, "skill": { "type": "string" } },
+                "properties": {
+                  "name": { "type": "string" },
+                  "dv": { "type": "string" },
+                  "skill": { "type": "string" },
+                  "ar": { "description": "Attack Rating by range band: the animal form's Reaction + Strength, close only.", "type": "array", "items": { "type": ["number", "null"] } }
+                },
                 "additionalProperties": false
               }
             }
