@@ -63,9 +63,23 @@ export function meets(ch: Sr6Character, data: Sr6Data, cr: CreationRules, step: 
 export const stepOf = (path: QualityPath, id: string) => path.steps.find(s => s.id === id)
 export const progressOf = (ch: Sr6Character, path: QualityPath) => ch.pathProgress?.find(p => p.pathId === path.id)
 
-/** The paths the runner may add (it meets the first step's requirements) or is already on. */
+/** The source id (catalog sources, importer recipes) of each Commlink6 book that has paths. */
+export const PATH_SOURCE: Record<string, string> = {
+  companion: 'SWC',
+  dealers_of_death: 'DOD',
+  deus_ex_arcana: 'DEA',
+  firing_squad: 'FS',
+  hack_slash: 'HS',
+  shadow_cast: 'SHC',
+}
+
+/** The paths the runner may add (its book is imported and it meets the first step's requirements) or is already on. */
 export const pathsFor = (ch: Sr6Character, data: Sr6Data, cr: CreationRules, paths: QualityPath[]) =>
-  paths.filter(p => progressOf(ch, p) || (p.steps[0] && meets(ch, data, cr, p.steps[0], p.bookKey)))
+  paths.filter(
+    p =>
+      progressOf(ch, p) ||
+      ((!PATH_SOURCE[p.bookKey] || (data.hasSource?.(PATH_SOURCE[p.bookKey]) ?? true)) && p.steps[0] && meets(ch, data, cr, p.steps[0], p.bookKey)),
+  )
 
 /** One mod of a step, applied (or, `undo`, reversed) on the runner's build: an add/remove of a quality, or a choice of
  *  type QUALITY (the picked quality is added; the step's `quality:CHOICE` placeholder is that one). The sentence when

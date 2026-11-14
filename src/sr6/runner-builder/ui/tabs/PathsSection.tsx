@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import type { PathChoiceOption, PathModification, QualityPath } from '../../../catalog/domain/data'
 import { getQualityPaths, PATH_BOOKS } from '../../../catalog/domain/load'
-import { advancePath, chooseAt, pathsFor, progressOf, qualityIdOf, removePath, rewindPath, startPath, stepOf } from '../../domain/paths'
+import { advancePath, chooseAt, PATH_SOURCE, pathsFor, progressOf, qualityIdOf, removePath, rewindPath, startPath, stepOf } from '../../domain/paths'
 import { useSr6Editor } from '../editor'
 
 const nice = (id: string) => (t => t[0].toUpperCase() + t.slice(1))(id.replace(/_/g, ' '))
@@ -25,17 +25,7 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
   // (a finalized runner's qualities come from its ledger, not the build: no stepping there)
   const locked = ro || career
   const run = (fn: (c: typeof ch) => string[]) => update(c => setNotes(fn(c)))
-  const bookName = (key: string) => {
-    const w = key.replace(/_/g, '').toLowerCase()
-    return (
-      [...(c?.sources.values() ?? [])].find(s =>
-        s.name
-          .toLowerCase()
-          .replace(/[^a-z0-9]/g, '')
-          .includes(w),
-      )?.name ?? nice(key)
-    )
-  }
+  const bookName = (key: string) => c?.sources.get(PATH_SOURCE[key])?.name ?? nice(key)
   const label = (m: PathModification, path: QualityPath) => {
     if (m.op === 'add' || m.op === 'remove') {
       const id = qualityIdOf(data, m.ref, path.bookKey, path)

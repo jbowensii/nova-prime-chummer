@@ -283,3 +283,15 @@ test('qualityIdOf finds a path step filed as `<path>: <step>`, and a parenthetic
   expect(qualityIdOf(data, 'quality:obsession_misfortune', 'companion', path)).toBe('swc.obsession-momentous-misfortune')
   expect(qualityIdOf(data, 'quality:phobia', 'fs', path)).toBe('fs.phobia-object')
 })
+
+test('a path shows only when its book is imported, unless the runner is already on it', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const { data, cr } = made()
+  const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
+  const book = (id: string, bookKey: string): QualityPath => ({ id, name: id, bookKey, steps: [step('a', 0, [], [])] })
+  const all = [book('fs_path', 'firing_squad'), book('swc_path', 'companion'), book('shc_path', 'shadow_cast')]
+  const only = { ...data, hasSource: (id: string) => id === 'FS' } as typeof data
+  expect(pathsFor(ch, only, cr, all).map(p => p.id)).toEqual(['fs_path'])
+  ch.pathProgress = [{ pathId: 'shc_path', currentStepId: 'a', visitedStepIds: ['a'], choicesByStepId: {} }]
+  expect(pathsFor(ch, only, cr, all).map(p => p.id)).toEqual(['fs_path', 'shc_path'])
+})
