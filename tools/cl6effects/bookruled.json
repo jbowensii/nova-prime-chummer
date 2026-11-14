@@ -280,5 +280,35 @@
     "cl6": "1",
     "ours": ["skill:conjuring wild-die 1"],
     "why": "DEA p. 132: the Terra Stone talisman adds a wild die to any Conjuring skill test, not an Edge point (owner ruling 2026-11-14: follow the book)"
+  },
+  {
+    "pair": ["dea", "fae_godmother", "mentorspirit"],
+    "sig": "checkmod SKILL con what=DICE",
+    "cl6": "1",
+    "ours": ["skill:con wild-die 1", "test:social add -1", "test:social no-edge 1"],
+    "why": "DEA p. 133: the Fae Glamour talisman adds a wild die, not an extra die, to Influence and Con tests while worn (owner ruling 2026-11-14: follow the book)"
+  },
+  {
+    "pair": ["dea", "fae_godmother", "mentorspirit"],
+    "sig": "checkmod SKILL influence what=DICE",
+    "cl6": "1",
+    "ours": ["skill:influence wild-die 1", "test:social add -1", "test:social no-edge 1"],
+    "why": "DEA p. 133: the Fae Glamour talisman adds a wild die, not an extra die, to Influence and Con tests while worn (owner ruling 2026-11-14: follow the book)"
+  },
+  {
+    "pair": ["dea", "goblin_king", "mentorspirit"],
+    "sig": "checkmod SKILL perception what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": [],
+    "book_gives_none": true,
+    "why": "DEA p. 132 prints no skill bonus for the Goblin King talisman; CL6 1.15 adds Edge on Perception and Outdoors (owner ruling 2026-11-14: follow the book)"
+  },
+  {
+    "pair": ["dea", "goblin_king", "mentorspirit"],
+    "sig": "checkmod SKILL outdoors what=EDGE_ONLY_TEST",
+    "cl6": "1",
+    "ours": [],
+    "book_gives_none": true,
+    "why": "DEA p. 132 prints no skill bonus for the Goblin King talisman; CL6 1.15 adds Edge on Perception and Outdoors (owner ruling 2026-11-14: follow the book)"
   }
 ]
