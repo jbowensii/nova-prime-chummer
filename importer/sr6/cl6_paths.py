@@ -35,6 +35,24 @@ def _raw(el):
     return ET.tostring(el, encoding="unicode")
 
 
+def _valmod(m):
+    """A valmod element as a modification entry (raw `what` kept as attr)."""
+    ref = f"{m.get('type', '').lower()}:{m.get('ref')}"
+    return {"op": "valmod", "ref": ref, "value": m.get("value"), "attr": m.get("what", "")}
+
+
+def _choice(c):
+    """A choice element: options from its `options` attribute or its subOption children."""
+    opts = [{"ref": o, "label": o} for o in filter(None, c.get("options", "").split(","))]
+    for so in c.findall("subOption"):
+        opt = {"ref": so.get("id"), "label": so.get("id")}
+        vals = [_valmod(v) for v in so.findall("modifications/valmod")]
+        if vals:
+            opt["modifications"] = vals  # per-option effect; beyond the spec'd schema, kept so nothing is lost
+        opts.append(opt)
+    return {"op": "choice", "ref": c.get("ref"), "type": c.get("type"), "id": c.get("uuid"), "options": opts}
+
+
 def read_book_paths(book, jar_path):
     """Parse the book's quality_paths.xml into a list of path dicts."""
     with zipfile.ZipFile(jar_path) as zf:
@@ -53,6 +71,12 @@ def read_book_paths(book, jar_path):
                     "ref": f"{m.get('type', '').lower()}:{m.get('ref')}",
                 }
                 for m in st.findall("modifications/itemmod")
+            ]
+            mods += [_valmod(m) for m in st.findall("modifications/valmod")]
+            mods += [_choice(c) for c in st.findall("choices/choice")]  # CL6 puts <choices> beside <modifications>
+            mods += [
+                {"op": "subOption", "ref": so.get("id"), "label": so.get("id")}
+                for so in st.findall("modifications/subOption")
             ]
             steps.append(
                 {

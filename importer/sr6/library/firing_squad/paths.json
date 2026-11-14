@@ -77,6 +77,12 @@
           {
             "op": "add",
             "ref": "quality:honorbound"
+          },
+          {
+            "op": "valmod",
+            "ref": "skill:knowledge",
+            "value": "1",
+            "attr": ""
           }
         ],
         "nextSteps": []
@@ -97,6 +103,22 @@
           {
             "op": "add",
             "ref": "quality:CHOICE"
+          },
+          {
+            "op": "choice",
+            "ref": "CHOICE",
+            "type": "QUALITY",
+            "id": "bfbfc52f-a174-4fa5-bc14-994b9f11ffc8",
+            "options": [
+              {
+                "ref": "phobia",
+                "label": "phobia"
+              },
+              {
+                "ref": "bad_memories",
+                "label": "bad_memories"
+              }
+            ]
           }
         ],
         "nextSteps": [
@@ -123,7 +145,14 @@
         "name": "Addiction",
         "body": "The use of substances to deal with stress has led to a negative outcome, and the character has become addicted to whatever they were using. They receive a level 1 Addiction (p. 74, SR6) to that substance, but they do not gain the Karma bonus from the quality.",
         "requires": [],
-        "modifications": [],
+        "modifications": [
+          {
+            "op": "valmod",
+            "ref": "quality:addiction",
+            "value": "1",
+            "attr": ""
+          }
+        ],
         "nextSteps": []
       },
       {

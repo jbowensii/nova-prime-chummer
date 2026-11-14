@@ -40,6 +40,15 @@ class PathsTest(unittest.TestCase):
         self.assertIn("first_interaction", st["reject"]["nextSteps"])
         self.assertEqual(P.stats([p]), (1, 3, 1, 2))
 
+    def test_valmod_and_choice(self):
+        """Companion's first path carries a choice; Firing Squad has a choice with 2+ options."""
+        first = P.read_book_paths("companion", JAR)[0]
+        ops = {m["op"] for s in first["steps"] for m in s["modifications"]}
+        self.assertTrue(ops & {"valmod", "choice"})
+        fs = P.read_book_paths("firing_squad", JAR)
+        choices = [m for p in fs for s in p["steps"] for m in s["modifications"] if m["op"] == "choice"]
+        self.assertTrue(any(len(c["options"]) >= 2 for c in choices))
+
 
 if __name__ == "__main__":
     unittest.main()

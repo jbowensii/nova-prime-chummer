@@ -15,6 +15,50 @@
           {
             "op": "add",
             "ref": "quality:critter_initial_bond"
+          },
+          {
+            "op": "choice",
+            "ref": "crittertype",
+            "type": "SUBSELECT",
+            "id": "611050a1-082d-4431-8547-6490b16ec545",
+            "options": [
+              {
+                "ref": "mundane_herbivore",
+                "label": "mundane_herbivore",
+                "modifications": [
+                  {
+                    "op": "valmod",
+                    "ref": "quality:dependents",
+                    "value": "1",
+                    "attr": ""
+                  }
+                ]
+              },
+              {
+                "ref": "mundane_carnivore",
+                "label": "mundane_carnivore",
+                "modifications": [
+                  {
+                    "op": "valmod",
+                    "ref": "quality:dependents",
+                    "value": "2",
+                    "attr": ""
+                  }
+                ]
+              },
+              {
+                "ref": "awakened_emerged",
+                "label": "awakened_emerged",
+                "modifications": [
+                  {
+                    "op": "valmod",
+                    "ref": "quality:dependents",
+                    "value": "3",
+                    "attr": ""
+                  }
+                ]
+              }
+            ]
           }
         ],
         "nextSteps": [
@@ -220,6 +264,13 @@
           {
             "op": "add",
             "ref": "quality:favored_weapon_extension"
+          },
+          {
+            "op": "choice",
+            "ref": "WEAPON",
+            "type": "CARRIED",
+            "id": "a30b08e1-d56d-48c8-8471-bbae5e7efc6f",
+            "options": []
           }
         ],
         "nextSteps": [
@@ -234,7 +285,48 @@
         "name": "Unique Customization",
         "body": "Your weapon is special, but it could become more special. In this step, you make it even more your own. <br/>Game Effect: With access to an Armorer tool shop, you may improve your favored weapon with an Engineering (Armorer) + Logic (6, 1 week) Extended test. You may customize your weapon up to three times, but the threshold for the Extended test increases to 12 for the second customization, and 18 for the third. The customizations are more related to your own mindset and familiarity with your favored weapon rather than purely technical modifications. They only apply when you are wielding the weapon, and may not be changed once selected. Anyone else using your customized weapon don't receive the bonuses, and may not gain or spend Edge on attacks made with it.",
         "requires": [],
-        "modifications": [],
+        "modifications": [
+          {
+            "op": "choice",
+            "ref": "favored_weapon_custom",
+            "type": "SUBSELECT",
+            "id": "cb435880-281d-4648-b0a5-04c14af0e4cd",
+            "options": [
+              {
+                "ref": "fav_weapon_kill",
+                "label": "fav_weapon_kill"
+              },
+              {
+                "ref": "fav_weapon_sighted",
+                "label": "fav_weapon_sighted"
+              },
+              {
+                "ref": "fav_weapon_deadly",
+                "label": "fav_weapon_deadly"
+              },
+              {
+                "ref": "fav_weapon_extra_mod",
+                "label": "fav_weapon_extra_mod"
+              },
+              {
+                "ref": "fav_weapon_extra_acc",
+                "label": "fav_weapon_extra_acc"
+              },
+              {
+                "ref": "fav_weapon_defensive",
+                "label": "fav_weapon_defensive"
+              },
+              {
+                "ref": "fav_weapon_offensive",
+                "label": "fav_weapon_offensive"
+              },
+              {
+                "ref": "fav_weapon_wicked",
+                "label": "fav_weapon_wicked"
+              }
+            ]
+          }
+        ],
         "nextSteps": [
           "favored_weapon_customization",
           "favored_weapon_attachment",
