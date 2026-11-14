@@ -28,7 +28,7 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
       const id = qualityIdOf(data, m.ref)
       return `${m.op === 'add' ? 'Gains' : 'Loses'} ${id ? data.qualities[id]?.name : m.ref.replace(/^quality:/, '')}`
     }
-    return m.op === 'valmod' ? `${m.attr} ${m.value ?? ''}`.trim() : m.op === 'choice' ? 'Choose one' : `Option: ${m.label}`
+    return m.op === 'valmod' ? `${m.attr} ${m.value ?? ''}`.trim() : m.op === 'subOption' ? `Option: ${m.label}` : 'Choose one'
   }
 
   return (
