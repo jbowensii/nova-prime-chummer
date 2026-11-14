@@ -28,6 +28,9 @@ import { UsersScreen } from '../../../features/accounts/Users'
 /** Core tables a runner can't be built without: while one is missing the app opens on its setup screen. */
 const ESSENTIAL = ['attributes', 'metatypes', 'levels', 'packages', 'pricing', 'skills']
 
+/** Whether the game has the core data to build runners (the first-visit Books redirect, core/app/booksFirst.ts). */
+export const hasAnarchyData = () => loadCatalog('./').then(c => !c.coreMissing.some(n => ESSENTIAL.includes(n)))
+
 /** No core data yet (loadCatalog's coreMissing): the Books page, where the core rulebook is imported, is all that works. */
 function NoCoreData({ missing }: { missing: string[] }) {
   const admin = isAdmin(useMe())
