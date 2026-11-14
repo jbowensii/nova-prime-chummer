@@ -17,6 +17,8 @@ let server: ReturnType<typeof createServer>,
 
 test.describe.configure({ mode: 'serial' })
 test.use({ baseURL: async ({}, use) => use(base), storageState: { cookies: [], origins: [] } })
+// this server has no SR6 data, so an admin's first visit would open its Books page (e2e/books-first.spec.ts): not what these tests are about
+test.beforeEach(({ page }) => page.addInitScript(() => localStorage.setItem('chummer.booksSeen.sr6', '1')))
 
 test.beforeAll(async () => {
   const dir = mkdtempSync(join(tmpdir(), 'ca2-games-e2e-')),

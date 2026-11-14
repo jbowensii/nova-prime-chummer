@@ -57,6 +57,9 @@ function folio(page: string, route: string[]) {
   return `${page === 'n' ? 'NPCs & Critters' : 'Your runners'} // ${[...SR6_TABS, ...NPC_TABS].find(([k]) => k === tab)?.[1] ?? ''}`
 }
 
+/** Whether any source supplied SR6 entries (the first-visit Books redirect, core/app/booksFirst.ts). */
+export const hasSr6Data = () => loadSr6Catalog('./').then(c => Object.values(c.entries).some(m => m.size > 0))
+
 export function Sr6Main({ repo, route }: { repo: Repo; route: string[] }) {
   const me = useMe(),
     admin = isAdmin(me)

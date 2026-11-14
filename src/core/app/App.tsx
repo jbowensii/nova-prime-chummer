@@ -5,7 +5,7 @@ import { detectRepo } from '../../features/runner-store/repo'
 import { type Repo } from '../ui-kit/repoContext'
 import { fetchMe, Me, onSessionEnd, session, type User } from '../ui-kit/auth'
 import { AskButton } from '../../features/ai-assist/AskRules'
-import { Main } from '../../ca2/shell/ui/AnarchyMain'
+import { Main, hasAnarchyData } from '../../ca2/shell/ui/AnarchyMain'
 import { SettingsButton } from './SettingsDialog'
 import { Setup } from '../../features/accounts/Setup'
 import { Recover, SignIn } from '../../features/accounts/SignIn'
@@ -15,7 +15,8 @@ import '../../sr6/shell/ui/theme.css'
 import { BackgroundArt } from '../../features/appearance/Background'
 import { GamePicker } from './GamePicker'
 import { SetupScreen } from './SetupScreen'
-import { Sr6Main } from '../../sr6/shell/ui/Sr6App'
+import { Sr6Main, hasSr6Data } from '../../sr6/shell/ui/Sr6App'
+import { checkBooksFirst, homeGame } from './booksFirst'
 import { gameOf, homeOf, storedGame } from '../ui-kit/game'
 
 const parseHash = () => location.hash.replace(/^#\/?/, '').split('/').filter(Boolean)
@@ -106,6 +107,19 @@ export default function App() {
   useLayoutEffect(() => {
     document.documentElement.dataset.game = look
   }, [look])
+  // an admin's first visit to a game with no books and no game data opens its Books page (booksFirst.ts)
+  const where = !route.length && !game ? null : homeGame(route),
+    admin = user?.role === 'admin'
+  useEffect(() => {
+    if (!repo || repo.mode !== 'server' || !admin || me?.setup || !where) return
+    let alive = true
+    void checkBooksFirst(where, where === 'sr6' ? hasSr6Data : hasAnarchyData).then(hash => {
+      if (alive && hash && homeGame(parseHash()) === where) location.replace(location.pathname + location.search + hash)
+    })
+    return () => {
+      alive = false
+    }
+  }, [repo, admin, where, me?.setup])
   useFocusTitle(`${route[0] ?? ''}/${route[0] === 'c' || route[0] === 'n' ? route[1] : ''}/${me?.setup}/${!!user}`)
   // a session that ends while the app is open: the sign-in form goes over the page, which keeps its state (unsaved
   // runner edits are sent again once signed back in); someone else signing in there starts afresh
