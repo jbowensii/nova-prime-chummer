@@ -76,14 +76,22 @@ async function signIn(page: Page, path: string, username: keyof typeof PW) {
 }
 const row = (page: Page, name: string) => page.locator('.dossier').filter({ has: page.getByRole('link', { name, exact: true }) })
 const status = (page: Page) => page.locator('p.banner[role=status]')
+// Load asks first (window.confirm): accept that one dialog, scoped to this click
+const accepting = (page: Page, name: string) => {
+  page.once('dialog', d => {
+    expect(d.message()).toContain('Load')
+    return d.accept()
+  })
+  return page.getByRole('button', { name }).click()
+}
 
 test('Your runners: Load example characters copies the book’s sample runners once', async ({ page }) => {
   await signIn(page, '/#/sr6', 'pat')
   await expect(page.getByText('No runners yet.')).toBeVisible()
-  await page.getByRole('button', { name: 'Load example characters' }).click()
+  await accepting(page, 'Load example characters')
   await expect(status(page)).toHaveText('Added 1 example character.')
   await expect(row(page, 'Glow Runner')).toContainText('Glimmerkin, Sum to ten') // the fixture's rows hold it only with Sum-to-Ten's repeated letters
-  await page.getByRole('button', { name: 'Load example characters' }).click()
+  await accepting(page, 'Load example characters')
   await expect(status(page)).toHaveText('The example characters are already in your runners.')
   await expect(row(page, 'Glow Runner')).toHaveCount(1)
   // the copy is Pat's own runner, built from the stat block, with what didn't map in its notes
@@ -92,6 +100,15 @@ test('Your runners: Load example characters copies the book’s sample runners o
   await expect(page.getByLabel('Notes')).toHaveValue(/Skills not in the catalog: Basket Weaving 2\./)
   // players never see NPCs
   await expect(page.getByRole('link', { name: 'NPCs & Critters' })).toHaveCount(0)
+})
+
+test('Load example characters does nothing when the question is dismissed', async ({ page }) => {
+  await signIn(page, '/#/sr6', 'pat')
+  await expect(row(page, 'Glow Runner')).toHaveCount(1) // from the test above; the trash-and-reload case is covered in the unit tests
+  page.once('dialog', d => d.dismiss())
+  await page.getByRole('button', { name: 'Load example characters' }).click()
+  await expect(status(page)).toHaveCount(0) // no "Added…" or "already in your runners" message: the handler never ran
+  await expect(row(page, 'Glow Runner')).toHaveCount(1)
 })
 
 test('NPCs & Critters: Load book NPCs copies the grunts, the sample contact, critters, spirits and sprites once', async ({ page }) => {
@@ -112,6 +129,7 @@ test('NPCs & Critters: Load book NPCs copies the grunts, the sample contact, cri
     return r.fallback()
   })
   const load = page.getByRole('button', { name: 'Load book NPCs' })
+  page.once('dialog', d => d.accept())
   await load.click()
   await expect(status(page)).toContainText(/^Loading book NPCs: \d+ of 10…/)
   await expect(status(page).locator('progress')).toHaveAttribute('max', '10')
@@ -122,6 +140,7 @@ test('NPCs & Critters: Load book NPCs copies the grunts, the sample contact, cri
   await expect(load).toBeEnabled()
   expect(held).toBe(9)
   await page.unroute('**/api/sr6/npcs/*')
+  page.once('dialog', d => d.accept())
   await load.click()
   await expect(status(page)).toHaveText('Loaded 1 · already there 9 · versions numbered 0 · failed 0.')
   await expect(page.getByRole('list', { name: 'Failed' })).toHaveCount(0)
@@ -144,6 +163,7 @@ test('NPCs & Critters: Load book NPCs copies the grunts, the sample contact, cri
   await expect(page.getByRole('region', { name: 'Spirits, Force 3' })).toContainText('Spirit of Puddles')
   await expect(page.getByRole('region', { name: 'Sprites, Level 3' })).toContainText('Glitch Sprite')
   await expect(page.locator('.dossier')).toHaveCount(6)
+  page.once('dialog', d => d.accept())
   await load.click()
   await expect(status(page)).toHaveText('Loaded 0 · already there 10 · versions numbered 0 · failed 0.')
   await page.goto('/#/sr6/npcs')
@@ -184,11 +204,11 @@ test('NPCs & Critters: a critter in two books loads once when the same, numbered
   await expect(page.getByRole('link', { name: 'Trash (1)' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Tidy book copies' })).toHaveCount(0)
   // Load book NPCs adds Wild Life's tougher Rustmole as #2, not its Fuzzbeast; pressing again adds nothing
-  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await accepting(page, 'Load book NPCs')
   await expect(status(page)).toHaveText('Loaded 1 · already there 10 · versions numbered 1 · failed 0.')
   await expect(row(page, 'Rustmole #2')).toHaveCount(1)
   await expect(row(page, 'Fuzzbeast')).toHaveCount(1)
-  await page.getByRole('button', { name: 'Load book NPCs' }).click()
+  await accepting(page, 'Load book NPCs')
   await expect(status(page)).toHaveText('Loaded 0 · already there 11 · versions numbered 0 · failed 0.')
   await expect(page.getByRole('button', { name: 'Tidy book copies' })).toHaveCount(0)
 })

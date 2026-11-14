@@ -125,6 +125,7 @@ try {
   // Shadowrun 6, as a player
   await put(sr6, 'api/sr6/characters/career-wisp-1', readFileSync('tests/fixtures/sr6/runner-career.xml', 'utf8'))
   await sr6.goto(base + '#/sr6')
+  sr6.once('dialog', d => d.accept())
   await sr6.getByRole('button', { name: 'Load example characters' }).click()
   await sr6.getByText('Added 1 example character.').waitFor()
   if (want('sr6-runners')) await shot(sr6, 'sr6-runners')
@@ -168,6 +169,7 @@ try {
 
   // Shadowrun 6, as a GM
   const gil = await newPage('gil', '#/sr6/npcs', 'sr6')
+  gil.once('dialog', d => d.accept())
   await gil.getByRole('button', { name: 'Load book NPCs' }).click()
   await gil.getByText(/^Loaded \d+/).waitFor()
   if (want('sr6-npcs')) await shot(gil, 'sr6-npcs')

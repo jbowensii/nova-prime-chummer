@@ -87,6 +87,7 @@ test('Load example characters copies each imported sample once; import adds a fi
       [/imported\/crb\/glow\.xml$/, () => sample],
     ],
   )
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
   await mount(page())
   await click(button('Load example characters'))
   await settle(5)
@@ -104,6 +105,17 @@ test('Load example characters copies each imported sample once; import adds a fi
   await settle(10)
   expect(pageText()).toMatch(/Imported Made-up Import\./)
   expect(pageText()).toMatch(/anarchy\.xml: This is a Shadowrun Anarchy runner/)
+})
+
+test('Load example characters asks first; cancelling saves nothing', async () => {
+  const { store, calls } = server([], [[/samples\.xml$/, () => '<samples><sample href="crb/glow.xml" name="Made-up Glow" source="CRB"/></samples>']])
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  await mount(page())
+  await click(button('Load example characters'))
+  await settle(5)
+  expect(window.confirm).toHaveBeenCalledOnce()
+  expect(stored(store)).toHaveLength(0)
+  expect(calls.filter(x => x.init?.method === 'PUT' || x.init?.method === 'POST')).toHaveLength(0)
 })
 
 test('a server whose sr6 account is in the way shows the legacy banner and blocks New runner', async () => {

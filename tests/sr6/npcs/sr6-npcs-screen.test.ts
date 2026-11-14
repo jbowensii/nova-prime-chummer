@@ -2,9 +2,9 @@
 // a new grunt from the catalog at a Professional Rating, the book NPCs loaded once, search, sharing
 // with a campaign and delete. Made-up fixture NPCs.
 import { act, createElement } from 'react'
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { sr6ToXml, xmlToSr6 } from '../../../src/sr6/formats/domain/charxml'
-import { npcFromEntry } from '../../../src/sr6/runner-builder/domain/creation/npc'
+import { blankSr6Npc, npcFromEntry } from '../../../src/sr6/runner-builder/domain/creation/npc'
 import { Sr6EditorView } from '../../../src/sr6/shell/ui/EditorView'
 import { Sr6Npcs } from '../../../src/sr6/npcs/ui/Npcs'
 import { fixtureCatalog, made } from '../catalog/fixture'
@@ -46,6 +46,7 @@ test('New NPC: a catalog grunt at a Professional Rating, saved and opened', asyn
 
 test('Load book NPCs copies the catalog’s NPCs once; search, share and delete', async () => {
   const { store, calls } = server()
+  vi.spyOn(window, 'confirm').mockReturnValue(true)
   await mount(createElement(Sr6Npcs, { c, data, cr }))
   await click(button('Load book NPCs'))
   await settle(10)
@@ -65,6 +66,20 @@ test('Load book NPCs copies the catalog’s NPCs once; search, share and delete'
   await click(button(`Delete ${first}`))
   await click(button(/^Delete/, document.querySelector('dialog[open]')!))
   expect(stored(store)).toHaveLength(loaded - 1)
+})
+
+test('Load book NPCs asks first; cancelling saves nothing and leaves a 0.9.0 contact copy alone', async () => {
+  const old = blankSr6Npc('grunt')
+  old.npc!.group = 'Contact'
+  old.sampleKey = 'CRB|crb.fixer-fred'
+  const { store, calls } = server({ [old.id]: sr6ToXml(old) })
+  vi.spyOn(window, 'confirm').mockReturnValue(false)
+  await mount(createElement(Sr6Npcs, { c, data, cr }))
+  await click(button('Load book NPCs'))
+  await settle(10)
+  expect(window.confirm).toHaveBeenCalledOnce()
+  expect(stored(store).map(x => x.npc?.kind)).toEqual(['grunt'])
+  expect(calls.filter(x => x.init?.method === 'PUT' || x.init?.method === 'POST')).toHaveLength(0)
 })
 
 test('an NPC’s editor: Concept and Stat block tabs; the rating, a printed stat, a new stat and its group are saved', async () => {
