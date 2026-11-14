@@ -294,7 +294,7 @@ export interface Sr6ExportRunner {
    *  only when it differs */
   attributes: Record<Sr6Attr, { natural: number; augmented: number; switched?: number }>
   /** a shifter's animal form (optional; runner-builder drake.ts animalStats): its form, attributes and built-in weapons */
-  animalForm?: { form: string; attributes: Record<string, number>; weapons: { name: string; dv: string; skill?: string }[] }
+  animalForm?: { form: string; attributes: Record<string, number>; weapons: { name: string; dv: string; skill?: string; ar: (number | null)[] }[] }
   essence: number
   edge: number
   skills: { id: string; name: string; attr: string; rank: number; spec?: string; expertise?: string; specs?: string[] }[]
@@ -1018,5 +1018,7 @@ export function exportSr6Compendium(c: Sr6Catalog, data: Sr6Data, cr: CreationRu
 function animalExport(b: Sr6Character['build'], data: Sr6Data, d: Sr6Derived): Pick<Sr6ExportRunner, 'animalForm'> {
   const st = animalStats(b, data, Object.fromEntries(Object.entries(d.attrs).map(([k, v]) => [k, v.augmented])) as Record<Sr6Attr, number>)
   const form = animalForm(b, data).form
-  return st && form ? { animalForm: { form: form.name, attributes: st.attrs, weapons: st.weapons } } : {}
+  // a natural weapon's Attack Rating: the animal form's Reaction + Strength, close range only (owner 2026-11-14; no existing function computes it)
+  const ar = [(st?.attrs.rea ?? 0) + (st?.attrs.str ?? 0), null, null, null, null]
+  return st && form ? { animalForm: { form: form.name, attributes: st.attrs, weapons: st.weapons.map(w => ({ ...w, ar })) } } : {}
 }
