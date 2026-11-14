@@ -7,6 +7,7 @@ import type { CreationRules } from '../../table-setup/domain/creation'
 import type { PathStep, QualityPath, Sr6Data } from '../../catalog/domain/data'
 import type { Sr6Character } from '../../formats/domain/character'
 import { apply } from './creation/actions'
+import { deriveSr6 } from './creation/derive'
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
@@ -19,27 +20,41 @@ export function qualityIdOf(data: Pick<Sr6Data, 'qualities'>, ref: string, bookK
   return ids.find(id => id.startsWith(`${bookKey}.`)) ?? ids[0] ?? null
 }
 
-/** Whether the runner meets a step's QUALITY requirements (`<datareq type="QUALITY" ref negate>`). Other requirement
- *  types are not checked (ponytail: the engine has no evaluator for them; they let the path through). */
-export function meets(ch: Sr6Character, data: Pick<Sr6Data, 'qualities'>, step: PathStep, bookKey = ''): boolean {
+const MAGIC: Record<string, string> = { magician: 'full', adept: 'adept', mysticadept: 'mystic-adept', aspectedmagician: 'aspected' }
+const warned = new Set<string>()
+const attr = (tag: string, k: string) => new RegExp(`\\b${k}="([^"]*)"`).exec(tag)?.[1]
+
+/** Whether the runner meets a step's requirements: QUALITY (`negate` too), MAGIC_RESO (any one named kind, or a held
+ *  quality of that name: Minor Awakened) and ATTRIBUTE ESSENCE (`max`, in thousandths). GEAR and METAECHO have no answer in
+ *  the runner model: they let the path through (one console.warn per type). */
+export function meets(ch: Sr6Character, data: Sr6Data, cr: CreationRules, step: PathStep, bookKey = ''): boolean {
+  const held = (id: string) => ch.build.qualities.some(q => q.id === id)
+  let magic: boolean | undefined
   for (const x of step.requires)
-    for (const m of x.matchAll(/<datareq\s[^>]*>/g)) {
-      const tag = m[0]
-      if (!/type="QUALITY"/.test(tag)) continue
-      const ref = /ref="([^"]+)"/.exec(tag)?.[1]
-      const id = ref && qualityIdOf(data, `quality:${ref}`, bookKey)
-      if (!id) continue
-      if (ch.build.qualities.some(q => q.id === id) === /negate="true"/.test(tag)) return false
+    for (const m of x.matchAll(/<(?:data|value)req\s[^>]*>/g)) {
+      const tag = m[0],
+        type = attr(tag, 'type') ?? '',
+        ref = attr(tag, 'ref') ?? '',
+        id = qualityIdOf(data, `quality:${ref}`, bookKey)
+      if (type === 'QUALITY') {
+        if (id && held(id) === /negate="true"/.test(tag)) return false
+      } else if (type === 'MAGIC_RESO') magic = (magic ?? false) || ch.build.magic === MAGIC[ref] || (!MAGIC[ref] && !!id && held(id))
+      else if (type === 'ATTRIBUTE' && ref === 'ESSENCE') {
+        if (deriveSr6(data, cr, ch).essence * 1000 > Number(attr(tag, 'max') ?? Infinity)) return false
+      } else if (!warned.has(type)) {
+        warned.add(type)
+        console.warn(`[quality path] requirement type ${type} is not checked`)
+      }
     }
-  return true
+  return magic !== false
 }
 
 export const stepOf = (path: QualityPath, id: string) => path.steps.find(s => s.id === id)
 export const progressOf = (ch: Sr6Character, path: QualityPath) => ch.pathProgress?.find(p => p.pathId === path.id)
 
 /** The paths the runner may add (it meets the first step's requirements) or is already on. */
-export const pathsFor = (ch: Sr6Character, data: Pick<Sr6Data, 'qualities'>, paths: QualityPath[]) =>
-  paths.filter(p => progressOf(ch, p) || (p.steps[0] && meets(ch, data, p.steps[0], p.bookKey)))
+export const pathsFor = (ch: Sr6Character, data: Sr6Data, cr: CreationRules, paths: QualityPath[]) =>
+  paths.filter(p => progressOf(ch, p) || (p.steps[0] && meets(ch, data, cr, p.steps[0], p.bookKey)))
 
 /** Apply (or, `undo`, reverse) a step's add/remove mods on the runner's build; the sentences of those skipped. */
 function applyMods(ch: Sr6Character, path: QualityPath, step: PathStep, data: Sr6Data, cr: CreationRules, undo: boolean): string[] {

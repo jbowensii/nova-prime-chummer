@@ -3,7 +3,7 @@ import type { FixAt, Severity } from '../../../../core/shared/types'
 import { CP_POOLS, MAGIC_KIND_LABELS, SR6_ATTRS, type Sr6Attr, type Sr6Build, type Sr6Character, type Sr6Purchase } from '../../../formats/domain/character'
 import { entryOf, fitted, PURCHASE_TAB, skillRank, type Sr6Budgets } from '../creation/budgets'
 import { flag, num, str, type CreationRules } from '../../../table-setup/domain/creation'
-import { type Sr6Data } from '../../../catalog/domain/data'
+import { type QualityPath, type Sr6Data } from '../../../catalog/domain/data'
 import { normName } from '../../../catalog/domain/names'
 import type { Sr6Entry } from '../../../formats/domain/types'
 import { deriveSr6 } from '../creation/derive'
@@ -17,6 +17,8 @@ export interface Ctx {
   b: Sr6Build
   p: Provider
   budgets: Sr6Budgets
+  /** the loaded quality paths ([] until fetched: the path rules wait) */
+  paths: QualityPath[]
 }
 export const fixOf = (h: Hit, r: Rule) => (h.fixAt ? { fixAt: h.fixAt } : r.fixAt ? { fixAt: { tab: r.fixAt } } : {})
 /** A broken rule: where (default: the rule's tab), what, and its citation when it isn't the setting's. */

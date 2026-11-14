@@ -4,7 +4,7 @@ import type { Violation } from '../../../../core/shared/types'
 import { PICK_KINDS, PURCHASE_KINDS, type Sr6Character } from '../../../formats/domain/character'
 import { allBudgets, PURCHASE_TAB } from '../creation/budgets'
 import { CREATION_KEYS, blockedBy, cite, conflictsOf, expandKeys, isOn, isRunnerRuleKey, type CreationRules } from '../../../table-setup/domain/creation'
-import { type Sr6Data } from '../../../catalog/domain/data'
+import { type QualityPath, type Sr6Data } from '../../../catalog/domain/data'
 import { makeProvider } from '../creation/providers'
 import { entryLabel } from '../../../catalog/domain/categories'
 import { type Ctx, fixOf } from './context'
@@ -42,10 +42,10 @@ export const CAREER_KEEP = new Set([
 
 /** Every broken creation rule on `ch`, the catalog's own problems, and a warning per unset setting a rule needed; approved
  *  from the GM's overrides (code and path). */
-export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character): Violation[] {
+export function validateSr6(data: Sr6Data, cr: CreationRules, ch: Sr6Character, paths: QualityPath[] = []): Violation[] {
   const b = ch.build,
     p = makeProvider(b.method, data, cr)
-  const c: Ctx = { data, cr, ch, b, p, budgets: allBudgets(b, data, cr, p) }
+  const c: Ctx = { data, cr, ch, b, p, budgets: allBudgets(b, data, cr, p), paths }
   const labels = new Map(expandKeys(data).map(k => [k.key, k.label]))
   const out: Violation[] = [],
     unset = new Set<string>(),

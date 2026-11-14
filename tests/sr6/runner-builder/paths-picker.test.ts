@@ -6,9 +6,10 @@ import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { QualityPath } from '../../../src/sr6/catalog/domain/data'
 import { blankSr6 } from '../../../src/sr6/formats/domain/character'
-import { advancePath, rewindPath, startPath } from '../../../src/sr6/runner-builder/domain/paths'
+import { advancePath, pathsFor, rewindPath, startPath } from '../../../src/sr6/runner-builder/domain/paths'
 import { Sr6Editor, type Sr6Ctx } from '../../../src/sr6/runner-builder/ui/editor'
 import { PathsSection } from '../../../src/sr6/runner-builder/ui/tabs/PathsSection'
+import { validateSr6 } from '../../../src/sr6/runner-builder/domain/review/validate'
 import { buildOf, made } from '../catalog/fixture'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -114,4 +115,115 @@ test('the DEA mentor-spirit loop: each walk into reject / first_interaction grow
   expect(ch.pathProgress[0].currentStepId).toBe('reject')
   rewindPath(ch, path, data, cr)
   expect(ch.pathProgress[0].currentStepId).toBe('first_interaction')
+})
+
+const pick = (host: HTMLElement, label: string, value: string) =>
+  act(() => {
+    const el = host.querySelector(`select[aria-label="${label}"]`) as HTMLSelectElement
+    Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value')!.set!.call(el, value)
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+
+test('a step choice: the select records optionRef, a sub-option select records subOptionRef, "" clears', async () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const path: QualityPath = {
+    id: 'choice_path',
+    name: 'Choice Path',
+    bookKey: 'crb',
+    steps: [
+      step(
+        'c1',
+        0,
+        [
+          {
+            op: 'choice',
+            ref: 'CHOICE',
+            type: 'QUALITY',
+            id: 'u1',
+            options: [
+              { ref: 'phobia', label: 'phobia' },
+              { ref: 'bad_memories', label: 'bad_memories' },
+            ],
+          },
+        ],
+        ['c2'],
+      ),
+      step(
+        'c2',
+        0,
+        [
+          {
+            op: 'choice',
+            ref: 'crittertype',
+            type: 'SUBSELECT',
+            id: 'u2',
+            options: [{ ref: 'herbivore', label: 'herbivore', subOptions: [{ ref: 'deer', label: 'deer' }] }],
+          },
+        ],
+        [],
+      ),
+    ],
+  }
+  const m = mount([path])
+  await m.render()
+  await click(m.host, 'Start this path')
+  await pick(m.host, 'Path choice', 'phobia')
+  expect(m.ch.pathProgress[0].choicesByStepId).toEqual({ c1: { optionRef: 'phobia' } })
+  await pick(m.host, 'Path choice', '')
+  expect(m.ch.pathProgress[0].choicesByStepId).toEqual({})
+  await click(m.host, 'C2')
+  await pick(m.host, 'Path choice', 'herbivore')
+  await pick(m.host, 'Path sub-option', 'deer')
+  expect(m.ch.pathProgress[0].choicesByStepId.c2).toEqual({ optionRef: 'herbivore', subOptionRef: 'deer' })
+})
+
+test('path visibility by requirement: met, unmet and negate', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const req = (id: string, r: string): QualityPath => ({ id, name: id, bookKey: 'crb', steps: [{ ...step('a', 0, [], []), requires: [r] }] })
+  const q = (ref: string, negate = false) => `<datareq type="QUALITY" ref="${ref}"${negate ? ' negate="true"' : ''} apply="CHARACTER" />`
+  const { data, cr } = made()
+  const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
+  ch.build = buildOf('priority', { letters: 'CBADA' })
+  startPath(ch, FIX, data, cr)
+  const all = [
+    req('met', q('butterfingers')),
+    req('unmet', q('stoneskin')),
+    req('negate_hidden', q('butterfingers', true)),
+    req('negate_shown', q('stoneskin', true)),
+  ]
+  expect(pathsFor(ch, data, cr, all).map(p => p.id)).toEqual(['met', 'negate_shown'])
+})
+
+test('Review path.progress warns: unknown path, off-graph step, missing choice, uncatalogued mod; MAGIC_RESO gates by kind', () => {
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const { data, cr } = made()
+  const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
+  ch.build = buildOf('priority', { letters: 'CBADA' })
+  const P: QualityPath = {
+    id: 'p',
+    name: 'P',
+    bookKey: 'crb',
+    steps: [
+      step('a', 0, [{ op: 'choice', ref: 'X', type: null, id: null, options: [] }], ['b']),
+      step('b', 1, [{ op: 'add', ref: 'quality:not_in_catalog' }], []),
+    ],
+  }
+  ch.pathProgress = [
+    { pathId: 'gone', currentStepId: 'a', visitedStepIds: ['a'], choicesByStepId: {} },
+    { pathId: 'p', currentStepId: 'b', visitedStepIds: ['b', 'a'], choicesByStepId: {} },
+  ]
+  expect(validateSr6(data, cr, ch).filter(v => v.code === 'path.progress')).toEqual([])
+  const msgs = validateSr6(data, cr, ch, [P]).filter(v => v.code === 'path.progress')
+  expect(msgs.every(v => v.severity === 'warning')).toBe(true)
+  const text = msgs.map(v => v.message).join(' ')
+  for (const w of ['isn’t in the loaded paths', 'doesn’t follow', 'asks for a choice', 'not_in_catalog']) expect(text).toContain(w)
+  const mag: QualityPath = {
+    ...P,
+    id: 'mag',
+    steps: [{ ...step('a', 0, [], []), requires: ['<selreq><datareq type="MAGIC_RESO" ref="adept" /><datareq type="MAGIC_RESO" ref="magician" /></selreq>'] }],
+  }
+  ch.build.magic = 'mundane'
+  expect(pathsFor(ch, data, cr, [mag])).toEqual([])
+  ch.build.magic = 'full'
+  expect(pathsFor(ch, data, cr, [mag])).toEqual([mag])
 })

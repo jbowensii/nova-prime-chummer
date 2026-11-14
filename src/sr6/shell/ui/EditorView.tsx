@@ -17,7 +17,8 @@ import { ConflictDialog, SaveLine, useAutosave } from '../../../features/runner-
 import { allBudgets } from '../../runner-builder/domain/creation/budgets'
 import { currentBuild, preview, record, validateCareer } from '../../runner-builder/domain/career/career'
 import type { CreationRules } from '../../table-setup/domain/creation'
-import { sr6Data, type Sr6Data } from '../../catalog/domain/data'
+import { sr6Data, type QualityPath, type Sr6Data } from '../../catalog/domain/data'
+import { getQualityPaths, PATH_BOOKS } from '../../catalog/domain/load'
 import { deriveSr6 } from '../../runner-builder/domain/creation/derive'
 import { forSr6Campaign, houseNotes, keepSr6House, withSr6House } from '../../runner-builder/domain/career/house'
 import { makeProvider } from '../../runner-builder/domain/creation/providers'
@@ -89,6 +90,10 @@ export function Sr6EditorView({
     inEditor: h => h.startsWith(href(id, '')),
   })
   const { doc: ch, setDoc, loaded, loadError, owner, status, saveNow, saveAndClose } = save
+  const [paths, setPaths] = useState<QualityPath[]>([])
+  useEffect(() => {
+    if (ch?.pathProgress?.length) void Promise.all(PATH_BOOKS.map(b => getQualityPaths(b))).then(r => setPaths(r.flat()))
+  }, [ch?.pathProgress?.length])
   const [refusal, setRefusal] = useState<string | null>(null)
   const gm = canEdit(useMe()) // GM approval: GMs (editors) and the admin
   // the runner's rules: the server's or its campaign's, with its own choices over them where the campaign doesn't lock them
@@ -122,9 +127,9 @@ export function Sr6EditorView({
       p,
       budgets: allBudgets(view.build, data, cr, p),
       d: deriveSr6(data, cr, view),
-      v: [...(ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, withSampleFixes(c, ch).ch)), ...houseNotes(c, kept.gone)],
+      v: [...(ch.finalizedAt ? validateCareer(data, cr, ch) : validateSr6(data, cr, withSampleFixes(c, ch).ch, paths)), ...houseNotes(c, kept.gone)],
     }
-  }, [ch, data, cr, c, kept.gone])
+  }, [ch, data, cr, c, kept.gone, paths])
 
   useScrollToTarget(tab === 'build' ? undefined : sub, !!calc)
 

@@ -18,7 +18,7 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
       live = false
     }
   }, [load])
-  const shown = pathsFor(ch, data, paths)
+  const shown = pathsFor(ch, data, cr, paths)
   if (shown.length === 0) return null
   // (a finalized runner's qualities come from its ledger, not the build: no stepping there)
   const locked = ro || career
