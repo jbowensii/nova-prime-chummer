@@ -26,6 +26,7 @@ extraResources:
   - from: build/python
     to: python
 win:
+  icon: assets/app-icon-98/icon.ico
   target:
     - nsis
     - portable
