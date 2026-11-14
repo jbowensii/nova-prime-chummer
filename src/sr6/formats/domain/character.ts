@@ -652,6 +652,15 @@ export interface Sr6Printed {
  *  Finalize. npc: set on an NPC (its build stays blank). design: set on a vehicle or drone design (likewise). sampleKey:
  *  the catalog entry a book NPC was loaded from, or the book sample an example runner was copied from (`<source>|<id>`). house: copies of the GM compendium entries it uses
  *  (src/sr6/runner-builder/domain/career/house.ts), so it keeps them when the compendium is unshared or deleted. */
+/** A runner's progress along one graph quality path (the books' quality paths, src/sr6/catalog/domain/data.ts QualityPath):
+ *  the step it stands at, the steps it has been at in order (a loop shows a step twice) and its pick at each step. */
+export interface PathProgress {
+  pathId: string
+  currentStepId: string
+  visitedStepIds: string[]
+  choicesByStepId: Record<string, { optionRef: string; subOptionRef?: string }>
+}
+
 export interface Sr6Character {
   formatVersion: 1
   id: string
@@ -661,6 +670,8 @@ export interface Sr6Character {
   final?: { karma: number; nuyen: number }
   campaign?: string
   ledger: Sr6LedgerEntry[]
+  /** graph quality paths in progress (none: []); the picker grants and revokes the quality rows, not this record */
+  pathProgress: PathProgress[]
   /** with the In Debt quality: the debt as a percentage of the nuyen total, taken off the balance (0/unset: none) */
   debtPercent?: number
   npc?: Sr6Npc
@@ -715,6 +726,7 @@ export function blankSr6(method: Sr6Method = 'priority', id = newId(), now = new
     identity: { name: '', streetName: '', metatype: '', background: '', notes: '' },
     build: blankBuild(method),
     ledger: [],
+    pathProgress: [],
     overrides: [],
     updatedAt: now,
   }

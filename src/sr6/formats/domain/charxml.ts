@@ -117,6 +117,17 @@ export function xmlToSr6(xml: string, opts: ReadOpts = {}): Sr6Parsed {
               }),
             )
           : undefined,
+      pathProgress: kids(r, 'pathProgress').map(p => ({
+        pathId: p.getAttribute('pathId') ?? '',
+        currentStepId: p.getAttribute('currentStepId') ?? '',
+        visitedStepIds: kids(p, 'visited').map(v => v.getAttribute('step') ?? ''),
+        choicesByStepId: Object.fromEntries(
+          kids(p, 'choice').map(c => [
+            c.getAttribute('step') ?? '',
+            def({ optionRef: c.getAttribute('optionRef') ?? '', subOptionRef: str(c, 'subOptionRef') }),
+          ]),
+        ),
+      })),
       overrides: kids(r, 'override').map(o => ({ code: o.getAttribute('code') ?? '', path: o.getAttribute('path') ?? '', note: o.textContent ?? '' })),
       migrated: kids(r, 'migrated').length
         ? kids(r, 'migrated').map(m => ({ from: m.getAttribute('from') ?? '', to: m.getAttribute('to') ?? '', at: m.getAttribute('at') ?? '' }))

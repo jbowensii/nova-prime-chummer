@@ -3,6 +3,7 @@
 import argparse
 import copy
 import json
+import shutil
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -98,6 +99,16 @@ def write_canonical(book, paths, out_dir):
     d = Path(out_dir) / book
     d.mkdir(parents=True, exist_ok=True)
     (d / "paths.json").write_text(json.dumps(paths, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def publish(custom_dir):
+    """Copy each book's library/<book>/paths.json to <custom_dir>/paths/<book>.json (served at /custom/sr6/paths/)."""
+    out = Path(custom_dir) / "paths"
+    for book in BOOKS:
+        src = Path(__file__).parent / "library" / book / "paths.json"
+        if src.is_file():
+            out.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, out / f"{book}.json")
 
 
 def stats(paths):

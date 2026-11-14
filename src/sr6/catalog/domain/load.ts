@@ -13,6 +13,7 @@ import { readSr6Compendium, sr6CompendiumSource } from '../../formats/domain/com
 import { bookValue, ratingRange, type Find } from './values'
 import { expandLevels } from './levels'
 import { entryKey } from './names'
+import type { QualityPath } from './data'
 import { SR6_NS, toEntry } from '../../formats/domain/entryxml'
 
 // (the entry codec lives in entryxml.ts, apart from the loader, so compendium.ts and charxml.ts read entries without
@@ -324,4 +325,32 @@ export async function loadSr6Catalog(base = './', extra: SourceFile[] = [], cl6o
   const c = buildSr6Catalog(files)
   for (const m of missing) c.errors.push({ file: m, message: 'could not be fetched' })
   return c
+}
+
+export const PATH_BOOKS = ['companion', 'dealers_of_death', 'deus_ex_arcana', 'firing_squad', 'hack_slash', 'shadow_cast']
+const pathCache = new Map<string, Promise<QualityPath[]>>()
+const fetchText = (path: string) =>
+  fetch(path, { cache: 'no-cache' }).then(
+    r => (r.ok ? r.text() : null),
+    () => null,
+  )
+
+/** A book's graph quality paths (custom/sr6/paths/<bookKey>.json, copied by the importer), fetched on first ask and kept.
+ *  A book with no paths, or a file that can't be read, gives [] (and is asked again next time). `get` as collectSr6Files'. */
+export async function getQualityPaths(bookKey: string, get: (path: string) => Promise<string | null> = fetchText): Promise<QualityPath[]> {
+  if (!PATH_BOOKS.includes(bookKey)) return []
+  let p = pathCache.get(bookKey)
+  if (!p) {
+    p = get(`${CUSTOM}paths/${bookKey}.json`).then(t => {
+      try {
+        if (t) return (JSON.parse(t) as Omit<QualityPath, 'bookKey'>[]).map(q => ({ ...q, bookKey }))
+      } catch {
+        // fall through: unreadable, as missing
+      }
+      pathCache.delete(bookKey)
+      return []
+    })
+    pathCache.set(bookKey, p)
+  }
+  return p
 }

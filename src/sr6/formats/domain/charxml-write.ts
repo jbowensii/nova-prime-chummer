@@ -353,6 +353,20 @@ export const printedXml = (p?: Sr6Printed) =>
       )
     : ''
 
+export const pathProgressXml = (ps: Sr6Character['pathProgress']) =>
+  ps
+    .map(p =>
+      el(
+        'pathProgress',
+        { pathId: p.pathId, currentStepId: p.currentStepId },
+        p.visitedStepIds.map(step => el('visited', { step })).join('') +
+          Object.entries(p.choicesByStepId)
+            .map(([step, c]) => el('choice', { step, optionRef: c.optionRef, subOptionRef: c.subOptionRef }))
+            .join(''),
+      ),
+    )
+    .join('\n  ')
+
 /** Serialize a runner. `rev` is the server's revision counter (omitted for exports). */
 export function sr6ToXml(ch: Sr6Character, rev?: number): string {
   const id = ch.identity
@@ -365,6 +379,7 @@ export function sr6ToXml(ch: Sr6Character, rev?: number): string {
     text('notes', id.notes),
     printedXml(ch.printed),
     rulesXml(ch.rules),
+    pathProgressXml(ch.pathProgress),
     buildXml(ch.build),
     ledgerXml(ch.ledger),
     houseXml(ch.house),

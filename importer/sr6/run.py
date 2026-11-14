@@ -14,7 +14,7 @@ from xml.sax.saxutils import escape, quoteattr
 
 from importer import library, reflow, xmlio
 from importer.convert import SR6_CONVERTER_VERSION, convert
-from importer.sr6 import ROOT, classes, effects, moved, overrides, regroup, resolve, statpowers
+from importer.sr6 import ROOT, classes, cl6_paths, effects, moved, overrides, regroup, resolve, statpowers
 from importer.sr6.recipes import RECIPES, identify, printing, skipped
 
 
@@ -159,6 +159,7 @@ def run(book_dir, custom_dir, convert_pdf=True, file_name=None, refresh=True):
         if newer:
             xmlio.write_status(book_dir, "superseded", f"Superseded by {newer[0][1]}")
         xmlio.update_index(custom_dir)
+        cl6_paths.publish(custom_dir)  # the graph quality paths (importer/sr6/library/<book>/paths.json)
         library.update_sources(custom_dir, os.path.dirname(os.path.normpath(book_dir)), ROOT)
         if not newer:
             xmlio.write_status(book_dir, "done")
