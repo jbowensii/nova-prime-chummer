@@ -354,7 +354,7 @@ export const printedXml = (p?: Sr6Printed) =>
     : ''
 
 export const pathProgressXml = (ps: Sr6Character['pathProgress']) =>
-  ps
+  (ps ?? [])
     .map(p =>
       el(
         'pathProgress',

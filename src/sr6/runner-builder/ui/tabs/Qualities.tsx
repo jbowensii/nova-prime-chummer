@@ -37,6 +37,7 @@ import { animalismAllowed, animalismGrade, animalismMax, animalismPicks, isAnima
 import { ATTR_NAMES, n, useSr6Editor } from '../editor'
 import { House, OptionFields, Situational } from '../Picker'
 import { cardOf, Sr6Ref } from '../EntryRef'
+import { PathsSection } from './PathsSection'
 
 export function QualitiesTab() {
   const { ch, c, data, cr, act } = useSr6Editor()
@@ -229,6 +230,7 @@ export function QualitiesTab() {
       <button className="btn" onClick={() => setPicking('negative')}>
         Add a negative quality…
       </button>
+      <PathsSection />
       {/* a drake's type (the Drake quality's pick, a granted quality) and its dracoform adjustment points (LL p. 16; drake.ts) */}
       {drakeType(b, data) && (
         <>
