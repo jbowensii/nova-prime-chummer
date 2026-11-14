@@ -108,9 +108,9 @@ def _norm(s):
 
 def book_paths(custom_dir, cl6=None):
     """The paths the books print that Commlink6 lacks, as linear paths (`origin: book`): each
-    imported/<src>/qualitypaths.xml entry, its steps the qualities of that source named so (the quality's name or its
-    printed `alias`, else a bare
-    `Step 1` of the group of the path's name), in printed order, a heading that is no quality (an intro) dropped. A path
+    imported/<src>/qualitypaths.xml entry, its steps the qualities (its source's first, then any other's) named so
+    (the quality's name or its printed `alias`, else a bare `Step 1` of the group of the path's name), in printed order,
+    a heading that is no quality (an intro) dropped. A path
     Commlink6 has (cl6: {book: [its paths]}) is skipped: the same name, or at least half its steps named as one of its
     steps. Path ids are the entry ids; step ids their quality ids; bookKey the source id lowercased."""
     cl6 = (
@@ -121,23 +121,29 @@ def book_paths(custom_dir, cl6=None):
     have = {_norm(p["name"]): {_norm(s["name"]) for s in p["steps"]} for ps in cl6.values() for p in ps}
     out = []
     imported = Path(custom_dir) / "imported"
-    for d in sorted(imported.iterdir()) if imported.is_dir() else ():
-        if not (d / "qualitypaths.xml").is_file() or not (d / "qualities.xml").is_file():
+    dirs = sorted(imported.iterdir()) if imported.is_dir() else []
+    quals = {}  # source dir -> {normalised name / alias / (group, name) -> (id, name)}
+    for d in dirs:
+        if (d / "qualities.xml").is_file():
+            q_by = quals[d.name] = {}
+            for q in ET.parse(d / "qualities.xml").getroot().iter("quality"):
+                names = [q.findtext("name", "")] + [a.text or "" for a in q.findall("alias")]
+                for n in names:
+                    q_by.setdefault(_norm(n), (q.get("id"), names[0]))
+                if q.get("group"):
+                    q_by[(q.get("group"), _norm(names[0]))] = (q.get("id"), names[0])
+    for d in dirs:
+        if not (d / "qualitypaths.xml").is_file():
             continue
-        quals = {}  # normalised name / alias / group+name -> (id, name)
-        for q in ET.parse(d / "qualities.xml").getroot().iter("quality"):
-            names = [q.findtext("name", "")] + [a.text or "" for a in q.findall("alias")]
-            for n in names:
-                quals.setdefault(_norm(n), (q.get("id"), names[0]))
-            if q.get("group"):
-                quals[(q.get("group"), _norm(names[0]))] = (q.get("id"), names[0])
+        order = [d.name] + [k for k in quals if k != d.name]  # (its own book's qualities first, then any other's)
         for qp in ET.parse(d / "qualitypaths.xml").getroot().iter("qualitypath"):
             name = qp.findtext("name", "")
             hits = [
-                quals.get((name, _norm(s.text or ""))) or quals.get(_norm(s.text or "")) for s in qp.findall("step")
+                next((h for k in order if (h := quals[k].get((name, _norm(t))) or quals[k].get(_norm(t)))), None)
+                for t in (s.text or "" for s in qp.findall("step"))
             ]
             steps = [h for h in hits if h]
-            if not steps:
+            if len(steps) < 2:
                 continue
             ours = {_norm(n) for _, n in steps}
             if any(_norm(name) == n or len(ours & ss) * 2 >= len(ours) for n, ss in have.items()):

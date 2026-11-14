@@ -11,10 +11,12 @@ QUALS = """<d>
 <quality id="zz.beta" group="Zed"><name>Step 2</name></quality>
 <quality id="zz.gamma"><name>Gamma</name><alias>Step One: Gamma</alias></quality>
 <quality id="zz.delta"><name>Delta</name></quality>
+<quality id="zz.zeta"><name>Zeta</name></quality>
 </d>"""
 PATHS = """<d>
 <qualitypath id="zz.zed"><name>Zed</name><step>Step 1</step><step>Intro heading</step><step>Step 2</step></qualitypath>
 <qualitypath id="zz.known"><name>Known Way</name><step>Step One: Gamma</step><step>Delta</step></qualitypath>
+<qualitypath id="zz.far"><name>Far Off</name><step>Omega</step><step>Zeta</step></qualitypath>
 <qualitypath id="zz.empty"><name>Empty</name><step>Nothing</step></qualitypath>
 </d>"""
 
@@ -27,11 +29,15 @@ class BookPathsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             src = Path(d, "imported", "zz")
             src.mkdir(parents=True)
+            other = Path(d, "imported", "yy")
+            other.mkdir()
+            (other / "qualities.xml").write_text('<d><quality id="yy.omega"><name>Omega</name></quality></d>', "utf-8")
             (src / "qualities.xml").write_text(QUALS, encoding="utf-8")
             (src / "qualitypaths.xml").write_text(PATHS, encoding="utf-8")
             cl6 = {"b": [{"name": "Other Name", "steps": [{"name": "Gamma"}, {"name": "Delta"}]}]}
             got = P.book_paths(d, cl6)
-            self.assertEqual([p["id"] for p in got], ["zz.zed"])
+            self.assertEqual([p["id"] for p in got], ["zz.zed", "zz.far"])
+            self.assertEqual([s["id"] for s in got[1]["steps"]], ["yy.omega", "zz.zeta"])  # a step in another source
             p = got[0]
             self.assertEqual((p["origin"], p["bookKey"]), ("book", "zz"))
             self.assertEqual([s["id"] for s in p["steps"]], ["zz.alpha", "zz.beta"])
