@@ -7,6 +7,36 @@
 
 * **sr6:** Deus Ex Arcana (DEA) import recipe: spells, rituals, qualities, mentor spirits, metamagics, critters, the four Re-Awoken traditions, the Minor Awakened magic type, the Patterncraft skill and Brumeur's mundane and awakened pair; 151 of 151 Commlink6 records matched, with the owner's rulings and Commlink6's structure in `overrides/dea.json`
 
+## [1.3.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.2.1...v1.3.0) (2026-11-14)
+
+
+### Features
+
+* **sr6/runner-builder:** quality path picker on the Qualities tab ([6e00ef2](https://github.com/jbowensii/nova-prime-chummer/commit/6e00ef21268d80814df8795f41ecdc127142e6ca))
+* **sr6:** apply the owner's ten DEA rulings ([7a61ad7](https://github.com/jbowensii/nova-prime-chummer/commit/7a61ad7b049ce0e5af59005df672c1581603e535))
+* **sr6:** capture valmod/choice entries in CL6 quality paths ([c17a320](https://github.com/jbowensii/nova-prime-chummer/commit/c17a3200b2b60aec8e1f7ba4fe7d87d1e7e83df3))
+* **sr6:** CL6 quality-path graph reader (phase 1) ([0833406](https://github.com/jbowensii/nova-prime-chummer/commit/083340685b13b8a1f8f190f9ec0fcf34f28e703d))
+* **sr6:** DEA Lemur and Pollution follow Commlink6 (owner ruling) ([b3dd307](https://github.com/jbowensii/nova-prime-chummer/commit/b3dd307f70618014f4165030b87fb332812afd6b))
+* **sr6:** DEA mentor spirit book effect rows (Eldest, Toxic Red Bear, Atomic, Mutation) ([65d6ac5](https://github.com/jbowensii/nova-prime-chummer/commit/65d6ac5a4b6625b6242614c6b043c305bc6656bf))
+* **sr6:** Deus Ex Arcana (DEA) import recipe ([15588ff](https://github.com/jbowensii/nova-prime-chummer/commit/15588ff5da4d649f369af5c3e4f4586cc63c35d8))
+* **sr6:** merge the quality-path picker, phases 3 and 4 ([07e7b9b](https://github.com/jbowensii/nova-prime-chummer/commit/07e7b9b505a3f43b49ba8acf067d5a18f0d5d9ef))
+* **sr6:** publish CL6 quality paths, QualityPath types, pathProgress on the runner (phase 2) ([47d7fd7](https://github.com/jbowensii/nova-prime-chummer/commit/47d7fd7fcee4315fe38715e0ea0b64b406670b9f))
+* **sr6:** quality path Review rules, requirement types, cl6check paths gate ([54aed36](https://github.com/jbowensii/nova-prime-chummer/commit/54aed3612696b83b098cb394e080cdcba389a742))
+* **sr6:** show a quality path only when its book is imported ([d46f60d](https://github.com/jbowensii/nova-prime-chummer/commit/d46f60d31dcfe9df926ba2b8c2a57c0e7e2f9c9f))
+
+
+### Bug Fixes
+
+* **sr6/catalog:** move quality-path types to types.ts to break the data/load import cycle ([546c557](https://github.com/jbowensii/nova-prime-chummer/commit/546c55795a743591e885d64212aa09c81ffe4167))
+* **sr6/cl6:** close the 8 DEA effects-parity rows; count metatype range maxima as matches ([1888c32](https://github.com/jbowensii/nova-prime-chummer/commit/1888c322ceb964e35ba7a8cf426732228acacaac))
+* **sr6/dea:** follow the book for Fae Glamour (wild die) and Goblin King (no bonus) ([91fb2fb](https://github.com/jbowensii/nova-prime-chummer/commit/91fb2fb7193452b4358a143e8b442bf49aa5f800))
+* **sr6/runner-builder:** narrow the path step label union so tsc -b builds ([cd9ad6b](https://github.com/jbowensii/nova-prime-chummer/commit/cd9ad6b56ca06b4460744bb7a62d642474edd087))
+* **sr6:** bring owned books up to Commlink6 1.15 structure ([f49a696](https://github.com/jbowensii/nova-prime-chummer/commit/f49a69616f094d211982b22bafbbf3e869a54a88))
+* **sr6:** confirm DEA publication month (2025-11) per owner ([da59850](https://github.com/jbowensii/nova-prime-chummer/commit/da59850d1e5054bf8e05d45c5377fb750c375362))
+* **sr6:** owner rulings on Nanospy, Athame and the Pixie's Astral Perception ([c517db3](https://github.com/jbowensii/nova-prime-chummer/commit/c517db39aa04ba95ee58dc65ae322ba5d2737665))
+* **sr6:** resolve path quality refs by the quality's Commlink6 id (cl6) ([bcf718e](https://github.com/jbowensii/nova-prime-chummer/commit/bcf718e4c8b88b636e674ccf7fa5190056ca9c1b))
+* **sr6:** resolve path-step qualities, QUALITY choices add the quality, readable path labels ([32132c6](https://github.com/jbowensii/nova-prime-chummer/commit/32132c6367a4badf480a8c593da3e80c663d98e3))
+
 ## [1.2.1](https://github.com/jbowensii/nova-prime-chummer/compare/v1.2.0...v1.2.1) (2026-11-07)
 
 
