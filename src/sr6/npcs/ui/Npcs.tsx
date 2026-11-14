@@ -235,6 +235,7 @@ export function Sr6Npcs({
   // each under its book key so a renamed copy still counts as loaded, once per version (bookNpcsToLoad); 0.9.0's copies
   // of the sample contacts (grunts of group Contact) become contacts. A few saves at a time, counted as they go.
   const loadBook = async () => {
+    if (!window.confirm('Load the book NPCs and critters? Any you moved to the trash are added again as new copies.')) return
     if (!all.length) return setMsg('No book NPCs yet: they come with an imported core rulebook.')
     const old = mine.filter(s => oldContact(s.ch)),
       todo = bookNpcsToLoad(

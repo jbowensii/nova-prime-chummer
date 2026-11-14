@@ -211,6 +211,7 @@ export function Sr6Runners({ c, data, cr }: { c: Sr6Catalog; data: Sr6Data; cr: 
   }
   // a copy of each sample not loaded yet (a new id, its key as sampleKey), saved as any runner of yours
   const loadExamples = async () => {
+    if (!window.confirm("Load the book's example characters? Any example you moved to the trash is added again as a new copy.")) return
     try {
       const rows = await sr6Samples()
       if (!rows.length) return setMsg('No example characters yet: they come with an imported core rulebook.')
