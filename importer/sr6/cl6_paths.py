@@ -3,6 +3,7 @@
 import argparse
 import copy
 import json
+import re
 import shutil
 import xml.etree.ElementTree as ET
 import zipfile
@@ -101,14 +102,82 @@ def write_canonical(book, paths, out_dir):
     (d / "paths.json").write_text(json.dumps(paths, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def _norm(s):
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
+def book_paths(custom_dir, cl6=None):
+    """The paths the books print that Commlink6 lacks, as linear paths (`origin: book`): each
+    imported/<src>/qualitypaths.xml entry, its steps the qualities of that source named so (the quality's name or its
+    printed `alias`, else a bare
+    `Step 1` of the group of the path's name), in printed order, a heading that is no quality (an intro) dropped. A path
+    Commlink6 has (cl6: {book: [its paths]}) is skipped: the same name, or at least half its steps named as one of its
+    steps. Path ids are the entry ids; step ids their quality ids; bookKey the source id lowercased."""
+    cl6 = (
+        {b: json.loads((Path(__file__).parent / "library" / b / "paths.json").read_text("utf-8")) for b in BOOKS}
+        if cl6 is None
+        else cl6
+    )
+    have = {_norm(p["name"]): {_norm(s["name"]) for s in p["steps"]} for ps in cl6.values() for p in ps}
+    out = []
+    imported = Path(custom_dir) / "imported"
+    for d in sorted(imported.iterdir()) if imported.is_dir() else ():
+        if not (d / "qualitypaths.xml").is_file() or not (d / "qualities.xml").is_file():
+            continue
+        quals = {}  # normalised name / alias / group+name -> (id, name)
+        for q in ET.parse(d / "qualities.xml").getroot().iter("quality"):
+            names = [q.findtext("name", "")] + [a.text or "" for a in q.findall("alias")]
+            for n in names:
+                quals.setdefault(_norm(n), (q.get("id"), names[0]))
+            if q.get("group"):
+                quals[(q.get("group"), _norm(names[0]))] = (q.get("id"), names[0])
+        for qp in ET.parse(d / "qualitypaths.xml").getroot().iter("qualitypath"):
+            name = qp.findtext("name", "")
+            hits = [
+                quals.get((name, _norm(s.text or ""))) or quals.get(_norm(s.text or "")) for s in qp.findall("step")
+            ]
+            steps = [h for h in hits if h]
+            if not steps:
+                continue
+            ours = {_norm(n) for _, n in steps}
+            if any(_norm(name) == n or len(ours & ss) * 2 >= len(ours) for n, ss in have.items()):
+                continue
+            ids = [i for i, _ in steps]
+            out.append(
+                {
+                    "id": qp.get("id"),
+                    "name": name,
+                    "bookKey": d.name,
+                    "origin": "book",
+                    "steps": [
+                        {
+                            "id": i,
+                            "level": n,
+                            "name": nm,
+                            "body": "",
+                            "requires": [],
+                            "modifications": [{"op": "add", "ref": f"quality:{i.split('.', 1)[-1]}"}],
+                            "nextSteps": ids[n + 1 : n + 2],
+                        }
+                        for n, (i, nm) in enumerate(steps)
+                    ],
+                }
+            )
+    return out
+
+
 def publish(custom_dir):
-    """Copy each book's library/<book>/paths.json to <custom_dir>/paths/<book>.json (served at /custom/sr6/paths/)."""
+    """Copy each book's library/<book>/paths.json to <custom_dir>/paths/<book>.json (served at /custom/sr6/paths/), and
+    write the book-printed paths Commlink6 lacks (book_paths) to <custom_dir>/paths/book.json."""
     out = Path(custom_dir) / "paths"
     for book in BOOKS:
         src = Path(__file__).parent / "library" / book / "paths.json"
         if src.is_file():
             out.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(src, out / f"{book}.json")
+    mine = book_paths(custom_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    (out / "book.json").write_text(json.dumps(mine, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def stats(paths):

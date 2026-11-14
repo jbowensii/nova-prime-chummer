@@ -200,5 +200,7 @@ export interface QualityPath {
   id: string
   name: string
   bookKey: string
+  /** `book`: derived at import from the book's printed path (Commlink6 lacks it); bookKey is then its source id, lowercased */
+  origin?: 'book'
   steps: PathStep[]
 }

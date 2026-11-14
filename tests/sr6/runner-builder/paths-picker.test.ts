@@ -95,6 +95,18 @@ test('renders a fixture path; start, advance, back, remove move pathProgress and
   expect(ids(m.ch)).toEqual([])
 })
 
+test('a book-origin path shows with a "from the book" note, hidden while its source is not imported', async () => {
+  const m = mount([{ ...FIX, id: 'bk_path', name: 'Book Path', bookKey: 'crb', origin: 'book' }])
+  await m.render()
+  expect(m.host.textContent).toContain('Book Path')
+  expect(m.host.textContent).toContain('from the book')
+  const { data, cr } = made()
+  const ch = blankSr6('priority', 'r1', '2026-10-03T00:00:00Z')
+  const book = { ...FIX, bookKey: 'nosuch', origin: 'book' as const }
+  expect(pathsFor(ch, { ...data, hasSource: () => false }, cr, [book])).toEqual([])
+  expect(pathsFor(ch, { ...data, hasSource: id => id === 'NOSUCH' }, cr, [book])).toHaveLength(1)
+})
+
 test('the DEA mentor-spirit loop: each walk into reject / first_interaction grows visitedStepIds', () => {
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   const dea = (JSON.parse(readFileSync('importer/sr6/library/deus_ex_arcana/paths.json', 'utf8')) as Omit<QualityPath, 'bookKey'>[]).find(

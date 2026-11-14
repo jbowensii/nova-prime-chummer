@@ -76,12 +76,13 @@ export const PATH_SOURCE: Record<string, string> = {
   shadow_cast: 'SHC',
 }
 
+/** The source id of a path's book: a book-printed path's bookKey is its source id lowercased. */
+export const sourceOf = (p: QualityPath) => (p.origin === 'book' ? p.bookKey.toUpperCase() : PATH_SOURCE[p.bookKey])
+
 /** The paths the runner may add (its book is imported and it meets the first step's requirements) or is already on. */
 export const pathsFor = (ch: Sr6Character, data: Sr6Data, cr: CreationRules, paths: QualityPath[]) =>
   paths.filter(
-    p =>
-      progressOf(ch, p) ||
-      ((!PATH_SOURCE[p.bookKey] || (data.hasSource?.(PATH_SOURCE[p.bookKey]) ?? true)) && p.steps[0] && meets(ch, data, cr, p.steps[0], p.bookKey)),
+    p => progressOf(ch, p) || ((!sourceOf(p) || (data.hasSource?.(sourceOf(p)) ?? true)) && p.steps[0] && meets(ch, data, cr, p.steps[0], p.bookKey)),
   )
 
 /** One mod of a step, applied (or, `undo`, reversed) on the runner's build: an add/remove of a quality, or a choice of

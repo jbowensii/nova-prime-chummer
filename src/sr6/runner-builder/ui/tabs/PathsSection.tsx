@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react'
 import type { PathChoiceOption, PathModification, QualityPath } from '../../../catalog/domain/data'
 import { getQualityPaths, PATH_BOOKS } from '../../../catalog/domain/load'
-import { advancePath, chooseAt, PATH_SOURCE, pathsFor, progressOf, qualityIdOf, removePath, rewindPath, startPath, stepOf } from '../../domain/paths'
+import { advancePath, chooseAt, pathsFor, progressOf, qualityIdOf, removePath, rewindPath, sourceOf, startPath, stepOf } from '../../domain/paths'
 import { useSr6Editor } from '../editor'
 
 const nice = (id: string) => (t => t[0].toUpperCase() + t.slice(1))(id.replace(/_/g, ' '))
@@ -25,7 +25,7 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
   // (a finalized runner's qualities come from its ledger, not the build: no stepping there)
   const locked = ro || career
   const run = (fn: (c: typeof ch) => string[]) => update(c => setNotes(fn(c)))
-  const bookName = (key: string) => c?.sources.get(PATH_SOURCE[key])?.name ?? nice(key)
+  const bookName = (path: QualityPath) => c?.sources.get(sourceOf(path) ?? '')?.name ?? nice(path.bookKey)
   const label = (m: PathModification, path: QualityPath) => {
     if (m.op === 'add' || m.op === 'remove') {
       const id = qualityIdOf(data, m.ref, path.bookKey, path)
@@ -47,7 +47,8 @@ export function PathsSection({ load = getQualityPaths }: { load?: (book: string)
         const cur = p && stepOf(path, p.currentStepId)
         return (
           <div key={path.id} className="card" data-path={path.id}>
-            <b>{path.name}</b> <span className="muted small">{bookName(path.bookKey)}</span>{' '}
+            <b>{path.name}</b> <span className="muted small">{bookName(path)}</span>{' '}
+            {path.origin === 'book' && <span className="muted small">(from the book)</span>}{' '}
             {!p ? (
               <button className="btn small" disabled={locked} onClick={() => run(c => startPath(c, path, data, cr))}>
                 Start this path

@@ -327,7 +327,7 @@ export async function loadSr6Catalog(base = './', extra: SourceFile[] = [], cl6o
   return c
 }
 
-export const PATH_BOOKS = ['companion', 'dealers_of_death', 'deus_ex_arcana', 'firing_squad', 'hack_slash', 'shadow_cast']
+export const PATH_BOOKS = ['companion', 'dealers_of_death', 'deus_ex_arcana', 'firing_squad', 'hack_slash', 'shadow_cast', 'book']
 const pathCache = new Map<string, Promise<QualityPath[]>>()
 const fetchText = (path: string) =>
   fetch(path, { cache: 'no-cache' }).then(
@@ -343,7 +343,7 @@ export async function getQualityPaths(bookKey: string, get: (path: string) => Pr
   if (!p) {
     p = get(`${CUSTOM}paths/${bookKey}.json`).then(t => {
       try {
-        if (t) return (JSON.parse(t) as Omit<QualityPath, 'bookKey'>[]).map(q => ({ ...q, bookKey }))
+        if (t) return (JSON.parse(t) as Omit<QualityPath, 'bookKey'>[]).map(q => ({ bookKey, ...q }))
       } catch {
         // fall through: unreadable, as missing
       }
