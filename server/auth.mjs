@@ -25,7 +25,7 @@
 // There is always an enabled admin: the last one can't be demoted, disabled or deleted (409).
 import { createHash, createHmac, randomBytes, randomInt, scrypt as scryptCb, timingSafeEqual } from 'node:crypto'
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { chmod, mkdir, readFile, rm } from 'node:fs/promises'
+import { chmod, chown, mkdir, readFile, rm, stat } from 'node:fs/promises'
 import { BlockList, isIP } from 'node:net'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
@@ -222,6 +222,9 @@ export async function issueReset(libraryDir, username, configDir = join(libraryD
     SECRET,
   )
   await chmod(path, SECRET).catch(() => {}) // a file already there keeps its mode through rename on some systems
+  // `docker exec` runs this as root, the server as the app user: hand the 600 file to users.xml's owner so the server can read it
+  const { uid, gid } = await stat(join(configDir, 'users.xml'))
+  await chown(path, uid, gid).catch(() => {}) // not root (desktop, or already the app user): the file is ours to read anyway
   return c
 }
 
