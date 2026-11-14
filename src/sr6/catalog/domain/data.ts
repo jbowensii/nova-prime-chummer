@@ -25,43 +25,13 @@ export type {
   Sr6LifeModuleView,
   Sr6GradeView,
   Sr6Data,
+  PathValmod,
+  PathSubOption,
+  PathChoiceOption,
+  PathModification,
+  PathStep,
+  QualityPath,
 } from './types'
-
-/** The graph quality paths (importer/sr6/cl6_paths.py, published as custom/sr6/paths/<book>.json): a path is steps, each
- *  naming the steps that can follow (a fork lists several, a loop names an earlier step). Refs are `<type>:<id>` as
- *  Commlink6 writes them; `requires` are its raw requirement elements, kept as XML text. */
-export type PathValmod = { op: 'valmod'; ref: string; value: string | null; attr: string }
-export interface PathSubOption {
-  ref: string
-  label: string
-  modifications?: PathValmod[]
-}
-export interface PathChoiceOption {
-  ref: string
-  label: string
-  subOptions?: PathSubOption[]
-  modifications?: PathValmod[]
-}
-export type PathModification =
-  | { op: 'add' | 'remove'; ref: string }
-  | PathValmod
-  | { op: 'choice'; ref: string | null; type: string | null; id: string | null; options: PathChoiceOption[] }
-  | { op: 'subOption'; ref: string; label: string }
-export interface PathStep {
-  id: string
-  level: number
-  name: string
-  body: string
-  requires: string[]
-  modifications: PathModification[]
-  nextSteps: string[]
-}
-export interface QualityPath {
-  id: string
-  name: string
-  bookKey: string
-  steps: PathStep[]
-}
 
 /** What each magic kind can have (game vocabulary, no numbers). paysPowers: buys its power points (mystic adept). */
 export const MAGIC_KINDS: Record<MagicKind, { spells: boolean; powers: boolean; paysPowers: boolean; resonance: boolean }> = {

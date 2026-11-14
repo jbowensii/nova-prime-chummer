@@ -13,7 +13,7 @@ import { readSr6Compendium, sr6CompendiumSource } from '../../formats/domain/com
 import { bookValue, ratingRange, type Find } from './values'
 import { expandLevels } from './levels'
 import { entryKey } from './names'
-import type { QualityPath } from './data'
+import type { QualityPath } from './types'
 import { SR6_NS, toEntry } from '../../formats/domain/entryxml'
 
 // (the entry codec lives in entryxml.ts, apart from the loader, so compendium.ts and charxml.ts read entries without
