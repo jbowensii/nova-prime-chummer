@@ -7,6 +7,14 @@
 
 * **sr6:** Deus Ex Arcana (DEA) import recipe: spells, rituals, qualities, mentor spirits, metamagics, critters, the four Re-Awoken traditions, the Minor Awakened magic type, the Patterncraft skill and Brumeur's mundane and awakened pair; 151 of 151 Commlink6 records matched, with the owner's rulings and Commlink6's structure in `overrides/dea.json`
 
+## [1.3.1](https://github.com/jbowensii/nova-prime-chummer/compare/v1.3.0...v1.3.1) (2026-11-14)
+
+
+### Bug Fixes
+
+* **server:** give the recovery code file to the app user so a docker exec reset works ([b6be6cc](https://github.com/jbowensii/nova-prime-chummer/commit/b6be6cce6d14d2e3c6a2bbff3582e27e884c6419))
+* **server:** recovery code readable after a docker exec reset ([0f621da](https://github.com/jbowensii/nova-prime-chummer/commit/0f621da7d700ee0dbff12832744cdbd0ff114cac))
+
 ## [1.3.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.2.1...v1.3.0) (2026-11-14)
 
 
