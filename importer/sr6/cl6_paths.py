@@ -106,6 +106,17 @@ def _norm(s):
     return re.sub(r"[^a-z0-9]", "", s.lower())
 
 
+def _variants(name):
+    """A quality's name as a step may print it: as is, without a trailing `(...)`, and each `A/B` alternative alone."""
+    base = re.sub(r"\s*\([^)]*\)\s*$", "", name)
+    out = [name, base]
+    for i, w in enumerate(base.split()):
+        if "/" in w:
+            rest = base.split()
+            out += [" ".join(rest[:i] + [alt] + rest[i + 1 :]) for alt in w.split("/")]
+    return out
+
+
 def book_paths(custom_dir, cl6=None):
     """The paths the books print that Commlink6 lacks, as linear paths (`origin: book`): each
     imported/<src>/qualitypaths.xml entry, its steps the qualities (its source's first, then any other's) named so
@@ -129,7 +140,8 @@ def book_paths(custom_dir, cl6=None):
             for q in ET.parse(d / "qualities.xml").getroot().iter("quality"):
                 names = [q.findtext("name", "")] + [a.text or "" for a in q.findall("alias")]
                 for n in names:
-                    q_by.setdefault(_norm(n), (q.get("id"), names[0]))
+                    for alt in _variants(n):
+                        q_by.setdefault(_norm(alt), (q.get("id"), names[0]))
                 if q.get("group"):
                     q_by[(q.get("group"), _norm(names[0]))] = (q.get("id"), names[0])
     for d in dirs:
