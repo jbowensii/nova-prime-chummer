@@ -27,7 +27,7 @@
   <source id="BN" published="2023-10" publisher="Catalyst Game Labs" canon="true" texts="texts/bn.xml"><name>Shadowrun: Bestial Nature</name></source> <!-- month guessed -->
   <source id="SO" published="2024-03" cat="CAT28009" publisher="Catalyst Game Labs" canon="true" texts="texts/so.xml"><name>Shadowrun: Smooth Operations</name></source>
   <source id="ED" published="2026-03" cat="CAT28518" publisher="Catalyst Game Labs" canon="true" texts="texts/ed.xml"><name>Shadowrun: Explosive Decompression</name></source> <!-- month guessed -->
-  <source id="DEA" published="2025-11" cat="CAT28012" publisher="Catalyst Game Labs" canon="true" texts="texts/dea.xml"><name>Shadowrun: Deus Ex Arcana</name></source> <!-- month guessed -->
+  <source id="DEA" published="2025-11" cat="CAT28012" publisher="Catalyst Game Labs" canon="true" texts="texts/dea.xml"><name>Shadowrun: Deus Ex Arcana</name></source>
   <source id="THN" published="2019-12" cat="CAT28400" publisher="Catalyst Game Labs" canon="true" texts="texts/thn.xml"><name>Shadowrun: 30 Nights</name></source>
   <source id="ADV" published="2019-01" publisher="Catalyst Game Labs" canon="true" texts="texts/adv.xml"><name>Shadowrun: Adversary</name></source> <!-- enhanced fiction; date guessed -->
   <source id="AOR" published="2020-05" publisher="Catalyst Game Labs" canon="true" texts="texts/aor.xml"><name>Shadowrun: Tales from the UCAS: Age of Rust</name></source>
