@@ -122,7 +122,7 @@ class OverridesTest(unittest.TestCase):
         ):
             self.assertEqual(row("shc", i)["set"], {"kind": kind, "karma": "0"})
         pod = row("ed", "generic-escape-pod")["set"]
-        self.assertEqual((pod["cost"], pod["avail"]), ("5,000¥", "Common"))
+        self.assertEqual((pod["cost"], pod["avail"], pod["sensor"]), ("5,000¥", "4(L)", "—"))
         fam = next(
             r for r in overrides.table("dc") if r.get("id") == "metahuman-adjustments" and r.get("gen") == "family"
         )
