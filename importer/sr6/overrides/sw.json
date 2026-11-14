@@ -81,7 +81,7 @@
   {"cl6": "Warrior's Way", "kind": "qualities", "id": "warriors-way", "gen": "owner", "note": "owner ruling 2026-10-30: every Way gives the Innate Talent ability (Street Wyrd p. 76)", "kids": [{"tag": "link", "attrs": {"rel": "grants", "kind": "qualities", "name": "Innate Talent", "ref": "sw.innate-talent"}}]},
   {"cl6": "Elemental Strike", "cl6id": "elemental_strike", "kind": "adeptpowers", "id": "elemental-strike", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "ADEPT_POWER", "ref": "killing_hands"}}], "gen": "slot"},
   {"cl6": "Kinesics Mastery", "cl6id": "kinesics_mastery", "kind": "adeptpowers", "id": "kinesics-mastery", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "ADEPT_POWER", "ref": "kinesics"}}], "gen": "slot"},
-  {"cl6": "Athame Blood Focus", "cl6id": "athame", "kind": "gear", "id": "athame", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "sacrifice"}}], "gen": "slot"},
+  {"cl6": "Athame Blood Focus", "cl6id": "athame", "kind": "gear", "id": "athame", "kids": [{"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "MAGIC_RESO", "ref": "magician", "apply": "CHARACTER", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "MAGIC_RESO", "ref": "adept", "apply": "CHARACTER", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "MAGIC_RESO", "ref": "mysticadept", "apply": "CHARACTER", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "MAGIC_RESO", "ref": "aspectedmagician", "apply": "CHARACTER", "group": "1"}}, {"tag": "prerequisite", "attrs": {"kind": "datareq", "type": "METAECHO", "ref": "sacrifice"}}], "gen": "slot"},
   {"cl6": "Free Dive Deep Breath Mask", "cl6id": "free_dive_deep_breath_mask", "kind": "gear", "id": "free-dive-deep-breath-mask", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Acid On Demand", "cl6id": "acid_on_demand", "kind": "gear", "id": "acid-on-demand", "set": {"usage": "carried"}, "gen": "slot"},
   {"cl6": "Acid Wash", "cl6id": "acid_wash", "kind": "gear", "id": "acid-wash", "set": {"usage": "carried"}, "gen": "slot"},
@@ -266,5 +266,6 @@
   {"cl6": "Black Magic", "kind": "traditions", "id": "black-magic", "set": {"cl6": "black"}, "gen": "marker"},
   {"cl6": "Secular Qabbalah", "kind": "traditions", "id": "secular-qabbalah", "set": {"cl6": "qabbalists_secular"}, "gen": "marker"},
   {"cl6": "Romani Tradition", "kind": "traditions", "id": "romani-tradition", "set": {"cl6": "romani"}, "gen": "marker"},
-  {"cl6": "Storyteller Tradition", "kind": "traditions", "id": "storyteller-tradition", "set": {"cl6": "storyteller"}, "gen": "marker"}
+  {"cl6": "Storyteller Tradition", "kind": "traditions", "id": "storyteller-tradition", "set": {"cl6": "storyteller"}, "gen": "marker"},
+  {"cl6": "Athame Blood Focus", "kind": "gear", "id": "athame", "set": {"rating": "1–10"}, "note": "Force 1–10, as a weapon focus of the same Force (SW pp. 157-158); the melee-weapon pick kept, Commlink6 1.15's FORCE choice is this rating (owner ruling 2026-11-10)", "gen": "owner"}
 ]

@@ -185,13 +185,13 @@ def families(e, kind=None):
     if ch:
         out["choices"] = tuple(ch)
     req = sorted(
-        [
+        {  # (a set, as canon's: a repeated test is one)
             (_norm(r.get("kind") or r.tag), _norm(r.get("ref") or r.get("target")))
             for rq in e.findall("requires")
             for r in rq.iter()
             if r is not rq and r.tag not in ("any",)
-        ]
-        + [(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite") if not p.get("variant")]
+        }
+        | {(_norm(p.get("type")), _norm(p.get("ref"))) for p in e.findall("prerequisite") if not p.get("variant")}
     )
     if req:
         out["requires"] = tuple(req)
