@@ -17,6 +17,8 @@ python -m tools.cl6check module <data folder> [--jar <jar>]
     the CommLink6-only data module (module.py): <data folder>/custom/sr6/cl6only, for a server's data folder.
 python -m tools.cl6check gen-vehicle-parts --ours <import> [--jar <jar>] [--out <file>] [--dry]
     bakes the vehicles' factory parts into importer/sr6/classes/vehicle_parts.json (vehicleparts.py; Stage 2).
+python -m tools.cl6check paths [--custom <custom/sr6 dir>] [--jar <jar>]
+    the quality-paths gate: published paths.json equals the jar; quality refs no catalog quality answers (paths.py).
 python -m tools.cl6check multi --ours <custom/sr6 dir or runs> [--jar <jar>]
     the repeatable-qualities gate: every Commlink6 multi quality must be flagged multi="true" on ours (multi.py).
 python -m tools.cl6check embedmap [--jar <jar>] [--ours <custom/sr6 dir>]
@@ -407,6 +409,10 @@ def main(argv=None):
         from tools.cl6check import vehicleparts
 
         return vehicleparts.main(argv[1:])
+    if argv[:1] == ["paths"]:
+        from tools.cl6check import paths
+
+        return paths.main(argv[1:])
     if argv[:1] == ["multi"]:
         from tools.cl6check import multi
 

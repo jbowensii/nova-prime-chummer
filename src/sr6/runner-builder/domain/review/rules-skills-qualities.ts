@@ -29,6 +29,7 @@ import { awakenedFlag, freePick, infectedFit, optionalPower, powerRefusal, runne
 import { infectedQuality } from '../assets/critterware'
 import { MARTIAL_CITE, prerequisites, prerequisiteText, styleName, techniqueFits, techniqueName } from '../creation/martial'
 import { CYBERADEPT, cyberadeptSteps, GRADE_RANK } from '../creation/cyberadept'
+import { qualityIdOf, stepOf } from '../paths'
 import { activeRules } from '../creation/rule-markers'
 import { type Hit, type Rule, A, kindLabel, article, n0, over, entryCite, CRB, SWC, metaName, lines, has, granted, negatives } from './context'
 
@@ -796,6 +797,38 @@ export const RULES_SKILLS_QUALITIES: Rule[] = [
       ),
   },
 
+  // Quality paths (domain/paths.ts): the saved progress against the loaded paths; waits until they are loaded
+  {
+    code: 'path.progress',
+    severity: 'warning',
+    tab: 'qualities',
+    check: c => {
+      if (!c.paths.length) return []
+      const hits: Hit[] = []
+      for (const p of c.ch.pathProgress ?? []) {
+        const path = c.paths.find(x => x.id === p.pathId)
+        const at = `qualities.path.${p.pathId}`
+        if (!path || !stepOf(path, p.currentStepId)) {
+          hits.push({ path: at, message: `Quality path ${p.pathId}: ${path ? `step ${p.currentStepId}` : 'the path'} isn’t in the loaded paths.` })
+          continue
+        }
+        p.visitedStepIds.forEach((id, i) => {
+          if (i && !stepOf(path, p.visitedStepIds[i - 1])?.nextSteps.includes(id))
+            hits.push({ path: at, message: `${path.name}: step ${id} doesn’t follow ${p.visitedStepIds[i - 1]}.` })
+        })
+        for (const id of new Set(p.visitedStepIds)) {
+          const step = stepOf(path, id)
+          if (!step) continue
+          if (step.modifications.some(m => m.op === 'choice') && !p.choicesByStepId[id])
+            hits.push({ path: at, message: `${path.name}: ${step.name} asks for a choice; none is recorded.` })
+          for (const m of step.modifications)
+            if ((m.op === 'add' || m.op === 'remove') && m.ref !== 'quality:CHOICE' && !qualityIdOf(c.data, m.ref, path.bookKey, path))
+              hits.push({ path: at, message: `${path.name}: ${step.name} names ${m.ref}, which isn’t in the catalog (skipped).` })
+        }
+      }
+      return hits
+    },
+  },
   // a number the build can't hold below 0 (a hand-edited file): it would turn a cost into a refund and clear the hard
   // blocks below, so it is hard too (owner's decision 19)
   { code: 'value.negative', severity: 'error', tab: 'review', hard: true, check: c => negatives(c.b) },
