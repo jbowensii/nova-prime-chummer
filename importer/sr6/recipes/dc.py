@@ -172,6 +172,22 @@ def _words(s):
     return {w for w in norm(s).split() if len(w) > 3}
 
 
+def aka_names(desc, name):
+    """(name, id name, aliases) of a vehicle under a heading whose tag line prints `a.k.a. Maker “X”/“Y”`: the heading
+    `GTI Benevolent/ Malevolent …` over two vehicles gives `GTI Benevolent / X`, `GTI Malevolent / Y` (ids from the
+    short name; first quote to the first vehicle); one quote over one vehicle is an alias of it. No tag, no change."""
+    part = desc.tags.split(";")[0] if desc is not None else ""
+    qs = re.findall(r"[“\"]([^”\"]+)[”\"]", part)
+    if not (qs and re.match(r"a\.k\.a\.", part, re.I) and _words(desc.name) & _words(name)):
+        return name, "", []
+    brand = re.sub(r"^a\.k\.a\.\s*|[“\"].*$", "", part, flags=re.I).strip()
+    pair = re.match(r"(.*?)\s*(\w+)/\s*(\w+)", desc.name)
+    if pair and len(qs) == 2 and norm(name) in (norm(pair[2]), norm(pair[3])):
+        i = 0 if norm(name) == norm(pair[2]) else 1
+        return f"{pair[1]} {name} / {qs[i]}".strip(), name, [name, qs[i], f"{brand} {qs[i]}".strip()]
+    return name, "", [x for q in qs[:1] for x in (q, f"{brand} {q}".strip())]
+
+
 def _prep(bs, report):
     """Vehicle boxes as catalog rows (named without their class, the description: the level-3 section before them that
     shares a word with the name, which then is no rule); modification headings priced by small MOD SLOTS / RATING /
@@ -204,6 +220,7 @@ def _prep(bs, report):
             and (v := vehicle_values(b)) is not None
         ):
             name, extra = _title(b.name), extra_boxes(b)
+            full, cid, aka = aka_names(desc, name)
             row = {"VEHICLE": name, **dict(zip(VEHICLE, v))}
             text = _strip("\n".join(b.text.splitlines()[: extra[0][1]]) if extra else b.text)
             if desc is not None and _words(desc.name) & _words(name):
@@ -211,7 +228,9 @@ def _prep(bs, report):
             out.append(
                 replace(
                     b,
-                    name=name,
+                    name=full,
+                    cid=cid,
+                    aliases=aka,
                     header=list(row),
                     row=row,
                     stats=[],
@@ -233,10 +252,13 @@ def _prep(bs, report):
                     )
                     continue
                 row = {"VEHICLE": hit[0], **dict(zip(VEHICLE, ev))}
+                full, cid, aka = aka_names(desc, hit[0])
                 out.append(
                     replace(
                         b,
-                        name=hit[0],
+                        name=full,
+                        cid=cid,
+                        aliases=aka,
                         header=list(row),
                         row=row,
                         stats=[],
@@ -321,7 +343,7 @@ def _prep(bs, report):
             row = {"GEAR": f"{base} ({size})", **{k: v for k, v in b.row.items() if k != first}}
             b = replace(b, name=row["GEAR"], row=row, header=list(row), labels={**b.labels, first.capitalize(): cell})
         out.append(b)
-    names = {norm(b.name) for b in out if b.row is not None and b.header[:1] == ["VEHICLE"]}
+    names = {norm(n) for b in out if b.row is not None and b.header[:1] == ["VEHICLE"] for n in (b.name, *b.aliases)}
     for k, (name, _, page) in summary.items():  # a vehicle the aircraft table lists that no box gave
         if k not in read and norm(name) not in names:  # (a box printing other values than the table is no loss)
             report.append(

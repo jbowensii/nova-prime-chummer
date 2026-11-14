@@ -1192,6 +1192,8 @@ class Catalog:
                 name, f["rating"] = name[: m.start()] + name[m.end() :].strip(), m.group(1)
             if b.group:  # (its id with its group, `awareness-basic`, not `basic`; owner 2026-10-11)
                 attrs["_id"] = f"{attrs['group']} {name}"
+            if b.cid:
+                attrs["_id"] = b.cid  # (its id from the short name, not the printed one)
             if "rating" not in f and (m := TAG_RATING.match(b.tags or "")):
                 f["rating"] = m.group(1)  # the heading's tag line gives its range: `(rating 1-4)`
             if "rating" not in f and re.search(

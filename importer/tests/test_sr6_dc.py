@@ -142,6 +142,25 @@ def entries(res, kind):
     return {e.findtext("name"): e.attrib for e in ET.fromstring(res.files[f"{kind}.xml"])}
 
 
+class AkaTest(unittest.TestCase):
+    """A heading's `a.k.a. Maker “X”/“Y”` tag line (invented names) as the vehicles' full names and aliases."""
+
+    @staticmethod
+    def heading(name, tags):
+        return regroup.Block(type="section", name=name, chapter="", section=name, label="", page=1, tags=tags, level=3)
+
+    def test_pair(self):
+        h = self.heading("Zork Alpha/ Beta Hauler", "a.k.a. Qux “Foo”/“Bar”; Wheeled")
+        self.assertEqual(dc.aka_names(h, "Alpha"), ("Zork Alpha / Foo", "Alpha", ["Alpha", "Foo", "Qux Foo"]))
+        self.assertEqual(dc.aka_names(h, "Beta")[:2], ("Zork Beta / Bar", "Beta"))
+
+    def test_single_and_none(self):
+        h = self.heading("Zork Alpha Hauler", "a.k.a. Qux “Foo”")
+        self.assertEqual(dc.aka_names(h, "Alpha"), ("Alpha", "", ["Foo", "Qux Foo"]))
+        self.assertEqual(dc.aka_names(self.heading("Zork Alpha Hauler", "Wheeled"), "Alpha"), ("Alpha", "", []))
+        self.assertEqual(dc.aka_names(h, "Unrelated"), ("Unrelated", "", []))
+
+
 class DcRecipeTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
