@@ -49,6 +49,17 @@ class Evaluate(unittest.TestCase):
         )  # (none is in the book-ruled or placeholder lists)
         self.assertIn("parity: 1/3", "\n".join(evaluate.lines(t)))
 
+    def test_metatype_range_max(self):
+        mod = {"_tag": "valmod", "type": "ATTRIBUTE", "ref": "BODY", "set": "MAX", "value": "3"}
+        ev = evaluate.eval_all(
+            [
+                row(mod, [{"_tag": "range", "attr": "bod", "min": "1", "max": "3"}]),
+                row(mod, [{"_tag": "range", "attr": "bod", "min": "1", "max": "4"}]),
+            ],
+            {},
+        )
+        self.assertEqual([e["status"] for e in ev], ["match", "miss-entry-has-no-effects"])
+
 
 class Replay(unittest.TestCase):
     """Replaying evaluations between two runs."""

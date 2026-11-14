@@ -271,6 +271,11 @@ def our_atoms4(e):
     return A, k
 
 
+def _range_max_is(kids, atoms, value):
+    """True when one of our `<range attr max>` children states the attribute maximum `value` that `atoms` names."""
+    return any(k["_tag"] == "range" and k.get("max") == value and f'attr-max:{k.get("attr")}' in atoms for k in kids)
+
+
 def eval_all(rows, IDX):
     """Compare every row's Commlink6 effects with ours; the verdict per row."""
     out = []
@@ -478,6 +483,8 @@ def eval_all(rows, IDX):
                     rec["flag_switch"] = "ours-switched-cl6-plain"
                 if extra.get("form") and not any(e.get("when") for e, _ in used):
                     rec["flag_form"] = extra["form"]
+            elif k == "max" and _range_max_is(r["our"]["kids"], A, m.get("value", "")):
+                rec["status"] = "match"  # (a metatype holds its attribute maximum as <range attr max>, not an effect)
             elif touched and not cov:
                 rec["status"] = "miss-value-or-kind"
                 rec["ours"] = sorted(set(touched_fx))

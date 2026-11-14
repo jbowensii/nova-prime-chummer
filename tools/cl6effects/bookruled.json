@@ -273,5 +273,12 @@
     "cl6": "$RATING",
     "ours": [],
     "why": "CRB p. 288: a cyberlimb's Attribute increase raises the limb's own Agility or Strength (ours limb-attr:choice add R, owner ruling weapon-cyber-builders 2026-10-30), not the character's"
+  },
+  {
+    "pair": ["dea", "the_eldest", "mentorspirit"],
+    "sig": "checkmod SKILL conjuring what=EDGE",
+    "cl6": "1",
+    "ours": ["skill:conjuring wild-die 1"],
+    "why": "DEA p. 132: the Terra Stone talisman adds a wild die to any Conjuring skill test, not an Edge point (owner ruling 2026-11-14: follow the book)"
   }
 ]

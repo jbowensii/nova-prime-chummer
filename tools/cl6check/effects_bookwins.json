@@ -663,5 +663,26 @@
     "cl6": "",
     "ours": ["item:dv=1", "test:combat=1"],
     "why": "not modelled (CL6-only mechanic or stated differently): factory-fitted accessory: ours is the weapon's <part> (the part carries the effect), Commlink6 states it as a GEARMOD grant"
+  },
+  {
+    "pair": ["dea", "astral_sensitive", "exempt"],
+    "sig": "itemmod MAGIC_RESO minor_awakened",
+    "cl6": "",
+    "ours": ["attr:mag=0"],
+    "why": "not modelled (CL6-only mechanic or stated differently): CL6 flags the character's magic type Minor Awakened; ours states it as the Magic 0 effect (DEA p. 115-116)"
+  },
+  {
+    "pair": ["dea", "astral_explorer", "exempt"],
+    "sig": "itemmod MAGIC_RESO minor_awakened",
+    "cl6": "",
+    "ours": ["attr:mag=0"],
+    "why": "not modelled (CL6-only mechanic or stated differently): CL6 flags the character's magic type Minor Awakened; ours states it as the Magic 0 effect (DEA p. 115-116)"
+  },
+  {
+    "pair": ["dea", "astral_spark", "exempt"],
+    "sig": "itemmod MAGIC_RESO minor_awakened",
+    "cl6": "",
+    "ours": ["attr:mag=0"],
+    "why": "not modelled (CL6-only mechanic or stated differently): CL6 flags the character's magic type Minor Awakened; ours states it as the Magic 0 effect (DEA p. 115-116)"
   }
 ]
