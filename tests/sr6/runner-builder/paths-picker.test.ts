@@ -295,3 +295,12 @@ test('a path shows only when its book is imported, unless the runner is already 
   ch.pathProgress = [{ pathId: 'shc_path', currentStepId: 'a', visitedStepIds: ['a'], choicesByStepId: {} }]
   expect(pathsFor(ch, only, cr, all).map(p => p.id)).toEqual(['fs_path', 'shc_path'])
 })
+
+test('qualityIdOf answers a ref by the quality’s own Commlink6 id (cl6)', () => {
+  const data = {
+    qualities: { 'shc.gestalt-step-1': { name: 'Gestalt: Step 1' } },
+    named: (n: string) => (n === 'social adept gestalt 1' ? { id: 'shc.gestalt-step-1' } : undefined),
+  } as never
+  expect(qualityIdOf(data, 'quality:social_adept_gestalt_1')).toBe('shc.gestalt-step-1')
+  expect(qualityIdOf(data, 'quality:nothing_here')).toBeNull()
+})

@@ -12,12 +12,15 @@ import { deriveSr6 } from './creation/derive'
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '')
 
 /** A path ref `quality:<id>` as a catalog quality id (`<book>.<name>`): the id's name part matches ignoring case and
- *  punctuation, the path's own book first. With the path: else a quality named as the ref, `<path>: <step>` (how the
+ *  punctuation, the path's own book first; the quality's own Commlink6 id (`cl6`, the catalog's name lookup) answers before
+ *  both. With the path: else a quality named as the ref, `<path>: <step>` (how the
  *  importer files a step) or the step's name alone, a parenthetical aside (`Phobia (Object)`) ignored.
  *  null: not a quality ref, or not in the catalog. tools/cl6check/paths.py reads the same rule. */
-export function qualityIdOf(data: Pick<Sr6Data, 'qualities'>, ref: string, bookKey = '', path?: QualityPath): string | null {
+export function qualityIdOf(data: Pick<Sr6Data, 'qualities' | 'named'>, ref: string, bookKey = '', path?: QualityPath): string | null {
   const m = /^quality:(.+)$/.exec(ref)
   if (!m) return null
+  const cl6 = data.named?.(m[1].replace(/_/g, ' '), 'qualities')?.id
+  if (cl6 && data.qualities[cl6]) return cl6
   const ids = Object.keys(data.qualities).filter(id => norm(id.slice(id.indexOf('.') + 1)) === norm(m[1]))
   const hit = ids.find(id => id.startsWith(`${bookKey}.`)) ?? ids[0]
   if (hit || !path) return hit ?? null

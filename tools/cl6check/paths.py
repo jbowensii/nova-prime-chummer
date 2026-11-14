@@ -50,6 +50,8 @@ def catalog_names(custom):
         for e in src.entries:
             if e["kind"] == "qualities":
                 ids.add(_norm(e["id"][len(src.src) + 1 :] if e["id"].startswith(f"{src.src}.") else e["id"]))
+                if e["attrs"].get("cl6"):
+                    ids.add(_norm(e["attrs"]["cl6"]))
                 names.add(_norm(e["name"]))
                 bare.add(_norm(re.sub(r"\s*\(.*$", "", e["name"])))
     return ids, names, bare
