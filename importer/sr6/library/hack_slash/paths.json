@@ -1,0 +1,92 @@
+[
+  {
+    "id": "cyberadept_path",
+    "name": "Cyberadept",
+    "steps": [
+      {
+        "id": "cyberadept_novice",
+        "level": 0,
+        "name": "Cyberadept Novice",
+        "body": "You have begun to accept your augmentations as part of your identity, not just as things added to your body. To become a cyberadept, you must first acquire some augmentations and then submerge to truly begin the path. For your first submersion, you must take the Cyberadept echo (p. 67). Once you have done so, you may purchase this first quality in the cyberadept quality path at its listed Karma cost (not double, as per normal character advancement).<br/> Whenever you use augmentation overdrive (p. 282, SR6), you may re-roll the accompanying wild die once. The result of the re-roll is final, so maybe you shouldn't re-roll unless you get a 1. Well, it's up to you. I warned you. <br/>If any of your augmentations are standard or used grade, their grade effectively increases by one grade. Used grade becomes standard, and standard grade becomes alpha. You gain an Essence hole equal to the amount of Essence cost reduction caused by the changes in the grades of your augmentations, which is used for future implants before further Essence loss is applied. Because technomancers are primarily biological in nature, even bioware augmentations can be affected by this quality. This comes at a price-any new augmentations must be alpha grade or better, or else your body will reject them. The next time you raise your Resonance attribute, it only takes one minute-you must still pay the required Karma cost.",
+        "requires": [
+          "<datareq type=\"METAECHO\" ref=\"cyberadept\" apply=\"CHARACTER\" />",
+          "<datareq type=\"QUALITY\" ref=\"cyborg\" negate=\"true\" apply=\"CHARACTER\" />",
+          "<datareq type=\"QUALITY\" ref=\"augmentation_acclimation\" negate=\"true\" apply=\"CHARACTER\" />"
+        ],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:cyberadept_novice"
+          }
+        ],
+        "nextSteps": [
+          "cyberadept_disciple"
+        ]
+      },
+      {
+        "id": "cyberadept_disciple",
+        "level": 1,
+        "name": "Cyberadept Disciple",
+        "body": "As you improve your connection to your augmentations, the desire to get more installed increases. Further augmenting yourself is a necessary step on the path to becoming a cyberadept, but you risk destroying your connection to the Resonance if you acquire too much.<br/> When you have lost 2 or more Essence, you may take this quality at its listed Karma cost (not double). You must have Cyberadept Novice and the cyberadept echo in order to take this quality. All of your alpha-grade augmentations become beta grade, and your standard-grade augmentations become alpha grade. This creates an Essence hole, allowing you to get more augmentations installed before losing more Essence. Any further augmentations you receive must be beta grade or better, or else your body rejects them. You may channel Resonance through your augmentations, bolstering them in a way similar to augmentation overdrive. By spending a Minor Action and concentrating, you increase the effective rating of one of your augmentations by your Resonance attribute. Sustaining this requires concentration and counts as if you are sustaining a complex form-though there is no complex form that can be perceived or targeted by anyone except yourself. <br/>At the end of every combat round, resist fading with a Fade Value equal to one half your Resonance attribute (rounded up). This ability cannot improve an augmentation's rating any higher than double its normal rating and does not allow you to improve augmented attributes higher than their augmented maximum. You can only use this on your own augmentations, and only on one augmentation at a time. Unlike with augmentation overdrive, there is no added wild die or chance of cyberware stress. It may also be used on bioware. The next time you raise your Resonance attribute, it only takes one minute-you must still pay the required Karma cost.",
+        "requires": [
+          "<valuereq type=\"ATTRIBUTE\" ref=\"ESSENCE\" apply=\"CHARACTER\" max=\"4000\" />"
+        ],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:cyberadept_novice"
+          },
+          {
+            "op": "add",
+            "ref": "quality:cyberadept_disciple"
+          }
+        ],
+        "nextSteps": [
+          "cyberadept_master"
+        ]
+      },
+      {
+        "id": "cyberadept_master",
+        "level": 2,
+        "name": "Cyberadept Master",
+        "body": "Your augmentations have become accustomed to the Resonance. After you have lost 3 Essence, you may take this quality at its listed Karma cost (not double). You must have cyberadept disciple and its prerequisites in order to take this quality. All of your beta-grade augmentations become delta grade, and your alpha-grade augmentations become beta grade. This creates an Essence hole, allowing you to get more augmentations installed before losing more Essence. Any further augmentations you receive must be delta grade or better, or else your body rejects them. Your augmentations have become so well adapted to your body and your living persona that they are difficult for others to notice or affect, even when running with wireless mode on. Add your submersion grade to your Defense Rating and dice pool for any Matrix defense test on behalf of your augmentations-including resisting a Matrix Perception test to stay hidden. The next time you raise your Resonance attribute, it only takes you one minute.",
+        "requires": [
+          "<valuereq type=\"ATTRIBUTE\" ref=\"ESSENCE\" apply=\"CHARACTER\" max=\"3000\" />"
+        ],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:cyberadept_disciple"
+          },
+          {
+            "op": "add",
+            "ref": "quality:cyberadept_master"
+          }
+        ],
+        "nextSteps": [
+          "cyberadept_transcendent"
+        ]
+      },
+      {
+        "id": "cyberadept_transcendent",
+        "level": 3,
+        "name": "Cyberadept Transcendent",
+        "body": "Resonance has helped you achieve what technology can only hope to unlock one day: gamma grade augmentations. After you have lost 4 Essence, you may take this quality at its listed Karma cost (not double). You must have Cyberadept Master and its prerequisites in order to take this quality. All of your augmentations become gamma grade, regardless of their current grade. When you receive a new delta grade augmentation, it takes time for you to properly adapt and integrate it. While your new augmentations are adapting, they do not provide any bonuses for being wireless-enabled, but they must be wireless-enabled nearly the entire time. If you deactivate wireless mode for more than one minute at a time, reset the timer for integration. It takes a month to properly integrate a new augmentation, at which time it upgrades to gamma grade. If your augmentations are ever removed, they are useless to anyone else-even as used grade. Whenever you raise your Resonance attribute, it only takes you one minute. This only applies when raising your Resonance attribute up to 6. Raising it to 7 or higher requires the normal required amount of time to improve.",
+        "requires": [
+          "<valuereq type=\"ATTRIBUTE\" ref=\"ESSENCE\" apply=\"CHARACTER\" max=\"2000\" />"
+        ],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:cyberadept_master"
+          },
+          {
+            "op": "add",
+            "ref": "quality:cyberadept_transcendent"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  }
+]

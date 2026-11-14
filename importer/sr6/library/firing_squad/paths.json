@@ -1,0 +1,196 @@
+[
+  {
+    "id": "boundaries_of_honor",
+    "name": "The Boundaries of Honor",
+    "steps": [
+      {
+        "id": "broken_code",
+        "level": 0,
+        "name": "Broken Code",
+        "body": "",
+        "requires": [
+          "<datareq type=\"QUALITY\" ref=\"honorbound\" apply=\"CHARACTER\" />"
+        ],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:broken_code"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:honorbound"
+          }
+        ],
+        "nextSteps": [
+          "no_code",
+          "rebound",
+          "penitent"
+        ]
+      },
+      {
+        "id": "no_code",
+        "level": 1,
+        "name": "No Code",
+        "body": "In many ways, this is similar to how a lot of shadowrunners live their life—from moment to moment, without any over-arching philosophy guiding their actions. It could be compared to not having the Honorbound quality at all, but there's one key difference. Some things are not easily left behind, and there can be a certain bitterness and awkwardness when dealing with those who still follow the code.<br/><br/>\\",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:broken_code"
+          },
+          {
+            "op": "add",
+            "ref": "quality:no_code"
+          }
+        ],
+        "nextSteps": []
+      },
+      {
+        "id": "rebound",
+        "level": 1,
+        "name": "Re-Bound",
+        "body": "Sometimes, life takes us in strange journeys, and we end up with a new set of beliefs than what we started with. The Re-Bound quality is identical to the Honorbound quality, except that no new Karma bonus comes with it. The character has gone through the challenging process of changing their beliefs, and now they have new guidance to live by.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:broken_code"
+          },
+          {
+            "op": "add",
+            "ref": "quality:rebound"
+          }
+        ],
+        "nextSteps": []
+      },
+      {
+        "id": "penitent",
+        "level": 1,
+        "name": "Penitent",
+        "body": "There are three possible end stages of this path. Once the duration of Broken Code has passed, the character may decide that living life by a code is not the way they want to do things, so they receive the No Code quality. Alternately, they may decide to follow a new code, giving them the Re-Bound quality. Their final option is to return to the code they had previously left behind, giving them the Penitent quality. All three are described below.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:broken_code"
+          },
+          {
+            "op": "add",
+            "ref": "quality:honorbound"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "once_bitten",
+    "name": "Once bitten",
+    "steps": [
+      {
+        "id": "immediate_aftermath",
+        "level": 0,
+        "name": "Immediate Aftermath",
+        "body": "In this step, characters receive qualities reflecting the immediate aftermath of the attack. They should receive either the Phobia or the Bad Memories quality to show the impact.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:CHOICE"
+          }
+        ],
+        "nextSteps": [
+          "double_sure",
+          "addiction",
+          "reconditioning"
+        ]
+      },
+      {
+        "id": "double_sure",
+        "level": 1,
+        "name": "Double Sure",
+        "body": "Characters with this quality exhibit extra caution when entering a potentially dangerous situation. They will not round a blind corner, enter a dark room, or any other such activity unless they are certain someone or something (like a drone or a spirit) has taken a look first. They will be certain to double-check all information they get from one contact with another contact, and they'll look for two sources for any information they need. This can make them slow in execution, but it's not without its benefits. The character gains a +2 dice pool bonus on any Surprise tests.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "addiction",
+          "reconditioning"
+        ]
+      },
+      {
+        "id": "addiction",
+        "level": 2,
+        "name": "Addiction",
+        "body": "The use of substances to deal with stress has led to a negative outcome, and the character has become addicted to whatever they were using. They receive a level 1 Addiction (p. 74, SR6) to that substance, but they do not gain the Karma bonus from the quality.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": []
+      },
+      {
+        "id": "reconditioning",
+        "level": 2,
+        "name": "Reconditioning",
+        "body": "The character develops habits and responses to their anxieties and become better able to handle them in the moment. For the most part they are able to function without their need for advance warning and double-checks, though when stress levels rise the gamemaster can require a Composure (2) test to see if the character slips back into their old Double Sure ways for the duration of the encounter.<br/>After half a year with Reconditioning, the character can drop the Phobia quality if they received it, but they should keep the Bad Memories quality if they have that.",
+        "requires": [
+          "<valuereq type=\"GEAR\" ref=\"docwagon_contract\" variant=\"gold\" value=\"2\" apply=\"CHARACTER\" />"
+        ],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:phobia"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "eye_for_an_eye",
+    "name": "Eye For An Eye",
+    "steps": [
+      {
+        "id": "violence_prone",
+        "level": 0,
+        "name": "Violence Prone",
+        "body": "The character believes that the way to respond to a punch is with a punch, and they are always ready for a fight. On the negative, they cannot gain or spend Edge on social tests where they or their team attempts to talk their way out of a violent situation, and they must succeed on a Composure (2) test to avoid jumping into the fray whenever they see violence near them. On the positive side, they are tough to catch by surprise since they're almost always ready for a fight, so they get a point of situational Edge when making a Surprise test.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "heedless",
+          "coping"
+        ]
+      },
+      {
+        "id": "heedless",
+        "level": 1,
+        "name": "Heedless",
+        "body": "By taking this quality, characters decide that their problems came from not being violent enough, and they should take no partial measures. They don't wait for violence to start — they start the violence themselves. They throw the first punch, fire the first shot, cast the first spell.<br/>With this quality, characters make a Composure (2) test in any opposed situation. If they fail, they move to attack whoever they perceive as the source of their problem. This does not mean they immediately resort to lethal measures—they may just slap or punch an opponent to get their attention or send a message. But since violence has a way of escalating a situation, they'll often cause more problems than they solve. <br/>Heedless characters are very difficult to catch by surprise, since they are always ready for a fight. Their threshold for Surprise tests is 1, and they get a point of situational Edge when making Surprise tests.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "conscientious_fighter"
+        ]
+      },
+      {
+        "id": "coping",
+        "level": 1,
+        "name": "Coping",
+        "body": "By taking this quality, characters are recognizing that they react with violence too often, and they want to control those tendencies more. They may count to ten, or breathe deeply, or engage in any other technique that helps them relax and focus their mind on solutions beside violence. When they are not able to use their technique, they must make a Composure (2) test or resort to violence, as with the Violence Prone quality. They gain a point of situational Edge when they try to dissuade others from violence or defuse a tense situation (only one point of Edge per attempt, even if it involves a long discussion).",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "conscientious_fighter"
+        ]
+      },
+      {
+        "id": "conscientious_fighter",
+        "level": 2,
+        "name": "Conscientious Fighter",
+        "body": "There is no set point where a character moves beyond the qualities in this step. It's quite possible they may keep either quality for the remainder of their shadowrunning career. Moving to the next step requires both a conscious decision and dedication. Characters need to learn from a martial arts specialist who is proficient in the philosophical underpinnings of their art. This means the person who teaches them needs to have an Instruction expertise and a martial arts specialization. Receiving training from them is neither quick nor inexpensive. The character needs to pay the instructor 200 nuyen per month for twelve months to reach the next stage.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": []
+      }
+    ]
+  }
+]

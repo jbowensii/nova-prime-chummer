@@ -1,0 +1,402 @@
+[
+  {
+    "id": "critter_bond",
+    "name": "Critter Bond",
+    "steps": [
+      {
+        "id": "critter_initial_bond",
+        "level": 0,
+        "name": "Initial Bond",
+        "body": "The path starts when you form a close bond with a single critter. Maybe it's a stray dog you started to feed and then didn't go away. Or maybe it's your trusty horse. Or a devil rat who would hang out in the same sewers you would, and eventually you just kind of accepted each other and got used to being in the same space. Whatever the case, there is a critter that you view as yours, and you have grown to care about it.",
+        "requires": [
+          "<datareq type=\"QUALITY\" ref=\"critter_trainer\" apply=\"CHARACTER\" />"
+        ],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:critter_initial_bond"
+          }
+        ],
+        "nextSteps": [
+          "critter_greater_bond"
+        ]
+      },
+      {
+        "id": "critter_greater_bond",
+        "level": 1,
+        "name": "Greater Bond",
+        "body": "Bonds tend to deepen over time, and Greater Bond shows a closer relationship between the runner and their animal friend.<br/>Game Effect: Once your bonded critter has learned its maximum number of commands (counting the extra ones from your Influence ranks), your bond deepens. You become eligible to spend the Karma cost to deepen the critter bond. Once the Greater Bond has been formed, you are no longer required to use pre-defined commands. You may spend a Minor Action to give your critter any instructions you choose, and it will understand and obey to the best of its abilities. Any Edge actions or boosts you use on behalf of your bonded critter cost fifty percent less Edge (rounded up).",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:critter_initial_bond"
+          },
+          {
+            "op": "add",
+            "ref": "quality:critter_greater_bond"
+          }
+        ],
+        "nextSteps": [
+          "critter_improvement",
+          "critter_lost",
+          "critter_goodbye"
+        ]
+      },
+      {
+        "id": "critter_improvement",
+        "level": 2,
+        "name": "Permanent Improvement",
+        "body": "The training of a critter can improve what the critter can do, building their skills and capabilities.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:critter_improvement"
+          }
+        ],
+        "nextSteps": [
+          "critter_lost",
+          "critter_goodbye"
+        ]
+      },
+      {
+        "id": "critter_lost",
+        "level": 3,
+        "name": "Lost",
+        "body": "Your critter is lost! At some point, the character and their critter might become separated. The critter may wander away, or be taken, or otherwise be separated from the player. The good news is, there's a chance that they're still alive, and that you might be able to find them.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:critter_lost"
+          }
+        ],
+        "nextSteps": [
+          "critter_improvement",
+          "critter_goodbye"
+        ]
+      },
+      {
+        "id": "critter_broken",
+        "level": 3,
+        "name": "Broken Trust",
+        "body": "Sometimes a relationship goes awry, especially when one party pushes the other too hard and ignores important boundaries. This quality takes effect if the PC does something to horribly mistreat their critter (gamemaster discretion as to where that boundary lies).<br/>Game Effect: When the relationship with a critter moves to this quality, your critter will no longer respond to your commands. At the gamemaster's discretion, it may even attack you or run away. It's possible that this broken trust will lead to a permanent severing of the relationship; if you and your critter stay away from each other for more than a month, move on to the Saying Goodbye quality. If you wish to restore your bond, you must spend at least one week training with your critter and succeed at a training test. However, you may not gain or spend Edge on the training test, and you only get one chance. If you succeed, the bond is restored, and this quality is eliminated. If you ever trigger this quality again, though, you may not attempt to restore the bond-it is broken forever. You gain the Critter Dominator quality (p. 132) with no expenditure of Karma, but all qualities associated with this path are lost. If you choose to bond another critter, all Karma costs are doubled.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:critter_broken"
+          }
+        ],
+        "nextSteps": [
+          "critter_improvement",
+          "critter_goodbye"
+        ]
+      },
+      {
+        "id": "critter_goodbye",
+        "level": 4,
+        "name": "Saying Goodbye",
+        "body": "At some point, the bond between character and critter ends. Whether it's death, distance, or some other factor that causes the separation, the connection between the two is permanently severed.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:critter_goodbye"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "obsession",
+    "name": "Obsession",
+    "steps": [
+      {
+        "id": "obsession_consumed",
+        "level": 0,
+        "name": "Consumed",
+        "body": "One personal goal is the most important thing in the world to you. You can't stop thinking about it, and every moment spent not working toward that goal is a torment. <br/>Game Effect:Choose a specific goal with your gamemaster's input and approval. This should be a difficult, costly, or dangerous goal, but it must also be achievable. The goal should generally require three or more sessions to accomplish. You do not receive any bonus Karma for this quality until you accomplish this goal. Whenever you aren't actively pursuing your goal, you may not gain or spend Edge on any tests. If you achieve your goal, move on to Fulfilled. If your goal becomes unachievable, or if you choose to give up on it, move on to Momentous Misfortune. No additional Karma for the player should be rewarded for activities related to completing the obsession, though other characters who are assisting them may gain Karma.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:obsession_consumed"
+          }
+        ],
+        "nextSteps": [
+          "obsession_fulfilled",
+          "obsession_misfortune"
+        ]
+      },
+      {
+        "id": "obsession_fulfilled",
+        "level": 1,
+        "name": "Fulfilled",
+        "body": "You achieved the focus of your obsession, but was it satisfying? Do you feel better now? What are you going to do with the rest of your life, now that you have obtained what you wanted so badly? <br/>Game Effect:Once you achieve the goal of your obsession, you gain the 15 bonus Karma from the Consumed quality. You can stop there and step off the Obsession quality path. Alternately, you may choose to move on to Obsessive Tendencies or Goal-Oriented.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:obsession_consumed"
+          },
+          {
+            "op": "add",
+            "ref": "quality:obsession_fulfilled"
+          }
+        ],
+        "nextSteps": [
+          "obsession_obsessive",
+          "obsession_goal"
+        ]
+      },
+      {
+        "id": "obsession_obsessive",
+        "level": 2,
+        "name": "Obsessive Tendencies",
+        "body": "Either you got what you wanted and it didn't make things right, or you failed and don't know what to do next. Either way, you're desperate to find a new focus that will bring meaning back to your life. <br/>If this is your first time through this path, you may freely save or spend the bonus Karma from the Compulsion quality. Until you choose a new goal to become obsessed with, you may not gain or spend Edge. Once you have chosen your next goal, you may gain and spend Edge again, but only while you are actively pursuing that goal. The cycle continues, but you gain no further Karma from this quality path. You may gain Karma achieving objectives as your gamemaster sees fit.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:obsession_fulfilled"
+          },
+          {
+            "op": "add",
+            "ref": "quality:obsession_obsessive"
+          }
+        ],
+        "nextSteps": [
+          "obsession_misfortune"
+        ]
+      },
+      {
+        "id": "obsession_goal",
+        "level": 2,
+        "name": "Goal-Oriented",
+        "body": "You completed your goal, and have developed healthier ways to channel your ambitions. You may purchase the Focused Ambition quality at the discounted cost of 8 Karma (normally it would be twice its normal cost, or 12 Karma), which may come from the bonus Karma for fulfilling your compulsion. The path then ends here.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:obsession_fulfilled"
+          },
+          {
+            "op": "add",
+            "ref": "quality:obsession_goal"
+          }
+        ],
+        "nextSteps": []
+      },
+      {
+        "id": "obsession_misfortune",
+        "level": 3,
+        "name": "Momentous Misfortune",
+        "body": "This quality replaces others on this path at a point when your goal has become unattainable. Whether due to cruel fate or your own failings, you have given up all hope of obtaining that with which you were so obsessed. You do not collect any bonus Karma from the Consumed quality. Your self-confidence is crushed. This quality replaces any others on the path you may have had. Your dissatisfaction affects your mindset, so the threshold of any Composure tests you take is increased by 1. You may buy it off for 25 Karma at any time. The path ends here.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:obsession_misfortune"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "favored_weapon",
+    "name": "Favored Weapon",
+    "steps": [
+      {
+        "id": "favored_weapon_extension",
+        "level": 0,
+        "name": "An Extension of Yourself",
+        "body": "You have become accustomed to using one special weapon, and it is now a core part of your identity. <br/>Game Effect: Choose a specific weapon for which you have a related expertise. You must have earned at least 10 Karma in missions where you have had this weapon. Gain +1 die on all skill tests made with the weapon, and all of its Attack Ratings increase by +2 when it is wielded by you.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:favored_weapon_extension"
+          }
+        ],
+        "nextSteps": [
+          "favored_weapon_customization",
+          "favored_weapon_attachment",
+          "favored_weapon_lost"
+        ]
+      },
+      {
+        "id": "favored_weapon_customization",
+        "level": 1,
+        "name": "Unique Customization",
+        "body": "Your weapon is special, but it could become more special. In this step, you make it even more your own. <br/>Game Effect: With access to an Armorer tool shop, you may improve your favored weapon with an Engineering (Armorer) + Logic (6, 1 week) Extended test. You may customize your weapon up to three times, but the threshold for the Extended test increases to 12 for the second customization, and 18 for the third. The customizations are more related to your own mindset and familiarity with your favored weapon rather than purely technical modifications. They only apply when you are wielding the weapon, and may not be changed once selected. Anyone else using your customized weapon don't receive the bonuses, and may not gain or spend Edge on attacks made with it.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "favored_weapon_customization",
+          "favored_weapon_attachment",
+          "favored_weapon_lost"
+        ]
+      },
+      {
+        "id": "favored_weapon_attachment",
+        "level": 1,
+        "name": "Unhealthy Attachment",
+        "body": "If you choose, you may take one level of Unique Customization at no Karma cost if you also select the Unhealthy Attachment quality for that weapon. <br/>Game Effect: When using any weapon that requires the same skill as your favored weapon, you may not gain or spend Edge on attacks.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:favored_weapon_attachment"
+          }
+        ],
+        "nextSteps": [
+          "favored_weapon_customization",
+          "favored_weapon_lost"
+        ]
+      },
+      {
+        "id": "favored_weapon_lost",
+        "level": 2,
+        "name": "Lost!",
+        "body": "If your favored weapon is lost, you may not replace it for at least one month. If you choose to not favor another weapon, your Unhealthy Attachment quality penalty will apply until you buy it off for 10 Karma. If you choose a new favored weapon, you must transfer your Unhealthy Attachment to it. If you do not have an Unhealthy Attachment, you must take it at this time. There is no Karma cost for choosing a new favored weapon, though all Unique Customizations must be purchased individually.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:favored_weapon_extension"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:favored_weapon_custom"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:favored_weapon_custom"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:favored_weapon_custom"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "vendetta",
+    "name": "Vendetta",
+    "steps": [
+      {
+        "id": "vendetta_start",
+        "level": 0,
+        "name": "Vendetta",
+        "body": "After the first time you suffer the consequences for Bounty or Hunted, choose one of the following options:",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "vendetta_lielow",
+          "vendetta_shutdown",
+          "vendetta_fine"
+        ]
+      },
+      {
+        "id": "vendetta_lielow",
+        "level": 1,
+        "name": "Lie Low",
+        "body": "Will you lie low and hope the special attention blows over? If so, your way out is to reduce your personal Heat to zero using whatever methods are available to you. You will suffer the effects of the Bounty or Hunted quality every session until your Heat reaches zero. Once your Heat reaches zero, the Bounty or Hunted quality goes away.You may then purchase one positive quality at its regular Karma cost (instead of double, per usual character advancement costs). The path ends here.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": []
+      },
+      {
+        "id": "vendetta_shutdown",
+        "level": 1,
+        "name": "Shut It Down",
+        "body": "Do you track down who's got your number? Finding out who is after you will require the help of your contacts, with a bribe of at least 1,000 nuyen. Once you know who is after you, you must decide whether to try to make a deal, or make them back down. This would likely require the focus of a session or two, rather than the usual shadowrun. If you are attempting to appease your pursuer, you must perform a run for them (for free), or pay them 1,000 nuyen for every point of Heat you have. If you force your pursuer to back down, you must perform a run to gain leverage over them, intimidate them, or take them down. If the run fails, you gain either Bounty or 2 levels of Hunted (whichever you didn't already have). If you already have both qualities, increase the Hunted quality to level 3. If the run succeeds, your Bounty or Hunted quality goes away, and the personal Heat of every runner involved in the run is reduced by 5. The path ends here.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": []
+      },
+      {
+        "id": "vendetta_fine",
+        "level": 1,
+        "name": "This Is Fine?",
+        "body": "Do you accept this situation as just part of your new normal? If so, the quality becomes permanent unless you buy it off later for 20 Karma. However, you gain 10 points of Karma that you may use to purchase a single positive quality or buy off one of your negative qualities at its unmodified Karma cost (instead of double). Any Karma not spent on a quality is lost. The path ends here.",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "sinners_path",
+    "name": "SINner’s path",
+    "steps": [
+      {
+        "id": "sinners_path_record",
+        "level": 0,
+        "name": "Records on File",
+        "body": "Unfortunately for you, some evidence of your crimes is being collected to create a profile in a criminal database. <br/>Game Effect: Whenever you attempt to use a fake SIN or license, treat the rating as if it were one lower. Whenever you gain Heat, you gain one extra (max +1 heat per session). If your heat ever reaches 17, the authorities have gathered enough information to identify you with your crimes. Your SINner quality becomes a Criminal SIN.Gain 5 Karma, which you may save or spend as you wish.",
+        "requires": [
+          "<datareq type=\"QUALITY\" ref=\"sinner\" apply=\"CHARACTER\" />"
+        ],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:sinners_path_record"
+          }
+        ],
+        "nextSteps": [
+          "sinners_path_criminal",
+          "sinners_path_shadows"
+        ]
+      },
+      {
+        "id": "sinners_path_criminal",
+        "level": 1,
+        "name": "Criminal SIN",
+        "body": "Either your original SIN has been flagged for your criminal acts, or you were issued one after being charged with a crime. <br/>Game Effect: Whenever you use a fake SIN or license, it is much more likely to be identified against your criminal SIN and burned. All of your fake IDs function at half their rating (rounded up), and you may not gain or spend Edge to influence a SIN check. If the Heat roll at the end of a run results in no Heat gained, you gain 1 personal Heat anyway. Records on File does not apply in this instance.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:sinners_path_criminal"
+          }
+        ],
+        "nextSteps": [
+          "sinners_path_shadows"
+        ]
+      },
+      {
+        "id": "sinners_path_shadows",
+        "level": 2,
+        "name": "Into the Shadows",
+        "body": "Your SIN weighs heavily on you, and so you're going to need to find a way to disappear into the shadows. This part of the path is initiated by the gamemaster, but it should be in response to the player wanting to finally do something about the mounting pressure. <br/>Game Effect: A fixer or ID manufacturer contact will require 10,000 nuyen plus 1,000 nuyen for every point of personal Heat to arrange for your original identity to be carefully purged from the Matrix. Reduce your personal Heat by half. You may buy off your SINner or Criminal SIN quality for 8 Karma. At any point after this, you may buy off Records on File for 10 Karma. The path ends here.",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:sinner"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:sinners_path_criminal"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:sinners_path_record"
+          },
+          {
+            "op": "add",
+            "ref": "quality:sinners_path_shadows"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  }
+]

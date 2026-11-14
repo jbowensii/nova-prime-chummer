@@ -1,0 +1,446 @@
+[
+  {
+    "id": "the_human_touch",
+    "name": "The Human Touch",
+    "steps": [
+      {
+        "id": "losing_balance",
+        "level": 0,
+        "name": "Losing Balance",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:social_stress"
+          }
+        ],
+        "nextSteps": [
+          "evaluating_humanity"
+        ]
+      },
+      {
+        "id": "evaluating_humanity",
+        "level": 1,
+        "name": "Evaluating Humanity",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:social_stress"
+          }
+        ],
+        "nextSteps": [
+          "re_balanced"
+        ]
+      },
+      {
+        "id": "re_balanced",
+        "level": 2,
+        "name": "Re-Balanced",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:re_balanced"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "the_healing_journey",
+    "name": "The Healing Journey",
+    "steps": [
+      {
+        "id": "rehab_blues",
+        "level": 0,
+        "name": "Rehab Blues",
+        "body": "",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "learning_too_fast"
+        ]
+      },
+      {
+        "id": "learning_too_fast",
+        "level": 1,
+        "name": "Learning Too Fast",
+        "body": "",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "synchronicity"
+        ]
+      },
+      {
+        "id": "synchronicity",
+        "level": 2,
+        "name": "Synchronicity",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:synchronicity"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "training_montage",
+    "name": "Training Montage",
+    "steps": [
+      {
+        "id": "punching_above_your_weight",
+        "level": 0,
+        "name": "Punching Above Your Weight",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:punching_above_your_weight"
+          }
+        ],
+        "nextSteps": [
+          "limited_specialization"
+        ]
+      },
+      {
+        "id": "limited_specialization",
+        "level": 1,
+        "name": "Limited Specialization",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:punching_above_your_weight"
+          },
+          {
+            "op": "add",
+            "ref": "quality:limited_specialization"
+          }
+        ],
+        "nextSteps": [
+          "synchronicity"
+        ]
+      },
+      {
+        "id": "synchronicity",
+        "level": 2,
+        "name": "Synchronicity",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:limited_specialization"
+          },
+          {
+            "op": "add",
+            "ref": "quality:synchronicity"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "private_investigator",
+    "name": "Private Investigator",
+    "steps": [
+      {
+        "id": "killing_the_pain",
+        "level": 0,
+        "name": "Killing the Pain",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:killing_the_pain"
+          }
+        ],
+        "nextSteps": [
+          "getting_help"
+        ]
+      },
+      {
+        "id": "getting_help",
+        "level": 1,
+        "name": "Getting Help",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:killing_the_pain"
+          },
+          {
+            "op": "add",
+            "ref": "quality:getting_help"
+          }
+        ],
+        "nextSteps": [
+          "pi_with_a_purpose"
+        ]
+      },
+      {
+        "id": "pi_with_a_purpose",
+        "level": 2,
+        "name": "PI with a Purpose",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:getting_help"
+          },
+          {
+            "op": "add",
+            "ref": "quality:pi_with_a_purpose"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "the_racing_family",
+    "name": "The Racing Family",
+    "steps": [
+      {
+        "id": "society_of_speed",
+        "level": 0,
+        "name": "Society of Speed",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:society_of_speed"
+          }
+        ],
+        "nextSteps": [
+          "closer_contacts"
+        ]
+      },
+      {
+        "id": "closer_contacts",
+        "level": 1,
+        "name": "Closer Contacts",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:society_of_speed"
+          },
+          {
+            "op": "add",
+            "ref": "quality:closer_contacts"
+          }
+        ],
+        "nextSteps": [
+          "nothing_is_bigger_than_family"
+        ]
+      },
+      {
+        "id": "nothing_is_bigger_than_family",
+        "level": 2,
+        "name": "Nothing is Bigger than Family",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:closer_contacts"
+          },
+          {
+            "op": "add",
+            "ref": "quality:nothing_is_bigger_than_family"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "wreck_and_recovery",
+    "name": "Wreck and Recovery",
+    "steps": [
+      {
+        "id": "signature_vehicle",
+        "level": 0,
+        "name": "Signature Vehicle",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:signature_vehicle"
+          }
+        ],
+        "nextSteps": [
+          "devastating_crash"
+        ]
+      },
+      {
+        "id": "devastating_crash",
+        "level": 1,
+        "name": "Devastating Crash",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:signature_vehicle"
+          },
+          {
+            "op": "add",
+            "ref": "quality:devastating_crash"
+          }
+        ],
+        "nextSteps": [
+          "rigger_equilibrium"
+        ]
+      },
+      {
+        "id": "rigger_equilibrium",
+        "level": 2,
+        "name": "Rigger Equilibrium",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:devastating_crash"
+          },
+          {
+            "op": "add",
+            "ref": "quality:rigger_equilibrium"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "gestalt",
+    "name": "Gestalt",
+    "steps": [
+      {
+        "id": "social_adept_gestalt_0",
+        "level": 0,
+        "name": "Gestalt Step 0",
+        "body": "",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "social_adept_gestalt_1"
+        ]
+      },
+      {
+        "id": "social_adept_gestalt_1",
+        "level": 1,
+        "name": "Gestalt Step 1",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:social_adept_gestalt_1"
+          }
+        ],
+        "nextSteps": [
+          "social_adept_gestalt_2"
+        ]
+      },
+      {
+        "id": "social_adept_gestalt_2",
+        "level": 2,
+        "name": "Gestalt Step 2",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:social_adept_gestalt_2"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  },
+  {
+    "id": "operations_ace",
+    "name": "Operations Ace",
+    "steps": [
+      {
+        "id": "social_adept_operations_ace_0",
+        "level": 0,
+        "name": "Operations Ace Step 0",
+        "body": "",
+        "requires": [],
+        "modifications": [],
+        "nextSteps": [
+          "social_adept_operations_ace_1"
+        ]
+      },
+      {
+        "id": "social_adept_operations_ace_1",
+        "level": 1,
+        "name": "Operations Ace Step 1",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:social_adept_operations_ace_1"
+          }
+        ],
+        "nextSteps": [
+          "social_adept_operations_ace_2"
+        ]
+      },
+      {
+        "id": "social_adept_operations_ace_2",
+        "level": 2,
+        "name": "Operations Ace Step 2",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:social_adept_operations_ace_2"
+          }
+        ],
+        "nextSteps": [
+          "social_adept_operations_ace_3"
+        ]
+      },
+      {
+        "id": "social_adept_operations_ace_3",
+        "level": 3,
+        "name": "Operations Ace Step 3",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:social_adept_operations_ace_3"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  }
+]

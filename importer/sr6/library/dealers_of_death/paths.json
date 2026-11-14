@@ -1,0 +1,113 @@
+[
+  {
+    "id": "part_of_the_family",
+    "name": "Part of the Family",
+    "steps": [
+      {
+        "id": "initiate",
+        "level": 0,
+        "name": "Initiate",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:family_initiate"
+          }
+        ],
+        "nextSteps": [
+          "graduate",
+          "deserted"
+        ]
+      },
+      {
+        "id": "graduate",
+        "level": 1,
+        "name": "Graduate",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:family_initiate"
+          },
+          {
+            "op": "add",
+            "ref": "quality:family_graduate"
+          }
+        ],
+        "nextSteps": [
+          "operative",
+          "deserted"
+        ]
+      },
+      {
+        "id": "operative",
+        "level": 2,
+        "name": "Operative",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:family_graduate"
+          },
+          {
+            "op": "add",
+            "ref": "quality:family_operative"
+          }
+        ],
+        "nextSteps": [
+          "retired",
+          "deserted"
+        ]
+      },
+      {
+        "id": "retired",
+        "level": 3,
+        "name": "Retired",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:family_operative"
+          },
+          {
+            "op": "add",
+            "ref": "quality:family_retired"
+          }
+        ],
+        "nextSteps": [
+          "deserted"
+        ]
+      },
+      {
+        "id": "deserted",
+        "level": 3,
+        "name": "Deserted",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:family_initiate"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:family_graduate"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:family_operative"
+          },
+          {
+            "op": "add",
+            "ref": "quality:family_deserted"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  }
+]

@@ -1,0 +1,123 @@
+[
+  {
+    "id": "path_of_mentor_spirit",
+    "name": "Path of Attaining a Mentor Spirit",
+    "steps": [
+      {
+        "id": "first_interaction",
+        "level": 0,
+        "name": "First Interaction",
+        "body": "",
+        "requires": [
+          "<datareq type=\"QUALITY\" ref=\"mentor_spirit\" negate=\"true\" />"
+        ],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:first_interaction"
+          }
+        ],
+        "nextSteps": [
+          "accept",
+          "reject"
+        ]
+      },
+      {
+        "id": "accept",
+        "level": 1,
+        "name": "Accept",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:mentor_spirit"
+          },
+          {
+            "op": "remove",
+            "ref": "quality:first_interaction"
+          }
+        ],
+        "nextSteps": []
+      },
+      {
+        "id": "reject",
+        "level": 1,
+        "name": "Reject",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:first_interaction"
+          }
+        ],
+        "nextSteps": [
+          "first_interaction"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "path_of_familiar",
+    "name": "Path of the Familiar",
+    "steps": [
+      {
+        "id": "pet_store",
+        "level": 0,
+        "name": "Um, I Thought We Were Just Going to the Pet Store",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "add",
+            "ref": "quality:pet_store"
+          }
+        ],
+        "nextSteps": [
+          "new_buddy"
+        ]
+      },
+      {
+        "id": "new_buddy",
+        "level": 1,
+        "name": "Meet My New Buddy",
+        "body": "",
+        "requires": [],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:pet_store"
+          },
+          {
+            "op": "add",
+            "ref": "quality:new_buddy"
+          }
+        ],
+        "nextSteps": [
+          "bound_soul"
+        ]
+      },
+      {
+        "id": "bound_soul",
+        "level": 2,
+        "name": "Bound at the Soul",
+        "body": "",
+        "requires": [
+          "<selreq><datareq type=\"MAGIC_RESO\" ref=\"magician\" apply=\"CHARACTER\" /><datareq type=\"MAGIC_RESO\" ref=\"adept\" apply=\"CHARACTER\" /><datareq type=\"MAGIC_RESO\" ref=\"mysticadept\" apply=\"CHARACTER\" /><datareq type=\"MAGIC_RESO\" ref=\"aspectedmagician\" apply=\"CHARACTER\" /><datareq type=\"MAGIC_RESO\" ref=\"minor_awakened\" apply=\"CHARACTER\" /></selreq>"
+        ],
+        "modifications": [
+          {
+            "op": "remove",
+            "ref": "quality:new_buddy"
+          },
+          {
+            "op": "add",
+            "ref": "quality:bound_soul"
+          }
+        ],
+        "nextSteps": []
+      }
+    ]
+  }
+]
