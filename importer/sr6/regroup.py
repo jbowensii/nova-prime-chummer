@@ -51,6 +51,7 @@ class Block:
     # a configuration row of one product (shapes.boxes): the product its box titles, and that title's maker
     product: str = ""
     maker: str = ""
+    cid: str = ""  # the name its id is made of when the item's printed name is longer (dc: `GTI Benevolent / Raphael`)
     group: str = ""  # the name-only row its table row is grouped under (`DocWagon contracts` over `Basic`): _row_groups
     table: str = ""  # the title of the table its row's table is a sub-table of (`magical goods table`)
     config_of: str = ""  # a configuration row's item (shapes.configuration_rows): the Alpenstock's Spear
