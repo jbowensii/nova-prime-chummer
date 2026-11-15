@@ -147,6 +147,7 @@ class AkaTest(unittest.TestCase):
 
     @staticmethod
     def heading(name, tags):
+        """A level-3 heading block carrying `tags` as its tag line."""
         return regroup.Block(type="section", name=name, chapter="", section=name, label="", page=1, tags=tags, level=3)
 
     def test_pair(self):
