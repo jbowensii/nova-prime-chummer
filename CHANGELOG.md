@@ -8,6 +8,25 @@
 * **sr6:** Load example characters and Load book NPCs ask first, so a stray click can't bring back copies you moved to the trash
 * **sr6:** Deus Ex Arcana (DEA) import recipe: spells, rituals, qualities, mentor spirits, metamagics, critters, the four Re-Awoken traditions, the Minor Awakened magic type, the Patterncraft skill and Brumeur's mundane and awakened pair; 151 of 151 Commlink6 records matched, with the owner's rulings and Commlink6's structure in `overrides/dea.json`
 
+## [1.4.0](https://github.com/jbowensii/nova-prime-chummer/compare/v1.3.1...v1.4.0) (2026-11-15)
+
+
+### Features
+
+* app icon [#98](https://github.com/jbowensii/nova-prime-chummer/issues/98) Crew Dice (favicon, Unraid icon, Windows exe icon) ([80eec47](https://github.com/jbowensii/nova-prime-chummer/commit/80eec471b527002ba9cc5b0536e0e2798780a5fe))
+* **app:** first admin visit to a game with no books and no game data opens its Books page ([1c2d3a9](https://github.com/jbowensii/nova-prime-chummer/commit/1c2d3a9de8bc47cf01c7bd09fe4e18d02753fb0b))
+* **foundry:** Attack Rating on each animalForm natural weapon (Reaction + Strength, close only) ([bad12a1](https://github.com/jbowensii/nova-prime-chummer/commit/bad12a176ada1119240c6967fb8cfd10761c94fc))
+* **importer:** read a vehicle heading's a.k.a. line as aliases and the full printed name ([7c8ff64](https://github.com/jbowensii/nova-prime-chummer/commit/7c8ff643864113c373033dc1d8be1600af54d77e))
+* **sr6:** ask before loading example characters and book NPCs ([87ae5d6](https://github.com/jbowensii/nova-prime-chummer/commit/87ae5d6257516efd16cf14d131aa1684d8ce1eee))
+* **sr6:** quality-path picker also shows book-printed paths Commlink6 lacks ([ab77b15](https://github.com/jbowensii/nova-prime-chummer/commit/ab77b15642bccb7d6c6b84bdee5170146e2f2480))
+
+
+### Bug Fixes
+
+* **sr6/ed:** Generic Escape Pod row is a misprint shifted one column from SENSOR on ([33ffd10](https://github.com/jbowensii/nova-prime-chummer/commit/33ffd10e1ac485aa007cc3789965847fd17ba972))
+* **sr6:** book paths resolve steps against every imported source ([92642fa](https://github.com/jbowensii/nova-prime-chummer/commit/92642fa3a87a89e2bdbb65da7212caabee5cae68))
+* **sr6:** book-path steps match quality names with a trailing aside or an A/B alternative ([a474c76](https://github.com/jbowensii/nova-prime-chummer/commit/a474c767f745c0d6854b81bc1e12e22cfb286cc3))
+
 ## [1.3.1](https://github.com/jbowensii/nova-prime-chummer/compare/v1.3.0...v1.3.1) (2026-11-14)
 
 
