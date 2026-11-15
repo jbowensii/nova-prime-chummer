@@ -1,7 +1,9 @@
 // The sample runners as imported: the pregen booklet (recipe pregens, 15 runners) and the core rulebook's
 // 12 pregens plus the character creation example (recipe crb). Each file is the book as printed (the owner's rule):
-// nothing in it explains, approves or corrects what the book prints (no override, no drawback note, no starting or
-// add-on marker), every amp keeps its printed rating, and where the rules rate it otherwise Review says so. The
+// nothing in it explains, approves or corrects what the book prints (no override, no drawback note; the importer's two
+// readings of the page are allowed, restored in aa3f8702: starting="commlink" on a branded commlink the list prints for
+// the plain one (the free commlink, CRB p.85) and over= on an armor row printed "(+1)" (an add-on over the row above)).
+// Every amp keeps its printed rating, and where the rules rate it otherwise Review says so. The
 // warnings and errors a runner shows are the book's, for the owner to look into: listed, never required to be none.
 // The engine must reproduce every number the recipe marked "ok" in library/<book>/import.xml, every number the
 // hand-encoded runners were tested on (oracle pregens-printed.json), and derive() on the hand-encoded one.
@@ -77,8 +79,7 @@ describe.each(imports)('$dir import', ({ src, dir, ids }) => {
 
       test('the file is the book: nothing explains, approves or corrects it', () => {
         const xml = readFileSync(join(CUSTOM_DIR, 'imported', dir, 'samples', `${prefix}${id}.xml`), 'utf8')
-        for (const marker of ['<override', 'starting=', 'over=', 'book drawback', 'balances printed rating', 'As printed in'])
-          expect(xml.includes(marker), marker).toBe(false)
+        for (const marker of ['<override', 'book drawback', 'balances printed rating', 'As printed in']) expect(xml.includes(marker), marker).toBe(false)
         expect(ch.overrides).toEqual([])
         // what the book prints against the rules shows as it would on any runner (the owner's to look into)
         const c = imported ?? books!,
