@@ -384,6 +384,8 @@ Pick one way to run the app, then follow its steps from top to bottom. Every opt
 | [Ubuntu service](#ubuntu-systemd-service) | A Linux box without Docker | `install.sh update` | `/var/lib/nova-prime-chummer` | **New in this beta** |
 | [From source](#from-source) | Developers | `git pull`, rebuild | The folder you set with `DATA_PATH` | For development |
 
+**Cloudflare users:** if you put the chummer subdomain behind Cloudflare's proxy (orange cloud), book uploads will hang at a low percentage and never finish. Cloudflare imposes a hard upload-size limit on its free and Pro plans (~100 MB), and RPG core rulebook PDFs routinely exceed it. **Turn the proxy off** (gray-cloud the DNS record) and issue a Let's Encrypt certificate with certbot instead — a Cloudflare Origin Certificate is not trusted by browsers without the proxy. See [docs/hosting-auth.md](docs/hosting-auth.md#cloudflare-proxy-and-large-uploads) for the full fix, including nginx rate-limiting to replace the protection you lose.
+
 **An honest note on maturity.** Pelican, Docker Compose and Ubuntu are new in this beta. They have automated checks (see [distribution/README.md](distribution/README.md)) but far less field use than Docker, Unraid and the Windows app. If one fails, please [open an issue](https://github.com/jbowensii/nova-prime-chummer/issues) with the log.
 
 ### Windows installer

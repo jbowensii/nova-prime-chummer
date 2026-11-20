@@ -39,6 +39,47 @@ location = /api/auth/login {
 Behind Cloudflare, key the zone on the real client address (`$http_cf_connecting_ip`, or `real_ip_header
 CF-Connecting-IP` with Cloudflare's ranges in `set_real_ip_from`), or use a Cloudflare rate-limiting rule instead.
 
+## Cloudflare proxy and large uploads
+
+> **Symptom:** book uploads hang at a low percentage (often around 9%) and never finish, with no error in the app or server log.
+
+When `chummer.yourdomain.com` is **orange-cloud** in Cloudflare (proxied), all traffic — including PDF uploads — passes through Cloudflare's network. Cloudflare enforces a hard upload-size limit that cannot be changed on the free or Pro plan (~100 MB). An SR6 or Anarchy core rulebook PDF easily exceeds that. The request is silently cut off at Cloudflare's edge before it ever reaches your server; nginx and the app never see it, so there is no log entry.
+
+**Fix: disable the Cloudflare proxy for the chummer subdomain** (gray-cloud it in your Cloudflare DNS dashboard). DNS-only mode means traffic goes directly from the browser to your server:
+
+1. In the Cloudflare dashboard → DNS, find the `chummer` CNAME (or A) record and click the orange cloud to turn it gray (DNS only).
+2. Because you are no longer behind Cloudflare's edge, **replace any Cloudflare Origin Certificate** with a Let's Encrypt certificate. A CF Origin Cert is only trusted by Cloudflare's proxy, not by browsers directly:
+   ```bash
+   certbot --nginx -d chummer.yourdomain.com
+   ```
+3. Add server-side protections to compensate for losing Cloudflare's proxy shield. At minimum, rate-limit the API and block scanners in nginx (see below), and consider fail2ban for repeated 4xx hits.
+
+**nginx rate-limiting (add to the `http {}` block in nginx.conf):**
+
+```nginx
+limit_req_zone $binary_remote_addr zone=chummer_upload:10m rate=2r/m;
+limit_req_zone $binary_remote_addr zone=chummer_api:10m rate=60r/m;
+limit_conn_zone $binary_remote_addr zone=chummer_conn:10m;
+```
+
+Then inside the chummer server block's `location /` (or `location /api/`):
+
+```nginx
+limit_conn chummer_conn 20;
+limit_req zone=chummer_api burst=120 nodelay;
+proxy_read_timeout 300;
+proxy_send_timeout 300;
+```
+
+Also make sure nginx allows large uploads (default is 1 MB):
+
+```nginx
+# inside the chummer server block
+client_max_body_size 1g;
+```
+
+**Alternative (Cloudflare Enterprise only):** Cloudflare's upload-limit can only be raised above 500 MB on the Enterprise plan. The DNS-only approach above works on every plan.
+
 ## Sign in with Authelia (OpenID Connect)
 
 Accounts can sign in through [Authelia](https://www.authelia.com/) instead of an app password, with Authelia's
