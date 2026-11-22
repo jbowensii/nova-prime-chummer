@@ -9,7 +9,7 @@ Set `TRUST_PROXY` (template: **Trusted proxy**) to the address of the proxy that
 client's address (sign-in limits, logs), whether the request came over https (the secure cookie) and the public address.
 
 - List **every hop** that adds `X-Forwarded-For`: with Cloudflare in front of NGINX Proxy Manager, list NPM's address
-  *and* Cloudflare's published ranges (<https://www.cloudflare.com/ips/>), or have NPM restore the real address
+  _and_ Cloudflare's published ranges (<https://www.cloudflare.com/ips/>), or have NPM restore the real address
   (`real_ip_header CF-Connecting-IP`). Otherwise every visitor looks like a few Cloudflare addresses, and one person's
   failed sign-ins slow down everyone's.
 - Don't list a whole subnet or the Docker gateway (`172.17.0.1`) while the app's port is published: anything that can
@@ -52,30 +52,53 @@ When `chummer.yourdomain.com` is **orange-cloud** in Cloudflare (proxied), all t
    ```bash
    certbot --nginx -d chummer.yourdomain.com
    ```
-3. Add server-side protections to compensate for losing Cloudflare's proxy shield. At minimum, rate-limit the API and block scanners in nginx (see below), and consider fail2ban for repeated 4xx hits.
+3. Add server-side protections to compensate for losing Cloudflare's proxy shield. Rate-limit authentication attempts, block scanners in nginx (see below), and consider fail2ban for repeated 4xx hits.
 
-**nginx rate-limiting (add to the `http {}` block in nginx.conf):**
+### nginx reverse proxy and rate-limiting
 
-```nginx
-limit_req_zone $binary_remote_addr zone=chummer_upload:10m rate=2r/m;
-limit_req_zone $binary_remote_addr zone=chummer_api:10m rate=60r/m;
-limit_conn_zone $binary_remote_addr zone=chummer_conn:10m;
-```
-
-Then inside the chummer server block's `location /` (or `location /api/`):
-
-```nginx
-limit_conn chummer_conn 20;
-limit_req zone=chummer_api burst=120 nodelay;
-proxy_read_timeout 300;
-proxy_send_timeout 300;
-```
-
-Also make sure nginx allows large uploads (default is 1 MB):
+> **Important (avoiding 503 Service Unavailable):** Do not apply aggressive rate limits (such as `rate=60r/m` or low burst thresholds) across the entire server block or `location /`.
+>
+> In Nova Prime Chummer:
+>
+> - A server with imported rulebooks (especially the full SR6 catalog of 60+ books) causes the browser to fetch over 70 text and catalog XML files (`/custom/sr6/texts/*.xml`) simultaneously when opening the app or refreshing data.
+> - Clicking **Load example characters** or **Load book NPCs & Critters** saves batches of character and critter files to the server concurrently (up to hundreds of items).
+>
+> A strict rate limit on the general API or static files causes nginx to reject these rapid batch requests with **HTTP 503**, triggering in-app errors such as `Couldn’t load your runners: the server answered 503` or `Couldn’t load your NPCs: the server answered 503`.
+>
+> **Recommended Configuration:**
+>
+> - Restrict strict rate-limiting specifically to the login route (`location = /api/auth/login`) to defend against brute force, without restricting catalog loading or NPC imports.
+> - Never rate-limit static XML/assets (`/custom/`, `/assets/`).
+> - If general API rate limiting is desired, use high thresholds (e.g. `rate=60r/s burst=500 nodelay`).
 
 ```nginx
 # inside the chummer server block
 client_max_body_size 1g;
+proxy_read_timeout 300;
+proxy_send_timeout 300;
+proxy_connect_timeout 300;
+
+location / {
+    proxy_pass http://127.0.0.1:9010; # your container address and port
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+
+# Rate-limit authentication specifically, not the whole app:
+location = /api/auth/login {
+    limit_req zone=ca2_login burst=5 nodelay;
+    limit_req_status 429;
+    proxy_pass http://127.0.0.1:9010;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
 ```
 
 **Alternative (Cloudflare Enterprise only):** Cloudflare's upload-limit can only be raised above 500 MB on the Enterprise plan. The DNS-only approach above works on every plan.
@@ -83,7 +106,7 @@ client_max_body_size 1g;
 ## Sign in with Authelia (OpenID Connect)
 
 Accounts can sign in through [Authelia](https://www.authelia.com/) instead of an app password, with Authelia's
-two-factor. Each person still needs an account on the **Users** page with *Signs in with: Authelia*. Nobody is created
+two-factor. Each person still needs an account on the **Users** page with _Signs in with: Authelia_. Nobody is created
 automatically: anyone else is told to ask the admin for an account. An Authelia account can't use an app password, and a
 password account can't use Authelia.
 
@@ -116,18 +139,19 @@ password account can't use Authelia.
            scopes: ['openid', 'profile', 'email']
            response_types: ['code']
            grant_types: ['authorization_code']
-           token_endpoint_auth_method: 'client_secret_basic'  # or client_secret_post (pick the same in the app)
-           id_token_signed_response_alg: 'RS256'              # or ES256 with an ES256 key in identity_providers.oidc.jwks
-           userinfo_signed_response_alg: 'none'               # the app reads the userinfo endpoint as plain JSON
+           token_endpoint_auth_method: 'client_secret_basic' # or client_secret_post (pick the same in the app)
+           id_token_signed_response_alg: 'RS256' # or ES256 with an ES256 key in identity_providers.oidc.jwks
+           userinfo_signed_response_alg: 'none' # the app reads the userinfo endpoint as plain JSON
    ```
 
    Authelia (4.39+) keeps `preferred_username` and `email` out of the ID token by default; the app fetches them from the
    userinfo endpoint, so no `claims_policy` is needed.
+
 2. In the app: **Settings → Sign-in** (admin): the issuer address exactly as Authelia names itself (e.g.
-   `https://auth.example.com`, no trailing slash), the client ID, the plain client secret, **Test**, then tick *Show
-   “Sign in with Authelia”* and **Save**. The secret is stored in `Config/auth-secret.xml` (readable by the
+   `https://auth.example.com`, no trailing slash), the client ID, the plain client secret, **Test**, then tick _Show
+   “Sign in with Authelia”_ and **Save**. The secret is stored in `Config/auth-secret.xml` (readable by the
    server only), is never shown again, and is dropped when the issuer address changes. A backup carries it only with
-   *Include my API keys*.
+   _Include my API keys_.
 3. The app must know its public https address: set `PUBLIC_URL` (template: **Public address**, e.g.
    `https://chummer.example.com`, no path), or pass the proxy's `X-Forwarded-Proto`/`-Host` from a `TRUST_PROXY` peer.
    The redirect URI is built from it. With `PUBLIC_URL` set, the app works only at that address (the sign-in and write
@@ -150,4 +174,3 @@ switch the account back (Users page).
 `npm run build` and serve `dist/`. The build ships no core data, so a static copy needs the core files too: unzip
 a data pack (Books → Download data pack on a server) and put its `core/*.xml` in `dist/custom/imported/core/`.
 Without a server there are no accounts, no Books page and no importer; runners stay in the browser.
-

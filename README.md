@@ -9,6 +9,7 @@ A self-hosted character generator and career tracker for two games: **Shadowrun 
 You run it on your own network (a home server, a NAS, a PC) or as a Windows desktop app. Everyone at the table uses it in a browser. It ships the rules engine only: **no book text, tables or art**. You bring your own books. See [How a book becomes data](#how-a-book-becomes-data).
 
 > **About the screenshots.** Every screenshot in this guide uses the dark theme (printed sheets stay paper-colored) and was taken from a real running build with invented sample data (names like "Glimmerkin" and "Zip Spark" are made up). They show how the app looks and works, not what is in any book. `node tools/readme-shots.mjs` retakes them.
+
 ## Contents
 
 **Using it**
@@ -43,19 +44,19 @@ The two games are kept fully apart. Runners, NPCs, campaigns, books, data, edits
 
 ## Key features
 
-| | Shadowrun 6 | Anarchy 2.0 |
-| --- | --- | --- |
-| Creation | Five methods: priority, sum to ten, point buy, karma, lifepath | Level of play, optional package guide, free allocation of nuyen |
-| Budget view | Attribute, skill, adjustment, knowledge, contact, power and Karma pools, nuyen, Essence, each itemized | One nuyen receipt that lists every rule |
-| Magic and tech | Magic or Resonance tab: spells, rituals, adept powers, metamagics, complex forms, echoes, foci, bound spirits | Shadow Amps (amp builder), Awakened and Emerged amps, spells and complex forms |
-| Gear | Weapons, armor, electronics, programs, augmentations, vehicles, drones, critters, starter packs, contacts, SINs, licenses, lifestyles | Weapons, armor, gear, vehicles, spells, lifestyles |
-| Designers | Vehicle, drone, weapon and cyberware designers | Amp builder |
-| Review | Rule problems block Finalize until fixed or approved by a GM | Same |
-| Career | Karma and nuyen ledger with voiding, per-line edit, export and import | Nuyen ledger, changes logged by themselves |
-| Sheets | Six printable styles | Four printable styles |
-| GM tools | NPCs (grunts, contacts), critters, spirits, sprites | NPCs (regular or prime), critters, spirits |
-| Table | Table setup (creation rules, per campaign too), campaigns, compendiums | Table setup (optional and house rules), campaigns, compendiums |
-| Data | Import books you own, edit entries, restore a version | Same, plus new entries under a house-rule source, XML overlays and data packs |
+|                | Shadowrun 6                                                                                                                           | Anarchy 2.0                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Creation       | Five methods: priority, sum to ten, point buy, karma, lifepath                                                                        | Level of play, optional package guide, free allocation of nuyen                |
+| Budget view    | Attribute, skill, adjustment, knowledge, contact, power and Karma pools, nuyen, Essence, each itemized                                | One nuyen receipt that lists every rule                                        |
+| Magic and tech | Magic or Resonance tab: spells, rituals, adept powers, metamagics, complex forms, echoes, foci, bound spirits                         | Shadow Amps (amp builder), Awakened and Emerged amps, spells and complex forms |
+| Gear           | Weapons, armor, electronics, programs, augmentations, vehicles, drones, critters, starter packs, contacts, SINs, licenses, lifestyles | Weapons, armor, gear, vehicles, spells, lifestyles                             |
+| Designers      | Vehicle, drone, weapon and cyberware designers                                                                                        | Amp builder                                                                    |
+| Review         | Rule problems block Finalize until fixed or approved by a GM                                                                          | Same                                                                           |
+| Career         | Karma and nuyen ledger with voiding, per-line edit, export and import                                                                 | Nuyen ledger, changes logged by themselves                                     |
+| Sheets         | Six printable styles                                                                                                                  | Four printable styles                                                          |
+| GM tools       | NPCs (grunts, contacts), critters, spirits, sprites                                                                                   | NPCs (regular or prime), critters, spirits                                     |
+| Table          | Table setup (creation rules, per campaign too), campaigns, compendiums                                                                | Table setup (optional and house rules), campaigns, compendiums                 |
+| Data           | Import books you own, edit entries, restore a version                                                                                 | Same, plus new entries under a house-rule source, XML overlays and data packs  |
 
 Shared by both games:
 
@@ -116,13 +117,13 @@ The **budgets panel** at the side (or a bar you tap, on a phone) shows what is l
 
 ### The five creation methods
 
-| Method | How it works |
-| --- | --- |
-| **Priority** | Give each column (Metatype, Attributes, Magic or Resonance, Skills, Resources) a different letter from A to E. Each letter gives its row's values. |
-| **Sum to ten** | Give letters whose values add up to the target. The page shows the running total against the target. |
-| **Point buy** | Spend character points on pools (attributes, skills, adjustment, resources, power points, spells, complex forms). Every point has to be spent. |
-| **Karma build** | No pools. Everything is bought with the Karma it starts with. |
-| **Lifepath** | Pick life modules in order. Each grants things and costs something. It needs a book that prints life modules. |
+| Method          | How it works                                                                                                                                       |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Priority**    | Give each column (Metatype, Attributes, Magic or Resonance, Skills, Resources) a different letter from A to E. Each letter gives its row's values. |
+| **Sum to ten**  | Give letters whose values add up to the target. The page shows the running total against the target.                                               |
+| **Point buy**   | Spend character points on pools (attributes, skills, adjustment, resources, power points, spells, complex forms). Every point has to be spent.     |
+| **Karma build** | No pools. Everything is bought with the Karma it starts with.                                                                                      |
+| **Lifepath**    | Pick life modules in order. Each grants things and costs something. It needs a book that prints life modules.                                      |
 
 A method whose settings are not set up yet cannot be picked and says what is missing (set them on **Table setup**). The **Power level** control (Standard, Street or Elite) follows the table's level. Overriding it for one runner asks first and is meant to be done only with your GM's permission.
 
@@ -284,21 +285,21 @@ These parts work the same in Shadowrun 6 and Anarchy 2.0.
 
 Every page has a row of icons. Hover one for its name. The set you see depends on your role and the game.
 
-| Icon | Page | Who sees it |
-| --- | --- | --- |
-| Runner card | **Your runners** | Everyone |
-| Wrench, hub, pistol, chip (SR6 only) | **Vehicle designer**, **Drone designer**, **Weapon designer**, **Cyberware designer** | Everyone, on a server |
-| Skull | **NPCs & Critters** | GMs (editor, admin) |
-| Books | **Compendiums** | GMs, on a server |
-| Map | **Campaigns** | Everyone, on a server |
-| Open book | **Books** (import) | Admin |
-| Scales | **Rules** | Everyone in SR6; GMs in Anarchy |
-| Cylinder | **Game data** | Everyone |
-| Sliders | **Table setup** | Everyone (players read, GMs set) |
-| Anvil | **Export book data for Foundry** | GMs |
-| Arrows | Switch to the other game | Everyone |
-| Gear | **Settings** | Everyone |
-| Person | Your account | Everyone |
+| Icon                                 | Page                                                                                  | Who sees it                      |
+| ------------------------------------ | ------------------------------------------------------------------------------------- | -------------------------------- |
+| Runner card                          | **Your runners**                                                                      | Everyone                         |
+| Wrench, hub, pistol, chip (SR6 only) | **Vehicle designer**, **Drone designer**, **Weapon designer**, **Cyberware designer** | Everyone, on a server            |
+| Skull                                | **NPCs & Critters**                                                                   | GMs (editor, admin)              |
+| Books                                | **Compendiums**                                                                       | GMs, on a server                 |
+| Map                                  | **Campaigns**                                                                         | Everyone, on a server            |
+| Open book                            | **Books** (import)                                                                    | Admin                            |
+| Scales                               | **Rules**                                                                             | Everyone in SR6; GMs in Anarchy  |
+| Cylinder                             | **Game data**                                                                         | Everyone                         |
+| Sliders                              | **Table setup**                                                                       | Everyone (players read, GMs set) |
+| Anvil                                | **Export book data for Foundry**                                                      | GMs                              |
+| Arrows                               | Switch to the other game                                                              | Everyone                         |
+| Gear                                 | **Settings**                                                                          | Everyone                         |
+| Person                               | Your account                                                                          | Everyone                         |
 
 When an AI provider is set up for the game, an **Ask the rules** icon appears too, and an AI search shows above Rules and Game data.
 
@@ -316,11 +317,11 @@ Admins only. On the game picker, the **Setup** link opens a screen with four tab
 
 Every account has one role.
 
-| Role       | Can do                                                                                                                |
-| ---------- | --------------------------------------------------------------------------------------------------------------------- |
-| **admin**  | Everything: Books, imports, AI settings, Users, sign-in, backup and restore, background art, catalog edits            |
-| **editor** | Acts as a GM: runs campaigns, NPCs and compendiums, edits the catalog, sets Table setup and house rules               |
-| **player** | Own runners, plays in campaigns, reads Game data and Table setup, Ask the rules                                       |
+| Role       | Can do                                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------- |
+| **admin**  | Everything: Books, imports, AI settings, Users, sign-in, backup and restore, background art, catalog edits |
+| **editor** | Acts as a GM: runs campaigns, NPCs and compendiums, edits the catalog, sets Table setup and house rules    |
+| **player** | Own runners, plays in campaigns, reads Game data and Table setup, Ask the rules                            |
 
 The server enforces every rule. A hidden button is only convenience. There is always at least one enabled admin.
 
@@ -351,10 +352,10 @@ The admin uploads page backgrounds (PNG, JPEG or WebP) under **Settings, Backgro
 
 Export runners, NPCs, compendiums and book data as JSON files, then import them into Foundry with a companion module. Each module refuses the other game's file.
 
-| Game        | Module                                                                                                                   | Foundry system                       |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ |
-| SR6         | [Nova Prime Chummer — SR6 Importer](https://github.com/jbowensii/chummer-sr6-foundry)                                    | Shadowrun 6 "Eden" (`shadowrun6-eden`) |
-| Anarchy 2.0 | [Nova Prime Chummer — Anarchy 2 Importer](https://github.com/jbowensii/chummer-anarchy2-foundry)                         | Shadowrun Anarchy 2 (`sra2`)         |
+| Game        | Module                                                                                           | Foundry system                         |
+| ----------- | ------------------------------------------------------------------------------------------------ | -------------------------------------- |
+| SR6         | [Nova Prime Chummer — SR6 Importer](https://github.com/jbowensii/chummer-sr6-foundry)            | Shadowrun 6 "Eden" (`shadowrun6-eden`) |
+| Anarchy 2.0 | [Nova Prime Chummer — Anarchy 2 Importer](https://github.com/jbowensii/chummer-anarchy2-foundry) | Shadowrun Anarchy 2 (`sra2`)           |
 
 **Install a module in Foundry**: Add-on Modules, then **Install Module**. Paste the manifest URL and install.
 
@@ -373,16 +374,16 @@ Pick one way to run the app, then follow its steps from top to bottom. Every opt
 
 <p align="center"><img src="docs/images/diagram-choose-your-install.png" alt="Diagram: Choose your install" width="760"></p>
 
-| Method | Best for | Updates | Data lives in | Maturity |
-| --- | --- | --- | --- | --- |
-| [Windows installer](#windows-installer) | One person, one PC | Check and install from Setup, Updates | `%APPDATA%\nova-prime-chummer` | Main path |
-| [Windows portable](#windows-portable) | A USB stick or a PC where you cannot install | Download each new version yourself | `%APPDATA%\nova-prime-chummer` | Main path |
-| [Docker](#docker) | A home server | Pull the image, recreate the container | The folder you mount as `/data` | Main path |
-| [Unraid](#unraid) | Unraid users | Unraid's Docker tab | `/mnt/user/appdata/nova-prime-chummer` | Main path |
-| [Docker Compose](#docker-compose) | Docker hosts that use compose | `docker compose pull` and `up -d` | `./data` next to the compose file | **New in this beta** |
-| [Pelican or Pterodactyl](#pelican-or-pterodactyl-panel) | Game-server panels | Restart or reinstall from the panel | `/home/container/data` in the server | **New in this beta** |
-| [Ubuntu service](#ubuntu-systemd-service) | A Linux box without Docker | `install.sh update` | `/var/lib/nova-prime-chummer` | **New in this beta** |
-| [From source](#from-source) | Developers | `git pull`, rebuild | The folder you set with `DATA_PATH` | For development |
+| Method                                                  | Best for                                     | Updates                                | Data lives in                          | Maturity             |
+| ------------------------------------------------------- | -------------------------------------------- | -------------------------------------- | -------------------------------------- | -------------------- |
+| [Windows installer](#windows-installer)                 | One person, one PC                           | Check and install from Setup, Updates  | `%APPDATA%\nova-prime-chummer`         | Main path            |
+| [Windows portable](#windows-portable)                   | A USB stick or a PC where you cannot install | Download each new version yourself     | `%APPDATA%\nova-prime-chummer`         | Main path            |
+| [Docker](#docker)                                       | A home server                                | Pull the image, recreate the container | The folder you mount as `/data`        | Main path            |
+| [Unraid](#unraid)                                       | Unraid users                                 | Unraid's Docker tab                    | `/mnt/user/appdata/nova-prime-chummer` | Main path            |
+| [Docker Compose](#docker-compose)                       | Docker hosts that use compose                | `docker compose pull` and `up -d`      | `./data` next to the compose file      | **New in this beta** |
+| [Pelican or Pterodactyl](#pelican-or-pterodactyl-panel) | Game-server panels                           | Restart or reinstall from the panel    | `/home/container/data` in the server   | **New in this beta** |
+| [Ubuntu service](#ubuntu-systemd-service)               | A Linux box without Docker                   | `install.sh update`                    | `/var/lib/nova-prime-chummer`          | **New in this beta** |
+| [From source](#from-source)                             | Developers                                   | `git pull`, rebuild                    | The folder you set with `DATA_PATH`    | For development      |
 
 **Cloudflare users:** if you put the chummer subdomain behind Cloudflare's proxy (orange cloud), book uploads will hang at a low percentage and never finish. Cloudflare imposes a hard upload-size limit on its free and Pro plans (~100 MB), and RPG core rulebook PDFs routinely exceed it. **Turn the proxy off** (gray-cloud the DNS record) and issue a Let's Encrypt certificate with certbot instead — a Cloudflare Origin Certificate is not trusted by browsers without the proxy. See [docs/hosting-auth.md](docs/hosting-auth.md#cloudflare-proxy-and-large-uploads) for the full fix, including nginx rate-limiting to replace the protection you lose.
 
@@ -501,11 +502,11 @@ The template maps one **Data** folder, `/mnt/user/appdata/nova-prime-chummer`, t
 
 **A second instance** (a second table, or a test copy) needs its own name, port and data folder. Add the container from the template again and change three things before **Apply**:
 
-| Setting | First instance | Second instance (example) |
-| --- | --- | --- |
-| Name | `nova-prime-chummer` | `nova-prime-chummer-2` |
-| WebUI Port | `8480` | `8481` |
-| Data | `/mnt/user/appdata/nova-prime-chummer` | `/mnt/user/appdata/nova-prime-chummer-2` |
+| Setting    | First instance                         | Second instance (example)                |
+| ---------- | -------------------------------------- | ---------------------------------------- |
+| Name       | `nova-prime-chummer`                   | `nova-prime-chummer-2`                   |
+| WebUI Port | `8480`                                 | `8481`                                   |
+| Data       | `/mnt/user/appdata/nova-prime-chummer` | `/mnt/user/appdata/nova-prime-chummer-2` |
 
 Leave **Data path** (`/data`) alone: that is the path inside the container. The second instance has its own accounts, so it shows its own setup code in its own log.
 
@@ -530,6 +531,8 @@ New in this beta. Egg: [distribution/pelican/egg-nova-prime-chummer.json](distri
 5. Open `http://<the node's address>:<your port>`.
 
 The server runs as the panel's unprivileged user and keeps its data under `/home/container/data` (the egg's **Data folder** variable, which a user cannot edit). The other variable, **Public address**, is for sign-in links: leave it empty if you only use the node's address and port.
+
+**Reverse proxy (Nginx, domain name):** When routing traffic through a reverse proxy (e.g., `chummer.yourdomain.com`), consult [docs/hosting-auth.md](docs/hosting-auth.md). **Avoid aggressive global rate limits** (`rate=60r/m` across `location /`): loading dozens of imported books and batch-importing example characters or NPCs sends hundreds of rapid requests that will trip strict limits and return HTTP 503.
 
 **First run:** Then follow [First run](#first-run).
 
@@ -558,6 +561,7 @@ New in this beta. Script: [distribution/ubuntu/install.sh](distribution/ubuntu/i
    ```
 
    It installs Node 22 (from NodeSource) and Python 3.13 (from the deadsnakes PPA) if they are missing. It makes a system user `novaprime`, a Python virtual environment in `/opt/nova-prime-chummer/.venv`, builds the app, writes the systemd service and starts it. It trusts the NodeSource and deadsnakes install steps as they are.
+
 3. Read the setup code: `sudo journalctl -u nova-prime-chummer | grep "Setup code"`.
 4. The service listens on **`127.0.0.1:8480` only**. To reach it from other machines put a reverse proxy in front (see [docs/hosting-auth.md](docs/hosting-auth.md)), or for a quick look from your own PC use an SSH tunnel: `ssh -L 8480:127.0.0.1:8480 you@the-server`, then open `http://localhost:8480`.
 
@@ -639,12 +643,12 @@ The Node server stores runners as XML files, one folder per account. It never se
 
 The container, the panel egg and the desktop app all use this layout:
 
-| Folder | What it holds |
-| --- | --- |
-| `Config` | Accounts, sign-in settings, AI settings and keys |
-| `Data/systems` | Per game: saved runners (a folder per account), house rules, imported books, edits |
-| `Library` | Uploaded PDFs, their converted text, import reports. Never served over the web |
-| `Logs`, `Backups` | Server logs and the automatic safety copies made before a restore |
+| Folder            | What it holds                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| `Config`          | Accounts, sign-in settings, AI settings and keys                                   |
+| `Data/systems`    | Per game: saved runners (a folder per account), house rules, imported books, edits |
+| `Library`         | Uploaded PDFs, their converted text, import reports. Never served over the web     |
+| `Logs`, `Backups` | Server logs and the automatic safety copies made before a restore                  |
 
 An older install with three folders (`characters`, `custom`, `library`) is moved into this layout on the first start. Nothing is deleted. If you still have those three folders, mount their parent folder as the data folder.
 
@@ -681,16 +685,16 @@ Formats: [Anarchy data](docs/data-format.md), [SR6 data](docs/sr6-data-format.md
 
 ### Options and environment variables
 
-| Variable | What it does |
-| --- | --- |
-| `PORT` | The port the server listens on. Default 80 (the Docker image sets it). |
-| `SERVER_PORT` | Overrides `PORT` where a panel hands you a port (Pelican, Pterodactyl). |
-| `DATA_PATH` | The data folder. Default `/data`. |
-| `STATIC_DIR` | The built web app to serve. |
-| `PYTHON` | The Python that runs the importer. |
-| `PUID`, `PGID` | Docker: the user and group that own `/data` (default 99:100). |
-| `TRUST_PROXY` | The reverse proxy's address (Unraid template: _Trusted proxy_). |
-| `PUBLIC_URL` | The one address people use (Unraid template: _Public address_). Needed for Authelia sign-in. |
+| Variable       | What it does                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| `PORT`         | The port the server listens on. Default 80 (the Docker image sets it).                       |
+| `SERVER_PORT`  | Overrides `PORT` where a panel hands you a port (Pelican, Pterodactyl).                      |
+| `DATA_PATH`    | The data folder. Default `/data`.                                                            |
+| `STATIC_DIR`   | The built web app to serve.                                                                  |
+| `PYTHON`       | The Python that runs the importer.                                                           |
+| `PUID`, `PGID` | Docker: the user and group that own `/data` (default 99:100).                                |
+| `TRUST_PROXY`  | The reverse proxy's address (Unraid template: _Trusted proxy_).                              |
+| `PUBLIC_URL`   | The one address people use (Unraid template: _Public address_). Needed for Authelia sign-in. |
 
 #### Sign-in
 
